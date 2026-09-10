@@ -227,3 +227,20 @@ and stay quiet about the ones it pins.
 
 So this changes the premise without settling the question. Nothing is
 built on it here.
+
+### Two writers in one process (0.6.2)
+
+The start-up verifier runs on its own thread for up to about 22 s
+after `READY=1`, and a SIGHUP reconcile runs on the main thread. Both
+write the whole routing, and the verifier releases the receive port
+between its phases, so a reload landing in one of those gaps used to
+interleave two link phases and two mix writes on the wire -- the
+ordering ADR 0001 exists to guarantee. The resume hook is what makes the
+window real: after a suspend the device re-enumerates, udev restarts
+the unit, and the hook's reload arrives during the verifier's window.
+
+The reconcile now waits for the verifier (`session._verifier_finished`),
+bounded by `RECONCILE_WAIT_FOR_VERIFIER` (30 s, derived from the
+verifier's longest path) so a wedged thread cannot hold the supervise
+loop; a stop request ends the wait, and a reload that times out is
+logged rather than swallowed. The trigger list above does not change.

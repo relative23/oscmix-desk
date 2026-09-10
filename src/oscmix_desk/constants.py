@@ -129,6 +129,16 @@ VERIFIER_STOP_GRACE = 2.0
 # backend, so the port it held is free before the new one binds.
 STALE_BACKEND_SETTLE = 0.5
 
+# How long a SIGHUP reconcile waits for the start-up verifier before
+# giving up on it. Both write the whole routing to one device, so they
+# are serialised (see session._verifier_finished). The verifier's longest
+# path is a full observation window, a re-apply and a second window:
+# VERIFY_SETTLE + VERIFY_TIMEOUT + LINK_ECHO_TIMEOUT + VERIFY_SETTLE +
+# VERIFY_TIMEOUT = 22.5 s; the blind path is about 6 s. 30 s covers the
+# longer one with margin and is short enough that a reload during a
+# shutdown does not hold the supervise loop for long.
+RECONCILE_WAIT_FOR_VERIFIER = 30.0
+
 
 def startup_budget(device_timeout: float = DEFAULT_DEVICE_TIMEOUT) -> float:
     """Worst-case seconds from process start to ``READY=1``.

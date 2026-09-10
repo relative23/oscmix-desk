@@ -280,6 +280,135 @@ def test_a_broken_config_on_reload_keeps_the_running_one(tmp_path, session_mod,
     assert applied == [], "a config that does not parse must not be applied"
 
 
+def _reload_in_background(session_mod, session_module, path, stop, verifier):
+    import argparse
+    import threading
+
+    thread = threading.Thread(
+        target=lambda: session_module._reconcile(
+            argparse.Namespace(config=path), session_mod.Config(), stop,
+            verifier),
+        daemon=True)
+    thread.start()
+    return thread
+
+
+def _routes_file(tmp_path):
+    path = tmp_path / "routing.conf"
+    path.write_text("[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    return path
+
+
+def test_a_reload_waits_for_the_startup_verifier(tmp_path, session_mod,
+                                                monkeypatch):
+    """Two writers, one device: the reconcile queues behind the verifier.
+
+    The verifier releases the receive port between its phases, so a
+    SIGHUP arriving in one of those gaps used to run a second
+    apply_routing on the main thread while the verifier's retry was
+    starting its own -- two link phases and two mix writes interleaved,
+    which is the ordering the two-phase apply exists to guarantee. The
+    resume hook makes the window real: after a suspend the device
+    re-enumerates, udev restarts the unit, and the hook's reload lands
+    in the verifier's window.
+    """
+    import threading
+    import time
+
+    from oscmix_desk import session as session_module
+
+    applied = []
+    monkeypatch.setattr(session_module, "reconcile_now",
+                        lambda *a, **k: applied.append(time.monotonic()))
+    release = threading.Event()
+    verifier = threading.Thread(target=release.wait, daemon=True)
+    verifier.start()
+
+    reload = _reload_in_background(session_mod, session_module,
+                                   _routes_file(tmp_path), {"stop": False},
+                                   verifier)
+    time.sleep(0.4)
+    assert applied == [], "the reconcile wrote while the verifier ran"
+    released_at = time.monotonic()
+    release.set()
+    reload.join(timeout=5)
+    assert not reload.is_alive()
+    assert len(applied) == 1
+    assert applied[0] >= released_at
+
+
+def test_a_stop_during_the_wait_abandons_the_reload(tmp_path, session_mod,
+                                                   monkeypatch):
+    # A reload queued behind the verifier must not outlive a shutdown
+    # request: the supervise loop is the main thread, and a write after
+    # SIGTERM would land on a backend that is being taken down.
+    import threading
+    import time
+
+    from oscmix_desk import session as session_module
+
+    applied = []
+    monkeypatch.setattr(session_module, "reconcile_now",
+                        lambda *a, **k: applied.append(1))
+    release = threading.Event()
+    verifier = threading.Thread(target=release.wait, daemon=True)
+    verifier.start()
+    stop = {"stop": False}
+    reload = _reload_in_background(session_mod, session_module,
+                                   _routes_file(tmp_path), stop, verifier)
+    time.sleep(0.2)
+    stop["stop"] = True
+    reload.join(timeout=5)
+    release.set()
+    assert not reload.is_alive()
+    assert applied == []
+
+
+def test_a_verifier_that_outlives_the_bound_is_not_waited_for_forever(
+        tmp_path, session_mod, monkeypatch, caplog):
+    # The bound exists so a wedged verifier cannot hold the supervise
+    # loop; the skipped reload is logged, never silent.
+    import threading
+
+    from oscmix_desk import session as session_module
+
+    applied = []
+    monkeypatch.setattr(session_module, "reconcile_now",
+                        lambda *a, **k: applied.append(1))
+    monkeypatch.setattr(session_module, "RECONCILE_WAIT_FOR_VERIFIER", 0.3)
+    release = threading.Event()
+    verifier = threading.Thread(target=release.wait, daemon=True)
+    verifier.start()
+    with caplog.at_level("WARNING"):
+        reload = _reload_in_background(session_mod, session_module,
+                                       _routes_file(tmp_path),
+                                       {"stop": False}, verifier)
+        reload.join(timeout=5)
+    release.set()
+    assert not reload.is_alive()
+    assert applied == []
+    assert "reconcile skipped" in caplog.text
+
+
+def test_a_finished_verifier_does_not_delay_the_reload(tmp_path, session_mod,
+                                                      monkeypatch):
+    import threading
+
+    from oscmix_desk import session as session_module
+
+    applied = []
+    monkeypatch.setattr(session_module, "reconcile_now",
+                        lambda *a, **k: applied.append(1))
+    verifier = threading.Thread(target=lambda: None)
+    verifier.start()
+    verifier.join()
+    reload = _reload_in_background(session_mod, session_module,
+                                   _routes_file(tmp_path), {"stop": False},
+                                   verifier)
+    reload.join(timeout=5)
+    assert applied == [1]
+
+
 def test_the_installer_and_uninstaller_agree_about_the_sleep_hook():
     """uninstall.sh says it removes everything install.sh created.
 
