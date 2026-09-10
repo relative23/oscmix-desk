@@ -1,5 +1,81 @@
 # Changelog
 
+## Unreleased
+
+An outside review of 0.6.1 named stale documentation in `reconcile.py`,
+the single-device specialisation, the complexity of the reconciler, the
+gap between tests and firmware, and the limits of a coverage gate. The
+audit that followed found the stale claim, one silent behaviour of the
+same shape as 0.6.1's route defect, and a concurrency hole; this
+section is what it fixed. The pin does not move.
+
+### Fixed
+
+- **A config for a device without a register table dropped its channel
+  sections in silence.** `[input:3] gain = 12.0` on a `Fireface 802`, or
+  on any name the model does not know, parsed to nothing with no
+  message -- the 0.6.1 route defect one file over: accepted, shown in
+  nothing, delivered nowhere. Nested and global sections on the same
+  device did get a warning, and it named the wrong cause ("may have been
+  written by a newer version of oscmix-desk"). Both now say what is
+  true: no register model for that device declares the section, nothing
+  in it could reach the device, and which devices are modelled. Routes
+  keep working on such a device, as ADR 0006 intends; a global family
+  the model lists with nothing settable is refused, like Room EQ was.
+
+- **A reload could write routing while the start-up verifier was still
+  writing it.** `_reconcile` ran on the main thread with no regard for
+  the verifier thread, which releases the receive port between its
+  phases; a SIGHUP in one of those gaps interleaved two link phases and
+  two mix writes on the wire, the ordering ADR 0001 exists to guarantee.
+  The resume hook makes the window real: after a suspend the device
+  re-enumerates, udev restarts the unit, and the hook's reload arrives
+  during the verifier's window. The reconcile now waits for the verifier
+  (`RECONCILE_WAIT_FOR_VERIFIER`, 30 s, derived from its longest path),
+  abandons the wait on a stop, and logs rather than swallows a reload
+  that outlives the bound. ADR 0013 records the rule; four tests hold it.
+
+- **`--osc-port` accepted any integer.** `[osc] port` in the file
+  refused 0 and 70000; the command-line override passed them to the
+  backend, whose bind failure was the first sign. Bounded the same way,
+  exit 2.
+
+### Changed
+
+- **`reconcile.py` no longer claims that nothing writes through it.**
+  The module docstring said so since 0.2.0, was false from 0.4.0 on, and
+  stayed for three releases until the review read it. It now names what
+  writes through the planner and since when. The last path that did not
+  -- `send_mix`, the verifier's mix re-apply -- does now, so a register
+  two routes share goes out once there too; a test pins the wire change.
+  Sixteen more "today" and "this release" phrases in runtime docstrings
+  became the version they were written in, so a reader no longer needs
+  `git blame` to know whether a sentence is still true.
+
+- **The two start-up helpers only subprocess tests reached have unit
+  tests.** The 0.6.1 mutation run left exactly 50 mutants with no
+  covering test: 26 in `_await_backend_port`, 23 in
+  `_install_stop_handlers`, one in a dead function. Both are driven in
+  process now -- the port wait returns on listen and on a dead child and
+  warns on timeout; the stop handlers set the flag, tell systemd first
+  and terminate only a backend that is still there.
+
+- **The performance gate skips on an overloaded host instead of
+  failing.** `make flake` failed once on 2026-09-05 with the
+  bundle-walking test at 39.6x for 10x the work, on a load average of
+  36 over 8 cores from unrelated suites; the next quiet run read 9.3x.
+  Best-of-5 instead of best-of-3, and a ratio that would fail is a skip
+  when the load average exceeds twice the core count -- never on a CI
+  runner, which is where the gate matters.
+
+- **Docs.** TROUBLESHOOTING gained two sections from the 2026-09-05
+  incident: the PipeWire gain chain, where three controls "about half"
+  cost 63 dB before the device saw anything (measured, with the command
+  that shows the real gains), and the fader that moves back by itself
+  because a route declares `volume =`. The README says that a profile
+  lasts until the next start and why; the roadmap carries the fix as
+  item F with the design question it needs answered first.
+
 ## 0.6.1 (2026-09-05)
 
 Two defects found by auditing the tree rather than by a failing test,
