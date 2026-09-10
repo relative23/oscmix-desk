@@ -40,7 +40,40 @@ section is what it fixed. The pin does not move.
   backend, whose bind failure was the first sign. Bounded the same way,
   exit 2.
 
+### Added
+
+- **Every evidence artifact names the firmware it was taken against.**
+  The device offers two version numbers and none of the artifacts
+  recorded either: `bcdDevice` from sysfs (the USB device release,
+  3.01 on the reference unit) and the register `/hardware/dspvers`
+  (36), which the model has carried since 0.4.0 without anything
+  reading it. A firmware that behaved differently would have been
+  invisible in the evidence -- the review's point about tests and
+  firmware, made concrete. `discovery.device_firmware` gives both one
+  shape, and the hardware evidence, the write sweep, the recorded dump
+  and the `--snapshot` header carry it; the release checklist compares
+  it against the previous release's artifact and says what a change
+  means. The committed sweep artifact and the refresh-dump fixture
+  predate the field and are not backfilled by hand; each is re-recorded
+  when its own rule says so, and carries it then.
+
 ### Changed
+
+- **Three functions with no caller are gone, and the trait the barrier
+  promised to read is read.** `reconcile.routes_of`, `reconcile.unreachable`
+  and `registers.channel_limit` had no caller outside a test, and the
+  dead-code gate at 80 % confidence could not see them; it runs at 60 %
+  now with a reasoned allowlist (`quality/vulture-allowlist.py`) for
+  the names that exist as test contracts or documented data.
+  `backend.Traits.reports_link_state_on_write` said since 0.2.0 that
+  flipping it would be the change when upstream fixed the stereo cache,
+  and no branch consulted it; `_cross_the_barrier` does now, and a test
+  holds that a backend which updates its link state on write pays no
+  barrier while still sending every link before any mix. The other two
+  traits say, per field, that they are documented and not read. The
+  route-by-route walk `reconcile.plan` replaced in 0.4.0
+  (`routing_plan`, `route_messages`) had no runtime caller either and
+  was public; it is the test oracle it always was, in `tests/oracle.py`.
 
 - **`reconcile.py` no longer claims that nothing writes through it.**
   The module docstring said so since 0.2.0, was false from 0.4.0 on, and
