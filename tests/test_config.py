@@ -587,3 +587,70 @@ def test_the_shapes_adr_0014_rejected_really_do_refuse_the_file(session_mod,
     path = write(tmp_path, _WORKING + shape)
     with pytest.raises(session_mod.ConfigError):
         session_mod.load_config(path)
+
+
+# --------------------------------------------------------------------------
+# A device without a register table says so; it does not swallow sections.
+# --------------------------------------------------------------------------
+
+def _warnings(caplog):
+    return [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+
+
+@pytest.mark.parametrize("name", ["Fireface 802", "Some Other Interface"])
+def test_a_channel_section_for_a_device_without_registers_is_named_ignored(
+        session_mod, tmp_path, caplog, name):
+    """`[input:3]` on the 802 used to parse to nothing, in silence.
+
+    The 802 lists channels and no registers; an unknown name lists
+    nothing at all. Both get no opinion on routes, which is right, and
+    both returned an empty list for a channel section, which is the
+    0.6.1 route defect one file over: parsed, shown in nothing, delivered
+    nowhere, and looking exactly like a section that worked. The route
+    still loads; the section is dropped with a warning that names the
+    device and the cause.
+    """
+    path = write(tmp_path, "[device]\nname = %s\n\n"
+                           "[route:x]\nplayback = 1/2\noutput = 1/2\n\n"
+                           "[input:3]\ngain = 12.0\n" % name)
+    with caplog.at_level("WARNING"):
+        config = session_mod.load_config(path)
+    assert len(config.routes) == 1
+    assert config.channels == []
+    messages = _warnings(caplog)
+    assert len(messages) == 1
+    assert "[input:3]" in messages[0]
+    assert name in messages[0]
+    assert "Fireface UCX II" in messages[0], "the warning names what is modelled"
+    assert "newer version" not in messages[0]
+
+
+@pytest.mark.parametrize("section", ["eq:input:3", "clock"])
+def test_a_nested_or_global_section_on_the_802_is_not_blamed_on_a_newer_version(
+        session_mod, tmp_path, caplog, section):
+    # The dispatcher's fallback used to give every unknown section the
+    # "newer version of oscmix-desk" text. On the 802 that was the wrong
+    # cause: nothing is newer, the model has no rows for the device.
+    path = write(tmp_path, "[device]\nname = Fireface 802\n\n"
+                           "[%s]\nsource = Internal\n" % section)
+    with caplog.at_level("WARNING"):
+        config = session_mod.load_config(path)
+    assert config.channels == []
+    assert config.globals == []
+    (message,) = _warnings(caplog)
+    assert "[%s]" % section in message
+    assert "Fireface 802" in message
+    assert "newer version" not in message
+
+
+def test_an_unknown_section_on_a_modelled_device_still_suggests_a_newer_version(
+        session_mod, tmp_path, caplog):
+    # The other branch keeps its meaning: on the UCX II an unknown
+    # section really may come from a newer version (ADR 0006).
+    path = write(tmp_path, "[device]\nname = Fireface UCX II\n\n"
+                           "[frobnicate]\nlevel = 1\n")
+    with caplog.at_level("WARNING"):
+        session_mod.load_config(path)
+    (message,) = _warnings(caplog)
+    assert "newer version" in message
+    assert "[frobnicate]" in message

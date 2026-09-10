@@ -26,6 +26,7 @@ from .errors import ConfigError
 from .log import log
 from .registers import (
     BOOL,
+    DEVICES,
     ENABLE_OPTION,
     ENUM,
     NUMBER,
@@ -347,7 +348,8 @@ def load_config(path: Optional[Path]) -> Config:
     for section in pending:
         family = section.split(":", 1)[0]
         config.channels.extend(
-            _parse_channel_section(parser, section, family, device))
+            _parse_channel_section(parser, section, family, device,
+                                   config.device_name))
 
     _check_device_channels(config)
     _check_link_agreement(config.routes)
@@ -386,19 +388,55 @@ def _dispatch(parser: "configparser.ConfigParser", config: "Config",
         elif _is_nested_section(section, config):
             pending_nested.append(section)
         else:
-            # A warning, not an error. See
-            # docs/decisions/0006-routing-conf-compatibility.md: a section
-            # this version does not know is how a *newer* version adds a
-            # feature, and refusing the whole file over it leaves the
-            # device in whatever state the last boot left it, with no
-            # restart (RestartPreventExitStatus=2). An unknown *option*
-            # inside a known section stays an error -- that is what a
-            # typo looks like, and a silently ignored 'levl = -20' is a
-            # wrong device state nobody is told about.
-            log.warning(
-                "ignoring unknown section [%s] -- this config may have been "
-                "written by a newer version of oscmix-desk (known: %s)",
-                section, _known_sections(config))
+            _warn_unknown_section(section, config)
+
+
+def _modelled_names() -> str:
+    """The devices whose register table has rows, for the warnings."""
+    return ", ".join(d.name for d in DEVICES if d.registers)
+
+
+def _has_register_model(config: "Config") -> bool:
+    """Whether the configured device comes with a register table.
+
+    Two things answer "no": a name the model has never heard of, and a
+    device it lists without rows -- the 802, whose channel map is read
+    from upstream and whose registers nobody has measured. Both get no
+    opinion on routes (ADR 0006). Both must *say so* when a section asks
+    for registers they cannot supply, rather than stay silent.
+    """
+    device = device_for_name(config.device_name)
+    return device is not None and bool(device.registers)
+
+
+def _warn_unknown_section(section: str, config: "Config") -> None:
+    """Say that a section is ignored, and say the right why.
+
+    A warning, not an error. See
+    docs/decisions/0006-routing-conf-compatibility.md: a section this
+    version does not know is how a *newer* version adds a feature, and
+    refusing the whole file over it leaves the device in whatever state
+    the last boot left it, with no restart (RestartPreventExitStatus=2).
+    An unknown *option* inside a known section stays an error -- that is
+    what a typo looks like, and a silently ignored 'levl = -20' is a
+    wrong device state nobody is told about.
+
+    Two situations land here and used to get one message. On a device
+    without a register table every `[eq:input:3]` and `[clock]` fell
+    through to the "newer version" text, which sent the reader to the
+    changelog when the cause was the device table. Nothing was newer;
+    the model has no rows for that device, and the warning says so.
+    """
+    if not _has_register_model(config):
+        log.warning(
+            "ignoring [%s]: no register model for %r declares it, so "
+            "nothing in it could reach the device (modelled: %s)",
+            section, config.device_name, _modelled_names())
+        return
+    log.warning(
+        "ignoring unknown section [%s] -- this config may have been "
+        "written by a newer version of oscmix-desk (known: %s)",
+        section, _known_sections(config))
 
 
 def _check_device_channels(config: Config) -> None:
@@ -575,7 +613,13 @@ def _parse_global_section(parser: "configparser.ConfigParser", section: str,
     """
     known = settable_globals(device, section)  # type: ignore[arg-type]
     if not known:
-        return []
+        # Only reachable for a family the model lists with no settable
+        # row. The UCX II has none as of 0.6.2, and the branch used to
+        # return an empty list in silence -- the same shape the Room EQ
+        # refusal in `_parse_nested_section` exists to prevent.
+        raise ConfigError(
+            "[%s]: the device reports this family but nothing in it can "
+            "be set from a config" % section)
     unknown = set(parser.options(section)) - set(known)
     if unknown:
         raise ConfigError(
@@ -591,7 +635,8 @@ def _parse_global_section(parser: "configparser.ConfigParser", section: str,
 
 
 def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
-                           family: str, device: object) -> List[ChannelSetting]:
+                           family: str, device: object,
+                           device_name: str) -> List[ChannelSetting]:
     """Parse ``[input:N]`` / ``[output:N]``.
 
     Everything here is checked against the register model rather than
@@ -608,7 +653,17 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
 
     known = settable_options(device, family)  # type: ignore[arg-type]
     if not known:
-        # An unmodelled device has no opinion, here as everywhere else.
+        # No rows for this device: an unmodelled name, or the 802, which
+        # lists channels and no registers. Routes still get no opinion
+        # (ADR 0006). A section that asks for registers the model cannot
+        # supply must not: it used to return here in silence, having
+        # parsed, shown nothing in `--dry-run` and delivered nothing at
+        # the device, while looking exactly like a section that worked.
+        # That is the shape of the 0.6.1 route defect, one file over.
+        log.warning(
+            "ignoring [%s]: no register model for %r declares settable %s "
+            "options, so nothing in it could reach the device "
+            "(modelled: %s)", section, device_name, family, _modelled_names())
         return []
 
     unknown = set(parser.options(section)) - set(known)
