@@ -594,6 +594,32 @@ def test_send_mix_writes_the_matrix_without_the_links(session_mod):
                             "/output/6/volume"]
 
 
+def test_send_mix_writes_a_register_two_routes_share_once(session_mod):
+    """The re-apply goes through the planner now, so it deduplicates.
+
+    Two routes feeding the same output pair both declare that pair's
+    volume; the old route-by-route walk sent /output/5/volume and
+    /output/6/volume twice. A state holds each register once, and the
+    position is the first route's -- the same rule the apply follows.
+    """
+    send_port, recv_port = free_udp_port(), free_udp_port()
+    device = DumpingOscmix(session_mod, send_port, recv_port, [])
+    device.start()
+    routes = [make_route(session_mod, name="a", volume=0.0),
+              make_route(session_mod, name="b", playback=(3, 4), volume=0.0)]
+    config = make_config(session_mod, routes, send_port, recv_port)
+    try:
+        session_mod.send_mix(config)
+        device.drain()
+    finally:
+        device.stop()
+        device.join(timeout=3)
+        device.sock.close()
+    assert device.order == ["/mix/5/playback/1", "/output/5/volume",
+                            "/output/6/volume", "/mix/5/playback/3"]
+    assert not any(path.endswith("/stereo") for path in device.order)
+
+
 def test_blind_reapply_asks_for_a_dump_then_writes(session_mod, routing_mod,
                                                    monkeypatch):
     # Used when the mixer GUI holds the receive port: the dump still has

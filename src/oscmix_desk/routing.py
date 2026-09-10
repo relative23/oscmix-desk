@@ -125,7 +125,7 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
     ``backend`` is the caller's, when it has one. Without it this built
     its own from ``recv_port`` and ignored the one ``apply_routing`` had
     been handed -- the same "second implementation of something that
-    already exists" that produced three defects in this release, and
+    already exists" that produced three defects in 0.3.0, and
     here it also meant the barrier was the one part of the write path a
     test could not stand in for. Every profile test paid 1.5 s of real
     waiting for an echo no double could send.
@@ -277,9 +277,18 @@ def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
 
 
 def send_mix(config: Config) -> None:
-    """Write the mix matrix (and output volumes) of every route."""
+    """Write the mix matrix (and output volumes) of every route.
+
+    Through the planner, like the apply: a register two routes share
+    goes out once, and which writes belong to the mix phase is the
+    plan's decision rather than a second walk over the routes. Until
+    0.6.2 this built its own datagrams from ``mix_messages`` -- the last
+    path that did, and the reason ``reconcile``'s docstring could still
+    describe the runtime as four overlapping paths long after the apply
+    had moved over.
+    """
     loopback(config.osc_port, config.osc_recv_port).send(
-        message for route in config.routes for message in mix_messages(route))
+        write.message() for write in plan(desired(config)).mix())
     log.info("mix matrix re-applied against the synchronized link state")
 
 

@@ -186,7 +186,7 @@ def _states(text: str, section: str, option: str) -> bool:
     """
     # Same parser settings as load_config. A second parser with
     # different rules reading the same file is the shape of three
-    # separate defects in this release; matching them costs one line.
+    # separate defects in 0.3.0; matching them costs one line.
     parser = configparser.ConfigParser(
         interpolation=None, inline_comment_prefixes=("#", ";"))
     try:
@@ -240,7 +240,7 @@ def _write(config: Config, device: Backend) -> None:
     measured in seconds. That is the stereo-link race the 0.2.0 release
     was about, reintroduced on a new write path.
 
-    Three defects in this release now have the same shape: a second
+    Three defects in 0.3.0 had the same shape: a second
     implementation of something that already existed, correct in
     everything it did and missing something the original had. This is
     the third and last of them.

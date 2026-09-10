@@ -131,7 +131,7 @@ def register_promptly_reported(path: str,
 
     Without this, an `[output:N]` section would be reported unconfirmed
     on every hotplug and the whole routing re-sent, every time. The
-    registers this release verified before 0.3.0 are all in the fast,
+    registers verified before 0.3.0 are all in the fast,
     complete part, which is exactly why nothing noticed until channel
     state arrived.
     """
@@ -283,7 +283,7 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
               if register_ever_reported(path, device_model)}
     # A caller may hand in its own backend -- the profile switch does,
     # so that the switch and the session share one read-back loop
-    # instead of two that can disagree. Both defects this release fixed
+    # instead of two that can disagree. Both defects 0.3.0 fixed
     # were a second implementation of something that already existed.
     device = backend if backend is not None else loopback(send_port,
                                                           recv_port)
@@ -369,7 +369,7 @@ def _report(result: VerifyResult, config: Config, device: Optional[Device],
     Both lists are returned rather than the caller recomputing ``kept``
     for the re-apply. Two computations of one fact is how a log and an
     action come to disagree -- and "real in the log, absent at the
-    device" is a defect this release has already shipped once.
+    device" is a defect 0.3.0 shipped once.
     """
     kept = _kept_by_the_device(result, device, config.policies)
     if kept:

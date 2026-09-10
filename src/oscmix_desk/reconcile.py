@@ -1,15 +1,15 @@
 """Desired state, observed state, and the plan between them.
 
 What this project *is*, is a reconciler: desired state from the config,
-observed state from the device dump, the difference applied. What the
-code grew into is four partly overlapping paths over the same data --
+observed state from the device dump, the difference applied. Before
+0.4.0 the code was four partly overlapping paths over the same data --
 ``apply_routing``, ``send_mix``, ``blind_reapply_mix`` and
 ``verify_and_repair`` -- each with its own idea of what to write and
 when.
 
 Stated as ``desired(config)``, ``observed(reports)`` and
 ``plan(desired, observed)``, apply and verify are one path, and two
-planned features fall out of it instead of becoming paths five and six:
+features fell out of it instead of becoming paths five and six:
 ``--dump-config`` is ``observed()`` rendered as config, and ``--diff`` is
 ``plan()`` printed instead of sent.
 
@@ -23,24 +23,29 @@ registers, and whether an entry is compared, skipped or rewritten
 unconditionally is a property of its row in that table
 (``registers.verify_class``) rather than a branch in the routing code.
 
-**Nothing in the runtime writes through this yet.** It reproduces the
-existing behaviour with exactly one stated difference:
-``tests/test_reconcile.py`` asserts that ``plan()`` against an empty
-observation is the datagram sequence ``routing_plan()`` produces today,
-ordering included, *minus repeats*. A register two routes share --
-``/output/5/stereo`` for two routes feeding the same pair,
-``/playback/1/stereo`` for three routes fed from the same source -- goes
-out once instead of two or three times. A state holds each register once.
+**Everything that writes routing goes through here.** ``apply_routing``
+and the dry run have since 0.4.0, ``--diff`` and ``--dump-config`` read
+it, and since 0.6.2 the verifier's mix re-apply (``send_mix``) does too
+-- the last path that still built its own datagrams. What it replaced
+was a route-by-route walk (``routing_plan``, kept for the tests), and
+the one difference on the wire is pinned by ``tests/test_reconcile.py``
+rather than argued: ``plan()`` against an empty observation is that
+walk's datagram sequence, ordering included, *minus repeats*. A register
+two routes share -- ``/output/5/stereo`` for two routes feeding the same
+pair, ``/playback/1/stereo`` for three routes fed from the same source --
+goes out once instead of two or three times. A state holds each register
+once.
 
-That is a change on the wire, so it is pinned by a second test rather
-than argued: every dropped repeat must carry the value already in the
-plan. Two routes sharing an output pair must agree on its link state
-(``_check_link_agreement`` rejects configs where they do not), and
-``/playback/N/stereo`` is always 1.
+Every dropped repeat must carry the value already in the plan, and a
+second test holds that: two routes sharing an output pair must agree on
+its link state (``_check_link_agreement`` rejects configs where they do
+not), and ``/playback/N/stereo`` is always 1.
 
-Landing the abstraction and switching the audible path over to it are
-two changes, and this is the first: every defect this project has
-shipped was in that path and invisible at message level.
+This module used to carry the note that nothing in the runtime wrote
+through it yet. It was true for one release and then not, and it stayed
+for three more -- an outside review found it. A claim about what the
+rest of the code does belongs next to a test that would fail when it
+stops being true, or it belongs nowhere.
 """
 
 from __future__ import annotations
@@ -357,7 +362,7 @@ def _send_order(config: Config) -> Callable[[Entry], int]:
 def observed(reports: Mapping[str, Sequence[object]]) -> Dict[str, Args]:
     """The device's own view, as the dump reported it.
 
-    A plain projection today. It is a named step because
+    A plain projection. It is a named step because
     ``--dump-config`` is this rendered as config, and because "what the
     device says" deserves to be a value rather than a dict that happens
     to be lying around inside the verifier.
@@ -373,8 +378,8 @@ def plan(entries: Sequence[Entry],
 
     ``seen=None`` means *nothing was observed* -- the dump could not be
     read, or this is a first apply. Then every entry is written, which
-    is exactly what ``apply_routing`` does today and why the equivalence
-    test below can compare the two.
+    is exactly what a first apply does, and why the equivalence test
+    can compare the two.
 
     ``device=None`` means the register model has no opinion, and every
     entry is treated as comparable. That keeps an unmodelled interface
@@ -532,7 +537,7 @@ def channels_from_observed(seen: Mapping[str, Args],
 
     Written because ``render_config`` could format channel sections and
     nothing produced any -- the renderer was reachable only from tests.
-    That is the same shape as the two defects this release already
+    That is the same shape as the two defects 0.3.0 already
     fixed: a capability built, correct, and wired to nothing.
     """
     if device is None:

@@ -1,6 +1,6 @@
 """The seam between this project and whatever speaks to the device.
 
-Today that is upstream oscmix over OSC on loopback. Six places used to
+That is upstream oscmix over OSC on loopback. Six places used to
 open their own socket and know the address, which made the dependency on
 oscmix's *behaviour* invisible: it was spread through the control flow
 as timing constants and barriers, with nothing naming what they were
@@ -22,7 +22,8 @@ the change; hunting for the barrier is not.
 mixer, it is an own *state path*: writing and reading the two dozen
 registers this project actually pins directly over SysEx while oscmix
 keeps the GUI and metering. That would remove the dual-writer problem
-and kill the cache race at the root. It is not worth doing today -- it
+and kill the cache race at the root. It is not worth doing while one
+device is modelled -- it
 means owning register decoding for devices nobody here can test -- and
 this is what makes it cheap to keep possible.
 

@@ -1,13 +1,13 @@
 """What registers a device has, as data rather than as knowledge.
 
-0.3.0 multiplies the register surface by roughly ten. Today the facts
-about that surface are spread across three places and none of them is
-checkable: format strings in ``routing.py``, a channel range in
-``constants.py`` that is not device-specific at all, and two hand-written
-family rules in ``verify.py``. Ten times as much of that is not
-maintainable, and it is the sort of knowledge that decays silently --
-nothing fails when it goes stale, the device just does something other
-than what the config says.
+0.3.0 multiplied the register surface by roughly ten. Before it, the
+facts about that surface were spread across three places and none of
+them was checkable: format strings in ``routing.py``, a channel range in
+``constants.py`` that was not device-specific at all, and two
+hand-written family rules in ``verify.py``. Ten times as much of that
+would not have been maintainable, and it is the sort of knowledge that
+decays silently -- nothing fails when it goes stale, the device just
+does something other than what the config says.
 
 **Indexed by device from the first line.** ``48v`` on inputs 1-2 and
 ``hi-z`` on 3-4 are UCX II facts, not Fireface facts. A model without a
@@ -37,9 +37,9 @@ from .constants import LEVEL_MAX, LEVEL_MIN
 # Verification classes.
 #
 # The dump splits the surface into three, and naming the class is what
-# keeps verification from over-claiming as the surface grows. Today the
-# distinction lives in `register_promptly_reported` and in prose, which
-# is fine for six registers and not for sixty.
+# keeps verification from over-claiming as the surface grows. Before
+# 0.3.0 the distinction lived in `register_promptly_reported` and in
+# prose, which was fine for six registers and not for sixty.
 # --------------------------------------------------------------------------
 
 #: Reported by the dump, so a value is confirmed, mismatched or missing.
@@ -78,12 +78,12 @@ VERIFY_CLASSES = (VERIFIABLE, WRITE_ONLY, REESTABLISHED)
 # still looking** -- through the read-back window, and through any
 # future reconcile trigger.
 #
-# What that replaces is an accident. Today a declared option behaves as
-# pinned for roughly the two seconds the apply and dump take, and as
-# remembered after -- measured by turning a fader at 0.5, 1.5, 3 and 6
-# seconds after a restart: only the 0.5 s change was overwritten, and by
-# the ordinary start-up apply rather than by the verifier. The cut-off
-# was the shape of the timing, not anybody's decision.
+# What that replaced was an accident. Before 0.3.0 a declared option
+# behaved as pinned for roughly the two seconds the apply and dump took,
+# and as remembered after -- measured by turning a fader at 0.5, 1.5, 3
+# and 6 seconds after a restart: only the 0.5 s change was overwritten,
+# and by the ordinary start-up apply rather than by the verifier. The
+# cut-off was the shape of the timing, not anybody's decision.
 
 #: The config wins. A device value that disagrees is a mismatch: the
 #: read-back re-sends it, and so does any later reconcile.
