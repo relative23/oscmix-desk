@@ -2,6 +2,7 @@
 
 import json
 
+import oracle
 import pytest
 from conftest import repo_file
 
@@ -119,7 +120,7 @@ def test_stereo_route_writes_single_pair_register(session_mod):
         name="monitors", playback=(1, 2), output=(5, 6),
         level=0.0, volume=0.0, stereo=True,
     )
-    assert session_mod.route_messages(route) == [
+    assert oracle.route_messages(route) == [
         ("/playback/1/stereo", "i", (1,)),
         ("/output/5/stereo", "i", (1,)),
         ("/mix/5/playback/1", "fi", (0.0, 0)),
@@ -134,7 +135,7 @@ def test_unlinked_pair_route_uses_pair_balance(session_mod):
     route = session_mod.Route(
         name="split", playback=(1, 2), output=(5, 6), stereo=False,
     )
-    messages = session_mod.route_messages(route)
+    messages = oracle.route_messages(route)
     assert [(path, types) for path, types, _a in messages] == [
         ("/playback/1/stereo", "i"),
         ("/output/5/stereo", "i"),
@@ -151,14 +152,14 @@ def test_unlinked_pair_route_uses_pair_balance(session_mod):
 
 def test_mono_route_messages(session_mod):
     route = session_mod.Route(name="sub", playback=(3,), output=(7,), level=-6.0)
-    assert session_mod.route_messages(route) == [
+    assert oracle.route_messages(route) == [
         ("/mix/7/playback/3", "fi", (-6.0, 0)),
     ]
 
 
 def test_pair_without_volume_sends_no_volume_messages(session_mod):
     route = session_mod.Route(name="m", playback=(1, 2), output=(1, 2))
-    paths = [path for path, _, _ in session_mod.route_messages(route)]
+    paths = [path for path, _, _ in oracle.route_messages(route)]
     assert not any("volume" in path for path in paths)
 
 

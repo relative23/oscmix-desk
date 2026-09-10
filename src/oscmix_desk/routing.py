@@ -6,7 +6,7 @@ See docs/OSC-PROTOCOL.md for why."""
 from __future__ import annotations
 
 import time
-from typing import Callable, Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple
+from typing import Callable, Dict, Mapping, Optional, Sequence
 
 from .backend import Backend, loopback
 from .config import Config, Route
@@ -20,7 +20,6 @@ from .log import log
 from .reconcile import (
     desired,
     link_messages,
-    mix_messages,
     plan,
 )
 
@@ -60,50 +59,6 @@ def wait_unless_stopped(seconds: float, should_stop: StopCheck) -> bool:
         if remaining <= 0:
             return False
         time.sleep(min(0.1, remaining))
-
-
-def route_messages(route: Route) -> List[Tuple[str, str, Tuple[object, ...]]]:
-    """Every OSC message a route *declares*, in dependency order.
-
-    Per route, and therefore the right shape for the "written paths are a
-    subset of declared paths" contract and for verification. It is *not*
-    the order the datagrams go out in when there is more than one route --
-    that is ``routing_plan`` below.
-    """
-    return link_messages(route) + mix_messages(route)
-
-
-class RoutingPlan(NamedTuple):
-    """The datagrams a routing consists of, split at the link barrier."""
-
-    links: List[Tuple[str, str, Tuple[object, ...]]]
-    mix: List[Tuple[str, str, Tuple[object, ...]]]
-
-    def messages(self) -> List[Tuple[str, str, Tuple[object, ...]]]:
-        """Every datagram in the order ``apply_routing`` sends it."""
-        return [*self.links, *self.mix]
-
-
-def routing_plan(routes: Sequence[Route]) -> RoutingPlan:
-    """Order the datagrams of *all* routes the way they are actually sent.
-
-    The barrier is per *routing*, not per route: every link of every route
-    goes out, then the device reports back, then every mix write follows.
-    Walking route by route and emitting link-then-mix for each -- the
-    obvious reading of ``route_messages`` -- writes the second route's mix
-    matrix before the first route's links have been confirmed, which is
-    the defect that silenced every even output.
-
-    Both the dry run and the apply consume this, so what ``--dry-run``
-    prints is what the wire sees. With a single route the two orders
-    coincide, which is why the difference went unnoticed.
-    """
-    plan = RoutingPlan([], [])
-    for route in routes:
-        plan.links.extend(link_messages(route))
-    for route in routes:
-        plan.mix.extend(mix_messages(route))
-    return plan
 
 
 def await_link_echo(expected: Mapping[str, int], recv_port: int,
@@ -174,6 +129,15 @@ def _cross_the_barrier(config: Config, recv_port: int,
     pairs were already linked so there was nothing to echo, or the
     receive port is held and the wait is blind.
     """
+    if device.traits.reports_link_state_on_write:
+        # The barrier exists for one upstream detail: setbool leaves
+        # oscmix's own view of the stereo flag untouched until the device
+        # echoes it. A backend that updates its view on write -- the
+        # patched one, if michaelforney/oscmix#31 lands -- has nothing to
+        # wait for. This is the branch the trait's docstring promised
+        # since 0.2.0; until 0.6.2 nothing read the flag.
+        log.info("this backend updates its link state on write; no barrier")
+        return
     timeout = LINK_ECHO_TIMEOUT
     echoed = await_link_echo(output_link_state(config.routes), recv_port,
                              timeout, backend=device)

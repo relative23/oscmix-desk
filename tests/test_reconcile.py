@@ -14,6 +14,7 @@ two tests rather than absorbed, because it is a change on the wire in
 the audible path. Until both hold, nothing switches over.
 """
 
+import oracle
 import pytest
 
 from oscmix_desk import reconcile, registers
@@ -78,7 +79,7 @@ def test_a_blind_plan_is_what_the_apply_sends_today_minus_repeats(
     exactly today's sequence with repeats removed, at the same positions.
     """
     config = make_config(session_mod, *[route(session_mod, **r) for r in routes])
-    old = list(session_mod.routing_plan(config.routes).messages())
+    old = list(oracle.routing_plan(config.routes).messages())
     new = list(reconcile.plan(reconcile.desired(config)).messages())
     assert new == without_repeats(old), (
         "the reconciler diverges from routing_plan by more than repeats; "
@@ -98,7 +99,7 @@ def test_every_dropped_message_was_a_repeat_of_the_same_value(
     dedup silently changes device state, and this fails first.
     """
     config = make_config(session_mod, *[route(session_mod, **r) for r in routes])
-    old = list(session_mod.routing_plan(config.routes).messages())
+    old = list(oracle.routing_plan(config.routes).messages())
     kept = {m[0]: m for m in without_repeats(old)}
     repeats = [m for m in old if m is not kept.get(m[0]) and m[0] in kept]
     for message in repeats:
@@ -224,13 +225,6 @@ def test_observed_is_the_devices_view_as_a_value():
     reports = {"/output/5/stereo": [1], "/output/5/volume": [-10.0, "extra"]}
     assert reconcile.observed(reports) == {
         "/output/5/stereo": (1,), "/output/5/volume": (-10.0, "extra")}
-
-
-def test_unreachable_names_what_a_verifier_may_not_confirm(session_mod):
-    config = make_config(session_mod, route(session_mod, output=(5, 6)))
-    assert reconcile.unreachable(config, registers.UCX2) == ("/mix/5/playback/1",)
-    # Without a model there is nothing to claim either way.
-    assert reconcile.unreachable(config, None) == ()
 
 
 def test_the_module_stays_pure(session_mod):

@@ -18,6 +18,7 @@ import struct
 import threading
 import time
 
+import oracle
 import pytest
 from conftest import free_udp_port, osc_bundle
 
@@ -96,7 +97,7 @@ def make_route(session_mod):
 
 def full_dump(session_mod, route):
     return [session_mod.encode_osc(path, types, *args)
-            for path, types, args in session_mod.route_messages(route)]
+            for path, types, args in oracle.route_messages(route)]
 
 
 def run_under(session_mod, **device_options):

@@ -14,6 +14,7 @@ import math
 import os
 import struct
 
+import oracle
 import pytest
 
 # A missing dev dependency should say so, not abort collection for the
@@ -137,7 +138,7 @@ def test_a_route_writes_only_what_it_declares(session_mod, level, stereo,
     # to the user. A route with no `volume` must never touch a fader.
     route = session_mod.Route(name="r", playback=(1, 2), output=(5, 6),
                               level=level, volume=volume, stereo=stereo)
-    written = {path for path, _t, _a in session_mod.route_messages(route)}
+    written = {path for path, _t, _a in oracle.route_messages(route)}
     declared = {"/playback/1/stereo", "/output/5/stereo",
                 "/mix/5/playback/1", "/mix/6/playback/1"}
     if volume is not None:
@@ -155,7 +156,7 @@ def test_route_messages_is_exactly_its_two_phases(session_mod, level, stereo):
     # if it ever stops holding, both silently verify the wrong set.
     route = session_mod.Route(name="r", playback=(1, 2), output=(5, 6),
                               level=level, stereo=stereo)
-    assert session_mod.route_messages(route) == (
+    assert oracle.route_messages(route) == (
         session_mod.link_messages(route) + session_mod.mix_messages(route))
 
 
@@ -167,7 +168,7 @@ def test_links_always_precede_the_mix_matrix(session_mod, level, stereo):
     # example-based tests. Linked or unlinked, the link comes first.
     route = session_mod.Route(name="r", playback=(1, 2), output=(5, 6),
                               level=level, stereo=stereo)
-    paths = [path for path, _t, _a in session_mod.route_messages(route)]
+    paths = [path for path, _t, _a in oracle.route_messages(route)]
     first_mix = next(i for i, p in enumerate(paths) if p.startswith("/mix/"))
     assert all(not p.endswith("/stereo") for p in paths[first_mix:])
 

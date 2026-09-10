@@ -745,14 +745,6 @@ def device_for_name(name: str) -> Optional[Device]:
     return None
 
 
-def channel_limit(device: Optional[Device], capability: str = "output") -> Optional[int]:
-    """The highest channel a device has, or None when it is not modelled."""
-    if device is None:
-        return None
-    channels = device.channels_for(capability)
-    return max(channels) if channels else None
-
-
 def register_policy(device: Optional[Device], path: str) -> str:
     """PIN or REMEMBER for a concrete path, from the register table.
 

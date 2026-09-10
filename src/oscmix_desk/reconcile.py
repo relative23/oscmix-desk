@@ -27,7 +27,8 @@ unconditionally is a property of its row in that table
 and the dry run have since 0.4.0, ``--diff`` and ``--dump-config`` read
 it, and since 0.6.2 the verifier's mix re-apply (``send_mix``) does too
 -- the last path that still built its own datagrams. What it replaced
-was a route-by-route walk (``routing_plan``, kept for the tests), and
+was a route-by-route walk (``routing_plan``, now the oracle in
+``tests/oracle.py``), and
 the one difference on the wire is pinned by ``tests/test_reconcile.py``
 rather than argued: ``plan()`` against an empty observation is that
 walk's datagram sequence, ordering included, *minus repeats*. A register
@@ -468,26 +469,6 @@ def matches(tags: str, want: Args, got: Args,
         except (TypeError, ValueError):
             return False
     return True
-
-
-def unreachable(config: Config, device: Optional[Device]) -> Tuple[str, ...]:
-    """Registers the config asks for that this device cannot verify.
-
-    Not an error -- write-only registers are legitimate, and 0.3.0 adds
-    several (`/input/*/name`, `/output/*/loopback`). It is the list a
-    verifier must report as *unverifiable* rather than silently counting
-    as confirmed, which is how verification starts over-claiming as the
-    surface grows.
-    """
-    if device is None:
-        return ()
-    return tuple(entry.path for entry in desired(config)
-                 if verify_class(device, entry.path) not in (VERIFIABLE, None))
-
-
-def routes_of(config: Config) -> Tuple[Route, ...]:
-    """The routes a plan came from, for callers that still need them."""
-    return tuple(config.routes)
 
 
 # --------------------------------------------------------------------------

@@ -57,6 +57,14 @@ class Traits:
     and ``tests/test_backend.py`` checks each one against a recording or
     a measurement rather than against belief. A trait nobody can verify
     does not belong here.
+
+    Which of them the code *reads* is stated per field below, because
+    for four releases none of them was: the docstring promised that
+    flipping ``reports_link_state_on_write`` would be the change when
+    upstream fixed the cache, and no branch consulted it. The barrier
+    does now. The other two are facts the register table and ADR 0002
+    already encode; they stay here as the named, tested statement of
+    *why* that encoding is what it is, not as a switch.
     """
 
     #: Whether writing a stereo flag updates the backend's own view of
@@ -67,16 +75,21 @@ class Traits:
     #:
     #: False is what makes the two-phase apply and its barrier
     #: necessary. See patches/0001 and michaelforney/oscmix#31.
+    #: **Read by** ``routing._cross_the_barrier``: True skips the wait.
     reports_link_state_on_write: bool
 
     #: Whether a state dump carries ``/mix/<out>/playback/<pb>``. False:
     #: confirmed absent from a full recorded dump, which is why the
     #: playback matrix is re-established rather than verified (ADR 0002).
+    #: Documented, not read: the register table encodes it as the
+    #: ``REESTABLISHED`` class of ``/mix/{out}/playback/{pb}``.
     dumps_playback_matrix: bool
 
     #: Whether the device reports a register that did not change. False:
     #: writing a value it already holds produces no report, so "wait for
     #: the echo" cannot be the only synchronisation mechanism.
+    #: Documented, not read: it is why the barrier is opportunistic and
+    #: why the verifier's dump re-applies the mix regardless.
     reports_unchanged_registers: bool
 
 

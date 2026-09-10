@@ -34,8 +34,14 @@ typecheck:
 # Runtime and tooling only. A monkeypatch stub must accept the signature
 # it replaces whether or not it uses every parameter, so "unused" in a
 # test says nothing; in the runtime it is a defect.
+#
+# 60 % rather than 80: at 80 vulture reports only what it is nearly
+# certain of, and three functions with no caller at all sat below that
+# line through five releases. What is legitimately unused by the runtime
+# -- test contracts, documented data -- is listed with its reason in
+# quality/vulture-allowlist.py, which vulture reads as usage.
 deadcode:
-	$(PYTHON) -m vulture $(PACKAGE) $(SCRIPTS) scripts/ --min-confidence 80
+	$(PYTHON) -m vulture $(PACKAGE) $(SCRIPTS) scripts/ quality/vulture-allowlist.py --min-confidence 60
 
 # parallel mode plus a combine step: the integration tests measure the
 # session subprocess too, and each process writes its own data file.

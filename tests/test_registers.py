@@ -93,7 +93,6 @@ def test_a_supported_device_names_its_evidence():
 def test_an_unmodelled_device_is_no_opinion_not_an_error():
     # Every caller must treat None as "keep doing what you did".
     assert registers.device_for_name("Fireface UFX III") is None
-    assert registers.channel_limit(None) is None
     assert registers.verify_class(None, "/output/1/volume") is None
     assert registers.cold_plug_complete(None, "/output/1/stereo") is False
 

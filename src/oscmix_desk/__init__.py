@@ -75,8 +75,6 @@ from .routing import (
                         await_link_echo,
                         blind_reapply_mix,
                         output_link_state,
-                        route_messages,
-                        routing_plan,
                         send_mix,
 )
 from .session import run_session
@@ -141,8 +139,6 @@ __all__ = [
                         "pw_sink_info",
                         "register_promptly_reported",
                         "resolve_binary",
-                        "route_messages",
-                        "routing_plan",
                         "run_session",
                         "sd_notify",
                         "send_mix",

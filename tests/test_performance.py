@@ -18,6 +18,7 @@ measurement is milliseconds). It catches a hang, not a slowdown.
 import os
 import time
 
+import oracle
 import pytest
 
 ABSURD_SECONDS = 10.0        # a hang detector, not a budget
@@ -73,7 +74,7 @@ def test_encoding_routes_scales_linearly(session_mod):
 
         def work():
             for route in routes:
-                for path, types, args in session_mod.route_messages(route):
+                for path, types, args in oracle.route_messages(route):
                     session_mod.encode_osc(path, types, *args)
         return timed(work)
 

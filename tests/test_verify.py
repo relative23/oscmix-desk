@@ -3,6 +3,7 @@
 import socket
 import threading
 
+import oracle
 from conftest import free_udp_port, repo_file
 
 
@@ -90,7 +91,7 @@ def test_verify_confirms_matching_state(session_mod):
     route = make_route(session_mod)
     registers = session_mod.expected_registers(session_mod.Config(routes=[route]))
     state = [session_mod.encode_osc(path, types, *args)
-             for path, types, args in session_mod.route_messages(route)]
+             for path, types, args in oracle.route_messages(route)]
     result = run_verify(session_mod, registers, state)
     # Every register was replayed verbatim -- including the ones the
     # real device would not dump -- so all of them count as confirmed.
@@ -103,7 +104,7 @@ def test_verify_classifies_wrong_value_as_mismatch(session_mod):
     route = make_route(session_mod)
     registers = session_mod.expected_registers(session_mod.Config(routes=[route]))
     state = []
-    for path, types, args in session_mod.route_messages(route):
+    for path, types, args in oracle.route_messages(route):
         if path == "/output/5/volume":
             # Corrupt the register: -20 dB instead of 0 dB.
             state.append(session_mod.encode_osc(path, "f", -20.0))
@@ -118,7 +119,7 @@ def test_verify_classifies_missing_register_as_unobserved(session_mod):
     route = make_route(session_mod)
     registers = session_mod.expected_registers(session_mod.Config(routes=[route]))
     state = [session_mod.encode_osc(path, types, *args)
-             for path, types, args in session_mod.route_messages(route)
+             for path, types, args in oracle.route_messages(route)
              if path != "/mix/5/playback/1"]
     result = run_verify(session_mod, registers, state, timeout=0.5)
     assert result.mismatched == []

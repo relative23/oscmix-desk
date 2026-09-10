@@ -12,6 +12,7 @@ import socket
 import threading
 import time
 
+import oracle
 from conftest import free_udp_port, osc_bundle, repo_file
 
 
@@ -247,7 +248,7 @@ def test_mono_route_needs_no_linking(session_mod):
 def test_route_messages_is_the_two_phases_in_order(session_mod):
     # expected_registers() and the verification build on this identity.
     route = make_route(session_mod, volume=-3.0)
-    assert session_mod.route_messages(route) == (
+    assert oracle.route_messages(route) == (
         session_mod.link_messages(route) + session_mod.mix_messages(route))
 
 
@@ -471,7 +472,7 @@ def run_verify_and_repair(session_mod, routes, dump, recv_port=None,
 def full_dump(session_mod, routes):
     return [session_mod.encode_osc(path, types, *args)
             for route in routes
-            for path, types, args in session_mod.route_messages(route)]
+            for path, types, args in oracle.route_messages(route)]
 
 
 def test_mix_is_reapplied_once_the_dump_reports_the_link_state(session_mod):
@@ -519,7 +520,7 @@ def test_mix_is_reapplied_even_when_the_dump_omits_the_links(verify_mod, session
     monkeypatch.setattr(verify_mod, "VERIFY_TIMEOUT", 0.3)
     routes = [make_route(session_mod)]
     dump = [session_mod.encode_osc(path, types, *args)
-            for path, types, args in session_mod.route_messages(routes[0])
+            for path, types, args in oracle.route_messages(routes[0])
             if path != "/output/5/stereo"]
     device = run_verify_and_repair(session_mod, routes, dump)
     assert device.order.count("/mix/5/playback/1") >= 1
@@ -592,6 +593,31 @@ def test_send_mix_writes_the_matrix_without_the_links(session_mod):
         device.sock.close()
     assert device.order == ["/mix/5/playback/1", "/output/5/volume",
                             "/output/6/volume"]
+
+
+def test_a_backend_that_updates_link_state_on_write_needs_no_barrier(
+        session_mod, silent_backend, routing_mod, monkeypatch):
+    """The trait the barrier exists for, read at last.
+
+    `backend.Traits.reports_link_state_on_write` promised since 0.2.0
+    that flipping it would be the change when upstream fixed the cache,
+    and nothing read it. With the receive port held (the desktop case)
+    the barrier is a blind LINK_SETTLE wait; a backend that updates its
+    own link state on write has nothing to wait for, and the apply must
+    not pay the settle -- while still sending every link before any mix.
+    """
+    from oscmix_desk import backend as backend_mod
+
+    silent_backend.traits = backend_mod.Traits(
+        reports_link_state_on_write=True, dumps_playback_matrix=False,
+        reports_unchanged_registers=False)
+    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 3.0)
+    config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
+    started = time.monotonic()
+    session_mod.apply_routing(config, 7222, 8222, backend=silent_backend)
+    assert time.monotonic() - started < 1.0, "the barrier ran anyway"
+    paths = [p for p, _t, _a in silent_backend.sent]
+    assert paths.index("/output/5/stereo") < paths.index("/mix/5/playback/1")
 
 
 def test_send_mix_writes_a_register_two_routes_share_once(session_mod):
@@ -749,14 +775,14 @@ def test_the_plan_puts_every_link_before_every_mix(session_mod):
         make_route(session_mod, name="main", playback=(1, 2), output=(1, 2)),
         make_route(session_mod, name="phones", playback=(3, 4), output=(7, 8)),
     ]
-    plan = session_mod.routing_plan(routes)
+    plan = oracle.routing_plan(routes)
     assert all(path.endswith("/stereo") for path, _t, _a in plan.links)
     assert not any(path.endswith("/stereo") for path, _t, _a in plan.mix)
     assert plan.messages() == plan.links + plan.mix
     # ... and it is the same set of messages route_messages declares,
     # only ordered for the wire rather than per route.
     declared = [m for route in routes
-                for m in session_mod.route_messages(route)]
+                for m in oracle.route_messages(route)]
     assert sorted(plan.messages()) == sorted(declared)
 
 
