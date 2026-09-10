@@ -30,6 +30,7 @@ registers are named in the artifact rather than omitted from it.
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -43,9 +44,14 @@ from oscmix_desk.backend import loopback
 from oscmix_desk.constants import (
     DEFAULT_OSC_PORT,
     DEFAULT_OSC_RECV_PORT,
+    DEFAULT_USB_ID,
     DUMP_LISTEN_SETTLE,
 )
-from oscmix_desk.discovery import built_backend_revision, device_serial
+from oscmix_desk.discovery import (
+    built_backend_revision,
+    device_firmware,
+    device_serial,
+)
 
 #: Steps as a fraction of the declared range, smallest first. One percent
 #: is below the quantisation of several families, which is the point: it
@@ -485,6 +491,10 @@ def main() -> int:
                    else "serial unknown"),
         "oscmix_revision": built_backend_revision(
             Path(__file__).resolve().parent.parent) or "unknown",
+        "firmware": device_firmware(
+            DEFAULT_USB_ID,
+            Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")),
+            before),
         "probed": len(targets),
         "seconds": round(elapsed, 2),
         "write_pace": WRITE_PACE,

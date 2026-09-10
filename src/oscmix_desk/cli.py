@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import time
 from argparse import ArgumentParser
@@ -20,6 +21,7 @@ from .constants import (
     EXIT_OK,
     __version__,
 )
+from .discovery import device_firmware, device_serial
 from .errors import ConfigError
 from .log import log
 from .pipewire import generate_pipewire_conf, pw_sink_info
@@ -221,7 +223,18 @@ def _snapshot(config: Config) -> int:
             if not path.endswith(_STREAMING_SUFFIXES)]
     log.info("read %d registers; %d in the snapshot, %d streaming and left out",
              len(seen), len(rows), len(seen) - len(rows))
-    sys.stdout.write("# oscmix-session --snapshot: %d registers\n" % len(rows))
+    firmware = device_firmware(
+        config.usb_id,
+        Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")), seen)
+    # Provenance on the first line: two snapshots are only comparable
+    # when they come from the same device on the same firmware, and a
+    # file that does not say cannot be checked later.
+    sys.stdout.write(
+        "# oscmix-session --snapshot: %d registers; %s serial %s, usb %s, "
+        "dsp %s\n" % (len(rows), config.device_name, device_serial() or "?",
+                       firmware["usb_revision"] or "?",
+                       "?" if firmware["dsp_version"] is None
+                       else firmware["dsp_version"]))
     for path, args in sorted(rows):
         sys.stdout.write("%s %s\n" % (path, " ".join(_one_value(a)
                                                      for a in args)))

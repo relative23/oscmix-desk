@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import shutil
 import socket
@@ -48,7 +49,7 @@ from oscmix_desk import (
     load_config,
 )
 from oscmix_desk.constants import LEVEL_MIN
-from oscmix_desk.discovery import built_backend_revision
+from oscmix_desk.discovery import built_backend_revision, device_firmware
 from oscmix_desk.discovery import device_serial as discovery_device_serial
 
 EXIT_SKIP = 77
@@ -98,6 +99,9 @@ class LevelReader:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(("127.0.0.1", recv_port))
         self.sock.settimeout(0.2)
+        #: `/hardware/dspvers`, when a dump has reported it; the evidence
+        #: records it next to the USB revision (see discovery.device_firmware).
+        self.dspvers: Optional[object] = None
         self.reports = 0            # any level message at all = backend alive
 
     def close(self) -> None:
@@ -161,6 +165,8 @@ class LevelReader:
                     path, _tags, args = decode_osc(message)
                 except (ValueError, struct.error):
                     continue
+                if path == "/hardware/dspvers" and args:
+                    self.dspvers = args[0]
                 if path in wanted and args:
                     channel, field = wanted[path]
                     state[channel][field] = args[0]
@@ -518,6 +524,14 @@ def main() -> int:
                           for name in sorted(set(sinks.values()))},
         "serial": device_serial(),
         "oscmix_revision": backend_revision(),
+        # Which firmware the numbers below were taken against. Two
+        # artifacts that differ here are measurements of two devices,
+        # whatever the serial says; a claim about "the device" carried
+        # across a firmware update is a claim nobody re-measured.
+        "firmware": device_firmware(
+            config.usb_id,
+            Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")),
+            {"/hardware/dspvers": reader.dspvers}),
         "min_response_db": MIN_RESPONSE_DB,
         "min_above_background_db": MIN_ABOVE_BACKGROUND_DB,
         "tone": {"hz": TONE_HZ, "seconds": TONE_SECONDS,

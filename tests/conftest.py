@@ -131,6 +131,7 @@ def fake_sysfs(tmp_path):
     dev.mkdir(parents=True)
     (dev / "idVendor").write_text("2a39\n")
     (dev / "idProduct").write_text("3fd9\n")
+    (dev / "bcdDevice").write_text("0301\n")
     # An interface directory without id files, as in real sysfs.
     (root / "5-2:1.0").mkdir()
     return root

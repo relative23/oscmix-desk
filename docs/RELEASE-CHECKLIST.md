@@ -71,6 +71,12 @@ one that found all three defects in 0.1.3.
       than failing in that case, and records the sink in the artifact.
 - [ ] The artifact's `sink_channels` reads `["FL", "FR"]`. If it does
       not, the measurement is not one.
+- [ ] The artifact's `firmware` names the USB revision and the DSP
+      version (`/hardware/dspvers`). Compare both with the previous
+      release's artifact: if either moved, the device is not the one the
+      earlier measurements describe, and every "the device does X" this
+      release carries forward has to be re-measured rather than kept.
+      The sweep artifact and the recorded dump carry the same field.
 - [ ] `hardware-evidence.json` is attached to the release.
 - [ ] `complete` is **true** and `unmeasured` is empty. A five-route
       config used to produce a three-route artifact -- the tool played

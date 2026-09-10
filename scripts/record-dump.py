@@ -36,7 +36,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -48,7 +50,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from oscmix_desk.constants import (
     DEFAULT_OSC_PORT,
     DEFAULT_OSC_RECV_PORT,
+    DEFAULT_USB_ID,
 )
+from oscmix_desk.discovery import device_firmware
 from oscmix_desk.osc import decode_osc, encode_osc, iter_osc_messages
 
 EXIT_SKIP = 77
@@ -179,6 +183,26 @@ def _render(fixture: dict) -> str:
     return "{\n" + ",\n".join(parts) + "\n}\n"
 
 
+def read_one(sock: socket.socket, port: int, wanted: str,
+             seconds: float = 3.0) -> Optional[object]:
+    """One register's value from a fresh /refresh, or None."""
+    sock.sendto(encode_osc("/refresh"), ("127.0.0.1", port))
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        try:
+            datagram, _ = sock.recvfrom(65536)
+        except (socket.timeout, OSError):
+            continue
+        for message in iter_osc_messages(datagram):
+            try:
+                path, _tags, args = decode_osc(message)
+            except (ValueError, struct.error):
+                continue
+            if path == wanted and args:
+                return args[0]
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
@@ -201,6 +225,7 @@ def main() -> int:
         print("  %d register(s) stream on their own" % len(streamed))
         print("sending /refresh...")
         first, duration = record_dump(sock, args.port, streamed)
+        dspvers = read_one(sock, args.port, "/hardware/dspvers")
     finally:
         sock.close()
 
@@ -213,6 +238,14 @@ def main() -> int:
         "recorded": time.strftime("%Y-%m-%d"),
         "device": args.device,
         "oscmix_revision": backend_revision(build_dir),
+        # The fixture holds shape, not values, but the firmware is
+        # provenance rather than mixer state: a device that reports a
+        # different set of registers after an update is a different
+        # recording, and the file has to say which one it is.
+        "firmware": device_firmware(
+            DEFAULT_USB_ID,
+            Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")),
+            {"/hardware/dspvers": dspvers}),
         "dump_seconds": duration,
         "note": [
             "Register shape and arrival times, never values -- values are",

@@ -59,8 +59,12 @@ ALLOWED_IMPORTS = {
     "process": {"constants", "discovery", "log"},
     "session": {"config", "constants", "discovery", "errors", "log",
                 "notify", "process", "reconcile", "routing", "verify"},
-    "cli": {"backend", "config", "constants", "errors", "log", "pipewire",
-            "profiles", "reconcile", "registers", "session"},
+    # `discovery` since 0.6.2: the snapshot header names the device's
+    # serial and firmware, which are the leaf's to answer. A leaf with no
+    # imports of its own, already below session; cli reading it changes
+    # no direction in the graph.
+    "cli": {"backend", "config", "constants", "discovery", "errors", "log",
+            "pipewire", "profiles", "reconcile", "registers", "session"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.

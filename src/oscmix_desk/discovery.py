@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .log import log
 
@@ -52,13 +52,13 @@ def wait_for_seq_client(device_name: str, timeout: float,
         time.sleep(1.0)
 
 
-def usb_device_present(usb_id: str, sysfs_usb: Path) -> bool:
-    """Check for a USB device by scanning sysfs (no lsusb dependency)."""
+def _usb_device_dir(usb_id: str, sysfs_usb: Path) -> Optional[Path]:
+    """The sysfs directory of a USB device, by vendor:product, or None."""
     vendor, product = usb_id.lower().split(":")
     try:
         entries = list(sysfs_usb.iterdir())
     except OSError:
-        return False
+        return None
     for entry in entries:
         try:
             dev_vendor = (entry / "idVendor").read_text().strip().lower()
@@ -66,8 +66,61 @@ def usb_device_present(usb_id: str, sysfs_usb: Path) -> bool:
         except OSError:
             continue
         if dev_vendor == vendor and dev_product == product:
-            return True
-    return False
+            return entry
+    return None
+
+
+def usb_device_present(usb_id: str, sysfs_usb: Path) -> bool:
+    """Check for a USB device by scanning sysfs (no lsusb dependency)."""
+    return _usb_device_dir(usb_id, sysfs_usb) is not None
+
+
+def usb_revision(usb_id: str, sysfs_usb: Path) -> Optional[str]:
+    """The device release number USB reports, e.g. ``3.01``.
+
+    ``bcdDevice`` in sysfs is the descriptor's release field, binary-coded
+    decimal: ``0301`` is 3.01. It is the one version number the device
+    offers without a dump, and it changes with firmware updates -- which
+    is what makes it worth recording in every evidence artifact. A
+    measurement that does not say which firmware it was taken against
+    cannot be told apart from the next one, and a firmware that behaves
+    differently would be invisible in the evidence.
+    """
+    entry = _usb_device_dir(usb_id, sysfs_usb)
+    if entry is None:
+        return None
+    try:
+        raw = (entry / "bcdDevice").read_text().strip()
+    except OSError:
+        return None
+    if len(raw) == 4 and all(c in "0123456789abcdefABCDEF" for c in raw):
+        return "%d.%s" % (int(raw[:2]), raw[2:])
+    return raw or None
+
+
+def device_firmware(usb_id: str, sysfs_usb: Path,
+                    reports: Optional[Mapping[str, object]] = None
+                    ) -> Dict[str, Optional[object]]:
+    """The two version numbers the device offers, in one shape.
+
+    ``usb_revision`` from sysfs, and ``dsp_version`` from the register
+    ``/hardware/dspvers`` when the caller has a dump to read it from.
+    One function so that every artifact -- the hardware evidence, the
+    write sweep, the recorded dump, the snapshot header -- carries the
+    same keys and a reader can compare two runs field by field.
+    """
+    dsp: Optional[object] = None
+    if reports:
+        args = reports.get("/hardware/dspvers")
+        # The CLI and the fixture recorder keep every argument, the
+        # write sweep keeps the first value only; both are one number.
+        dsp = _first(args) if isinstance(args, (list, tuple)) else args
+    return {"usb_revision": usb_revision(usb_id, sysfs_usb),
+            "dsp_version": dsp}
+
+
+def _first(args: Sequence[object]) -> Optional[object]:
+    return args[0] if args else None
 
 
 def udp_port_listening(port: int, proc_root: Path) -> bool:

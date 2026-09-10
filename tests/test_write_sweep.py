@@ -232,6 +232,16 @@ def test_the_artifact_names_the_device_and_the_pin(sweep):
     assert "refresh dump" in artifact["method"]
     assert artifact["write_pace"] == sweep.WRITE_PACE
     assert "echo_timeout" not in artifact
+    # The firmware the sweep ran against, added in 0.6.2. The tool
+    # writes it on every run; the committed artifact is from 2026-08-28
+    # and predates the field, and a sweep is re-run when the register
+    # model changes (release checklist), not to backfill provenance. So
+    # the tool is held to writing it, and an artifact that has it is
+    # held to the shape.
+    source = repo_file("scripts", "sweep-writes.py").read_text()
+    assert '"firmware": device_firmware(' in source
+    if "firmware" in artifact:
+        assert set(artifact["firmware"]) == {"usb_revision", "dsp_version"}
 
 
 def test_restoration_retries_until_the_device_matches(sweep):
