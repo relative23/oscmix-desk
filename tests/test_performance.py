@@ -15,6 +15,7 @@ The one absolute bound left is deliberately absurd (seconds where the
 measurement is milliseconds). It catches a hang, not a slowdown.
 """
 
+import os
 import time
 
 import pytest
@@ -22,7 +23,7 @@ import pytest
 ABSURD_SECONDS = 10.0        # a hang detector, not a budget
 
 
-def timed(work, repeats=3):
+def timed(work, repeats=5):
     """Best of N: the fastest run is the least contaminated by scheduling."""
     best = float("inf")
     for _ in range(repeats):
@@ -42,9 +43,26 @@ def assert_scales_linearly(small, large, factor, tolerance=3.0):
     if small <= 0:
         return
     growth = large / small
+    if growth >= factor * tolerance and _host_is_overloaded():
+        # A timing ratio on an overloaded host is noise, not a verdict.
+        # Measured 2026-09-05: the bundle-walking test read 39.6x for 10x
+        # the work with a load average of 36 on 8 cores, from unrelated
+        # suites running beside it, and 9.3x on the next quiet run. CI
+        # runners are never in this state, so the gate stays strict
+        # there; only a host that could not have produced a meaningful
+        # number skips.
+        pytest.skip("host load %.0f on %d cores: the timing ratio is noise"
+                    % (os.getloadavg()[0], os.cpu_count() or 1))
     assert growth < factor * tolerance, (
         "%.1fx the work took %.1fx the time (linear would be ~%dx)"
         % (factor, growth, factor))
+
+
+def _host_is_overloaded():
+    try:
+        return os.getloadavg()[0] > 2 * (os.cpu_count() or 1)
+    except OSError:
+        return False
 
 
 def test_encoding_routes_scales_linearly(session_mod):

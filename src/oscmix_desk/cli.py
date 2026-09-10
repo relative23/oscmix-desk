@@ -116,7 +116,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.device:
         config.device_name = args.device
-    if args.osc_port:
+    if args.osc_port is not None:
+        # Bounded like `[osc] port` in the file. A port outside the range
+        # used to pass straight through: nothing bound it, and the first
+        # symptom was the backend failing to start.
+        if not 1 <= args.osc_port <= 65535:
+            log.error("configuration error: --osc-port %d out of range 1..65535",
+                      args.osc_port)
+            return EXIT_CONFIG
         config.osc_port = args.osc_port
 
     if args.list_profiles:

@@ -229,6 +229,14 @@ nothing at all can be confirmed. Both cases say so instead of claiming
 success. The reasoning is in
 [ADR 0011](docs/decisions/0011-a-profile-switch-states-its-outcome.md).
 
+**A profile lasts until the next start.** The switch writes the profile
+to the device; the service keeps running on `routing.conf`. The next
+backend start -- a replug, a reboot, `systemctl --user restart` --
+re-applies `routing.conf`, and so does every reload, including the one
+the resume hook sends after a suspend. To make a profile the desk's
+default, copy it over `routing.conf`. A remembered active profile that
+survives a start is on the [roadmap](docs/ROADMAP.md).
+
 ## What comes back after a restart, and what does not
 
 Every setting this project writes is either **pinned** -- the config wins

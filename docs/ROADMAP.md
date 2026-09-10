@@ -2299,6 +2299,21 @@ on `schedule`, the workflow must actually have one -- a job conditioned
 on a trigger the workflow lacks never runs again and nothing would say
 so -- and no other job may quietly follow it off the push path.
 
+### F. A profile is undone by the next start
+
+`--profile X` writes X to the device and exits; the service keeps
+`routing.conf`, and the next start or reload re-applies it over X. The
+resume hook makes that a routine event: suspend, wake, profile gone,
+nothing in the journal saying why. The README says so since 0.6.2 and
+TROUBLESHOOTING section 11 explains the symptom, which is the honest
+minimum and not a fix.
+
+*What would fix it:* the session remembers the active profile beside
+`routing.conf` and re-applies *that* on start and reload, and `--diff`
+compares against it. The design question that needs an ADR first: what
+the active profile means when `routing.conf` changes underneath it, and
+whether a replug of a different device clears it.
+
 ### The limit under all of this
 
 **Every measurement in this repository was taken on one Fireface UCX II,

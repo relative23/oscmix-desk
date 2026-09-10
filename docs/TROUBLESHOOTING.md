@@ -258,3 +258,72 @@ says which case you got: `(20-channel channel layout)` is right,
 The backend and `routing.conf` are not involved: the mixer state was
 intact throughout, this is purely the desktop-audio path into playback
 channels.
+
+## 10. Routing verified, still no sound: the level never reaches the device
+
+Symptom: the journal says `routing verified against device state`,
+`oscmix-session --diff` says the device matches the config, the mixer
+GUI's playback meters barely move, and every output is quiet or silent.
+Moving a fader in the GUI seems to do nothing, or something strange.
+
+The routing is fine. The signal is being attenuated *before* it reaches
+the interface, in PipeWire, and the trap is the scale: `wpctl` shows a
+slider position, and PipeWire maps that position to gain with a cubic
+curve. A control at 0.40 is not -8 dB, it is -24 dB. Several of them sit
+in series between a player and the device:
+
+| control | shown | actual |
+|---|---|---|
+| the application's stream (Spotify, a browser) | 0.53 | -16.4 dB |
+| the named sink from `--pipewire-sinks` (`oscmix.main-out`) | 0.42 | -22.6 dB |
+| the Fireface's own sink (`Fireface UCX II ... Pro`) | 0.40 | -23.9 dB |
+
+Measured 2026-09-05: those three controls, each looking "about half",
+added up to 63 dB, and the device's playback meter read -65 dBFS with
+music at full level in the player. Every hardware output then sat that
+far down before its own fader was even counted. The mixer's fader
+behaved exactly as written -- checked against the device's meters to
+0.1 dB -- but with the signal 65 dB down its whole audible range was
+squeezed into the top few dB, which is what "further down is sometimes
+louder" feels like.
+
+Read the actual gains rather than the slider positions:
+
+```sh
+pw-dump | python3 -c '
+import json, math, sys
+for o in json.load(sys.stdin):
+    i = o.get("info") or {}; p = i.get("props") or {}
+    if p.get("media.class") not in ("Audio/Sink", "Stream/Output/Audio"): continue
+    for prm in (i.get("params") or {}).get("Props") or []:
+        v = prm.get("channelVolumes")
+        if v: print("%-60s %6.1f dB" % (p.get("node.name") or p.get("application.name"), 20*math.log10(max(v[0], 1e-9))))'
+```
+
+`channelVolumes` are linear amplitude, so the dB above is the real
+attenuation. Bring the chain to 0 dB in an order that cannot get loud:
+first the PipeWire controls, while the hardware output faders are still
+down, then the output faders in the mixer, by ear. On an audio interface
+the digital path belongs at unity; listening level is what the hardware
+faders are for.
+
+## 11. A fader moves back by itself after a replug, restart or wake
+
+Symptom: an output fader set in the mixer GUI returns to a fixed value
+after the interface is replugged, the service restarts, or the machine
+wakes from suspend.
+
+That is a route with a `volume =` line. Declaring it pins the output
+fader (README, *Configure your routing*): every backend start writes it,
+and so does every reload -- including the one the resume hook sends
+after a suspend. Nothing is drifting; the config is doing what it says.
+If the fader is one you set by hand, delete the `volume =` line from
+that route. The session then never writes that register, and the fader
+stays where you put it. `[pin] output.volume` does not change this: it
+decides who wins for a value the config declares, not whether the
+config declares it.
+
+The same rule undoes a profile. `oscmix-session --profile X` writes X to
+the device; the service keeps running on `routing.conf`, and the next
+start or reload re-applies `routing.conf` over it. See *Profiles* in the
+README.
