@@ -10,6 +10,7 @@ one integration test. Here they are the assertion.
 """
 
 import argparse
+import time
 
 import pytest
 
@@ -268,3 +269,125 @@ def test_an_empty_config_leaves_the_desk_alone(session_module, monkeypatch,
                                                     {"stop": False})
     assert verifier is None
     assert "leaving mixer state untouched" in caplog.text
+
+
+# --------------------------------------------------------------------------
+# The two start-up helpers that only subprocess tests reached
+#
+# The 0.6.1 mutation run left exactly 50 mutants with no covering test:
+# 26 in _await_backend_port, 23 in _install_stop_handlers, one in a dead
+# function. The integration tests drive both through a real process,
+# which loads the checked-out source and never a mutant (ADR 0005), so
+# the strongest gate in the repository was structurally blind here.
+# --------------------------------------------------------------------------
+
+
+
+class PollingChild:
+    """A backend whose exit can be scheduled by poll count."""
+
+    def __init__(self, exits_after=None, returncode=None):
+        self.polls = 0
+        self.exits_after = exits_after
+        self.returncode = returncode
+        self.terminated = False
+
+    def poll(self):
+        self.polls += 1
+        if self.exits_after is not None and self.polls >= self.exits_after:
+            self.returncode = 1
+        return self.returncode
+
+    def terminate(self):
+        self.terminated = True
+
+
+def test_the_port_wait_returns_as_soon_as_the_backend_listens(
+        session_module, monkeypatch, caplog, tmp_path):
+    from oscmix_desk import Config
+
+    answers = iter([False, False, True])
+    monkeypatch.setattr(session_module, "udp_port_listening",
+                        lambda port, root: next(answers))
+    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 5.0)
+    child = PollingChild()
+    started = time.monotonic()
+    with caplog.at_level("INFO"):
+        session_module._await_backend_port(child, Config(osc_port=7301),
+                                           tmp_path)
+    assert "listening on UDP 7301" in caplog.text
+    assert "not listening" not in caplog.text
+    assert time.monotonic() - started < 2.0, "it waited out the timeout"
+
+
+def test_the_port_wait_stops_when_the_backend_dies(session_module, monkeypatch,
+                                                  caplog, tmp_path):
+    # A child that exited will never bind the port; waiting on would burn
+    # the whole timeout for nothing and hide the exit behind a misleading
+    # "not listening" warning.
+    from oscmix_desk import Config
+
+    monkeypatch.setattr(session_module, "udp_port_listening",
+                        lambda port, root: False)
+    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 5.0)
+    child = PollingChild(exits_after=2)
+    started = time.monotonic()
+    with caplog.at_level("INFO"):
+        session_module._await_backend_port(child, Config(osc_port=7301),
+                                           tmp_path)
+    assert time.monotonic() - started < 2.0
+    assert "not listening" not in caplog.text
+    assert child.polls >= 2
+
+
+def test_the_port_wait_times_out_with_a_warning(session_module, monkeypatch,
+                                                caplog, tmp_path):
+    from oscmix_desk import Config
+
+    monkeypatch.setattr(session_module, "udp_port_listening",
+                        lambda port, root: False)
+    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.3)
+    with caplog.at_level("WARNING"):
+        session_module._await_backend_port(PollingChild(), Config(osc_port=7301),
+                                           tmp_path)
+    assert "not listening on UDP 7301" in caplog.text
+
+
+def _capture_signal_handlers(session_module, monkeypatch):
+    installed = {}
+    monkeypatch.setattr(session_module.signal, "signal",
+                        lambda signum, handler: installed.__setitem__(signum,
+                                                                      handler))
+    return installed
+
+
+def test_stop_handlers_turn_a_signal_into_an_orderly_shutdown(session_module,
+                                                              monkeypatch):
+    import signal
+
+    installed = _capture_signal_handlers(session_module, monkeypatch)
+    notices = []
+    monkeypatch.setattr(session_module, "sd_notify", notices.append)
+    child = PollingChild()
+    stop = {"stop": False}
+    session_module._install_stop_handlers(child, stop)
+    assert set(installed) == {signal.SIGTERM, signal.SIGINT}
+
+    installed[signal.SIGTERM](signal.SIGTERM, None)
+    assert stop["stop"] is True
+    assert notices == ["STOPPING=1"], "systemd must hear about the stop first"
+    assert child.terminated is True
+
+
+def test_stop_handlers_do_not_terminate_a_backend_that_is_already_gone(
+        session_module, monkeypatch):
+    import signal
+
+    installed = _capture_signal_handlers(session_module, monkeypatch)
+    monkeypatch.setattr(session_module, "sd_notify", lambda *_a: None)
+    child = PollingChild(returncode=0)
+    stop = {"stop": False}
+    session_module._install_stop_handlers(child, stop)
+    installed[signal.SIGINT](signal.SIGINT, None)
+    assert stop["stop"] is True
+    assert child.terminated is False
