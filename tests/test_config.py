@@ -641,6 +641,7 @@ def test_a_nested_or_global_section_on_the_802_is_not_blamed_on_a_newer_version(
     (message,) = _warnings(caplog)
     assert "[%s]" % section in message
     assert "Fireface 802" in message
+    assert "Fireface UCX II" in message, "the warning names what is modelled"
     assert "newer version" not in message
 
 
@@ -655,3 +656,4 @@ def test_an_unknown_section_on_a_modelled_device_still_suggests_a_newer_version(
     (message,) = _warnings(caplog)
     assert "newer version" in message
     assert "[frobnicate]" in message
+    assert "[route:<name>]" in message, "it lists what this version knows"

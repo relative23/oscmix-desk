@@ -93,7 +93,11 @@ def usb_revision(usb_id: str, sysfs_usb: Path) -> Optional[str]:
         raw = (entry / "bcdDevice").read_text().strip()
     except OSError:
         return None
-    if len(raw) == 4 and all(c in "0123456789abcdefABCDEF" for c in raw):
+    # Binary-coded decimal has decimal digits only. The first version of
+    # this accepted hex digits and then called int() on them, which the
+    # mutation survivors pointed at: a release field of "0a01" would
+    # have raised instead of being returned as it is.
+    if len(raw) == 4 and raw.isdigit():
         return "%d.%s" % (int(raw[:2]), raw[2:])
     return raw or None
 

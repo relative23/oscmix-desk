@@ -358,10 +358,14 @@ def test_a_stop_during_the_wait_abandons_the_reload(tmp_path, session_mod,
                                    _routes_file(tmp_path), stop, verifier)
     time.sleep(0.2)
     stop["stop"] = True
+    stopped_at = time.monotonic()
     reload.join(timeout=5)
     release.set()
     assert not reload.is_alive()
     assert applied == []
+    # Noticed within the join granularity, not a second later: the
+    # supervise loop is the main thread, and a shutdown waits on it.
+    assert time.monotonic() - stopped_at < 0.6
 
 
 def test_a_verifier_that_outlives_the_bound_is_not_waited_for_forever(

@@ -54,6 +54,42 @@ def test_the_usb_revision_is_read_as_a_version(fake_sysfs):
     assert discovery.usb_revision("2A39:3FD9", fake_sysfs) == "3.01"
 
 
+def test_the_usb_revision_formats_bcd_and_returns_anything_else_as_is(
+        tmp_path):
+    from oscmix_desk import discovery
+
+    def sysfs(raw):
+        root = tmp_path / ("sysfs-" + (raw or "empty"))
+        (root / "1-1").mkdir(parents=True)
+        (root / "1-1" / "idVendor").write_text("2a39\n")
+        (root / "1-1" / "idProduct").write_text("3fd9\n")
+        (root / "1-1" / "bcdDevice").write_text(raw + "\n")
+        return root
+
+    assert discovery.usb_revision("2a39:3fd9", sysfs("1000")) == "10.00"
+    assert discovery.usb_revision("2a39:3fd9", sysfs("0000")) == "0.00"
+    # Not BCD: handed back untouched rather than parsed wrongly or
+    # crashed on -- the first version called int() on hex digits.
+    assert discovery.usb_revision("2a39:3fd9", sysfs("0a01")) == "0a01"
+    assert discovery.usb_revision("2a39:3fd9", sysfs("301")) == "301"
+    assert discovery.usb_revision("2a39:3fd9", sysfs("")) is None
+
+
+def test_a_device_matching_only_half_the_id_is_not_the_device(tmp_path):
+    # vendor right, product wrong, and the other way round. The lookup
+    # is an AND, and nothing asserted that until a mutant flipped it.
+    from oscmix_desk import discovery
+
+    root = tmp_path / "sysfs-halves"
+    for name, vendor, product in (("1-1", "2a39", "0000"), ("1-2", "0000", "3fd9")):
+        (root / name).mkdir(parents=True)
+        (root / name / "idVendor").write_text(vendor + "\n")
+        (root / name / "idProduct").write_text(product + "\n")
+        (root / name / "bcdDevice").write_text("0301\n")
+    assert discovery.usb_device_present("2a39:3fd9", root) is False
+    assert discovery.usb_revision("2a39:3fd9", root) is None
+
+
 def test_the_usb_revision_is_none_without_the_device_or_the_file(
         empty_sysfs, tmp_path):
     from oscmix_desk import discovery

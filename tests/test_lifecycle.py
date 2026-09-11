@@ -307,8 +307,13 @@ def test_the_port_wait_returns_as_soon_as_the_backend_listens(
     from oscmix_desk import Config
 
     answers = iter([False, False, True])
-    monkeypatch.setattr(session_module, "udp_port_listening",
-                        lambda port, root: next(answers))
+    asked = []
+
+    def listening(port, root):
+        asked.append((port, root))
+        return next(answers)
+
+    monkeypatch.setattr(session_module, "udp_port_listening", listening)
     monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 5.0)
     child = PollingChild()
     started = time.monotonic()
@@ -316,6 +321,9 @@ def test_the_port_wait_returns_as_soon_as_the_backend_listens(
         session_module._await_backend_port(child, Config(osc_port=7301),
                                            tmp_path)
     assert "listening on UDP 7301" in caplog.text
+    # The configured port and the given /proc root, every time -- not
+    # whatever a stub that ignores its arguments would accept.
+    assert asked == [(7301, tmp_path)] * 3
     assert "not listening" not in caplog.text
     assert time.monotonic() - started < 2.0, "it waited out the timeout"
 
