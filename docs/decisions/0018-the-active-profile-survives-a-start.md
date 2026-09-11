@@ -65,6 +65,15 @@ device already has the profile and pretending otherwise would be the
   on a profile reads as matching; a desk on `routing.conf` with a stale
   marker reads as differing, with the warning above naming why.
 - `--list-profiles` marks the active one.
+- **An applied switch reloads the running unit.** The switch writes the
+  device from a second process while, for up to about 22 s after a
+  start, the unit's own verifier is still re-applying the config it
+  started with -- and it overwrote the switch (measured: a switch sent
+  right after a restart read back at the old fader value fifteen
+  seconds later). The reload makes the unit re-read the desk in effect,
+  and its reconcile queues behind the verifier (ADR 0013), so the last
+  write is the profile's. Without a running unit there is nothing to
+  reload and the switch stands on its own.
 - The marker is per config directory: `--config` pointing elsewhere
   reads that directory's marker, so a test config cannot pick up the
   user's choice by accident.

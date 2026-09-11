@@ -19,11 +19,11 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from .constants import DEFAULT_OSC_PORT, DEFAULT_USB_ID
+from .constants import DEFAULT_OSC_PORT, DEFAULT_USB_ID, SERVICE_UNIT
 from .discovery import resolve_binary, udp_port_listening, usb_device_present
 
 BACKEND_WAIT = float(os.environ.get("OSCMIX_BACKEND_WAIT", "5"))
-SERVICE = "oscmix.service"
+SERVICE = SERVICE_UNIT
 
 log = logging.getLogger("oscmix-launch")
 

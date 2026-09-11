@@ -99,6 +99,13 @@ holds UDP 8222 and the dump cannot be observed at all
 Environment=OSCMIX_LINK_SYNC_DELAY=30
 ```
 
+`systemctl --user status oscmix.service` also shows a `Status:` line
+since 0.6.3: `applying routing`, `verifying routing`, `reconciling
+(SIGHUP)`, or `running; verifier finished at HH:MM:SS`. A switch or a
+reload sent while it says `verifying` queues behind the verifier
+(ADR 0013), which is why a profile switch right after a replug can take
+up to twenty seconds to settle.
+
 ## 4. Does the backend accept OSC?
 
 ```sh

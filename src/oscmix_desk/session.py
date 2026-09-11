@@ -147,6 +147,7 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
                  "untouched")
         return None
 
+    sd_notify("STATUS=applying routing")
     apply_routing(config, config.osc_port, config.osc_recv_port)
 
     def should_stop() -> bool:
@@ -156,9 +157,15 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         return stop_requested["stop"] or child.poll() is not None
 
     def deferred_verify() -> None:
+        # STATUS= is what `systemctl --user status` shows: the phase the
+        # session is in, and when the last one ended. It is also what a
+        # second process could consult before writing the device.
         if wait_unless_stopped(VERIFY_SETTLE, should_stop):
             return
+        sd_notify("STATUS=verifying routing")
         verify_and_repair(config, should_stop)
+        sd_notify("STATUS=running; verifier finished at %s"
+                  % time.strftime("%H:%M:%S"))
 
     thread = threading.Thread(target=deferred_verify, name="verify",
                               daemon=True)
@@ -321,7 +328,9 @@ def _reconcile(args: argparse.Namespace, config: Config,
         fresh.osc_port = config.osc_port
         fresh.osc_recv_port = config.osc_recv_port
         fresh.device_name = config.device_name
+    sd_notify("STATUS=reconciling (SIGHUP)")
     reconcile_now(fresh, "SIGHUP", lambda: stop_requested["stop"])
+    sd_notify("STATUS=running; reconciled at %s" % time.strftime("%H:%M:%S"))
 
 
 def _await_verifier(verifier: Optional[threading.Thread]) -> None:

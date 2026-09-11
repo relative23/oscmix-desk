@@ -80,6 +80,33 @@ def load_executable(name):
     return module
 
 
+@pytest.fixture(autouse=True)
+def _no_real_systemctl(monkeypatch):
+    """No test reaches the machine's own user manager.
+
+    process._systemctl is the one place the package runs systemctl
+    outside the launcher (whose tests stub their own). Every call answers
+    "not active" here; a test of the real function patches subprocess.
+    The integration suite once started the developer's oscmix.service
+    for real (0.6.1); an in-process test must not be able to either.
+    """
+    from oscmix_desk import process
+
+    global _REAL_SYSTEMCTL
+    if _REAL_SYSTEMCTL is None:
+        _REAL_SYSTEMCTL = process._systemctl
+    monkeypatch.setattr(process, "_systemctl", lambda *verb: 1)
+
+
+_REAL_SYSTEMCTL = None
+
+
+@pytest.fixture
+def real_systemctl():
+    """The unstubbed function, for the one test that checks it."""
+    return _REAL_SYSTEMCTL
+
+
 @pytest.fixture(scope="session")
 def session_mod():
     """The runtime package: its public surface, as ``__all__`` defines it."""

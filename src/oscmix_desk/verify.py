@@ -13,7 +13,7 @@ from .log import log
 from .reconcile import desired, matches, policy_for
 from .registers import (
     PIN,
-    WRITE_ONLY,
+    VERIFIABLE,
     Device,
     cold_plug_complete,
     device_for_name,
@@ -100,10 +100,17 @@ def register_ever_reported(path: str,
     Measured on a UCX II: applied, correct at the device (0.0 -> -6.0),
     and reported unverified by a read-back that had stopped listening.
     """
-    if path.startswith("/mix/") and "/playback/" in path:
-        return False
-    return not (device is not None
-                and verify_class(device, path) == WRITE_ONLY)
+    if device is not None:
+        klass = verify_class(device, path)
+        if klass is not None:
+            # The table's word, one source: VERIFIABLE is reported,
+            # WRITE_ONLY and REESTABLISHED never are. Until 0.6.3 the
+            # playback matrix was excluded by a string rule *beside* the
+            # table that already classed it -- two places for one fact.
+            return klass == VERIFIABLE
+    # Without a model, the one hand-written rule left: the playback
+    # matrix, measured never to appear (ADR 0002).
+    return not (path.startswith("/mix/") and "/playback/" in path)
 
 
 def register_promptly_reported(path: str,

@@ -102,6 +102,10 @@ LEVEL_MIN, LEVEL_MAX = -65.0, 6.0
 UNLINKED_GAIN_OFFSET = 20.0 * math.log10(2.0)
 CHANNEL_MIN, CHANNEL_MAX = 1, 64
 
+#: The systemd user unit that supervises the backend. The launcher
+#: starts it and the profile switch reloads it; one name, one place.
+SERVICE_UNIT = "oscmix.service"
+
 EXIT_OK = 0
 EXIT_FAILURE = 1
 EXIT_CONFIG = 2

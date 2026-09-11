@@ -68,8 +68,12 @@ ALLOWED_IMPORTS = {
     # serial and firmware, which are the leaf's to answer. A leaf with no
     # imports of its own, already below session; cli reading it changes
     # no direction in the graph.
+    # `process` since 0.6.3: an applied profile switch reloads the unit
+    # so its own verifier cannot revert it; process already sits below
+    # session and imports nothing above discovery.
     "cli": {"backend", "config", "constants", "discovery", "errors", "log",
-            "pipewire", "profiles", "reconcile", "registers", "session"},
+            "pipewire", "process", "profiles", "reconcile", "registers",
+            "session"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.

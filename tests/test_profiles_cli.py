@@ -168,3 +168,21 @@ def test_a_switch_is_remembered_and_the_listing_shows_it(tmp_path, capsys,
                for line in lines)
     assert not any("(active)" in line for line in lines
                    if line.startswith("mixdown"))
+
+
+def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
+        tmp_path, capsys, monkeypatch):
+    # Measured: a switch sent right after a restart was reverted by the
+    # unit's start-up verifier fifteen seconds later. The reload makes
+    # the unit re-read the desk in effect (ADR 0018).
+    _quick_wire(monkeypatch)
+    reloads = []
+    monkeypatch.setattr(cli, "reload_service", lambda: reloads.append(1) or True)
+    path = _config_with(tmp_path, {"tracking": GOOD,
+                                   "broken": "[route:x]\noutput = 99\nplayback = 1\n"})
+    assert cli.main(["--config", str(path), "--profile", "broken"]) == EXIT_CONFIG
+    assert reloads == [], "a refused switch has nothing to hand over"
+    assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
+    assert reloads == [1]
+    assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
+    assert reloads == [1, 1]

@@ -20,12 +20,14 @@ from .constants import (
     EXIT_DIFFERS,
     EXIT_FAILURE,
     EXIT_OK,
+    SERVICE_UNIT,
     __version__,
 )
 from .discovery import device_firmware, device_serial
 from .errors import ConfigError
 from .log import log
 from .pipewire import generate_pipewire_conf, pw_sink_info
+from .process import reload_service
 from .profiles import (
     REFUSED,
     Outcome,
@@ -214,6 +216,13 @@ def _report_outcome(outcome: "Outcome") -> int:
     sys.stdout.write(outcome.describe() + "\n")
     if outcome.state == REFUSED:
         return EXIT_CONFIG
+    # The unit's own state has to follow, or its start-up verifier may
+    # still be re-applying the desk it started with (process.reload_service).
+    if reload_service():
+        log.info("%s reloaded, so its own reconcile follows the new desk",
+                 SERVICE_UNIT)
+    else:
+        log.info("%s is not running; nothing to reload", SERVICE_UNIT)
     return EXIT_OK
 
 

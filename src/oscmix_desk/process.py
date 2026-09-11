@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from .constants import CHILD_STOP_GRACE, STALE_BACKEND_SETTLE
+from .constants import CHILD_STOP_GRACE, SERVICE_UNIT, STALE_BACKEND_SETTLE
 from .discovery import udp_port_listening
 from .log import log
 
@@ -126,3 +126,37 @@ def supervise(child: "subprocess.Popen[bytes]",
                 log.warning("backend ignored SIGTERM; sending SIGKILL")
                 child.kill()
                 return child.wait()
+
+
+def _systemctl(*verb: str) -> int:
+    """``systemctl --user <verb...>``: its exit status, or 1 without systemctl.
+
+    The one place this package runs systemctl outside the launcher, so
+    a single autouse fixture in the tests can stub the whole of it. The
+    integration suite once started the developer's own oscmix.service
+    through a launcher that reached the real binary (0.6.1); nothing
+    in-process may be able to do the same.
+    """
+    try:
+        return subprocess.run(["systemctl", "--user", *verb], check=False,
+                              stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL).returncode
+    except OSError:
+        return 1
+
+
+def reload_service() -> bool:
+    """Ask the running unit to reconcile now. False when it is not running.
+
+    A profile switch writes the device from a second process. For up to
+    about 22 s after a start the unit's own verifier is still re-applying
+    the config it started with, and it overwrote the switch: measured on
+    the desk, a switch sent right after a restart read back at the old
+    fader value fifteen seconds later. The reload makes the unit re-read
+    the desk in effect -- the new profile (ADR 0018) -- and its
+    reconcile is serialised behind the verifier (ADR 0013), so whichever
+    of the two writes last, it is the profile.
+    """
+    if _systemctl("is-active", "--quiet", SERVICE_UNIT) != 0:
+        return False
+    return _systemctl("reload", SERVICE_UNIT) == 0

@@ -273,3 +273,24 @@ def test_the_playback_mix_matrix_is_the_family_that_is_absent(session_mod):
     assert [p for p in dump["registers"]
             if p.startswith("/mix/") and "/playback/" in p] == []
     assert register_ever_reported("/mix/1/playback/1") is False
+
+
+def test_the_register_table_decides_what_is_ever_reported(verify_mod):
+    """One source for one fact (0.6.3).
+
+    The playback matrix used to be excluded by a string rule beside a
+    table that already classed it REESTABLISHED. With a model, the
+    table decides for every class; the rule is only for a device
+    without one.
+    """
+    from oscmix_desk import registers
+
+    ucx2 = registers.UCX2
+    assert verify_mod.register_ever_reported("/mix/5/playback/1", ucx2) is False
+    assert verify_mod.register_ever_reported("/output/1/loopback", ucx2) is False
+    assert verify_mod.register_ever_reported("/output/1/volume", ucx2) is True
+    assert verify_mod.register_ever_reported("/mix/5/input/1", ucx2) is True
+    # A path the table does not know falls through to the rule.
+    assert verify_mod.register_ever_reported("/nothing/like/it", ucx2) is True
+    assert verify_mod.register_ever_reported("/mix/5/playback/1", None) is False
+    assert verify_mod.register_ever_reported("/output/1/loopback", None) is True

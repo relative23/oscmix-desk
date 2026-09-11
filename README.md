@@ -354,10 +354,25 @@ More in [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Other Fireface models
 
-oscmix has (experimental) support for the Fireface 802FS as well. The
-device name and USB ID are configurable in `routing.conf` (`[device]`
-section); for hotplug you would additionally adapt the IDs in
-`udev/90-rme-fireface.rules`. Reports welcome.
+Every number in this repository was measured on one Fireface UCX II,
+and that is the method rather than a gap in it: upstream oscmix is
+written for the UCX II, with experimental support for the 802, and a
+state layer that claimed more than it had measured would be the kind
+of documentation this project exists to avoid. The register table is
+indexed by device from its first line, so a second model is a data
+change with an evidence artifact, not a rewrite.
+
+What an 802 gets today: routes, with channel ranges checked against
+upstream's own table; channel, nested and global sections are dropped
+with a warning that names the device and says nothing in them could
+reach it, rather than parsed into nothing. The device name and USB ID
+are configurable in `routing.conf` (`[device]`); for hotplug, adapt the
+IDs in `udev/90-rme-fireface.rules`.
+
+What it would take, with the hardware on the desk: record a dump
+(`scripts/record-dump.py`), declare the rows, run the write sweep
+(`scripts/sweep-writes.py`) and attach one evidence artifact. That is
+the bar `Device.supported` states in the data. Reports welcome.
 
 ## Development
 

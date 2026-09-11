@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Fixed
+
+- **A profile switch right after a start was reverted by the start-up
+  verifier.** The switch writes from a second process; for up to about
+  22 s after a start the unit's verifier is still re-applying the config
+  it started with, and it overwrote the switch. Measured on the desk: a
+  switch sent immediately after a restart read back at the old fader
+  value fifteen seconds later. An applied switch, and `--no-profile`,
+  now reload the running unit; it re-reads the desk in effect and its
+  reconcile queues behind the verifier, so the last write is the
+  profile's. The unit reports its phase through systemd (`Status:` in
+  `systemctl --user status`): applying, verifying, reconciling, running.
+
 ### Added
 
 - **A profile survives a start.** `--profile X` used to write X to the
@@ -18,6 +31,21 @@
   with a warning that stays until somebody decides. The service only
   reads the marker, so the unit's read-only home holds. ADR 0018 has
   the reasoning and the alternatives; roadmap item F is closed.
+
+### Changed
+
+- **What the device ever reports is answered by the register table.**
+  `verify.register_ever_reported` excluded the playback matrix by a
+  string rule beside a table that already classed it `REESTABLISHED`
+  -- two places for one fact. With a model the table decides; the rule
+  remains only for a device without one.
+- **The README says what the single device is.** Every number here was
+  measured on one UCX II because upstream oscmix is written for it; the
+  section on other models now states what an 802 gets today and what a
+  second device would take, instead of "reports welcome" alone.
+- **No in-process test can reach the machine's user manager.** All
+  `systemctl` calls outside the launcher go through one function, and
+  an autouse fixture stubs it for every test.
 
 ## 0.6.2 (2026-09-10)
 

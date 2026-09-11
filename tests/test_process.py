@@ -259,3 +259,51 @@ def test_resolve_binary_returns_none_when_nothing_is_found(monkeypatch):
     monkeypatch.setattr(discovery.shutil, "which", lambda name: None)
     monkeypatch.setattr(discovery.os, "access", lambda path, mode: False)
     assert discovery.resolve_binary("oscmix", "OSCMIX_BIN_BACKEND") is None
+
+
+# --------------------------------------------------------------------------
+# Reloading the unit after a switch (ADR 0018)
+# --------------------------------------------------------------------------
+
+def test_reload_service_is_false_when_the_unit_is_not_running(monkeypatch):
+    from oscmix_desk import process
+
+    verbs = []
+    monkeypatch.setattr(process, "_systemctl",
+                        lambda *verb: verbs.append(verb) or 3)
+    assert process.reload_service() is False
+    assert verbs == [("is-active", "--quiet", "oscmix.service")]
+
+
+def test_reload_service_reloads_a_running_unit(monkeypatch):
+    from oscmix_desk import process
+
+    verbs = []
+    monkeypatch.setattr(process, "_systemctl",
+                        lambda *verb: verbs.append(verb) or 0)
+    assert process.reload_service() is True
+    assert verbs == [("is-active", "--quiet", "oscmix.service"),
+                     ("reload", "oscmix.service")]
+
+
+def test_systemctl_returns_the_exit_status_and_one_without_the_binary(
+        monkeypatch, real_systemctl):
+    # Every other test sees the autouse stub; this one checks the
+    # function behind it, with subprocess replaced so nothing runs.
+    from oscmix_desk import process
+
+    seen = []
+
+    class Done:
+        returncode = 4
+
+    monkeypatch.setattr(process.subprocess, "run",
+                        lambda argv, **kw: seen.append(argv) or Done())
+    assert real_systemctl("reload", "x.service") == 4
+    assert seen == [["systemctl", "--user", "reload", "x.service"]]
+
+    def missing(argv, **kw):
+        raise OSError("no systemctl")
+
+    monkeypatch.setattr(process.subprocess, "run", missing)
+    assert real_systemctl("is-active", "x.service") == 1
