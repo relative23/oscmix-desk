@@ -19,6 +19,8 @@ The property that matters is not "a good config applies". It is that a
 a live desk is that a typo costs you a message, not your monitoring.
 """
 
+import os
+
 import pytest
 from conftest import write_config
 
@@ -706,3 +708,72 @@ def test_two_switches_do_not_interleave_on_the_wire(tmp_path, routing_mod,
         "the second switch's datagrams sit inside the first's"
     # The marker names whichever wrote last, and only that one.
     assert (tmp_path / "active-profile").read_text().strip() == tags[-1]
+
+
+# --------------------------------------------------------------------------
+# The error branches of the marker and the lock, named by a coverage probe.
+# --------------------------------------------------------------------------
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root reads anything")
+def test_an_unreadable_marker_is_ignored_with_a_warning(tmp_path, caplog):
+    path = _desk(tmp_path, tracking=TRACKING)
+    marker = tmp_path / "active-profile"
+    marker.write_text("tracking\n")
+    marker.chmod(0)
+    try:
+        with caplog.at_level("WARNING"):
+            assert profiles.active_profile(path) is None
+    finally:
+        marker.chmod(0o600)
+    assert "ignoring" in caplog.text
+
+
+def test_a_marker_that_cannot_be_removed_is_a_warning_not_a_crash(tmp_path,
+                                                                 caplog):
+    path = _desk(tmp_path, tracking=TRACKING)
+    marker = tmp_path / "active-profile"
+    marker.mkdir()
+    (marker / "child").write_text("")               # unlink raises
+    with caplog.at_level("WARNING"):
+        profiles.forget_active_profile(path)
+    assert "cannot remove" in caplog.text
+
+
+def test_fsync_of_the_directory_is_best_effort(tmp_path, monkeypatch):
+    profiles._fsync_directory(tmp_path / "does-not-exist")   # no raise
+
+    def refuse(fd):
+        raise OSError("fsync unsupported")
+
+    monkeypatch.setattr(profiles.os, "fsync", refuse)
+    profiles._fsync_directory(tmp_path)                       # no raise
+
+
+def test_without_a_config_there_is_nothing_to_lock():
+    with profiles._switch_lock(None) as held:
+        assert held is True
+
+
+def test_no_profile_refuses_when_another_switch_holds_the_lock(
+        tmp_path, recording_backend, monkeypatch):
+    path = _desk(tmp_path, tracking=TRACKING)
+    (tmp_path / "active-profile").write_text("tracking\n")
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    with profiles._switch_lock(path):
+        outcome = profiles.restore_main(path, backend=recording_backend)
+    assert outcome.state == profiles.REFUSED
+    assert "in progress" in outcome.reason
+    assert recording_backend.sent == []
+    assert (tmp_path / "active-profile").read_text().strip() == "tracking", \
+        "a refused restore keeps the profile in effect"
+
+
+def test_an_empty_marker_means_no_profile(tmp_path):
+    path = _desk(tmp_path, tracking=TRACKING)
+    (tmp_path / "active-profile").write_text("\n")
+    assert profiles.active_profile(path) is None
+
+
+def test_a_setting_is_not_stated_by_text_the_parser_rejects():
+    assert profiles._states("[global\nosc_port = 1", "global", "osc_port") \
+        is False
