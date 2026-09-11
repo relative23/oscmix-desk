@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.6.3 (2026-09-11)
+
+A profile survives a start, and a switch survives the start-up
+verifier. Both are the second half of the review audit 0.6.2 shipped
+the first half of; the pin does not move and the register table has no
+new row.
 
 ### Fixed
 
@@ -43,6 +48,16 @@
   measured on one UCX II because upstream oscmix is written for it; the
   section on other models now states what an 802 gets today and what a
   second device would take, instead of "reports welcome" alone.
+- **The mutation run's survivors were read, and one gap was a whole
+  command.** `--pipewire-sinks` had no in-process test; it was counted
+  as covered while its code sat inside `cli.main`, and moving the block
+  into its own function in 0.6.2 showed 43 mutants no test reached.
+  Four tests cover it now. In the new profile code, four assertions
+  that did not exist were added -- among them that the marker
+  functions answer `None` and `False` without a config rather than
+  raising. Score 0.720 against a floor of 0.710, not-covered bucket
+  empty again.
+
 - **No in-process test can reach the machine's user manager.** All
   `systemctl` calls outside the launcher go through one function, and
   an autouse fixture stubs it for every test.

@@ -88,9 +88,16 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.2)
+## Where we are (0.6.3)
 
-**0.6.2 (2026-09-10)** is what an outside review of 0.6.1 led to: the
+**0.6.3 (2026-09-11)** closes roadmap item F: a profile is remembered
+beside `routing.conf` and applied on every start and reload (ADR 0018),
+and a switch sent right after a start is no longer reverted by the
+start-up verifier -- measured on the desk before and after, the second
+member of the race family 0.6.2 found the first of. The unit reports
+its phase to systemd, the register table alone decides what the device
+ever reports, and the README says why one measured device is the
+method. **0.6.2 (2026-09-10)** is what an outside review of 0.6.1 led to: the
 stale claim in `reconcile.py` it named, and what an audit found next to
 it -- channel sections silently dropped on a device without a register
 table, a reload that could write routing while the start-up verifier

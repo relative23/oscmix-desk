@@ -157,35 +157,56 @@
     "regenerated ones judged afterwards, which is the state recorded",
     "below. A 76-minute re-run for a one-function change would have",
     "measured the same tree again; what it would not have done is judge",
-    "any mutant this did not."
+    "any mutant this did not.",
+    "",
+    "0.6.3 (2026-09-11): 0.716 -> 0.720, on 5167 -> 5436 mutants for the",
+    "active profile, the switch-then-reload and the STATUS= phases. The",
+    "full run judged 43 mutants as reached by no test, all in one",
+    "function: cli._pipewire_sinks, the --pipewire-sinks block moved out",
+    "of main() in 0.6.2 to keep main under the readability ceiling. Inside",
+    "main it had been counted as covered by the tests that reach main;",
+    "on its own it showed what was true all along, that --pipewire-sinks",
+    "had no in-process test. Four now: detected sink and layout, no",
+    "detection (FIXME plus warning), explicit target, no stereo route.",
+    "",
+    "Reading the survivors in the new profile code found no defect and",
+    "four missing assertions: restore_main's verify=False branch, the",
+    "marker functions without a config (active_profile(None) would have",
+    "raised on a mutant that flipped one `or`), _systemctl's check/stdout",
+    "arguments, and the STATUS= time format. All added. 109 mutants in",
+    "those functions re-run by name after the test changes, 47 more",
+    "killed; the remaining survivors there are message text.",
+    "",
+    "min_score stays 0.72: the measurement equals it, which is a",
+    "rounding-down landing on the bar, not a crossing."
   ],
   "measured": {
+    "total": 5436,
+    "killed": 3909,
+    "survived": 1519,
+    "not_covered": 0,
+    "timeout": 8,
+    "score": 0.72,
+    "run_minutes": 96,
+    "cache": "cleared before the full run; 109 mutants re-run by name after the test changes (see note)",
+    "scope": "register table exempt (ADR 0015)",
+    "note": [
+      "The 0.6.3 release measurement. 96 minutes for the full run,",
+      "against 75 for 0.6.2: the machine carried a load average of 7.7",
+      "at the start from other suites, and the suite itself is 1048",
+      "tests now. The number is not the point; the empty not-covered",
+      "bucket, restored after the extraction exposed a gap, is."
+    ]
+  },
+  "previous": {
+    "recorded": "2026-09-11",
     "total": 5167,
     "killed": 3693,
     "survived": 1466,
     "not_covered": 0,
-    "timeout": 8,
     "score": 0.716,
-    "run_minutes": 75,
-    "cache": "cleared before the full run; the strengthened functions re-run by name afterwards (see note)",
-    "scope": "register table exempt (ADR 0015)",
-    "note": [
-      "The 0.6.2 release measurement. min_score stays 0.72: 0.716 is",
-      "a step towards it and not across it, and the ratchet moves on",
-      "a measured crossing, not on a rounding. The floor at 0.710 was",
-      "cleared by 0.006, the widest margin since 0.5.2."
-    ]
-  },
-  "previous": {
-    "recorded": "2026-09-05",
-    "total": 5026,
-    "killed": 3549,
-    "survived": 1419,
-    "not_covered": 50,
-    "score": 0.714,
     "why_it_moved": [
-      "The 0.6.1 release measurement, after reading the 19 survivors",
-      "in _apply_and_verify; min_score held at 0.72."
+      "The 0.6.2 release measurement; min_score held at 0.72."
     ]
   },
   "confirmed_by_ci": {
