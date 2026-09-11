@@ -588,3 +588,121 @@ def test_the_marker_functions_answer_nothing_without_a_config(tmp_path):
     profiles.forget_active_profile(path)
     profiles.forget_active_profile(path)          # twice is fine
     assert not (tmp_path / "active-profile").exists()
+
+
+# --------------------------------------------------------------------------
+# Third review round: a marker that is never half written, and one
+# switch at a time.
+# --------------------------------------------------------------------------
+
+def test_a_marker_write_that_fails_leaves_the_old_marker_whole(tmp_path,
+                                                              monkeypatch,
+                                                              caplog):
+    path = _desk(tmp_path, tracking=TRACKING, mixdown=GOOD)
+    (tmp_path / "active-profile").write_text("tracking\n")
+
+    def refuse(src, dst):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(profiles.os, "replace", refuse)
+    with caplog.at_level("WARNING"):
+        assert profiles.remember_active_profile("mixdown", path) is False
+    assert (tmp_path / "active-profile").read_text() == "tracking\n"
+    assert not (tmp_path / "active-profile.tmp").exists()
+    assert "not remembered" in caplog.text
+
+
+def test_the_marker_goes_through_a_temporary_file_and_a_rename(tmp_path,
+                                                              monkeypatch):
+    path = _desk(tmp_path, tracking=TRACKING)
+    import os
+
+    renames = []
+    real_replace = profiles.os.replace
+
+    def record(src, dst):
+        renames.append((os.path.basename(src), os.path.basename(dst)))
+        real_replace(src, dst)
+
+    monkeypatch.setattr(profiles.os, "replace", record)
+    assert profiles.remember_active_profile("tracking", path) is True
+    assert renames == [("active-profile.tmp", "active-profile")]
+    assert (tmp_path / "active-profile").read_text() == "tracking\n"
+    assert not (tmp_path / "active-profile.tmp").exists()
+
+
+def test_a_switch_refuses_when_another_holds_the_lock_too_long(
+        tmp_path, recording_backend, monkeypatch, caplog):
+    path = _desk(tmp_path, tracking=TRACKING)
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    with profiles._switch_lock(path) as held:
+        assert held
+        with caplog.at_level("INFO"):
+            outcome = profiles.switch_profile("tracking", config_path=path,
+                                              backend=recording_backend)
+    assert outcome.state == profiles.REFUSED
+    assert "in progress" in outcome.reason
+    assert recording_backend.sent == [], "a refused switch writes nothing"
+    assert not (tmp_path / "active-profile").exists()
+    assert "waiting for it" in caplog.text
+    # And once the lock is free, the same switch goes through.
+    assert profiles.switch_profile("tracking", config_path=path,
+                                   backend=recording_backend).applied
+
+
+def test_two_switches_do_not_interleave_on_the_wire(tmp_path, routing_mod,
+                                                    monkeypatch):
+    """Terminal A: --profile tracking. Terminal B: --profile mixdown.
+
+    Each switch is a link phase, a barrier and a mix phase; interleaved,
+    the second's links could land between the first's links and mix,
+    which is the ordering ADR 0001 exists to guarantee. The lock makes
+    one finish before the other starts, whichever wins.
+    """
+    import threading
+    import time
+
+    from oscmix_desk import backend as backend_mod
+
+    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.05)
+    path = _desk(tmp_path, tracking=TRACKING, mixdown=GOOD)
+    wire = []
+
+    class SlowBackend:
+        traits = backend_mod.OSCMIX
+
+        def __init__(self, tag):
+            self.tag = tag
+
+        def send(self, messages):
+            for message in messages:
+                wire.append((self.tag, message[0]))
+                time.sleep(0.02)          # long enough to interleave
+
+        def request_dump(self):
+            pass
+
+        def listen(self):
+            return None                   # the desktop case: unverified
+
+    outcomes = {}
+
+    def switch(name):
+        outcomes[name] = profiles.switch_profile(
+            name, config_path=path, backend=SlowBackend(name), verify=False)
+
+    threads = [threading.Thread(target=switch, args=(n,))
+               for n in ("tracking", "mixdown")]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=10)
+    assert all(o.applied for o in outcomes.values())
+    tags = [tag for tag, _path in wire]
+    first = tags[0]
+    boundary = tags.index(next(t for t in tags if t != first))
+    assert all(t == first for t in tags[:boundary])
+    assert all(t != first for t in tags[boundary:]), \
+        "the second switch's datagrams sit inside the first's"
+    # The marker names whichever wrote last, and only that one.
+    assert (tmp_path / "active-profile").read_text().strip() == tags[-1]

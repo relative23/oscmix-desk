@@ -143,6 +143,15 @@ STALE_BACKEND_SETTLE = 0.5
 # shutdown does not hold the supervise loop for long.
 RECONCILE_WAIT_FOR_VERIFIER = 30.0
 
+# How long a profile switch waits for another switch to finish before
+# refusing. Two switches at once would interleave their link phases and
+# mix writes on the wire, so they take one lock per config directory
+# (profiles._switch_lock). A switch holds it for at most a barrier, the
+# writes and a read-back window -- about 13 s -- so 30 s is one queued
+# switch with margin; past that something is wedged and a refusal, which
+# writes nothing, is the honest answer.
+SWITCH_LOCK_WAIT = 30.0
+
 
 def startup_budget(device_timeout: float = DEFAULT_DEVICE_TIMEOUT) -> float:
     """Worst-case seconds from process start to ``READY=1``.

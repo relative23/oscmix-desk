@@ -35,13 +35,17 @@ traceback" is the state this module exists to make unrepresentable.
 from __future__ import annotations
 
 import configparser
+import contextlib
+import fcntl
+import os
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import Iterator, List, Optional, Sequence, Tuple
 
 from .backend import Backend, loopback
 from .config import Config, list_profiles, load_config, profile_path
-from .constants import VERIFY_TIMEOUT
+from .constants import SWITCH_LOCK_WAIT, VERIFY_TIMEOUT
 from .errors import ConfigError
 from .log import log
 from .registers import device_for_name
@@ -246,14 +250,93 @@ def remember_active_profile(name: str, config_path: Optional[Path]) -> bool:
     path = active_profile_path(config_path)
     if path is None:
         return False
+    # Written beside and renamed over, never in place: a crash or a
+    # power loss between open and close would otherwise leave an empty
+    # marker, and an empty marker reads as "no profile" -- the choice
+    # silently gone on the next start. The old marker stays whole until
+    # the new one is complete on disk, and the rename is atomic.
+    tmp = path.with_name(path.name + ".tmp")
     try:
-        path.write_text(name + "\n")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+        try:
+            os.write(fd, (name + "\n").encode("utf-8"))
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.replace(tmp, path)
+        _fsync_directory(path.parent)
     except OSError as exc:
         log.warning("profile %r applied but not remembered: cannot write "
                     "%s (%s); the next start applies routing.conf", name,
                     path, exc)
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
         return False
     return True
+
+
+def _fsync_directory(directory: Path) -> None:
+    """Make a rename durable; best effort, some filesystems refuse it."""
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+#: The lock a switch holds from its first datagram to its last check,
+#: beside the marker. Two switches at once would interleave their link
+#: phases and mix writes on the wire -- the ordering ADR 0001 exists to
+#: guarantee -- and race each other to the marker and the reload.
+SWITCH_LOCK = "active-profile.lock"
+
+
+@contextlib.contextmanager
+def _switch_lock(config_path: Optional[Path]) -> Iterator[bool]:
+    """Hold the switch lock for this config, or yield False after the wait.
+
+    Taken *after* the profile parsed: a refusal for a bad config needs
+    no lock and costs nothing, as ADR 0011 promises. Without a config
+    there is no directory to lock in and nothing to contend with.
+    """
+    marker = active_profile_path(config_path)
+    if marker is None:
+        yield True
+        return
+    fd = os.open(marker.with_name(SWITCH_LOCK), os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        deadline = time.monotonic() + SWITCH_LOCK_WAIT
+        announced = False
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    yield False
+                    return
+                if not announced:
+                    log.info("another switch is in progress; waiting for it")
+                    announced = True
+                time.sleep(0.1)
+        try:
+            yield True
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+
+
+def _refused_for_the_lock(name: str) -> Outcome:
+    reason = ("another switch is still in progress after %.0fs"
+              % SWITCH_LOCK_WAIT)
+    log.error("profile %r refused, nothing written: %s", name, reason)
+    return Outcome(state=REFUSED, name=name, reason=reason)
 
 
 def forget_active_profile(config_path: Optional[Path]) -> None:
@@ -321,21 +404,24 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         log.error("profile %r refused, nothing written: %s", name, exc)
         return Outcome(state=REFUSED, name=name, reason=str(exc))
 
-    device = backend if backend is not None else loopback(
-        config.osc_port, config.osc_recv_port)
-    _write(config, device)
-    # Applied, so remembered: from here on every start and reload is
-    # this profile's, until --no-profile (ADR 0018).
-    remember_active_profile(name, config_path)
+    with _switch_lock(config_path) as held:
+        if not held:
+            return _refused_for_the_lock(name)
+        device = backend if backend is not None else loopback(
+            config.osc_port, config.osc_recv_port)
+        _write(config, device)
+        # Applied, so remembered: from here on every start and reload is
+        # this profile's, until --no-profile (ADR 0018).
+        remember_active_profile(name, config_path)
 
-    if not verify:
-        # Not confirmed, because nobody looked -- which is a different
-        # fact from "looked and did not see it", and the state is the
-        # same either way. Everything expected goes in the list.
-        return Outcome(state=APPLIED_UNVERIFIED, name=name,
-                       reason=NOT_CHECKED,
-                       unverified=sorted(expected_registers(config)))
-    return _check(name, config, device)
+        if not verify:
+            # Not confirmed, because nobody looked -- which is a different
+            # fact from "looked and did not see it", and the state is the
+            # same either way. Everything expected goes in the list.
+            return Outcome(state=APPLIED_UNVERIFIED, name=name,
+                           reason=NOT_CHECKED,
+                           unverified=sorted(expected_registers(config)))
+        return _check(name, config, device)
 
 
 def restore_main(config_path: Optional[Path] = None,
@@ -354,15 +440,18 @@ def restore_main(config_path: Optional[Path] = None,
     except ConfigError as exc:
         log.error("routing.conf refused, nothing written: %s", exc)
         return Outcome(state=REFUSED, name="routing.conf", reason=str(exc))
-    device = backend if backend is not None else loopback(
-        config.osc_port, config.osc_recv_port)
-    _write(config, device)
-    forget_active_profile(config_path)
-    if not verify:
-        return Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
-                       reason=NOT_CHECKED,
-                       unverified=sorted(expected_registers(config)))
-    return _check("routing.conf", config, device)
+    with _switch_lock(config_path) as held:
+        if not held:
+            return _refused_for_the_lock("routing.conf")
+        device = backend if backend is not None else loopback(
+            config.osc_port, config.osc_recv_port)
+        _write(config, device)
+        forget_active_profile(config_path)
+        if not verify:
+            return Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
+                           reason=NOT_CHECKED,
+                           unverified=sorted(expected_registers(config)))
+        return _check("routing.conf", config, device)
 
 
 def _write(config: Config, device: Backend) -> None:

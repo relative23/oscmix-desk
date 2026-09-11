@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Two profile switches at once no longer interleave on the wire.** A
+  switch and `--no-profile` hold a lock beside the marker
+  (`active-profile.lock`, `flock`) from the first datagram to the last
+  read-back; a second switch waits, says so, and refuses with the
+  reason after 30 s. Taken after the profile parsed, so a refusal for a
+  bad config still writes nothing and needs no lock. A test runs two
+  switches against two slow backends and holds that neither's datagrams
+  appear inside the other's.
+
+- **The active-profile marker is written atomically.** It was written
+  in place; a crash between open and close could leave an empty file,
+  which reads as "no profile" -- the choice silently gone on the next
+  start. It is written to `active-profile.tmp`, fsynced and renamed
+  over the marker now; a failed write leaves the old marker whole.
+
+- **A switch waits while the unit is writing the device.** Found while
+  checking the lock: with the receive port held -- the mixer GUI's
+  normal state -- the reload after a switch cannot reconcile, and a
+  switch that overlapped the start-up verifier's blind re-apply stayed
+  reverted after all. `--profile` and `--no-profile` now read the unit's
+  `Status:` line and wait while it says applying, verifying or
+  reconciling, bounded and logged, so the two never overlap.
+
+All three from the third outside review's direction -- concurrent
+switching and crash semantics -- which named the first two and led to
+the third. ADR 0018 records them.
+
 ## 0.6.3 (2026-09-11)
 
 A profile survives a start, and a switch survives the start-up

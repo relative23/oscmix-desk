@@ -81,6 +81,46 @@ device already has the profile and pretending otherwise would be the
   the user. It is one line, named for what it is, and `uninstall.sh
   --purge` removes the directory with it.
 
+## Two switches at once, and a marker that is never half written
+
+Added after a third review round (2026-09-11), which asked two things
+the first version did not answer.
+
+**Concurrent switches are serialised per config directory.** Two
+`--profile` commands at once would interleave their link phases and mix
+writes on the wire and race each other to the marker and the reload.
+A switch and `--no-profile` take `active-profile.lock` beside the marker
+(`flock`) from the first datagram to the last check, *after* the
+profile parsed, so a refusal for a bad config still costs nothing. A
+second switch waits, says so in the journal, and refuses after
+`SWITCH_LOCK_WAIT` (30 s -- one queued switch with margin) with the
+reason named: nothing written, the same outcome as any refusal. The
+lock file stays beside the config, empty; `--purge` removes it with the
+directory. The unit does not take the lock: it cannot write in `$HOME`,
+and its own writes are ordered against a switch by the reload the
+switch sends (above).
+
+**A switch does not write while the unit does.** Measured while
+checking the lock: a reload sent while the receive port was held had
+its reconcile skipped, as ADR 0013 requires when nothing can be read
+back. With the mixer GUI open that is every reload, and then the reload
+after a switch does not settle a switch that overlapped the start-up
+verifier's blind re-apply. So the switch does not overlap it: the unit
+reports its phase through `STATUS=` (0.6.3), and `--profile` and
+`--no-profile` wait while it says applying, verifying or reconciling,
+bounded by `SWITCH_LOCK_WAIT` and logged. Past the bound the switch
+proceeds and says so; an unresponsive unit must not hold a person's
+desk hostage. The reload after the switch stays, for the unit's own
+state.
+
+**The marker is written beside and renamed over.** `write_text` in
+place could leave an empty file between open and close, and an empty
+marker reads as "no profile" -- the choice gone on the next start with
+nothing saying so. The name goes to `active-profile.tmp`, is fsynced,
+and is renamed over the marker; the directory is fsynced best-effort.
+A write that fails leaves the previous marker whole and the temporary
+file removed.
+
 ## Alternatives considered
 
 - **Copy the profile over `routing.conf` on switch.** Destroys the
