@@ -20,6 +20,7 @@ a live desk is that a typo costs you a message, not your monitoring.
 """
 
 import os
+import stat
 
 import pytest
 from conftest import write_config
@@ -527,6 +528,9 @@ def test_restore_main_applies_routing_conf_and_forgets(tmp_path,
     outcome = profiles.restore_main(path, backend=recording_backend)
     assert outcome.applied
     assert outcome.name == "routing.conf"
+    assert outcome.reason != profiles.NOT_CHECKED, "a restore checks by default"
+    assert recording_backend.dumps == 1, \
+        "the read-back asks the backend it was given, not a socket of its own"
     assert not (tmp_path / "active-profile").exists()
     written = {p for p, _t, _a in recording_backend.sent}
     assert "/output/1/stereo" in written
@@ -538,6 +542,11 @@ def test_a_refused_restore_keeps_the_profile(tmp_path, recording_backend):
     (tmp_path / "active-profile").write_text("tracking\n")
     outcome = profiles.restore_main(path, backend=recording_backend)
     assert not outcome.applied
+    assert outcome.state == profiles.REFUSED
+    assert outcome.name == "routing.conf"
+    with pytest.raises(profiles.ConfigError) as parsed:
+        profiles.load_config(path)
+    assert outcome.reason == str(parsed.value), "the reason is the parse error"
     assert recording_backend.sent == []
     assert (tmp_path / "active-profile").read_text().strip() == "tracking"
 
@@ -560,7 +569,19 @@ def test_a_marker_that_cannot_be_written_does_not_change_the_outcome(
         outcome = profiles.switch_profile("tracking", config_path=path,
                                           backend=recording_backend)
     assert outcome.applied
+    assert outcome.name == "tracking"
     assert "not remembered" in caplog.text
+
+
+def test_a_switch_can_be_asked_not_to_check(tmp_path, recording_backend):
+    path = _desk(tmp_path, tracking=TRACKING)
+    outcome = profiles.switch_profile("tracking", config_path=path,
+                                      backend=recording_backend, verify=False)
+    assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.name == "tracking"
+    assert outcome.reason == profiles.NOT_CHECKED
+    assert outcome.unverified == sorted(
+        profiles.expected_registers(profiles.load_profile("tracking", path)))
 
 
 def test_restore_main_can_be_asked_not_to_check(tmp_path, recording_backend):
@@ -571,6 +592,7 @@ def test_restore_main_can_be_asked_not_to_check(tmp_path, recording_backend):
     outcome = profiles.restore_main(path, backend=recording_backend,
                                     verify=False)
     assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.name == "routing.conf"
     assert outcome.reason == profiles.NOT_CHECKED
     assert outcome.unverified == sorted(
         profiles.expected_registers(profiles.load_config(path)))
@@ -627,9 +649,15 @@ def test_the_marker_goes_through_a_temporary_file_and_a_rename(tmp_path,
         real_replace(src, dst)
 
     monkeypatch.setattr(profiles.os, "replace", record)
-    assert profiles.remember_active_profile("tracking", path) is True
+    umask = os.umask(0o022)
+    try:
+        assert profiles.remember_active_profile("tracking", path) is True
+    finally:
+        os.umask(umask)
     assert renames == [("active-profile.tmp", "active-profile")]
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
+    # A plain file, not an executable one: os.open's default mode is 0o777.
+    assert stat.S_IMODE((tmp_path / "active-profile").stat().st_mode) == 0o644
     assert not (tmp_path / "active-profile.tmp").exists()
 
 
@@ -643,6 +671,7 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
             outcome = profiles.switch_profile("tracking", config_path=path,
                                               backend=recording_backend)
     assert outcome.state == profiles.REFUSED
+    assert outcome.name == "tracking"
     assert "in progress" in outcome.reason
     assert recording_backend.sent == [], "a refused switch writes nothing"
     assert not (tmp_path / "active-profile").exists()
@@ -762,6 +791,7 @@ def test_no_profile_refuses_when_another_switch_holds_the_lock(
     with profiles._switch_lock(path):
         outcome = profiles.restore_main(path, backend=recording_backend)
     assert outcome.state == profiles.REFUSED
+    assert outcome.name == "routing.conf"
     assert "in progress" in outcome.reason
     assert recording_backend.sent == []
     assert (tmp_path / "active-profile").read_text().strip() == "tracking", \
@@ -777,3 +807,20 @@ def test_an_empty_marker_means_no_profile(tmp_path):
 def test_a_setting_is_not_stated_by_text_the_parser_rejects():
     assert profiles._states("[global\nosc_port = 1", "global", "osc_port") \
         is False
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root writes anywhere")
+def test_a_config_directory_that_cannot_be_written_is_a_warning(tmp_path,
+                                                               caplog):
+    # The temporary file never exists, so the clean-up has nothing to
+    # remove; that has to be as quiet as the write failing was loud.
+    path = _desk(tmp_path, tracking=TRACKING)
+    tmp_path.chmod(0o500)
+    try:
+        with caplog.at_level("WARNING"):
+            assert profiles.remember_active_profile("tracking", path) is False
+    finally:
+        tmp_path.chmod(0o700)
+    assert not (tmp_path / "active-profile").exists()
+    assert not (tmp_path / "active-profile.tmp").exists()
+    assert "not remembered" in caplog.text

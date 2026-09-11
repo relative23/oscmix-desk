@@ -341,9 +341,19 @@ def test_systemctl_output_returns_stdout_only_on_success(monkeypatch,
         def __init__(self, rc, out):
             self.returncode, self.stdout = rc, out
 
-    monkeypatch.setattr(process.subprocess, "run",
-                        lambda argv, **kw: Done(0, "applying routing\n"))
+    seen = []
+
+    def run(argv, **kw):
+        # Same contract as _systemctl, except that stdout is the point:
+        # captured as text, stderr dropped, never raising on a status.
+        assert kw == {"check": False, "stdout": process.subprocess.PIPE,
+                      "stderr": process.subprocess.DEVNULL, "text": True}
+        seen.append(argv)
+        return Done(0, "applying routing\n")
+
+    monkeypatch.setattr(process.subprocess, "run", run)
     assert real_systemctl_output("show", "x") == "applying routing"
+    assert seen == [["systemctl", "--user", "show", "x"]]
     monkeypatch.setattr(process.subprocess, "run",
                         lambda argv, **kw: Done(4, "ignored"))
     assert real_systemctl_output("show", "x") == ""

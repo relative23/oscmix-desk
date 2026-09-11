@@ -171,7 +171,7 @@ def test_a_switch_is_remembered_and_the_listing_shows_it(tmp_path, capsys,
 
 
 def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
-        tmp_path, capsys, monkeypatch):
+        tmp_path, capsys, monkeypatch, caplog):
     # Measured: a switch sent right after a restart was reverted by the
     # unit's start-up verifier fifteen seconds later. The reload makes
     # the unit re-read the desk in effect (ADR 0018).
@@ -182,10 +182,22 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
                                    "broken": "[route:x]\noutput = 99\nplayback = 1\n"})
     assert cli.main(["--config", str(path), "--profile", "broken"]) == EXIT_CONFIG
     assert reloads == [], "a refused switch has nothing to hand over"
-    assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
+    capsys.readouterr()
+    with caplog.at_level("INFO"):
+        assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
     assert reloads == [1]
+    assert capsys.readouterr().out.endswith("\n")
+    assert ("oscmix.service reloaded, so its own reconcile follows the new "
+            "desk") in caplog.text
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert reloads == [1, 1]
+    # A stopped unit is not an error: there is nothing whose verifier
+    # could revert the switch, and the log says so rather than nothing.
+    monkeypatch.setattr(cli, "reload_service", lambda: False)
+    caplog.clear()
+    with caplog.at_level("INFO"):
+        assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
+    assert "oscmix.service is not running; nothing to reload" in caplog.text
 
 
 def test_a_switch_waits_while_the_unit_is_writing_the_device(
@@ -221,7 +233,12 @@ def test_a_switch_waits_while_the_unit_is_writing_the_device(
     started = time.monotonic()
     with caplog.at_level("INFO"):
         assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
-    assert "waiting for it before writing" in caplog.text
+    # The line names the unit and the phase it is in: a switch that
+    # pauses without saying why looks hung.
+    assert ("oscmix.service is verifying routing; waiting for it before "
+            "writing the device") in caplog.text
+    assert "writing anyway" not in caplog.text, \
+        "the unit settled inside the wait; giving up early is the defect"
     assert 0.2 < time.monotonic() - started < 5.0
     assert (tmp_path / "active-profile").read_text().strip() == "tracking"
 
@@ -236,4 +253,5 @@ def test_a_switch_does_not_wait_forever_for_a_wedged_unit(
     path = _config_with(tmp_path, {"tracking": GOOD})
     with caplog.at_level("WARNING"):
         assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
-    assert "writing anyway" in caplog.text
+    assert ("oscmix.service still reports 'verifying routing' after 0s; "
+            "writing anyway") in caplog.text

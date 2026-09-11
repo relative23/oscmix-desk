@@ -296,8 +296,7 @@ def _fsync_directory(directory: Path) -> None:
 SWITCH_LOCK = "active-profile.lock"
 
 
-@contextlib.contextmanager
-def _switch_lock(config_path: Optional[Path]) -> Iterator[bool]:
+def _switch_lock_held(config_path: Optional[Path]) -> Iterator[bool]:
     """Hold the switch lock for this config, or yield False after the wait.
 
     Taken *after* the profile parsed: a refusal for a bad config needs
@@ -330,6 +329,13 @@ def _switch_lock(config_path: Optional[Path]) -> Iterator[bool]:
             fcntl.flock(fd, fcntl.LOCK_UN)
     finally:
         os.close(fd)
+
+
+#: Wrapped here rather than with the decorator, on purpose: mutmut
+#: leaves decorated functions unmutated, and this loop is what the
+#: no-interleave guarantee rests on (ADR 0018). A decorator kept it out
+#: of the 0.6.4 mutation run entirely; as a plain generator it is in.
+_switch_lock = contextlib.contextmanager(_switch_lock_held)
 
 
 def _refused_for_the_lock(name: str) -> Outcome:
