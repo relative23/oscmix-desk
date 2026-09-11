@@ -1,5 +1,5 @@
 {
-  "recorded": "2026-09-05",
+  "recorded": "2026-09-11",
   "note": [
     "A ratio, not a count. Absolute survivor counts rise with every",
     "line added -- new code means new mutants, so a healthy change",
@@ -129,44 +129,63 @@
     "the same interval; run 1's per-mutant results were not kept, so they",
     "cannot be attributed. Timing-dependent mutants drift by a few either",
     "way here, which is the standing reason this file says to read the",
-    "survivors rather than the number."
+    "survivors rather than the number.",
+    "",
+    "0.6.2 (2026-09-11): 0.714 -> 0.716, and not_covered 50 -> 0. The",
+    "0.6.1 baseline named the last 50 mutants with no covering test --",
+    "_await_backend_port, _install_stop_handlers, one dead function --",
+    "and this release drove the two helpers in process and deleted the",
+    "function, so for the first time every mutant in the judged scope",
+    "has a test that reaches it. 5017 -> 5167 mutants for the audit's",
+    "new code (the verifier wait, the device-table warnings, the firmware",
+    "provenance, the bounded port, the barrier trait).",
+    "",
+    "Reading the survivors of the new code found one defect and three",
+    "gaps, all fixed before the release commit: usb_revision accepted hex",
+    "digits and then called int() on them (a bcdDevice of 0a01 would",
+    "have raised; BCD is decimal, and the code says so now); the port",
+    "wait's stub ignored its arguments; the reload's stop-wait had no",
+    "timing assertion; the device-table warnings were not held to naming",
+    "what is modelled. The remaining survivors in that code are message",
+    "text and a `>=`/`>` on a monotonic deadline.",
+    "",
+    "How this number was produced, because it is not one clean run: the",
+    "full run (75 min, cache cleared, 03:02-04:18) judged 5172 mutants at",
+    "3687 killed / 1477 survived / 0 not covered, score 0.714. The fix in",
+    "usb_revision regenerated that function's mutants; the 25 survivors",
+    "in the strengthened functions were re-run by name and the 17",
+    "regenerated ones judged afterwards, which is the state recorded",
+    "below. A 76-minute re-run for a one-function change would have",
+    "measured the same tree again; what it would not have done is judge",
+    "any mutant this did not."
   ],
   "measured": {
+    "total": 5167,
+    "killed": 3693,
+    "survived": 1466,
+    "not_covered": 0,
+    "timeout": 8,
+    "score": 0.716,
+    "run_minutes": 75,
+    "cache": "cleared before the full run; the strengthened functions re-run by name afterwards (see note)",
+    "scope": "register table exempt (ADR 0015)",
+    "note": [
+      "The 0.6.2 release measurement. min_score stays 0.72: 0.716 is",
+      "a step towards it and not across it, and the ratchet moves on",
+      "a measured crossing, not on a rounding. The floor at 0.710 was",
+      "cleared by 0.006, the widest margin since 0.5.2."
+    ]
+  },
+  "previous": {
+    "recorded": "2026-09-05",
     "total": 5026,
     "killed": 3549,
     "survived": 1419,
     "not_covered": 50,
-    "timeout": 8,
     "score": 0.714,
-    "run_minutes": 74,
-    "cache": "cleared before the run, as CI does",
-    "scope": "register table exempt (ADR 0015)",
-    "note": [
-      "The 0.6.1 release measurement, on a quiet machine. The source",
-      "grew by nine mutants (the desired() check that fixes the",
-      "no-routes apply, and the widened start-up log line); the rest of",
-      "the movement is the coverage shift described above.",
-      "",
-      "min_score stays 0.72 and is not lowered to the measured score.",
-      "The rule in floor_note -- set min_score at the measurement",
-      "rounded down -- exists so the policy does not nag on the run it",
-      "was recorded from, and it is a rule for *raising*. 0.6.0 already",
-      "declined to walk the ratchet back at 0.713, and 0.714 is a step",
-      "in the right direction rather than an argument for lowering the",
-      "bar to meet it. The floor at 0.710 is what the run had to clear,",
-      "and cleared by 0.004."
-    ]
-  },
-  "previous": {
-    "recorded": "2026-08-28",
-    "total": 5017,
-    "killed": 3511,
-    "survived": 1414,
-    "not_covered": 82,
-    "score": 0.713,
     "why_it_moved": [
-      "The 0.6.0 release measurement: the opened surface spent",
-      "headroom and min_score was held at 0.72 rather than raised."
+      "The 0.6.1 release measurement, after reading the 19 survivors",
+      "in _apply_and_verify; min_score held at 0.72."
     ]
   },
   "confirmed_by_ci": {

@@ -54,7 +54,10 @@ since.
   It found two defects in this project's own register model and one
   upstream before any user could.
 - Each release attaches a **hardware evidence artifact**: the routes
-  measured, the levels, the device serial and the exact oscmix revision.
+  measured, the levels, the device serial, the exact oscmix revision
+  and, since 0.6.2, the firmware it was taken against -- because a
+  device that changed underneath the evidence would otherwise be
+  invisible in it.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
 - Seventeen [decision records](docs/decisions/) carry the reasoning and the

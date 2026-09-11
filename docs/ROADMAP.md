@@ -88,9 +88,16 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.1)
+## Where we are (0.6.2)
 
-**0.6.1 (2026-09-05)** fixes two defects an audit of the tree found:
+**0.6.2 (2026-09-10)** is what an outside review of 0.6.1 led to: the
+stale claim in `reconcile.py` it named, and what an audit found next to
+it -- channel sections silently dropped on a device without a register
+table, a reload that could write routing while the start-up verifier
+still was (measured on the desk, before and after), three functions
+nothing called, a backend trait nothing read, and evidence artifacts
+that never said which firmware they were taken against. The pin does
+not move; the register table has no new row. **0.6.1 (2026-09-05)** fixes two defects an audit of the tree found:
 a config declaring channel or global state and no route was never
 applied at start -- a `config.routes` guard from 0.1.0 that outlived
 the surface it was written for, while `--dry-run` printed the writes

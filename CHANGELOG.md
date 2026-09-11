@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.2 (2026-09-10)
 
 An outside review of 0.6.1 named stale documentation in `reconcile.py`,
 the single-device specialisation, the complexity of the reconciler, the
@@ -92,6 +92,14 @@ section is what it fixed. The pin does not move.
   process now -- the port wait returns on listen and on a dead child and
   warns on timeout; the stop handlers set the flag, tell systemd first
   and terminate only a backend that is still there.
+
+- **The mutation run's survivors in the new code were read, and one
+  was a defect.** `usb_revision` accepted hex digits and then called
+  `int()` on them; a `bcdDevice` of `0a01` would have raised. BCD is
+  decimal, and the code and a test say so now. Three test stubs that
+  ignored their arguments or asserted no timing were tightened. The
+  not-covered bucket is empty for the first time: 50 -> 0, score 0.716
+  against a floor of 0.710.
 
 - **The performance gate skips on an overloaded host instead of
   failing.** `make flake` failed once on 2026-09-05 with the
