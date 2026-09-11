@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 import pytest
-from conftest import free_udp_port
+from conftest import free_udp_port, read_until_ready
 from test_session_integration import (
     ROUTING_CONF,
     SESSION_BIN,
@@ -116,7 +116,7 @@ def one_startup(tmp_path, session_mod, cycle):
                     for line in datagram_log.read_text().splitlines()]
         assert received[:9] == expected, "cycle %d: routing diverged" % cycle
 
-        assert notify.recv(4096) == b"READY=1", \
+        assert read_until_ready(notify) == b"READY=1", \
             "cycle %d: readiness was not signalled" % cycle
 
         # The ports reaching the backend are part of the result, not a

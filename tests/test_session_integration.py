@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 import pytest
-from conftest import free_udp_port
+from conftest import free_udp_port, read_until_ready
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SESSION_BIN = PROJECT_ROOT / "bin" / "oscmix-session"
@@ -302,7 +302,7 @@ def test_full_startup_verification_notify_and_shutdown(tmp_path, session_mod):
 
         # READY=1 arrives once the backend is up and the routing was
         # applied (verification then runs in the background).
-        assert notify.recv(4096) == b"READY=1"
+        assert read_until_ready(notify) == b"READY=1"
 
         proc.send_signal(signal.SIGTERM)
         assert proc.wait(timeout=10) == 0

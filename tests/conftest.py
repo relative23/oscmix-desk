@@ -60,6 +60,23 @@ def free_udp_port():
             return port
 
 
+def read_until_ready(notify_sock):
+    """The first non-STATUS datagram on a notify socket.
+
+    Since 0.6.3 the session reports its phase to systemd with STATUS=
+    before READY=1 -- legitimate protocol, and what `systemctl status`
+    shows while the unit is still activating. A test that asserts the
+    *first* datagram is READY would fail on that; this returns the first
+    datagram that is not a STATUS line, and asserts nothing else came
+    before it.
+    """
+    while True:
+        datagram = notify_sock.recv(4096)
+        if datagram.startswith(b"STATUS="):
+            continue
+        return datagram
+
+
 def osc_bundle(messages):
     """Pack OSC messages into one bundle datagram."""
     bundle = bytearray(b"#bundle\x00" + b"\x00" * 8)
