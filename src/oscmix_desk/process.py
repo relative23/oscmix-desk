@@ -160,3 +160,39 @@ def reload_service() -> bool:
     if _systemctl("is-active", "--quiet", SERVICE_UNIT) != 0:
         return False
     return _systemctl("reload", SERVICE_UNIT) == 0
+
+
+def _systemctl_output(*verb: str) -> str:
+    """Stdout of ``systemctl --user <verb...>``, or "" when it fails.
+
+    Same single seam as _systemctl, for the one call that needs the
+    output rather than the status; the tests stub both.
+    """
+    try:
+        done = subprocess.run(["systemctl", "--user", *verb], check=False,
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                              text=True)
+    except OSError:
+        return ""
+    return done.stdout.strip() if done.returncode == 0 else ""
+
+
+#: The phases the session reports that mean "the unit is writing the
+#: device": a second process must not write while one is current.
+WRITING_PHASES = ("applying", "verifying", "reconciling")
+
+
+def service_phase() -> str:
+    """What the unit says it is doing, from its STATUS= line, or "".
+
+    The session reports `applying routing`, `verifying routing`,
+    `reconciling (SIGHUP)` and `running; ... at HH:MM:SS`. Empty when the
+    unit is not running or has not reported yet.
+    """
+    return _systemctl_output("show", SERVICE_UNIT, "-p", "StatusText",
+                             "--value")
+
+
+def service_is_writing() -> bool:
+    """Whether a switch must wait before touching the device."""
+    return service_phase().startswith(WRITING_PHASES)

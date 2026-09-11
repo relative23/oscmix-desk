@@ -21,13 +21,14 @@ from .constants import (
     EXIT_FAILURE,
     EXIT_OK,
     SERVICE_UNIT,
+    SWITCH_LOCK_WAIT,
     __version__,
 )
 from .discovery import device_firmware, device_serial
 from .errors import ConfigError
 from .log import log
 from .pipewire import generate_pipewire_conf, pw_sink_info
-from .process import reload_service
+from .process import reload_service, service_is_writing, service_phase
 from .profiles import (
     REFUSED,
     Outcome,
@@ -152,9 +153,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return EXIT_OK
 
     if args.profile:
+        _wait_for_the_unit_to_settle()
         return _switch_profile(args.profile, config_path)
 
     if args.no_profile:
+        _wait_for_the_unit_to_settle()
         return _report_outcome(restore_main(config_path))
 
     if args.snapshot:
@@ -205,6 +208,33 @@ def _switch_profile(name: str, config_path: Optional[Path]) -> int:
     and nothing was written.
     """
     return _report_outcome(switch_profile(name, config_path=config_path))
+
+
+def _wait_for_the_unit_to_settle() -> None:
+    """Do not write the device while the unit says it is writing it.
+
+    The reload after a switch (process.reload_service) settles the desk
+    to the profile -- when the unit can read the device back. With the
+    mixer GUI holding the receive port it cannot, its reconcile is
+    skipped by design (ADR 0013), and a switch that overlapped the
+    start-up verifier's blind re-apply would stay reverted. So the
+    switch does not overlap it: the unit reports its phase through
+    STATUS=, and a switch waits while it says applying, verifying or
+    reconciling. Bounded, and the wait is logged; past the bound the
+    switch proceeds and says so, because an unresponsive unit must not
+    hold a person's desk hostage.
+    """
+    if not service_is_writing():
+        return
+    log.info("%s is %s; waiting for it before writing the device",
+             SERVICE_UNIT, service_phase())
+    deadline = time.monotonic() + SWITCH_LOCK_WAIT
+    while service_is_writing():
+        if time.monotonic() >= deadline:
+            log.warning("%s still reports %r after %.0fs; writing anyway",
+                        SERVICE_UNIT, service_phase(), SWITCH_LOCK_WAIT)
+            return
+        time.sleep(0.25)
 
 
 def _report_outcome(outcome: "Outcome") -> int:

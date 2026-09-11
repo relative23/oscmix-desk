@@ -186,3 +186,54 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     assert reloads == [1]
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert reloads == [1, 1]
+
+
+def test_a_switch_waits_while_the_unit_is_writing_the_device(
+        tmp_path, capsys, monkeypatch, caplog):
+    """The unit's STATUS= line gates the switch.
+
+    With the mixer GUI holding the receive port the reload after a
+    switch cannot reconcile (ADR 0013), so a switch that overlapped the
+    start-up verifier's blind re-apply would stay reverted. The switch
+    therefore waits while the unit says it is writing.
+    """
+    import time
+
+    _quick_wire(monkeypatch)
+    monkeypatch.setattr(cli, "reload_service", lambda: True)
+    phases = iter(["verifying routing", "verifying routing",
+                   "running; verifier finished at 12:00:00"])
+    current = {"phase": next(phases)}
+
+    def phase():
+        return current["phase"]
+
+    def writing():
+        answer = current["phase"].startswith(("applying", "verifying",
+                                              "reconciling"))
+        if answer:
+            current["phase"] = next(phases)
+        return answer
+
+    monkeypatch.setattr(cli, "service_phase", phase)
+    monkeypatch.setattr(cli, "service_is_writing", writing)
+    path = _config_with(tmp_path, {"tracking": GOOD})
+    started = time.monotonic()
+    with caplog.at_level("INFO"):
+        assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
+    assert "waiting for it before writing" in caplog.text
+    assert 0.2 < time.monotonic() - started < 5.0
+    assert (tmp_path / "active-profile").read_text().strip() == "tracking"
+
+
+def test_a_switch_does_not_wait_forever_for_a_wedged_unit(
+        tmp_path, capsys, monkeypatch, caplog):
+    _quick_wire(monkeypatch)
+    monkeypatch.setattr(cli, "reload_service", lambda: True)
+    monkeypatch.setattr(cli, "SWITCH_LOCK_WAIT", 0.4)
+    monkeypatch.setattr(cli, "service_phase", lambda: "verifying routing")
+    monkeypatch.setattr(cli, "service_is_writing", lambda: True)
+    path = _config_with(tmp_path, {"tracking": GOOD})
+    with caplog.at_level("WARNING"):
+        assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
+    assert "writing anyway" in caplog.text
