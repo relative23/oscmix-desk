@@ -413,6 +413,33 @@ def test_a_finished_verifier_does_not_delay_the_reload(tmp_path, session_mod,
     assert applied == [1]
 
 
+def test_a_reload_applies_the_remembered_profile(tmp_path, session_mod,
+                                                 monkeypatch):
+    """The resume hook's reload must re-apply the desk that was chosen.
+
+    A reload used to re-read routing.conf and apply that, which is how a
+    profile vanished after every wake (ADR 0018). It asks the same
+    question the start asks now: the active profile, else routing.conf.
+    """
+    import argparse
+
+    from conftest import write_config
+
+    from oscmix_desk import session as session_module
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:main]\noutput = 1/2\nplayback = 1/2\n")
+    write_config(tmp_path / "profiles" / "tracking.conf",
+                 "[route:direct]\noutput = 5/6\nplayback = 5/6\n")
+    (tmp_path / "active-profile").write_text("tracking\n")
+    applied = []
+    monkeypatch.setattr(session_module, "reconcile_now",
+                        lambda config, *a, **k: applied.append(config))
+    session_module._reconcile(argparse.Namespace(config=path),
+                              session_mod.Config(), {"stop": False})
+    assert [r.output for r in applied[0].routes] == [(5, 6)]
+
+
 def test_the_installer_and_uninstaller_agree_about_the_sleep_hook():
     """uninstall.sh says it removes everything install.sh created.
 

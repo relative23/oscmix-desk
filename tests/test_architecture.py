@@ -57,8 +57,13 @@ ALLOWED_IMPORTS = {
                "registers", "routing"},
     "pipewire": {"config", "errors", "log"},
     "process": {"constants", "discovery", "log"},
+    # `profiles` since 0.6.3: a reload has to apply the same desk a
+    # start does, and "the active profile, else routing.conf" is
+    # answered in profiles.effective_config. profiles sits above verify
+    # and imports nothing from session, so no cycle.
     "session": {"config", "constants", "discovery", "errors", "log",
-                "notify", "process", "reconcile", "routing", "verify"},
+                "notify", "process", "profiles", "reconcile", "routing",
+                "verify"},
     # `discovery` since 0.6.2: the snapshot header names the device's
     # serial and firmware, which are the leaf's to answer. A leaf with no
     # imports of its own, already below session; cli reading it changes

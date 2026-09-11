@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import Dict, Optional
 
-from .config import Config, discover_config_path, load_config
+from .config import Config, discover_config_path
 from .constants import (
     EXIT_FAILURE,
     EXIT_OK,
@@ -29,6 +29,7 @@ from .errors import ConfigError
 from .log import log
 from .notify import sd_notify
 from .process import _cleanup_stale_backend, supervise
+from .profiles import effective_config
 from .reconcile import desired, plan
 from .routing import apply_routing, wait_unless_stopped
 from .verify import reconcile_now, verify_and_repair
@@ -297,7 +298,11 @@ def _reconcile(args: argparse.Namespace, config: Config,
     fresh = config
     if path is not None:
         try:
-            fresh = load_config(path)
+            # The active profile if one is remembered, routing.conf
+            # otherwise -- the same answer the start gives (ADR 0018),
+            # which is what makes the resume hook's reload re-apply the
+            # desk that was chosen rather than the default one.
+            fresh, _active = effective_config(path)
         except ConfigError as exc:
             log.error("SIGHUP: %s is not usable (%s); keeping the running "
                       "configuration", path, exc)

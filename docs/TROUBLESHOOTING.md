@@ -323,7 +323,9 @@ stays where you put it. `[pin] output.volume` does not change this: it
 decides who wins for a value the config declares, not whether the
 config declares it.
 
-The same rule undoes a profile. `oscmix-session --profile X` writes X to
-the device; the service keeps running on `routing.conf`, and the next
-start or reload re-applies `routing.conf` over it. See *Profiles* in the
-README.
+A profile, by contrast, survives all of this since 0.6.3: the switch
+remembers it beside `routing.conf`, and starts and reloads apply the
+remembered profile. If the desk came back as `routing.conf` anyway,
+the journal's start line says why -- the marker names a profile that
+no longer loads -- and `--no-profile` or fixing the file ends it. See
+*Profiles* in the README and ADR 0018.

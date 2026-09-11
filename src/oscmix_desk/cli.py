@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import logging
 import os
 import sys
@@ -11,7 +12,7 @@ from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
 
 from .backend import loopback
-from .config import Config, discover_config_path, load_config
+from .config import Config, discover_config_path, profile_path
 from .constants import (
     DEFAULT_DEVICE_TIMEOUT,
     DUMP_LISTEN_SETTLE,
@@ -25,7 +26,14 @@ from .discovery import device_firmware, device_serial
 from .errors import ConfigError
 from .log import log
 from .pipewire import generate_pipewire_conf, pw_sink_info
-from .profiles import REFUSED, describe_profiles, switch_profile
+from .profiles import (
+    REFUSED,
+    Outcome,
+    describe_profiles,
+    effective_config,
+    restore_main,
+    switch_profile,
+)
 from .reconcile import (
     PHASE_CHANNEL,
     PHASE_LINK,
@@ -89,7 +97,11 @@ def build_arg_parser() -> ArgumentParser:
                         help="switch the desk to profiles/NAME.conf and "
                              "report the outcome, then exit")
     parser.add_argument("--list-profiles", action="store_true",
-                        help="list the profiles found beside the config")
+                        help="list the profiles found beside the config; "
+                             "the active one is marked")
+    parser.add_argument("--no-profile", action="store_true",
+                        help="apply routing.conf again and forget the "
+                             "active profile, then exit")
     parser.add_argument("--verbose", action="store_true", help="debug logging")
     parser.add_argument("--version", action="version", version=__version__)
     return parser
@@ -105,15 +117,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     config_path = args.config or discover_config_path()
     try:
-        config = load_config(config_path)
+        # The active profile if one is remembered, else routing.conf
+        # (ADR 0018); only routing.conf itself can refuse the start.
+        config, active = effective_config(config_path)
     except ConfigError as exc:
         log.error("configuration error: %s", exc)
         return EXIT_CONFIG
     if config_path is None:
         log.info("no routing.conf found; using defaults without routing")
     else:
+        source = (profile_path(active, config_path) if active
+                  else config_path)
         log.info("configuration: %s (%d route(s), %d channel setting(s), "
-                 "%d global setting(s))", config_path, len(config.routes),
+                 "%d global setting(s))", source, len(config.routes),
                  len(config.channels), len(config.globals))
 
     if args.device:
@@ -136,6 +152,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.profile:
         return _switch_profile(args.profile, config_path)
 
+    if args.no_profile:
+        return _report_outcome(restore_main(config_path))
+
     if args.snapshot:
         return _snapshot(config)
 
@@ -146,24 +165,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _dump_config(config)
 
     if args.pipewire_sinks:
-        target, positions = args.pipewire_target, None
-        info = pw_sink_info(config.device_name, target=target)
-        if info:
-            target, positions = info
-            log.info("target sink %s (%s channel layout)", target,
-                     "%d-channel" % len(positions) if positions else "unknown")
-        elif target is None:
-            log.warning("could not auto-detect the Fireface sink via pw-dump; "
-                        "replace the FIXME target in the output "
-                        "('wpctl status' shows the sink name)")
-        try:
-            sys.stdout.write(generate_pipewire_conf(config, target, positions))
-        except ConfigError as exc:
-            log.error("%s", exc)
-            return EXIT_CONFIG
-        return EXIT_OK
+        return _pipewire_sinks(args, config)
 
     return run_session(args, config)
+
+
+def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
+    """Print one named PipeWire sink per stereo route of the desk in effect."""
+    target, positions = args.pipewire_target, None
+    info = pw_sink_info(config.device_name, target=target)
+    if info:
+        target, positions = info
+        log.info("target sink %s (%s channel layout)", target,
+                 "%d-channel" % len(positions) if positions else "unknown")
+    elif target is None:
+        log.warning("could not auto-detect the Fireface sink via pw-dump; "
+                    "replace the FIXME target in the output "
+                    "('wpctl status' shows the sink name)")
+    try:
+        sys.stdout.write(generate_pipewire_conf(config, target, positions))
+    except ConfigError as exc:
+        log.error("%s", exc)
+        return EXIT_CONFIG
+    return EXIT_OK
 
 
 def _switch_profile(name: str, config_path: Optional[Path]) -> int:
@@ -178,7 +202,15 @@ def _switch_profile(name: str, config_path: Optional[Path]) -> int:
     at startup, because it is the same failure: the config did not parse
     and nothing was written.
     """
-    outcome = switch_profile(name, config_path=config_path)
+    return _report_outcome(switch_profile(name, config_path=config_path))
+
+
+def _report_outcome(outcome: "Outcome") -> int:
+    """One line on stdout and the exit code the outcome maps to.
+
+    Shared by the switch and by `--no-profile`, which is the same
+    transaction with routing.conf as the desk (ADR 0018).
+    """
     sys.stdout.write(outcome.describe() + "\n")
     if outcome.state == REFUSED:
         return EXIT_CONFIG

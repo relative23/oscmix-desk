@@ -232,13 +232,18 @@ nothing at all can be confirmed. Both cases say so instead of claiming
 success. The reasoning is in
 [ADR 0011](docs/decisions/0011-a-profile-switch-states-its-outcome.md).
 
-**A profile lasts until the next start.** The switch writes the profile
-to the device; the service keeps running on `routing.conf`. The next
-backend start -- a replug, a reboot, `systemctl --user restart` --
-re-applies `routing.conf`, and so does every reload, including the one
-the resume hook sends after a suspend. To make a profile the desk's
-default, copy it over `routing.conf`. A remembered active profile that
-survives a start is on the [roadmap](docs/ROADMAP.md).
+**A profile survives a start.** The switch remembers the profile's
+name in `active-profile` beside `routing.conf`, and every backend start
+and every reload -- a replug, a reboot, the resume hook's reconcile
+after a suspend -- applies the profile rather than `routing.conf`. The
+journal says which one is in effect. `oscmix-session --no-profile`
+applies `routing.conf` again and forgets the profile;
+`--list-profiles` marks the active one. A remembered profile that no
+longer loads falls back to `routing.conf` with a warning, and keeps
+warning until you decide. While a profile is active, edits to
+`routing.conf`'s routes are not in effect; edits to `[osc]` and
+`[device]` are, because a profile inherits those. The reasoning is in
+[ADR 0018](docs/decisions/0018-the-active-profile-survives-a-start.md).
 
 ## What comes back after a restart, and what does not
 

@@ -37,10 +37,10 @@ from __future__ import annotations
 import configparser
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Tuple
 
 from .backend import Backend, loopback
-from .config import Config, load_config, profile_path
+from .config import Config, list_profiles, load_config, profile_path
 from .constants import VERIFY_TIMEOUT
 from .errors import ConfigError
 from .log import log
@@ -196,6 +196,112 @@ def _states(text: str, section: str, option: str) -> bool:
     return parser.has_option(section, option)
 
 
+#: Where the active profile's name is kept: one line, beside
+#: routing.conf. Written by the CLI after an applied switch, removed by
+#: `--no-profile`, and only ever *read* by the session -- which is what
+#: keeps the unit's ProtectHome=read-only true. Beside the config rather
+#: than in a state directory, so that `--config` selects the profiles
+#: and the marker together (ADR 0018).
+ACTIVE_MARKER = "active-profile"
+
+
+def active_profile_path(config_path: Optional[Path]) -> Optional[Path]:
+    """The marker file for this config, or None without a config."""
+    if config_path is None:
+        return None
+    return Path(config_path).parent / ACTIVE_MARKER
+
+
+def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
+    """The remembered profile name, or None.
+
+    A marker whose content is not a profile name is ignored with a
+    warning rather than trusted: the name is used to build a path.
+    """
+    path = active_profile_path(config_path)
+    if path is None or not path.is_file():
+        return None
+    try:
+        name = path.read_text().strip()
+    except OSError as exc:
+        log.warning("ignoring %s: %s", path, exc)
+        return None
+    if not name:
+        return None
+    try:
+        profile_path(name, config_path)
+    except ConfigError as exc:
+        log.warning("ignoring %s: %s", path, exc)
+        return None
+    return name
+
+
+def remember_active_profile(name: str, config_path: Optional[Path]) -> bool:
+    """Record a switch that was applied. False, and a warning, if it cannot.
+
+    Not an outcome state: the device already has the profile, and a
+    fourth state for "applied but forgotten" would be the "applied, but
+    the flag says otherwise" case ADR 0011 forbids.
+    """
+    path = active_profile_path(config_path)
+    if path is None:
+        return False
+    try:
+        path.write_text(name + "\n")
+    except OSError as exc:
+        log.warning("profile %r applied but not remembered: cannot write "
+                    "%s (%s); the next start applies routing.conf", name,
+                    path, exc)
+        return False
+    return True
+
+
+def forget_active_profile(config_path: Optional[Path]) -> None:
+    """Remove the marker; nothing to remove is not an error."""
+    path = active_profile_path(config_path)
+    if path is None:
+        return
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        log.warning("cannot remove %s (%s); the next start will apply the "
+                    "profile it names", path, exc)
+
+
+def effective_config(config_path: Optional[Path]) -> Tuple[Config, Optional[str]]:
+    """The desk a start applies, and the profile it came from.
+
+    The active profile when one is remembered and loads, `routing.conf`
+    otherwise. Every path that asks "what desk did you declare" -- the
+    start, SIGHUP, --dry-run, --diff -- asks here, so they cannot
+    disagree about it.
+
+    Raises ConfigError only for `routing.conf` itself: a main config
+    that does not parse is exit 2 as it always was. A remembered profile
+    that does not load is a warning and a fallback, because a refused
+    start over a file nobody edited is the failure ADR 0006 exists to
+    prevent; the marker stays, so the warning stays until somebody
+    decides (ADR 0018).
+    """
+    main = load_config(config_path)
+    name = active_profile(config_path)
+    if name is None:
+        return main, None
+    try:
+        profile = load_profile(name, config_path)
+    except ConfigError as exc:
+        log.warning("active profile %r is not usable (%s); applying %s "
+                    "instead -- fix the file, or `--no-profile`",
+                    name, exc, config_path)
+        return main, None
+    log.info("active profile %r (%s) is in effect; the routes and channel "
+             "state in %s are not", name, profile_path(name, config_path),
+             config_path)
+    return profile, name
+
+
 def switch_profile(name: str, config_path: Optional[Path] = None,
                    backend: Optional[Backend] = None,
                    verify: bool = True) -> Outcome:
@@ -218,6 +324,9 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
     device = backend if backend is not None else loopback(
         config.osc_port, config.osc_recv_port)
     _write(config, device)
+    # Applied, so remembered: from here on every start and reload is
+    # this profile's, until --no-profile (ADR 0018).
+    remember_active_profile(name, config_path)
 
     if not verify:
         # Not confirmed, because nobody looked -- which is a different
@@ -227,6 +336,33 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
                        reason=NOT_CHECKED,
                        unverified=sorted(expected_registers(config)))
     return _check(name, config, device)
+
+
+def restore_main(config_path: Optional[Path] = None,
+                 backend: Optional[Backend] = None,
+                 verify: bool = True) -> Outcome:
+    """Apply `routing.conf` again and forget the active profile.
+
+    The same transaction as a switch, with the main config as the desk
+    and "routing.conf" as the name the outcome carries: parsed and
+    validated in full before the first datagram, then written, then
+    checked. The marker goes only once the write is on the wire; a
+    refused restore leaves the profile in effect and says so.
+    """
+    try:
+        config = load_config(config_path)
+    except ConfigError as exc:
+        log.error("routing.conf refused, nothing written: %s", exc)
+        return Outcome(state=REFUSED, name="routing.conf", reason=str(exc))
+    device = backend if backend is not None else loopback(
+        config.osc_port, config.osc_recv_port)
+    _write(config, device)
+    forget_active_profile(config_path)
+    if not verify:
+        return Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
+                       reason=NOT_CHECKED,
+                       unverified=sorted(expected_registers(config)))
+    return _check("routing.conf", config, device)
 
 
 def _write(config: Config, device: Backend) -> None:
@@ -291,16 +427,20 @@ def _check(name: str, config: Config, device: Backend) -> Outcome:
 
 
 def describe_profiles(config_path: Optional[Path] = None) -> Sequence[str]:
-    """Profile names with a one-line summary each, for ``--list-profiles``."""
-    from .config import list_profiles
+    """Profile names with a one-line summary each, for ``--list-profiles``.
 
+    The active one is marked, because "which desk am I on" is the
+    question this list is most often asked.
+    """
+    active = active_profile(config_path)
     lines = []
     for name in list_profiles(config_path):
+        mark = "  (active)" if name == active else ""
         try:
             config = load_profile(name, config_path)
         except ConfigError as exc:
-            lines.append("%-16s  BROKEN: %s" % (name, exc))
+            lines.append("%-16s  BROKEN: %s%s" % (name, exc, mark))
             continue
-        lines.append("%-16s  %d route(s), %d channel section(s)"
-                     % (name, len(config.routes), len(config.channels)))
+        lines.append("%-16s  %d route(s), %d channel section(s)%s"
+                     % (name, len(config.routes), len(config.channels), mark))
     return lines

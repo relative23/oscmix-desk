@@ -376,6 +376,49 @@ def test_a_config_with_no_routes_is_applied_at_start(tmp_path, session_mod):
         terminate(proc)
 
 
+def test_a_remembered_profile_is_applied_at_start(tmp_path, session_mod):
+    """End to end: the marker beside routing.conf decides the desk.
+
+    routing.conf routes to outputs 1/2, the remembered profile to 5/6.
+    The stub must see the profile's links and mix and none of
+    routing.conf's, and the journal must name the profile.
+    """
+    port, recv_port = free_udp_port(), free_udp_port()
+    env, stub_dir, _ = make_env(tmp_path, with_client=True, with_usb=True,
+                                port=port)
+    config = tmp_path / "routing.conf"
+    config.write_text(ROUTING_CONF.format(port=port, recv_port=recv_port)
+                      .replace("output = 5/6", "output = 1/2"))
+    (tmp_path / "profiles").mkdir()
+    (tmp_path / "profiles" / "tracking.conf").write_text(
+        "[route:direct]\nplayback = 5/6\noutput = 5/6\n")
+    (tmp_path / "active-profile").write_text("tracking\n")
+
+    proc = subprocess.Popen(
+        [sys.executable, str(SESSION_BIN), "--config", str(config),
+         "--timeout", "5"],
+        env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    )
+    try:
+        datagram_log = stub_dir / "datagrams.hex"
+        assert wait_for(lambda: datagram_log.exists()
+                        and len(datagram_log.read_text().splitlines()) >= 3)
+        received = [bytes.fromhex(line)
+                    for line in datagram_log.read_text().splitlines()]
+        assert received[:3] == [
+            session_mod.encode_osc("/playback/5/stereo", "i", 1),
+            session_mod.encode_osc("/output/5/stereo", "i", 1),
+            session_mod.encode_osc("/mix/5/playback/5", "fi", 0.0, 0),
+        ]
+        proc.send_signal(signal.SIGTERM)
+        assert proc.wait(timeout=10) == 0
+        stderr = proc.stderr.read()
+        assert "active profile 'tracking'" in stderr
+        assert "/output/1/stereo" not in datagram_log.read_text()
+    finally:
+        terminate(proc)
+
+
 def test_sigterm_ignoring_backend_gets_sigkilled(tmp_path):
     port = free_udp_port()
     env, stub_dir, _ = make_env(

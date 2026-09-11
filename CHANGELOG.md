@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **A profile survives a start.** `--profile X` used to write X to the
+  device and exit while the service kept `routing.conf`; the next
+  replug, restart or reload -- including the resume hook's after every
+  suspend -- re-applied `routing.conf` over it, with the journal naming
+  exactly what it had applied. The switch now remembers the profile in
+  `active-profile` beside `routing.conf`; every start and reload applies
+  the remembered profile, and the start line says which desk is in
+  effect and that `routing.conf`'s routes are not. `--no-profile`
+  applies `routing.conf` again and forgets; `--list-profiles` marks the
+  active one; `--diff` and `--dry-run` speak for the effective config. A
+  remembered profile that no longer loads falls back to `routing.conf`
+  with a warning that stays until somebody decides. The service only
+  reads the marker, so the unit's read-only home holds. ADR 0018 has
+  the reasoning and the alternatives; roadmap item F is closed.
+
 ## 0.6.2 (2026-09-10)
 
 An outside review of 0.6.1 named stale documentation in `reconcile.py`,

@@ -13,6 +13,7 @@ enforces that, along with the layering the modules are arranged in:
     routing                     config, constants, log, osc
     verify                      routing, ...
     pipewire, process           leaves plus config/discovery
+    profiles                    routing, verify; the desk in effect
     session                     composes everything below it
     cli                         the only entry point
 """
@@ -64,8 +65,11 @@ from .profiles import (
                         APPLIED_VERIFIED,
                         REFUSED,
                         Outcome,
+                        active_profile,
                         describe_profiles,
+                        effective_config,
                         load_profile,
+                        restore_main,
                         switch_profile,
 )
 from .reconcile import link_messages, mix_messages, policy_for
@@ -112,12 +116,14 @@ __all__ = [
                         "Route",
                         "VerifyResult",
                         "__version__",
+                        "active_profile",
                         "apply_routing",
                         "await_link_echo",
                         "blind_reapply_mix",
                         "decode_osc",
                         "describe_profiles",
                         "discover_config_path",
+                        "effective_config",
                         "encode_osc",
                         "expected_registers",
                         "find_seq_client",
@@ -139,6 +145,7 @@ __all__ = [
                         "pw_sink_info",
                         "register_promptly_reported",
                         "resolve_binary",
+                        "restore_main",
                         "run_session",
                         "sd_notify",
                         "send_mix",

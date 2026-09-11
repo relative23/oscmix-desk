@@ -28,3 +28,4 @@ silences half the outputs.
 | [0015](0015-the-register-table-is-not-mutated.md) | The register table is exempt from mutation, and checked against recordings instead |
 | [0016](0016-no-register-is-declared-dangerous.md) | No 0.4.0 register is declared dangerous, and the clock source stays pinned |
 | [0017](0017-the-osc-port-is-the-trust-boundary.md) | The OSC port is the trust boundary, and it has none |
+| [0018](0018-the-active-profile-survives-a-start.md) | The active profile is remembered beside the config, and a start applies it |

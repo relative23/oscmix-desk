@@ -431,3 +431,131 @@ def test_not_checking_reads_differently_from_checking_and_missing(
     assert outcome.state == profiles.APPLIED_UNVERIFIED
     assert "not checked" in outcome.describe()
     assert "unconfirmed" not in outcome.describe()
+
+
+# --------------------------------------------------------------------------
+# The active profile survives a start (ADR 0018).
+# --------------------------------------------------------------------------
+
+def _desk(tmp_path, main=GOOD, **named):
+    """routing.conf with free ports, plus named profiles beside it."""
+    from conftest import free_udp_port
+
+    for name, text in named.items():
+        write_config(tmp_path / "profiles" / ("%s.conf" % name), text)
+    return write_config(tmp_path / "routing.conf",
+                        "[osc]\nport = %d\nrecv-port = %d\n%s"
+                        % (free_udp_port(), free_udp_port(), main))
+
+
+TRACKING = """
+[route:direct]
+output = 5/6
+playback = 5/6
+"""
+
+
+def test_an_applied_switch_is_remembered_beside_the_config(tmp_path,
+                                                          recording_backend):
+    path = _desk(tmp_path, tracking=TRACKING)
+    outcome = profiles.switch_profile("tracking", config_path=path,
+                                      backend=recording_backend)
+    assert outcome.applied
+    assert (tmp_path / "active-profile").read_text().strip() == "tracking"
+    assert profiles.active_profile(path) == "tracking"
+
+
+def test_a_refused_switch_remembers_nothing(tmp_path, recording_backend):
+    path = _desk(tmp_path, broken="[route:x]\noutput = 99\nplayback = 1\n")
+    assert not profiles.switch_profile("broken", config_path=path,
+                                       backend=recording_backend).applied
+    assert not (tmp_path / "active-profile").exists()
+    assert profiles.active_profile(path) is None
+
+
+def test_effective_config_is_the_remembered_profile(tmp_path):
+    path = _desk(tmp_path, tracking=TRACKING)
+    (tmp_path / "active-profile").write_text("tracking\n")
+    config, name = profiles.effective_config(path)
+    assert name == "tracking"
+    assert [r.output for r in config.routes] == [(5, 6)]
+    # Machine settings still come from routing.conf (ADR 0011).
+    assert config.osc_port != 7222
+
+
+def test_without_a_marker_the_effective_config_is_routing_conf(tmp_path):
+    path = _desk(tmp_path, tracking=TRACKING)
+    config, name = profiles.effective_config(path)
+    assert name is None
+    assert [r.output for r in config.routes] == [(1, 2)]
+
+
+@pytest.mark.parametrize(("marker", "why"), [
+    ("gone\n", "names a profile that does not exist"),
+    ("broken\n", "names a profile that does not parse"),
+    ("../../etc/passwd\n", "is not a profile name"),
+])
+def test_a_marker_that_cannot_be_honoured_falls_back_with_a_warning(
+        tmp_path, caplog, marker, why):
+    # The desk must come up; a refused start over a file nobody edited is
+    # the failure ADR 0006 exists to prevent. The marker stays, so the
+    # warning stays until somebody decides.
+    path = _desk(tmp_path, tracking=TRACKING,
+                 broken="[route:x]\noutput = 99\nplayback = 1\n")
+    (tmp_path / "active-profile").write_text(marker)
+    with caplog.at_level("WARNING"):
+        config, name = profiles.effective_config(path)
+    assert name is None, why
+    assert [r.output for r in config.routes] == [(1, 2)]
+    assert "ignoring" in caplog.text or "not usable" in caplog.text
+    assert (tmp_path / "active-profile").exists(), "the choice is kept"
+
+
+def test_a_broken_routing_conf_still_refuses_the_start(tmp_path):
+    path = write_config(tmp_path / "routing.conf", "[route:x]\nplayback = 1\n")
+    (tmp_path / "active-profile").write_text("tracking\n")
+    with pytest.raises(profiles.ConfigError):
+        profiles.effective_config(path)
+
+
+def test_restore_main_applies_routing_conf_and_forgets(tmp_path,
+                                                       recording_backend):
+    path = _desk(tmp_path, tracking=TRACKING)
+    (tmp_path / "active-profile").write_text("tracking\n")
+    outcome = profiles.restore_main(path, backend=recording_backend)
+    assert outcome.applied
+    assert outcome.name == "routing.conf"
+    assert not (tmp_path / "active-profile").exists()
+    written = {p for p, _t, _a in recording_backend.sent}
+    assert "/output/1/stereo" in written
+    assert "/output/5/stereo" not in written
+
+
+def test_a_refused_restore_keeps_the_profile(tmp_path, recording_backend):
+    path = write_config(tmp_path / "routing.conf", "[route:x]\nplayback = 1\n")
+    (tmp_path / "active-profile").write_text("tracking\n")
+    outcome = profiles.restore_main(path, backend=recording_backend)
+    assert not outcome.applied
+    assert recording_backend.sent == []
+    assert (tmp_path / "active-profile").read_text().strip() == "tracking"
+
+
+def test_the_listing_marks_the_active_profile(tmp_path):
+    path = _desk(tmp_path, tracking=TRACKING, mixdown=GOOD)
+    (tmp_path / "active-profile").write_text("mixdown\n")
+    lines = profiles.describe_profiles(path)
+    assert [line.startswith("mixdown") and line.endswith("(active)")
+            for line in lines] == [True, False]
+
+
+def test_a_marker_that_cannot_be_written_does_not_change_the_outcome(
+        tmp_path, recording_backend, caplog, monkeypatch):
+    # Not a fourth state: the device has the profile, ADR 0011.
+    path = _desk(tmp_path, tracking=TRACKING)
+    marker = tmp_path / "active-profile"
+    marker.mkdir()          # a directory where the file should be
+    with caplog.at_level("WARNING"):
+        outcome = profiles.switch_profile("tracking", config_path=path,
+                                          backend=recording_backend)
+    assert outcome.applied
+    assert "not remembered" in caplog.text

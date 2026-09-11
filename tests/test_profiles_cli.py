@@ -118,3 +118,53 @@ def test_an_applied_but_unverifiable_switch_still_exits_ok(tmp_path, capsys,
         "it was missing from the read-back entirely until 0.3.0, and "
         "then present but structurally unreachable because the window "
         "closed as soon as the stereo flags matched")
+
+
+# --------------------------------------------------------------------------
+# --no-profile, and the listing's mark (ADR 0018)
+# --------------------------------------------------------------------------
+
+def _quick_wire(monkeypatch):
+    # Nothing listens on the free ports: shorten the barrier and the
+    # read-back window so the transaction runs in well under a second.
+    from oscmix_desk import profiles as profiles_mod
+    from oscmix_desk import routing as routing_mod
+
+    monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
+    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.05)
+    monkeypatch.setattr(profiles_mod, "VERIFY_TIMEOUT", 0.2)
+
+
+def test_no_profile_applies_routing_conf_and_forgets(tmp_path, capsys,
+                                                     monkeypatch):
+    _quick_wire(monkeypatch)
+    path = _config_with(tmp_path, {"tracking": GOOD})
+    (tmp_path / "active-profile").write_text("tracking\n")
+    assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
+    assert "routing.conf" in capsys.readouterr().out
+    assert not (tmp_path / "active-profile").exists()
+
+
+def test_no_profile_with_a_broken_routing_conf_exits_config(tmp_path, capsys):
+    path = write_config(tmp_path / "routing.conf", "[route:x]\nplayback = 1\n")
+    (tmp_path / "active-profile").write_text("tracking\n")
+    # routing.conf itself does not parse, so the start-up load refuses
+    # before --no-profile is reached: exit 2 like any bad routing.conf,
+    # and the profile stays in effect for the next start.
+    assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_CONFIG
+    assert capsys.readouterr().out == ""
+    assert (tmp_path / "active-profile").read_text().strip() == "tracking"
+
+
+def test_a_switch_is_remembered_and_the_listing_shows_it(tmp_path, capsys,
+                                                          monkeypatch):
+    _quick_wire(monkeypatch)
+    path = _config_with(tmp_path, {"tracking": GOOD, "mixdown": GOOD})
+    assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
+    capsys.readouterr()
+    assert cli.main(["--config", str(path), "--list-profiles"]) == EXIT_OK
+    lines = capsys.readouterr().out.splitlines()
+    assert any(line.startswith("tracking") and "(active)" in line
+               for line in lines)
+    assert not any("(active)" in line for line in lines
+                   if line.startswith("mixdown"))
