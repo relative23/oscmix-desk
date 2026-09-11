@@ -297,8 +297,16 @@ def test_systemctl_returns_the_exit_status_and_one_without_the_binary(
     class Done:
         returncode = 4
 
-    monkeypatch.setattr(process.subprocess, "run",
-                        lambda argv, **kw: seen.append(argv) or Done())
+    def run(argv, **kw):
+        # Never raise on a non-zero status, and never let systemctl's
+        # own output onto the CLI's stdout, which a script may parse.
+        assert kw["check"] is False
+        assert kw["stdout"] is process.subprocess.DEVNULL
+        assert kw["stderr"] is process.subprocess.DEVNULL
+        seen.append(argv)
+        return Done()
+
+    monkeypatch.setattr(process.subprocess, "run", run)
     assert real_systemctl("reload", "x.service") == 4
     assert seen == [["systemctl", "--user", "reload", "x.service"]]
 

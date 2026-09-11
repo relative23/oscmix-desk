@@ -559,3 +559,32 @@ def test_a_marker_that_cannot_be_written_does_not_change_the_outcome(
                                           backend=recording_backend)
     assert outcome.applied
     assert "not remembered" in caplog.text
+
+
+def test_restore_main_can_be_asked_not_to_check(tmp_path, recording_backend):
+    # verify=False is the switch's contract too (NOT_CHECKED): everything
+    # expected goes in the list, and the marker is still forgotten.
+    path = _desk(tmp_path, tracking=TRACKING)
+    (tmp_path / "active-profile").write_text("tracking\n")
+    outcome = profiles.restore_main(path, backend=recording_backend,
+                                    verify=False)
+    assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.reason == profiles.NOT_CHECKED
+    assert outcome.unverified == sorted(
+        profiles.expected_registers(profiles.load_config(path)))
+    assert not (tmp_path / "active-profile").exists()
+
+
+def test_the_marker_functions_answer_nothing_without_a_config(tmp_path):
+    # No routing.conf, no profiles directory, no marker: None and False,
+    # never an AttributeError on a path that does not exist.
+    assert profiles.active_profile_path(None) is None
+    assert profiles.active_profile(None) is None
+    assert profiles.remember_active_profile("tracking", None) is False
+    profiles.forget_active_profile(None)          # nothing to forget
+    path = _desk(tmp_path, tracking=TRACKING)
+    assert profiles.remember_active_profile("tracking", path) is True
+    assert (tmp_path / "active-profile").read_text() == "tracking\n"
+    profiles.forget_active_profile(path)
+    profiles.forget_active_profile(path)          # twice is fine
+    assert not (tmp_path / "active-profile").exists()

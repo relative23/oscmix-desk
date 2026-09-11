@@ -247,7 +247,9 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
     assert len(verified) == 1
     # The phases, as `systemctl status` shows them.
     assert notices[:2] == ["STATUS=applying routing", "STATUS=verifying routing"]
-    assert notices[2].startswith("STATUS=running; verifier finished at ")
+    import re
+    assert re.fullmatch(r"STATUS=running; verifier finished at \d\d:\d\d:\d\d",
+                        notices[2])
     (verified_config, should_stop), kwargs = verified[0]
     assert verified_config is config
     assert kwargs == {}
