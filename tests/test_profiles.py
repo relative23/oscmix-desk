@@ -665,17 +665,25 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
         tmp_path, recording_backend, monkeypatch, caplog):
     path = _desk(tmp_path, tracking=TRACKING)
     monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
-    with profiles._switch_lock(path) as held:
-        assert held
-        with caplog.at_level("INFO"):
-            outcome = profiles.switch_profile("tracking", config_path=path,
-                                              backend=recording_backend)
+    umask = os.umask(0o022)
+    try:
+        with profiles._switch_lock(path) as held:
+            assert held
+            with caplog.at_level("INFO"):
+                outcome = profiles.switch_profile("tracking", config_path=path,
+                                                  backend=recording_backend)
+    finally:
+        os.umask(umask)
+    lock = tmp_path / "active-profile.lock"
+    assert stat.S_IMODE(lock.stat().st_mode) == 0o644, "a plain file"
     assert outcome.state == profiles.REFUSED
     assert outcome.name == "tracking"
     assert "in progress" in outcome.reason
     assert recording_backend.sent == [], "a refused switch writes nothing"
     assert not (tmp_path / "active-profile").exists()
-    assert "waiting for it" in caplog.text
+    # Once, not once per poll: the loop checks every 0.1 s for up to
+    # SWITCH_LOCK_WAIT, and a line per check would be 300 of them.
+    assert caplog.text.count("another switch is in progress; waiting") == 1
     # And once the lock is free, the same switch goes through.
     assert profiles.switch_profile("tracking", config_path=path,
                                    backend=recording_backend).applied
