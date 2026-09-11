@@ -88,8 +88,19 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.3)
+## Where we are (0.6.4)
 
+**0.6.4 (2026-09-11)** is what the third outside review of the profile
+work led to: two switches at once are serialised by a lock beside the
+marker, the marker is written atomically, and a switch waits while the
+unit reports that it is writing the device -- the third found next to
+the first two, because with the mixer GUI holding the receive port the
+0.6.3 reload cannot reconcile. Measured on the desk: two shells
+switching at once, and a switch during the start-up verifier with the
+port held. One overlap is left and is item G: a second switch started
+at the same moment can still write while the unit reconciles for the
+first -- the end state is right, the guarantee in between is not. The
+pin does not move; the register table has no new row.
 **0.6.3 (2026-09-11)** closes roadmap item F: a profile is remembered
 beside `routing.conf` and applied on every start and reload (ADR 0018),
 and a switch sent right after a start is no longer reverted by the
@@ -2326,6 +2337,31 @@ profile means when `routing.conf` changes underneath it is decided in
 [ADR 0018](decisions/0018-the-active-profile-survives-a-start.md):
 the machine settings follow `routing.conf`, the desk follows the
 profile, and the start line says so.
+
+### G. A second switch can still overlap the unit's reconcile
+
+Found in the 0.6.4 release's live test and recorded in ADR 0018. A
+switch holds the lock while it writes and reads back, then releases it
+and reloads the unit; `ExecReload` is a plain `kill -HUP`, so the
+reload returns before the unit reconciles. A second switch waiting on
+the lock starts at once, and if the unit's reconcile begins in a gap
+where that switch does not hold the receive port, the unit re-applies
+the first switch's desk while the second writes its own. The second
+switch's reload re-applies its desk afterwards, so the end state is
+right; the guarantee in between is not.
+
+**The fix is one lock for every writer.** The unit takes the same
+`flock` around its start-up apply, its verifier and every reconcile, so
+a switch waits for the unit exactly as it waits for another switch, and
+the `Status:` polling becomes unnecessary. What that needs: the
+installer creates `active-profile.lock`, because the unit cannot create
+it under `ProtectHome=read-only` (`flock` itself works on a read-only
+descriptor); the verifier's hold of about 22 s has to stay inside
+`SWITCH_LOCK_WAIT`; and a switch's reload moves inside its lock.
+*Proven by:* a test that runs a switch against a unit reconciling
+through the same lock and holds that no datagram of one falls inside
+the other, and the live double switch repeated with two different
+profiles and the receive port free.
 
 ### The limit under all of this
 

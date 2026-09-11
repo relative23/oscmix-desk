@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.6.4 (2026-09-11)
+
+Two switches at once, a marker that survives a crash, and a switch that
+waits while the unit writes the device. The third outside review named
+the first two -- concurrent switching and crash semantics -- and
+checking them led to the third; ADR 0018 records all three. The pin
+does not move and the register table has no new row.
 
 ### Fixed
 
@@ -25,11 +31,34 @@
   switch that overlapped the start-up verifier's blind re-apply stayed
   reverted after all. `--profile` and `--no-profile` now read the unit's
   `Status:` line and wait while it says applying, verifying or
-  reconciling, bounded and logged, so the two never overlap.
+  reconciling, bounded and logged. One overlap is left. This release's
+  live test logged the ordering that allows it: a switch's reload goes
+  out after its lock is released, so a second switch started at the
+  same moment can write while the unit reconciles for the first, if
+  that reconcile starts in a gap where the second switch does not hold
+  the receive port. The second switch's own reload then re-applies its
+  desk, so the end state is right. Roadmap item G has the fix: one lock
+  for every writer, the unit included.
 
-All three from the third outside review's direction -- concurrent
-switching and crash semantics -- which named the first two and led to
-the third. ADR 0018 records them.
+### Changed
+
+- **The switch lock is under mutation testing.** It carried
+  `@contextlib.contextmanager`, and mutmut leaves decorated functions
+  unmutated, so the loop the no-interleave guarantee rests on had no
+  mutants at all. It is a plain generator wrapped at assignment now.
+  Its survivors found one real gap: the "waiting for it" line could
+  repeat on every 0.1 s poll without a test noticing. Asserted now.
+- **The mutation run's survivors were read.** In the new profile,
+  process and CLI code they showed seven missing assertions and no
+  defect -- among them a lock refusal's outcome losing its name, the
+  status-line call's arguments, and a restore reading back through a
+  socket of its own. A by-name re-run also showed that mutmut's
+  incremental stats attribute no existing test to a function that is
+  new under its name; the baseline records how that was caught. Score
+  0.738 against a floor of 0.720, not-covered bucket empty;
+  `min_score` 0.72 -> 0.73.
+- **The coverage gate rose from 95 to 96.** Measured 96.4 on the
+  release revision, more than a point above the gate.
 
 ## 0.6.3 (2026-09-11)
 

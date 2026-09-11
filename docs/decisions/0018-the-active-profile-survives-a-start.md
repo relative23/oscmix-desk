@@ -113,6 +113,24 @@ proceeds and says so; an unresponsive unit must not hold a person's
 desk hostage. The reload after the switch stays, for the unit's own
 state.
 
+**What the wait does not cover.** The 0.6.4 release's live test, two
+shells switching at once, logged the ordering: the reload a switch
+sends goes out after its lock is released, and `ExecReload` is a plain
+`kill -HUP`, so `systemctl reload` returns before the unit has begun to
+reconcile, and the second switch takes the lock at once. In that run
+the unit's reconcile found the receive port held by the second
+switch's read-back and was skipped, as ADR 0013 requires. Had it
+started in a gap where the second switch did not hold the port, it
+would have re-applied the first switch's desk -- the marker still named
+it -- while the second was writing. The second switch's own reload then
+re-applies its desk, so the end state is right; what is lost is the
+guarantee in between, and that switch's read-back can report registers
+the unit was still writing. The fix is one lock for every writer: the
+unit taking the same lock around its apply, verifier and reconcile,
+which also makes the phase wait unnecessary. That changes the unit and
+the installer -- the unit cannot create the lock file under a read-only
+home -- so it is roadmap item G rather than part of this release.
+
 **The marker is written beside and renamed over.** `write_text` in
 place could leave an empty file between open and close, and an empty
 marker reads as "no profile" -- the choice gone on the next start with

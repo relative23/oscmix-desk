@@ -100,7 +100,12 @@ exclude_lines = [
 # the gate following, which is seven points of erosion nothing would have
 # noticed. The launcher moving into the package and gaining
 # tests/test_launcher.py took it from 61% to 100% and the total to 95%.
-fail_under = 95
+#
+# 95 -> 96 (2026-09-11, 0.6.4): measured 96.4 on the release revision,
+# more than a point above the gate, so the checklist's rule applies --
+# raise it now rather than next release. The rise is the profile code's
+# error branches, each driven by a test since the marker and lock work.
+fail_under = 96
 
 [tool.mutmut]
 # Mutation testing answers the question coverage cannot: do the assertions
