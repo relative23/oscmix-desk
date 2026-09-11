@@ -414,7 +414,7 @@ def test_a_finished_verifier_does_not_delay_the_reload(tmp_path, session_mod,
 
 
 def test_a_reload_applies_the_remembered_profile(tmp_path, session_mod,
-                                                 monkeypatch):
+                                                 monkeypatch, caplog):
     """The resume hook's reload must re-apply the desk that was chosen.
 
     A reload used to re-read routing.conf and apply that, which is how a
@@ -435,9 +435,15 @@ def test_a_reload_applies_the_remembered_profile(tmp_path, session_mod,
     applied = []
     monkeypatch.setattr(session_module, "reconcile_now",
                         lambda config, *a, **k: applied.append(config))
-    session_module._reconcile(argparse.Namespace(config=path),
-                              session_mod.Config(), {"stop": False})
+    with caplog.at_level("INFO"):
+        session_module._reconcile(argparse.Namespace(config=path),
+                                  session_mod.Config(), {"stop": False})
     assert [r.output for r in applied[0].routes] == [(5, 6)]
+    # The reload line names the profile that was reloaded, not the file
+    # the marker sits beside: on the first live run it said routing.conf
+    # while the profile was in effect.
+    assert "SIGHUP: reloaded %s" % (tmp_path / "profiles" / "tracking.conf") \
+        in caplog.text
 
 
 def test_the_installer_and_uninstaller_agree_about_the_sleep_hook():

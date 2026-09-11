@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import Dict, Optional
 
-from .config import Config, discover_config_path
+from .config import Config, discover_config_path, profile_path
 from .constants import (
     EXIT_FAILURE,
     EXIT_OK,
@@ -302,13 +302,17 @@ def _reconcile(args: argparse.Namespace, config: Config,
             # otherwise -- the same answer the start gives (ADR 0018),
             # which is what makes the resume hook's reload re-apply the
             # desk that was chosen rather than the default one.
-            fresh, _active = effective_config(path)
+            fresh, active = effective_config(path)
         except ConfigError as exc:
             log.error("SIGHUP: %s is not usable (%s); keeping the running "
                       "configuration", path, exc)
             return
+        # Name what was actually reloaded. On the first live run this
+        # line said routing.conf while the profile above it was in
+        # effect -- true of the file read, misleading about the desk.
         log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
-                 path, len(fresh.routes), len(fresh.channels))
+                 profile_path(active, path) if active else path,
+                 len(fresh.routes), len(fresh.channels))
         # The backend is already bound and already talking to a device.
         # A reload reconciles the *desk*; the ports and the device name
         # belong to the process that is running, and changing them here
