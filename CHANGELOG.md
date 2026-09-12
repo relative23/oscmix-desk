@@ -1,5 +1,67 @@
 # Changelog
 
+## 0.6.5 (2026-09-12)
+
+One lock for every writer of the device, and a switch the marker did
+not record is no longer handed to the unit. The fourth outside review
+named the first as the last architectural gap in the concurrency model
+and asked what the second does; both were measured on the desk before
+and after. ADR 0019 records them. The pin does not move and the
+register table has no new row.
+
+### Fixed
+
+- **The unit takes the same lock a switch takes.** Its start-up apply,
+  its verifier and every reconcile write the whole routing. 0.6.4 kept
+  them apart from a switch by polling the unit's `Status:` line before
+  the switch took its lock, and the switch sent its reload after
+  releasing it. `ExecReload` is `kill -HUP`, so that reload returns
+  before the unit reconciles, and the next switch could take the lock
+  and write into the reconcile. The unit now holds
+  `active-profile.lock` across its apply and verifier as one
+  transaction, and around every reconcile. A switch waits for it as it
+  waits for another switch and refuses after 30 s with nothing written;
+  a start that cannot get it applies anyway, because a desk with no
+  routing is worse; a reconcile that cannot get it stands down and
+  names the reload to send again. Measured on the desk: a switch sent
+  right after a restart waited for the unit and then applied, and two
+  switches at once still serialise.
+
+- **A switch whose marker could not be written no longer reloads the
+  unit.** Measured with the config directory read-only: the profile
+  landed, the switch printed `applied` and exited 0, and the reload's
+  own reconcile re-read `routing.conf` and undid it two seconds later,
+  with the main output at -1.0 dB and back at 0.0 dB. The outcome
+  carries whether the marker says what the device does, `--no-profile`
+  carries the same fact about removing it, and the line on stdout says
+  when it is not remembered. Re-measured after the fix: the profile's
+  -1.0 dB stayed.
+
+### Changed
+
+- **The phase polling is gone.** `_wait_for_the_unit_to_settle`,
+  `process.service_phase` and `service_is_writing` were half of what a
+  lock does, done a second way, and the release that gives the service
+  a lock deletes more lines from the CLI than it adds. `STATUS=` stays:
+  it is what `systemctl --user status` shows, and it is worth having on
+  its own.
+
+- **`install.sh` creates `active-profile.lock`.** The unit cannot: its
+  home is mounted read-only. `flock` needs no write access, only a file
+  that is already there, so the unit opens the existing one read-only.
+  A missing lock file is a warning and an unlocked write rather than a
+  refusal to run, so an install older than this release still drives
+  the device.
+
+- **The mutation run's survivors were read.** The lock has none of its
+  own: the open, the handle and the wait loop are killed entirely. What
+  the reading found was assertions that did not exist -- the reconcile's
+  trigger and its stop check, its two `STATUS=` notices, the path in
+  the warning about a missing lock file, the marker result in both
+  `verify=False` paths, and the config-path fallback when no `--config`
+  is given -- and no defect. Score 0.739 against a floor of 0.720, the
+  not-covered bucket still empty, `min_score` unchanged at 0.73.
+
 ## 0.6.4 (2026-09-11)
 
 Two switches at once, a marker that survives a crash, and a switch that

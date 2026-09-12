@@ -88,8 +88,14 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.4)
+## Where we are (0.6.5)
 
+**0.6.5 (2026-09-12)** closes roadmap item G: every writer of the
+device takes one lock, the unit included, so a switch and the unit's
+own apply, verifier and reconcile can no longer overlap. The phase
+polling it replaces is deleted. A switch whose marker could not be
+written no longer reloads the unit -- measured before the fix as a
+profile undone two seconds after it was reported as applied. ADR 0019.
 **0.6.4 (2026-09-11)** is what the third outside review of the profile
 work led to: two switches at once are serialised by a lock beside the
 marker, the marker is written atomically, and a switch waits while the
@@ -2338,7 +2344,7 @@ profile means when `routing.conf` changes underneath it is decided in
 the machine settings follow `routing.conf`, the desk follows the
 profile, and the start line says so.
 
-### G. A second switch can still overlap the unit's reconcile
+### G. A second switch can still overlap the unit's reconcile -- **closed, ADR 0019**
 
 Found in the 0.6.4 release's live test and recorded in ADR 0018. A
 switch holds the lock while it writes and reads back, then releases it
@@ -2358,10 +2364,14 @@ installer creates `active-profile.lock`, because the unit cannot create
 it under `ProtectHome=read-only` (`flock` itself works on a read-only
 descriptor); the verifier's hold of about 22 s has to stay inside
 `SWITCH_LOCK_WAIT`; and a switch's reload moves inside its lock.
-*Proven by:* a test that runs a switch against a unit reconciling
-through the same lock and holds that no datagram of one falls inside
-the other, and the live double switch repeated with two different
-profiles and the receive port free.
+**Closed in 0.6.5.** The unit holds `active-profile.lock` across its
+start-up apply and verifier, and around every reconcile; the installer
+creates the file because `ProtectHome=read-only` stops the unit from
+creating it, and `flock` holds on the read-only descriptor it can open.
+The phase polling is deleted. *Proven by:* tests that hold a reconcile
+against a lock taken elsewhere and a start against the same, plus the
+live run on the desk -- a switch right after a restart waited for the
+unit's transaction, and two switches at once still serialised.
 
 ### The limit under all of this
 

@@ -211,34 +211,52 @@
     "monotonic deadline, and poll intervals.",
     "",
     "min_score 0.72 -> 0.73, by floor_note's rule: the measured score",
-    "rounded down to the hundredth."
+    "rounded down to the hundredth.",
+    "",
+    "0.6.5 (2026-09-12): 0.738 -> 0.739 on 5605 -> 5612 mutants, for the",
+    "lock the unit now takes across its start-up apply and verifier and",
+    "around every reconcile (ADR 0019), and for the marker result the",
+    "outcome carries so a switch nobody recorded sends no reload. The",
+    "CLI's phase polling left, which takes its mutants with it.",
+    "",
+    "Reading the survivors of the new code found no defect. The lock has",
+    "none of its own: _open_lock, the DeviceLock handle and the wait loop",
+    "are killed entirely. What it found was assertions that did not exist",
+    "-- the reconcile's trigger and its stop check, its two STATUS=",
+    "notices, the path in the missing-lock warning, the persisted flag in",
+    "both verify=False paths, and the config-path fallback when no",
+    "--config was given -- all added. What survives in the new code is",
+    "message text, >= against > on a monotonic deadline, and the 0.1 s",
+    "poll interval.",
+    "",
+    "The stats file was cleared before the by-name re-run again, for the",
+    "reason the 0.6.4 entry gives: functions that are new under their",
+    "name get only the new tests attributed, and their survivors are then",
+    "fiction."
   ],
   "measured": {
-    "total": 5605,
-    "killed": 4131,
-    "survived": 1466,
+    "total": 5612,
+    "killed": 4143,
+    "survived": 1461,
     "not_covered": 0,
     "timeout": 8,
-    "score": 0.738,
-    "run_minutes": 106,
-    "cache": "cleared before the full run; eight functions re-run by name after the test and code changes, with mutmut-stats.json cleared so the new function's tests were attributed (see note)",
+    "score": 0.739,
+    "run_minutes": 113,
+    "cache": "cleared before the full run; the changed functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
     "scope": "register table exempt (ADR 0015)",
     "note": [
-      "The 0.6.4 release measurement. One mutant blocks forever --",
-      "Listener.messages with the socket timeout set to None -- and ran",
-      "into mutmut's wall-time limit after about 12 minutes, which is",
-      "how it counts as a timeout rather than a survivor."
+      "The 0.6.5 release measurement."
     ]
   },
   "previous": {
     "recorded": "2026-09-11",
-    "total": 5436,
-    "killed": 3909,
-    "survived": 1519,
+    "total": 5605,
+    "killed": 4131,
+    "survived": 1466,
     "not_covered": 0,
-    "score": 0.72,
+    "score": 0.738,
     "why_it_moved": [
-      "The 0.6.3 release measurement; min_score held at 0.72."
+      "The 0.6.4 release measurement; min_score 0.73."
     ]
   },
   "confirmed_by_ci": {
@@ -268,7 +286,7 @@
     "fails nor nags on the run it was recorded from -- a baseline that",
     "prints 'raise me' on every CI run teaches people to ignore it.",
     "",
-    "0.018 of headroom on the measured 0.738, the same order as every",
+    "0.019 of headroom on the measured 0.739, the same order as every",
     "raise before it. What eats headroom stayed the same: assertions",
     "getting better or worse, because register rows land inside the",
     "ADR 0015 exemption."

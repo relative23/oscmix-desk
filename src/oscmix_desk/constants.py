@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 import os
 
-__version__ = "0.6.4"
+__version__ = "0.6.5"
 
 DEFAULT_DEVICE_NAME = "Fireface UCX II"
 DEFAULT_USB_ID = "2a39:3fd9"
