@@ -406,3 +406,83 @@ def test_stop_handlers_do_not_terminate_a_backend_that_is_already_gone(
     installed[signal.SIGINT](signal.SIGINT, None)
     assert stop["stop"] is True
     assert child.terminated is False
+
+
+# --------------------------------------------------------------------------
+# The start-up apply and its verifier are one transaction (ADR 0019).
+# --------------------------------------------------------------------------
+
+def _lock_probe(path):
+    from oscmix_desk import profiles as profiles_mod
+
+    return profiles_mod.take_device_lock(path, wait=0.1)
+
+
+def test_the_start_holds_the_device_lock_until_the_verifier_is_done(
+        tmp_path, monkeypatch, session_mod):
+    """One hold, not one per write.
+
+    The verifier re-applies the routing after the start, so a switch
+    that landed between the apply and the retry was overwritten -- the
+    defect 0.6.3 measured. Holding the lock across both makes the switch
+    wait for the whole transaction instead.
+    """
+    from conftest import write_config
+
+    from oscmix_desk import session as session_module
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    during = []
+    monkeypatch.setattr(session_module, "apply_routing",
+                        lambda *a, **k: during.append(("apply",
+                                                       _lock_probe(path))))
+    monkeypatch.setattr(session_module, "verify_and_repair",
+                        lambda *a, **k: during.append(("verify",
+                                                       _lock_probe(path))))
+    monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
+
+    config = session_mod.load_config(path)
+    verifier = session_module._apply_and_verify(RunningChild(), config,
+                                                {"stop": False}, path)
+    assert verifier is not None
+    verifier.join(timeout=5)
+    assert [tag for tag, _lock in during] == ["apply", "verify"]
+    assert [lock for _tag, lock in during] == [None, None], \
+        "the lock is held from the first write to the verifier's last"
+    after = _lock_probe(path)
+    assert after is not None, "and released when the verifier finishes"
+    after.release()
+
+
+def test_a_start_that_cannot_take_the_lock_applies_anyway(
+        tmp_path, monkeypatch, session_mod, caplog):
+    # A desk with no routing at all is worse than re-applying what the
+    # other writer just wrote, and the marker makes them the same desk.
+    from conftest import write_config
+
+    from oscmix_desk import profiles as profiles_mod
+    from oscmix_desk import session as session_module
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    applied = []
+    monkeypatch.setattr(session_module, "apply_routing",
+                        lambda *a, **k: applied.append(a))
+    monkeypatch.setattr(session_module, "verify_and_repair",
+                        lambda *a, **k: None)
+    monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
+    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 0.3)
+    held = profiles_mod.take_device_lock(path)
+    assert held is not None
+    try:
+        with caplog.at_level("WARNING"):
+            verifier = session_module._apply_and_verify(
+                RunningChild(), session_mod.load_config(path),
+                {"stop": False}, path)
+        assert verifier is not None
+        verifier.join(timeout=5)
+    finally:
+        held.release()
+    assert applied, "the start still applies the routing"
+    assert "applying anyway" in caplog.text

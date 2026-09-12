@@ -240,7 +240,13 @@ journal says which one is in effect. `oscmix-session --no-profile`
 applies `routing.conf` again and forgets the profile;
 `--list-profiles` marks the active one. A remembered profile that no
 longer loads falls back to `routing.conf` with a warning, and keeps
-warning until you decide. While a profile is active, edits to
+warning until you decide. While the switch writes, it holds
+`active-profile.lock` beside the config, and so does the service for
+its own apply, verifier and reconcile: one writer at a time, whichever
+it is ([ADR 0019](docs/decisions/0019-one-lock-for-every-writer.md)).
+If the marker cannot be written -- a read-only config directory, a full
+disk -- the switch says so and does not reload the service, because
+that reload would re-read `routing.conf` and undo it. While a profile is active, edits to
 `routing.conf`'s routes are not in effect; edits to `[osc]` and
 `[device]` are, because a profile inherits those. The reasoning is in
 [ADR 0018](docs/decisions/0018-the-active-profile-survives-a-start.md).

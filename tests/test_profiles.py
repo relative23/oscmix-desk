@@ -678,12 +678,13 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
     assert stat.S_IMODE(lock.stat().st_mode) == 0o644, "a plain file"
     assert outcome.state == profiles.REFUSED
     assert outcome.name == "tracking"
-    assert "in progress" in outcome.reason
+    assert "holds the device lock" in outcome.reason
     assert recording_backend.sent == [], "a refused switch writes nothing"
     assert not (tmp_path / "active-profile").exists()
     # Once, not once per poll: the loop checks every 0.1 s for up to
     # SWITCH_LOCK_WAIT, and a line per check would be 300 of them.
-    assert caplog.text.count("another switch is in progress; waiting") == 1
+    assert caplog.text.count(
+        "another writer holds the device lock; waiting") == 1
     # And once the lock is free, the same switch goes through.
     assert profiles.switch_profile("tracking", config_path=path,
                                    backend=recording_backend).applied
@@ -800,7 +801,7 @@ def test_no_profile_refuses_when_another_switch_holds_the_lock(
         outcome = profiles.restore_main(path, backend=recording_backend)
     assert outcome.state == profiles.REFUSED
     assert outcome.name == "routing.conf"
-    assert "in progress" in outcome.reason
+    assert "holds the device lock" in outcome.reason
     assert recording_backend.sent == []
     assert (tmp_path / "active-profile").read_text().strip() == "tracking", \
         "a refused restore keeps the profile in effect"
@@ -832,3 +833,103 @@ def test_a_config_directory_that_cannot_be_written_is_a_warning(tmp_path,
     assert not (tmp_path / "active-profile").exists()
     assert not (tmp_path / "active-profile.tmp").exists()
     assert "not remembered" in caplog.text
+
+
+# --------------------------------------------------------------------------
+# One lock for every writer of the device (ADR 0019).
+# --------------------------------------------------------------------------
+
+def test_the_device_lock_is_exclusive_and_released(tmp_path):
+    path = _desk(tmp_path, tracking=TRACKING)
+    lock = profiles.take_device_lock(path)
+    assert lock is not None
+    assert (tmp_path / "active-profile.lock").exists()
+    assert profiles.take_device_lock(path, wait=0.2) is None, \
+        "a second writer must not hold it at the same time"
+    lock.release()
+    second = profiles.take_device_lock(path, wait=0.2)
+    assert second is not None
+    second.release()
+    lock.release()          # releasing twice is not an error
+
+
+def test_a_writer_without_a_config_gets_a_stand_in(tmp_path):
+    # Nothing to lock, and no caller should have to branch on that.
+    lock = profiles.take_device_lock(None)
+    assert lock is not None
+    lock.release()
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root writes anywhere")
+def test_the_unit_locks_a_file_it_cannot_open_for_writing(tmp_path):
+    """`ProtectHome=read-only` is the unit's world: flock needs no write."""
+    path = _desk(tmp_path, tracking=TRACKING)
+    lock_file = tmp_path / "active-profile.lock"
+    lock_file.write_text("")
+    lock_file.chmod(0o444)
+    try:
+        lock = profiles.take_device_lock(path)
+        assert lock is not None
+        assert profiles.take_device_lock(path, wait=0.2) is None
+        lock.release()
+    finally:
+        lock_file.chmod(0o644)
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root writes anywhere")
+def test_a_lock_file_that_cannot_be_created_warns_and_writes_anyway(tmp_path,
+                                                                   caplog):
+    # An install older than ADR 0019 has no lock file, and the unit
+    # cannot make one. Refusing to drive the device would be worse.
+    path = _desk(tmp_path, tracking=TRACKING)
+    tmp_path.chmod(0o500)
+    try:
+        with caplog.at_level("WARNING"):
+            lock = profiles.take_device_lock(path)
+    finally:
+        tmp_path.chmod(0o700)
+    assert lock is not None
+    assert "run install.sh" in caplog.text
+    lock.release()
+
+
+def test_a_switch_that_cannot_remember_says_so_in_the_outcome(
+        tmp_path, recording_backend, caplog):
+    path = _desk(tmp_path, tracking=TRACKING)
+    (tmp_path / "active-profile").mkdir()
+    with caplog.at_level("WARNING"):
+        outcome = profiles.switch_profile("tracking", config_path=path,
+                                          backend=recording_backend)
+    assert outcome.applied
+    assert outcome.persisted is False, \
+        "the caller decides about the reload, and needs the fact to do it"
+    assert "not remembered" in outcome.describe()
+    assert "next reload or start" in outcome.describe()
+
+
+def test_a_restore_that_cannot_forget_says_so_in_the_outcome(
+        tmp_path, recording_backend):
+    path = _desk(tmp_path, tracking=TRACKING)
+    marker = tmp_path / "active-profile"
+    marker.mkdir()
+    (marker / "child").write_text("")
+    outcome = profiles.restore_main(path, backend=recording_backend)
+    assert outcome.applied
+    assert outcome.persisted is False
+
+
+def test_forgetting_reports_whether_the_marker_is_gone(tmp_path):
+    path = _desk(tmp_path, tracking=TRACKING)
+    assert profiles.forget_active_profile(path) is True, "nothing to remove"
+    (tmp_path / "active-profile").write_text("tracking\n")
+    assert profiles.forget_active_profile(path) is True
+    assert profiles.forget_active_profile(None) is True
+
+
+def test_an_applied_switch_that_was_remembered_stays_persisted(
+        tmp_path, recording_backend):
+    path = _desk(tmp_path, tracking=TRACKING)
+    outcome = profiles.switch_profile("tracking", config_path=path,
+                                      backend=recording_backend)
+    assert outcome.persisted is True
+    assert "not remembered" not in outcome.describe()

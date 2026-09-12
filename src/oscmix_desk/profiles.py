@@ -39,7 +39,7 @@ import contextlib
 import fcntl
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Iterator, List, Optional, Sequence, Tuple
 
@@ -94,6 +94,11 @@ class Outcome:
     #: case: every switch leaves /mix/<out>/playback/<pb> unconfirmed,
     #: measured, by design (backend.Traits.dumps_playback_matrix).
     unverifiable: List[str] = field(default_factory=list)
+    #: Whether the marker now says what the device does. False when the
+    #: switch landed but the marker could not be written, or the restore
+    #: could not remove it: the desk holds only until the next reload or
+    #: start, and the caller must not send that reload itself (ADR 0019).
+    persisted: bool = True
 
     @property
     def applied(self) -> bool:
@@ -107,6 +112,12 @@ class Outcome:
 
     def describe(self) -> str:
         """One line, for a person."""
+        line = self._describe_state()
+        if self.persisted:
+            return line
+        return line + "; not remembered, so the next reload or start undoes it"
+
+    def _describe_state(self) -> str:
         if self.state == REFUSED:
             return "refused %r, nothing written: %s" % (self.name, self.reason)
         if self.state == APPLIED_VERIFIED:
@@ -267,8 +278,8 @@ def remember_active_profile(name: str, config_path: Optional[Path]) -> bool:
         _fsync_directory(path.parent)
     except OSError as exc:
         log.warning("profile %r applied but not remembered: cannot write "
-                    "%s (%s); the next start applies routing.conf", name,
-                    path, exc)
+                    "%s (%s); the desk holds until the next reload or "
+                    "start, which applies routing.conf", name, path, exc)
         with contextlib.suppress(OSError):
             os.unlink(tmp)
         return False
@@ -289,46 +300,107 @@ def _fsync_directory(directory: Path) -> None:
         os.close(fd)
 
 
-#: The lock a switch holds from its first datagram to its last check,
-#: beside the marker. Two switches at once would interleave their link
+#: The lock every writer of this desk takes, beside the marker: a
+#: switch, `--no-profile`, and the unit's own apply, verifier and
+#: reconcile (ADR 0019). Two writers at once would interleave their link
 #: phases and mix writes on the wire -- the ordering ADR 0001 exists to
-#: guarantee -- and race each other to the marker and the reload.
+#: guarantee. One file per config directory, so two desks selected by
+#: `--config` do not contend.
 SWITCH_LOCK = "active-profile.lock"
 
 
+class DeviceLock:
+    """A held device lock, or a stand-in for "there was nothing to lock".
+
+    The stand-in exists so no caller has to branch: a session without a
+    config directory, and an install whose lock file predates ADR 0019,
+    both write without one and say so once, rather than refusing to
+    drive the device at all.
+    """
+
+    def __init__(self, fd: Optional[int] = None) -> None:
+        self._fd = fd
+
+    def release(self) -> None:
+        if self._fd is None:
+            return
+        fd, self._fd = self._fd, None
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+
+
+def _open_lock(path: Path) -> Optional[int]:
+    """Open the lock file read-write, or read-only, or not at all.
+
+    The unit runs with `ProtectHome=read-only`, so it can neither create
+    the file nor open it for writing. `flock` needs neither: the lock
+    lives on the open file description, and a read-only one holds it
+    exactly as well. None means the file is not there -- the installer
+    creates it, and an older install has to be told rather than blocked.
+    """
+    try:
+        return os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+    except OSError:
+        pass
+    try:
+        return os.open(path, os.O_RDONLY)
+    except OSError:
+        return None
+
+
+def take_device_lock(config_path: Optional[Path],
+                     wait: Optional[float] = None) -> Optional[DeviceLock]:
+    """Take the lock every writer of this desk holds, or None after the wait.
+
+    Every writer: a switch, `--no-profile`, and the unit's own apply,
+    verifier and reconcile (ADR 0019). What the caller does with None is
+    its own contract -- a switch refuses, a start writes anyway, a
+    reconcile stands down -- because the cost of writing over another
+    writer is not the same in the three places.
+    """
+    marker = active_profile_path(config_path)
+    if marker is None:
+        return DeviceLock()
+    path = marker.with_name(SWITCH_LOCK)
+    fd = _open_lock(path)
+    if fd is None:
+        log.warning("no device lock at %s; writing without one -- run "
+                    "install.sh to create it", path)
+        return DeviceLock()
+    deadline = time.monotonic() + (SWITCH_LOCK_WAIT if wait is None else wait)
+    announced = False
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return DeviceLock(fd)
+        except OSError:
+            if time.monotonic() >= deadline:
+                os.close(fd)
+                return None
+            if not announced:
+                log.info("another writer holds the device lock; waiting "
+                         "for it")
+                announced = True
+            time.sleep(0.1)
+
+
 def _switch_lock_held(config_path: Optional[Path]) -> Iterator[bool]:
-    """Hold the switch lock for this config, or yield False after the wait.
+    """Hold the device lock for this config, or yield False after the wait.
 
     Taken *after* the profile parsed: a refusal for a bad config needs
     no lock and costs nothing, as ADR 0011 promises. Without a config
     there is no directory to lock in and nothing to contend with.
     """
-    marker = active_profile_path(config_path)
-    if marker is None:
-        yield True
+    lock = take_device_lock(config_path)
+    if lock is None:
+        yield False
         return
-    fd = os.open(marker.with_name(SWITCH_LOCK), os.O_RDWR | os.O_CREAT, 0o644)
     try:
-        deadline = time.monotonic() + SWITCH_LOCK_WAIT
-        announced = False
-        while True:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except OSError:
-                if time.monotonic() >= deadline:
-                    yield False
-                    return
-                if not announced:
-                    log.info("another switch is in progress; waiting for it")
-                    announced = True
-                time.sleep(0.1)
-        try:
-            yield True
-        finally:
-            fcntl.flock(fd, fcntl.LOCK_UN)
+        yield True
     finally:
-        os.close(fd)
+        lock.release()
 
 
 #: Wrapped here rather than with the decorator, on purpose: mutmut
@@ -339,24 +411,32 @@ _switch_lock = contextlib.contextmanager(_switch_lock_held)
 
 
 def _refused_for_the_lock(name: str) -> Outcome:
-    reason = ("another switch is still in progress after %.0fs"
+    reason = ("another writer still holds the device lock after %.0fs"
               % SWITCH_LOCK_WAIT)
     log.error("profile %r refused, nothing written: %s", name, reason)
     return Outcome(state=REFUSED, name=name, reason=reason)
 
 
-def forget_active_profile(config_path: Optional[Path]) -> None:
-    """Remove the marker; nothing to remove is not an error."""
+def forget_active_profile(config_path: Optional[Path]) -> bool:
+    """Remove the marker; nothing to remove is not an error.
+
+    False when it is still there afterwards, which the caller carries in
+    the outcome: a reload sent then would re-apply the profile the
+    marker still names and undo the restore (ADR 0019).
+    """
     path = active_profile_path(config_path)
     if path is None:
-        return
+        return True
     try:
         path.unlink()
     except FileNotFoundError:
         pass
     except OSError as exc:
-        log.warning("cannot remove %s (%s); the next start will apply the "
-                    "profile it names", path, exc)
+        log.warning("cannot remove %s (%s); the desk holds until the next "
+                    "reload or start, which applies the profile it names",
+                    path, exc)
+        return False
+    return True
 
 
 def effective_config(config_path: Optional[Path]) -> Tuple[Config, Optional[str]]:
@@ -417,17 +497,20 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
             config.osc_port, config.osc_recv_port)
         _write(config, device)
         # Applied, so remembered: from here on every start and reload is
-        # this profile's, until --no-profile (ADR 0018).
-        remember_active_profile(name, config_path)
+        # this profile's, until --no-profile (ADR 0018). A marker that
+        # could not be written travels in the outcome rather than only
+        # in the log: the caller must then not reload the unit, whose
+        # reconcile would undo what just landed (ADR 0019).
+        remembered = remember_active_profile(name, config_path)
 
         if not verify:
             # Not confirmed, because nobody looked -- which is a different
             # fact from "looked and did not see it", and the state is the
             # same either way. Everything expected goes in the list.
             return Outcome(state=APPLIED_UNVERIFIED, name=name,
-                           reason=NOT_CHECKED,
+                           reason=NOT_CHECKED, persisted=remembered,
                            unverified=sorted(expected_registers(config)))
-        return _check(name, config, device)
+        return replace(_check(name, config, device), persisted=remembered)
 
 
 def restore_main(config_path: Optional[Path] = None,
@@ -452,12 +535,13 @@ def restore_main(config_path: Optional[Path] = None,
         device = backend if backend is not None else loopback(
             config.osc_port, config.osc_recv_port)
         _write(config, device)
-        forget_active_profile(config_path)
+        forgotten = forget_active_profile(config_path)
         if not verify:
             return Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
-                           reason=NOT_CHECKED,
+                           reason=NOT_CHECKED, persisted=forgotten,
                            unverified=sorted(expected_registers(config)))
-        return _check("routing.conf", config, device)
+        return replace(_check("routing.conf", config, device),
+                       persisted=forgotten)
 
 
 def _write(config: Config, device: Backend) -> None:

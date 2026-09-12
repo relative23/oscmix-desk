@@ -200,58 +200,47 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     assert "oscmix.service is not running; nothing to reload" in caplog.text
 
 
-def test_a_switch_waits_while_the_unit_is_writing_the_device(
-        tmp_path, capsys, monkeypatch, caplog):
-    """The unit's STATUS= line gates the switch.
+# --------------------------------------------------------------------------
+# A switch the marker did not record must not be handed to the unit
+# (ADR 0019).
+# --------------------------------------------------------------------------
 
-    With the mixer GUI holding the receive port the reload after a
-    switch cannot reconcile (ADR 0013), so a switch that overlapped the
-    start-up verifier's blind re-apply would stay reverted. The switch
-    therefore waits while the unit says it is writing.
+def test_a_switch_whose_marker_cannot_be_written_does_not_reload(
+        tmp_path, capsys, monkeypatch, caplog):
+    """Measured on the desk: the reload undid the switch two seconds later.
+
+    With the marker unwritten the unit re-reads routing.conf, and its
+    reconcile re-applies it over the profile that just landed. The
+    switch is still applied and still exits 0; what it must not do is
+    send the reload that undoes it.
     """
-    import time
-
     _quick_wire(monkeypatch)
-    monkeypatch.setattr(cli, "reload_service", lambda: True)
-    phases = iter(["verifying routing", "verifying routing",
-                   "running; verifier finished at 12:00:00"])
-    current = {"phase": next(phases)}
-
-    def phase():
-        return current["phase"]
-
-    def writing():
-        answer = current["phase"].startswith(("applying", "verifying",
-                                              "reconciling"))
-        if answer:
-            current["phase"] = next(phases)
-        return answer
-
-    monkeypatch.setattr(cli, "service_phase", phase)
-    monkeypatch.setattr(cli, "service_is_writing", writing)
+    reloads = []
+    monkeypatch.setattr(cli, "reload_service",
+                        lambda: reloads.append(1) or True)
     path = _config_with(tmp_path, {"tracking": GOOD})
-    started = time.monotonic()
-    with caplog.at_level("INFO"):
-        assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
-    # The line names the unit and the phase it is in: a switch that
-    # pauses without saying why looks hung.
-    assert ("oscmix.service is verifying routing; waiting for it before "
-            "writing the device") in caplog.text
-    assert "writing anyway" not in caplog.text, \
-        "the unit settled inside the wait; giving up early is the defect"
-    assert 0.2 < time.monotonic() - started < 5.0
-    assert (tmp_path / "active-profile").read_text().strip() == "tracking"
-
-
-def test_a_switch_does_not_wait_forever_for_a_wedged_unit(
-        tmp_path, capsys, monkeypatch, caplog):
-    _quick_wire(monkeypatch)
-    monkeypatch.setattr(cli, "reload_service", lambda: True)
-    monkeypatch.setattr(cli, "SWITCH_LOCK_WAIT", 0.4)
-    monkeypatch.setattr(cli, "service_phase", lambda: "verifying routing")
-    monkeypatch.setattr(cli, "service_is_writing", lambda: True)
-    path = _config_with(tmp_path, {"tracking": GOOD})
+    (tmp_path / "active-profile").mkdir()      # a directory: the write fails
     with caplog.at_level("WARNING"):
-        assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
-    assert ("oscmix.service still reports 'verifying routing' after 0s; "
-            "writing anyway") in caplog.text
+        assert cli.main(["--config", str(path),
+                         "--profile", "tracking"]) == EXIT_OK
+    assert reloads == [], "the reload would undo the switch"
+    assert "not remembered" in capsys.readouterr().out
+    assert "oscmix.service not reloaded" in caplog.text
+
+
+def test_no_profile_that_cannot_forget_the_marker_does_not_reload(
+        tmp_path, capsys, monkeypatch, caplog):
+    # The mirror image: the marker still names the profile, so a reload
+    # would bring the profile back over the restore.
+    _quick_wire(monkeypatch)
+    reloads = []
+    monkeypatch.setattr(cli, "reload_service",
+                        lambda: reloads.append(1) or True)
+    path = _config_with(tmp_path, {"tracking": GOOD})
+    marker = tmp_path / "active-profile"
+    marker.mkdir()
+    (marker / "child").write_text("")          # a non-empty directory
+    with caplog.at_level("WARNING"):
+        assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
+    assert reloads == []
+    assert "oscmix.service not reloaded" in caplog.text

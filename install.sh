@@ -227,6 +227,14 @@ fi
 install -D -m 644 "$PROJECT_DIR/config/routing.conf.example" \
     "$CONFIG_DIR/routing.conf.example"
 
+# The lock every writer of the device takes (ADR 0019). The service
+# takes it too and cannot create it: its home is mounted read-only, and
+# flock needs no write access, only a file that is already there.
+if [ ! -e "$CONFIG_DIR/active-profile.lock" ]; then
+    info "creating the device lock at $CONFIG_DIR/active-profile.lock"
+    install -D -m 644 /dev/null "$CONFIG_DIR/active-profile.lock"
+fi
+
 
 # systemd's user instance belongs to the login session, not to $HOME. It
 # reads units from the *session's* home whatever HOME this script was

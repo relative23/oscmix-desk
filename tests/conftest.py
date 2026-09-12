@@ -109,27 +109,19 @@ def _no_real_systemctl(monkeypatch):
     """
     from oscmix_desk import process
 
-    global _REAL_SYSTEMCTL, _REAL_SYSTEMCTL_OUTPUT
+    global _REAL_SYSTEMCTL
     if _REAL_SYSTEMCTL is None:
         _REAL_SYSTEMCTL = process._systemctl
-        _REAL_SYSTEMCTL_OUTPUT = process._systemctl_output
     monkeypatch.setattr(process, "_systemctl", lambda *verb: 1)
-    monkeypatch.setattr(process, "_systemctl_output", lambda *verb: "")
 
 
 _REAL_SYSTEMCTL = None
-_REAL_SYSTEMCTL_OUTPUT = None
 
 
 @pytest.fixture
 def real_systemctl():
     """The unstubbed function, for the one test that checks it."""
     return _REAL_SYSTEMCTL
-
-
-@pytest.fixture
-def real_systemctl_output():
-    return _REAL_SYSTEMCTL_OUTPUT
 
 
 @pytest.fixture(scope="session")

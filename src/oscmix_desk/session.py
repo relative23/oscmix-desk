@@ -29,7 +29,7 @@ from .errors import ConfigError
 from .log import log
 from .notify import sd_notify
 from .process import _cleanup_stale_backend, supervise
-from .profiles import effective_config
+from .profiles import effective_config, take_device_lock
 from .reconcile import desired, plan
 from .routing import apply_routing, wait_unless_stopped
 from .verify import reconcile_now, verify_and_repair
@@ -120,7 +120,8 @@ def _await_backend_port(child: "subprocess.Popen[bytes]", config: Config,
 
 
 def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
-                      stop_requested: Dict[str, bool]
+                      stop_requested: Dict[str, bool],
+                      config_path: Optional[Path] = None
                       ) -> Optional[threading.Thread]:
     """Apply the routing, then verify it in the background.
 
@@ -147,6 +148,16 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
                  "untouched")
         return None
 
+    # One transaction, from the first write to the verifier's last: a
+    # switch that landed between them would be overwritten by the retry
+    # that follows it, which is what 0.6.3 measured (ADR 0019).
+    lock = take_device_lock(config_path)
+    if lock is None:
+        # A desk with no routing at all is worse than re-applying what
+        # the other writer just wrote, and the marker makes both of them
+        # the same desk anyway.
+        log.warning("another writer holds the device lock; applying anyway")
+
     sd_notify("STATUS=applying routing")
     apply_routing(config, config.osc_port, config.osc_recv_port)
 
@@ -158,14 +169,18 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
 
     def deferred_verify() -> None:
         # STATUS= is what `systemctl --user status` shows: the phase the
-        # session is in, and when the last one ended. It is also what a
-        # second process could consult before writing the device.
-        if wait_unless_stopped(VERIFY_SETTLE, should_stop):
-            return
-        sd_notify("STATUS=verifying routing")
-        verify_and_repair(config, should_stop)
-        sd_notify("STATUS=running; verifier finished at %s"
-                  % time.strftime("%H:%M:%S"))
+        # session is in, and when the last one ended. It says what the
+        # unit is doing; the lock is what keeps another writer out.
+        try:
+            if wait_unless_stopped(VERIFY_SETTLE, should_stop):
+                return
+            sd_notify("STATUS=verifying routing")
+            verify_and_repair(config, should_stop)
+            sd_notify("STATUS=running; verifier finished at %s"
+                      % time.strftime("%H:%M:%S"))
+        finally:
+            if lock is not None:
+                lock.release()
 
     thread = threading.Thread(target=deferred_verify, name="verify",
                               daemon=True)
@@ -238,7 +253,8 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
 
     verifier = None
     if child.poll() is None:
-        verifier = _apply_and_verify(child, config, stop_requested)
+        verifier = _apply_and_verify(child, config, stop_requested,
+                                     _config_path(args))
         # The service is "started": backend up, routing applied.
         sd_notify("READY=1")
 
@@ -301,7 +317,7 @@ def _reconcile(args: argparse.Namespace, config: Config,
     """
     if not _verifier_finished(verifier, stop_requested):
         return
-    path = getattr(args, "config", None) or discover_config_path()
+    path = _config_path(args)
     fresh = config
     if path is not None:
         try:
@@ -328,9 +344,24 @@ def _reconcile(args: argparse.Namespace, config: Config,
         fresh.osc_port = config.osc_port
         fresh.osc_recv_port = config.osc_recv_port
         fresh.device_name = config.device_name
-    sd_notify("STATUS=reconciling (SIGHUP)")
-    reconcile_now(fresh, "SIGHUP", lambda: stop_requested["stop"])
+    # The same lock a switch takes: a reconcile that started while one
+    # was writing used to interleave with it (ADR 0019).
+    lock = take_device_lock(path)
+    if lock is None:
+        log.warning("SIGHUP: another writer holds the device lock; reconcile "
+                    "skipped -- send the reload again")
+        return
+    try:
+        sd_notify("STATUS=reconciling (SIGHUP)")
+        reconcile_now(fresh, "SIGHUP", lambda: stop_requested["stop"])
+    finally:
+        lock.release()
     sd_notify("STATUS=running; reconciled at %s" % time.strftime("%H:%M:%S"))
+
+
+def _config_path(args: argparse.Namespace) -> Optional[Path]:
+    """The config this session runs, for the lock and for the reload."""
+    return getattr(args, "config", None) or discover_config_path()
 
 
 def _await_verifier(verifier: Optional[threading.Thread]) -> None:

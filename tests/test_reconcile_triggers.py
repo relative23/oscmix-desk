@@ -807,3 +807,59 @@ def test_no_sample_rate_trigger_exists_and_that_is_deliberate():
     assert handlers == [], (
         "something now acts on the sample rate: %s -- ADR 0013 says the "
         "measured loss is zero, so say what changed" % handlers)
+
+
+# --------------------------------------------------------------------------
+# The unit takes the lock every other writer takes (ADR 0019).
+# --------------------------------------------------------------------------
+
+def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
+        tmp_path, monkeypatch, session_mod, caplog):
+    """A switch is writing the device, so this reconcile is not.
+
+    Before 0.6.5 the reconcile only waited for the start-up verifier,
+    which is one of the three writers. The other two are a `--profile`
+    switch and `--no-profile`, in a second process, and a reconcile that
+    started between their phases interleaved with them.
+    """
+    import argparse
+
+    from oscmix_desk import profiles as profiles_mod
+    from oscmix_desk import session as session_module
+
+    path = _routes_file(tmp_path)
+    applied = []
+    monkeypatch.setattr(session_module, "reconcile_now",
+                        lambda *a, **k: applied.append(a))
+    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 0.3)
+    held = profiles_mod.take_device_lock(path)
+    assert held is not None
+    try:
+        with caplog.at_level("WARNING"):
+            session_module._reconcile(argparse.Namespace(config=path),
+                                      session_mod.Config(), {"stop": False})
+    finally:
+        held.release()
+    assert applied == [], "nothing may be written while the other writer is"
+    assert "send the reload again" in caplog.text
+
+
+def test_a_reconcile_holds_the_lock_while_it_writes_and_frees_it_after(
+        tmp_path, monkeypatch, session_mod):
+    import argparse
+
+    from oscmix_desk import profiles as profiles_mod
+    from oscmix_desk import session as session_module
+
+    path = _routes_file(tmp_path)
+    during = []
+    monkeypatch.setattr(
+        session_module, "reconcile_now",
+        lambda *a, **k: during.append(
+            profiles_mod.take_device_lock(path, wait=0.1)))
+    session_module._reconcile(argparse.Namespace(config=path),
+                              session_mod.Config(), {"stop": False})
+    assert during == [None], "a switch must not get in while this writes"
+    after = profiles_mod.take_device_lock(path, wait=0.2)
+    assert after is not None, "and must get in once it is done"
+    after.release()
