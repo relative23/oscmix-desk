@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import configparser
 import contextlib
+import errno
 import fcntl
 import os
 import time
@@ -270,12 +271,21 @@ def remember_active_profile(name: str, config_path: Optional[Path]) -> bool:
     try:
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
         try:
-            os.write(fd, (name + "\n").encode("utf-8"))
+            data = (name + "\n").encode("utf-8")
+            written = 0
+            while written < len(data):
+                # write(2) may write less than it was given without
+                # failing. A short write here would fsync and rename a
+                # truncated profile name over a correct marker.
+                written += os.write(fd, data[written:])
             os.fsync(fd)
         finally:
             os.close(fd)
         os.replace(tmp, path)
-        _fsync_directory(path.parent)
+        if not _fsync_directory(path.parent):
+            log.warning("profile %r remembered, but %s could not be synced: "
+                        "the marker is in effect now and may not survive a "
+                        "power cut", name, path.parent)
     except OSError as exc:
         log.warning("profile %r applied but not remembered: cannot write "
                     "%s (%s); the desk holds until the next reload or "
@@ -286,18 +296,25 @@ def remember_active_profile(name: str, config_path: Optional[Path]) -> bool:
     return True
 
 
-def _fsync_directory(directory: Path) -> None:
-    """Make a rename durable; best effort, some filesystems refuse it."""
+def _fsync_directory(directory: Path) -> bool:
+    """Make a rename or an unlink durable; False when it could not be.
+
+    Some filesystems refuse the fsync of a directory, which is why this
+    never raises. It says so now rather than swallowing it: without it
+    the rename is visible but not durable, and a power cut can bring
+    the previous marker back (0.6.6).
+    """
     try:
         fd = os.open(directory, os.O_RDONLY)
     except OSError:
-        return
+        return False
     try:
         os.fsync(fd)
     except OSError:
-        pass
+        return False
     finally:
         os.close(fd)
+    return True
 
 
 #: The lock every writer of this desk takes, beside the marker: a
@@ -375,7 +392,14 @@ def take_device_lock(config_path: Optional[Path],
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             return DeviceLock(fd)
-        except OSError:
+        except OSError as exc:
+            if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK):
+                # Not contention: a filesystem that cannot lock, or a
+                # descriptor that is gone. Waiting 30 s to say "somebody
+                # else has it" would be the wrong answer to both.
+                log.error("cannot lock %s (%s); writing without it", path, exc)
+                os.close(fd)
+                return DeviceLock()
             if time.monotonic() >= deadline:
                 os.close(fd)
                 return None
@@ -436,6 +460,10 @@ def forget_active_profile(config_path: Optional[Path]) -> bool:
                     "reload or start, which applies the profile it names",
                     path, exc)
         return False
+    if not _fsync_directory(path.parent):
+        log.warning("marker removed, but %s could not be synced: the profile "
+                    "is out of effect now and may come back after a power "
+                    "cut", path.parent)
     return True
 
 

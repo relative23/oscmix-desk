@@ -88,8 +88,18 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.5)
+## Where we are (0.6.6)
 
+**0.6.6 (2026-09-12)** is what a fifth outside review of 0.6.5 led to.
+The lock serialised the writes but not the decision of what to write,
+so a switch committed while the unit was starting or reconciling could
+be overwritten by an older snapshot; both writers read the desk inside
+the lock now (ADR 0020). Three paths reported success for work that did
+not happen: a backend that never bound its port still reached `READY=1`,
+a reconcile that stood down still said `reconciled`, and a refused
+reload was reported as a stopped unit. The stale cleanup signalled by
+process name rather than by socket ownership (ADR 0021). The pin does
+not move; the register table has no new row.
 **0.6.5 (2026-09-12)** closes roadmap item G: every writer of the
 device takes one lock, the unit included, so a switch and the unit's
 own apply, verifier and reconcile can no longer overlap. The phase

@@ -30,3 +30,5 @@ silences half the outputs.
 | [0017](0017-the-osc-port-is-the-trust-boundary.md) | The OSC port is the trust boundary, and it has none |
 | [0018](0018-the-active-profile-survives-a-start.md) | The active profile is remembered beside the config, and a start applies it |
 | [0019](0019-one-lock-for-every-writer.md) | One lock for every writer of the device: the unit takes it too |
+| [0020](0020-the-desk-is-read-under-the-lock.md) | The desk is read under the lock that writes it |
+| [0021](0021-a-start-that-cannot-be-heard-is-not-a-start.md) | A start that cannot be heard is not a start: port readiness and socket-owner cleanup |

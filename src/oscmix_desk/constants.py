@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 import os
 
-__version__ = "0.6.5"
+__version__ = "0.6.6"
 
 DEFAULT_DEVICE_NAME = "Fireface UCX II"
 DEFAULT_USB_ID = "2a39:3fd9"
@@ -121,6 +121,16 @@ EXIT_CONFIG = 2
 # treat it as a failure, which is the safe direction for a code that
 # means "the state is not what was asked for".
 EXIT_DIFFERS = 3
+
+# A switch that reached the device but could not be recorded: the desk
+# holds until the next reload or start, which will apply something else.
+# Exit 0 would tell a provisioning script that the change is permanent,
+# which is the one thing it is not.
+EXIT_NOT_PERSISTED = 4
+
+# The unit is running and refused the reload, so it may still be acting
+# on the previous desk. Distinct from "not running", which is fine.
+EXIT_RELOAD_FAILED = 5
 
 # How long the session waits for the background verifier to stop before
 # exiting anyway. The verifier checks for a stop between every phase and

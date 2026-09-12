@@ -18,8 +18,13 @@ def process_mod():
     return process
 
 
-def fake_proc(tmp_path, entries, listening_port=None):
-    """A /proc tree: {pid: (comm, argv0)} plus an optional net/udp entry."""
+def fake_proc(tmp_path, entries, listening_port=None, owner=None):
+    """A /proc tree: {pid: (comm, argv0)}, an optional net/udp entry.
+
+    ``owner`` is the pid whose ``fd`` directory links to the socket the
+    udp row names. Name and user do not make a process the holder of a
+    port, and since 0.6.6 the cleanup insists on the link.
+    """
     root = tmp_path / "proc"
     (root / "net").mkdir(parents=True)
     header = ("  sl  local_address rem_address   st tx_queue rx_queue tr "
@@ -34,6 +39,10 @@ def fake_proc(tmp_path, entries, listening_port=None):
         entry.mkdir()
         (entry / "comm").write_text(comm + "\n")
         (entry / "cmdline").write_bytes(argv0.encode() + b"\0")
+        handles = entry / "fd"
+        handles.mkdir()
+        if owner is not None and str(pid) == str(owner):
+            os.symlink("socket:[1]", handles / "3")
     return root
 
 
@@ -56,11 +65,44 @@ def test_an_unknown_holder_is_reported_not_killed(process_mod, tmp_path,
     monkeypatch.setattr(process_mod.os, "kill",
                         lambda pid, sig: killed.append(pid))
     proc = fake_proc(tmp_path, {"200": ("sshd", "/usr/sbin/sshd")},
-                     listening_port=7222)
+                     listening_port=7222, owner="200")
     with caplog.at_level("WARNING"):
         process_mod._cleanup_stale_backend(7222, proc)
     assert killed == []
-    assert "unknown process" in caplog.text
+    assert "not an oscmix of this user" in caplog.text
+
+
+def test_an_oscmix_that_does_not_hold_the_port_is_left_alone(
+        process_mod, tmp_path, monkeypatch, caplog):
+    """The scenario a name-only match gets wrong.
+
+    Something else holds the port, and a perfectly legitimate oscmix of
+    the same user is driving another interface. Until 0.6.6 the cleanup
+    terminated that one, and left the actual holder running.
+    """
+    signalled = []
+    monkeypatch.setattr(process_mod, "_terminate", signalled.append)
+    proc = fake_proc(tmp_path, {"200": ("sshd", "/usr/sbin/sshd"),
+                                "201": ("oscmix", "/home/u/.local/bin/oscmix")},
+                     listening_port=7222, owner="200")
+    with caplog.at_level("WARNING"):
+        process_mod._cleanup_stale_backend(7222, proc)
+    assert signalled == [], "the other oscmix never had this port"
+    assert "not an oscmix of this user" in caplog.text
+
+
+def test_a_holder_that_cannot_be_identified_is_left_alone(
+        process_mod, tmp_path, monkeypatch, caplog):
+    # No fd links to read: nobody can be shown to hold the port, so
+    # nobody is signalled, and the start fails on the port wait instead.
+    signalled = []
+    monkeypatch.setattr(process_mod, "_terminate", signalled.append)
+    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
+                     listening_port=7222)
+    with caplog.at_level("WARNING"):
+        process_mod._cleanup_stale_backend(7222, proc)
+    assert signalled == []
+    assert "cannot be identified" in caplog.text
 
 
 def test_a_stale_backend_is_terminated(process_mod, tmp_path, monkeypatch):
@@ -69,7 +111,7 @@ def test_a_stale_backend_is_terminated(process_mod, tmp_path, monkeypatch):
                         lambda pid: signalled.append((pid, signal.SIGTERM)))
     monkeypatch.setattr(process_mod.time, "sleep", lambda _s: None)
     proc = fake_proc(tmp_path, {"201": ("oscmix", "/home/u/.local/bin/oscmix")},
-                     listening_port=7222)
+                     listening_port=7222, owner="201")
     process_mod._cleanup_stale_backend(7222, proc)
     assert signalled == [(201, signal.SIGTERM)]
 
@@ -86,7 +128,7 @@ def test_a_vanished_process_does_not_raise(process_mod, tmp_path, monkeypatch):
                             ProcessLookupError(pid)))
     monkeypatch.setattr(process_mod.time, "sleep", lambda _s: None)
     proc = fake_proc(tmp_path, {"202": ("oscmix", "oscmix")},
-                     listening_port=7222)
+                     listening_port=7222, owner="202")
     process_mod._cleanup_stale_backend(7222, proc)
 
 
@@ -265,13 +307,13 @@ def test_resolve_binary_returns_none_when_nothing_is_found(monkeypatch):
 # Reloading the unit after a switch (ADR 0018)
 # --------------------------------------------------------------------------
 
-def test_reload_service_is_false_when_the_unit_is_not_running(monkeypatch):
+def test_reload_service_says_when_the_unit_is_not_running(monkeypatch):
     from oscmix_desk import process
 
     verbs = []
     monkeypatch.setattr(process, "_systemctl",
                         lambda *verb: verbs.append(verb) or 3)
-    assert process.reload_service() is False
+    assert process.reload_service() == process.RELOAD_NOT_RUNNING
     assert verbs == [("is-active", "--quiet", "oscmix.service")]
 
 
@@ -281,9 +323,23 @@ def test_reload_service_reloads_a_running_unit(monkeypatch):
     verbs = []
     monkeypatch.setattr(process, "_systemctl",
                         lambda *verb: verbs.append(verb) or 0)
-    assert process.reload_service() is True
+    assert process.reload_service() == process.RELOAD_DONE
     assert verbs == [("is-active", "--quiet", "oscmix.service"),
                      ("reload", "oscmix.service")]
+
+
+def test_a_running_unit_that_refuses_the_reload_is_its_own_answer(monkeypatch):
+    """Three outcomes, not two.
+
+    "Not running" is fine: nothing can revert the switch. A refusal is
+    not: the unit is up, acting on a desk it has not re-read, and until
+    0.6.6 the caller was told it was not running at all.
+    """
+    from oscmix_desk import process
+
+    monkeypatch.setattr(process, "_systemctl",
+                        lambda *verb: 0 if verb[0] == "is-active" else 1)
+    assert process.reload_service() == process.RELOAD_FAILED
 
 
 def test_systemctl_returns_the_exit_status_and_one_without_the_binary(

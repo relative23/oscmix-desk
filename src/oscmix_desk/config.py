@@ -563,10 +563,12 @@ def _parse_nested_section(parser: "configparser.ConfigParser", section: str,
         # Two different situations produce an empty set, and they call
         # for opposite answers. An unmodelled device has no opinion, so
         # the section passes through as it always has. A family the
-        # model *does* know and declares unsettable must be refused --
-        # Room EQ is reported by the device and ignores every write, and
-        # accepting `[roomeq:output:5]` silently delivered nothing while
-        # looking exactly like a section that worked.
+        # model *does* know and declares unsettable must be refused,
+        # because accepting it delivers nothing while looking exactly
+        # like a section that worked. Room EQ was that example until
+        # 0.6.0: the pin moved, the device took the writes, and the
+        # table says so -- which is why the rule reads the table rather
+        # than naming families here.
         if device is not None and sub in nested_families(
                 device, family):  # type: ignore[arg-type]
             raise ConfigError(
@@ -615,8 +617,8 @@ def _parse_global_section(parser: "configparser.ConfigParser", section: str,
     if not known:
         # Only reachable for a family the model lists with no settable
         # row. The UCX II has none as of 0.6.2, and the branch used to
-        # return an empty list in silence -- the same shape the Room EQ
-        # refusal in `_parse_nested_section` exists to prevent.
+        # return an empty list in silence -- the same shape the refusal
+        # in `_parse_nested_section` exists to prevent.
         raise ConfigError(
             "[%s]: the device reports this family but nothing in it can "
             "be set from a config" % section)

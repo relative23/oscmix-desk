@@ -881,7 +881,7 @@ def test_a_reconcile_hands_on_the_trigger_the_stop_check_and_its_phases(
     seen = []
     notices = []
     monkeypatch.setattr(session_module, "reconcile_now",
-                        lambda *a: seen.append(a))
+                        lambda *a: seen.append(a) or True)
     monkeypatch.setattr(session_module, "sd_notify", notices.append)
     stop = {"stop": False}
     session_module._reconcile(argparse.Namespace(config=path),
@@ -910,3 +910,63 @@ def test_the_config_path_falls_back_to_discovery(monkeypatch, session_mod):
     assert session_module._config_path(argparse.Namespace()) == "discovered"
     assert session_module._config_path(
         argparse.Namespace(config="given")) == "given"
+
+
+def test_a_reconcile_that_wrote_nothing_does_not_report_success(
+        tmp_path, monkeypatch, session_mod):
+    """The mixer GUI holds the receive port, so nothing is written.
+
+    `reconcile_now` refuses rather than writing blind (ADR 0013) and
+    says so by returning False. Until 0.6.6 the status line said
+    "reconciled" either way, which is what an operator reads.
+    """
+    import argparse
+    import re
+
+    from oscmix_desk import session as session_module
+
+    path = _routes_file(tmp_path)
+    notices = []
+    monkeypatch.setattr(session_module, "reconcile_now", lambda *a: False)
+    monkeypatch.setattr(session_module, "sd_notify", notices.append)
+    session_module._reconcile(argparse.Namespace(config=path),
+                              session_mod.Config(), {"stop": False})
+    assert re.fullmatch(r"STATUS=running; reconcile skipped at "
+                        r"\d\d:\d\d:\d\d", notices[-1]), notices[-1]
+
+
+def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
+                                                   session_mod):
+    """A switch that commits while the reconcile waits must win.
+
+    Until 0.6.6 the desk was read before the lock: two writers were
+    serialised, and the second wrote a snapshot older than the first.
+    """
+    import argparse
+    import threading
+
+    from conftest import write_config
+
+    from oscmix_desk import profiles as profiles_mod
+    from oscmix_desk import session as session_module
+
+    path = _routes_file(tmp_path)
+    write_config(tmp_path / "profiles" / "later.conf",
+                 "[route:y]\nplayback = 5/6\noutput = 5/6\n")
+    applied = []
+    monkeypatch.setattr(session_module, "reconcile_now",
+                        lambda config, *a: applied.append(config) or True)
+    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
+
+    held = profiles_mod.take_device_lock(path)
+    assert held is not None
+
+    def commit_then_release():
+        (tmp_path / "active-profile").write_text("later\n")
+        held.release()
+
+    threading.Timer(0.3, commit_then_release).start()
+    session_module._reconcile(argparse.Namespace(config=path),
+                              session_mod.Config(), {"stop": False})
+    assert [r.output for r in applied[0].routes] == [(5, 6)], \
+        "the reconcile applied the desk it read before waiting"

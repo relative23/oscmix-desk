@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from .constants import CHILD_STOP_GRACE, SERVICE_UNIT, STALE_BACKEND_SETTLE
-from .discovery import udp_port_listening
+from .discovery import udp_port_listening, udp_socket_inodes
 from .log import log
 
 
@@ -46,19 +46,62 @@ def find_stale_backends(proc_root: Path) -> List[int]:
     return sorted(pids)
 
 
+def socket_owner(port: int, proc_root: Path) -> Optional[int]:
+    """The PID holding the UDP socket on ``port``, when it can be told.
+
+    Name and user are not ownership. Until 0.6.6 the cleanup terminated
+    every `oscmix` of this user as soon as *anything* held the port, so
+    a second interface's backend on another port could be killed by a
+    start whose port was taken by something else entirely.
+
+    The socket inode is the link: `/proc/net/udp` gives it for the bound
+    port, and `/proc/<pid>/fd/*` points at `socket:[<inode>]`. None
+    means nobody could be shown to hold it, and the caller then leaves
+    every process alone.
+    """
+    inodes = udp_socket_inodes(port, proc_root)
+    if not inodes:
+        return None
+    for entry in sorted(proc_root.iterdir()):
+        if not entry.name.isdigit():
+            continue
+        try:
+            handles = list((entry / "fd").iterdir())
+        except OSError:
+            continue  # not ours to read, or gone since the scan
+        for handle in handles:
+            try:
+                target = os.readlink(handle)
+            except OSError:
+                continue
+            if target.startswith("socket:[") and target[8:-1] in inodes:
+                return int(entry.name)
+    return None
+
+
 def _cleanup_stale_backend(port: int, proc_root: Path) -> None:
-    """A stale oscmix (e.g. from a manual run) would hold the OSC port."""
+    """A stale oscmix (e.g. from a manual run) would hold the OSC port.
+
+    Only the process that demonstrably holds the port is terminated,
+    and only when it is an oscmix of this user. Anything else keeps the
+    port and the start fails on the port wait, which is the honest
+    outcome: this project does not get to kill a stranger's process to
+    make room for itself.
+    """
     if not udp_port_listening(port, proc_root):
         return
-    pids = find_stale_backends(proc_root)
-    if not pids:
-        log.warning("UDP port %d is in use by an unknown process; "
-                    "oscmix may fail to bind it", port)
+    owner = socket_owner(port, proc_root)
+    if owner is None:
+        log.warning("UDP port %d is in use and its owner cannot be "
+                    "identified; leaving every process alone", port)
         return
-    log.warning("UDP port %d already in use; terminating stale oscmix (pid %s)",
-                port, ", ".join(map(str, pids)))
-    for pid in pids:
-        _terminate(pid)
+    if owner not in find_stale_backends(proc_root):
+        log.warning("UDP port %d is held by pid %d, which is not an oscmix "
+                    "of this user; leaving it alone", port, owner)
+        return
+    log.warning("UDP port %d already in use; terminating the stale oscmix "
+                "that holds it (pid %d)", port, owner)
+    _terminate(owner)
     # Part of the startup budget; see constants.startup_budget.
     time.sleep(STALE_BACKEND_SETTLE)
 
@@ -145,7 +188,15 @@ def _systemctl(*verb: str) -> int:
         return 1
 
 
-def reload_service() -> bool:
+#: What a reload attempt did. "not running" is not a failure: there is
+#: no verifier that could revert the switch. A refused reload is one,
+#: because the unit is running on a desk it has not re-read (0.6.6).
+RELOAD_NOT_RUNNING = "not running"
+RELOAD_DONE = "reloaded"
+RELOAD_FAILED = "failed"
+
+
+def reload_service() -> str:
     """Ask the running unit to reconcile now. False when it is not running.
 
     A profile switch writes the device from a second process. For up to
@@ -158,5 +209,7 @@ def reload_service() -> bool:
     of the two writes last, it is the profile.
     """
     if _systemctl("is-active", "--quiet", SERVICE_UNIT) != 0:
-        return False
-    return _systemctl("reload", SERVICE_UNIT) == 0
+        return RELOAD_NOT_RUNNING
+    if _systemctl("reload", SERVICE_UNIT) != 0:
+        return RELOAD_FAILED
+    return RELOAD_DONE

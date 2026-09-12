@@ -12,7 +12,12 @@ landed at 53% on cli.py and was found by the gate, on a push.
 from conftest import free_udp_port, write_config
 
 from oscmix_desk import cli
-from oscmix_desk.constants import EXIT_CONFIG, EXIT_OK
+from oscmix_desk.constants import (
+    EXIT_CONFIG,
+    EXIT_NOT_PERSISTED,
+    EXIT_OK,
+    EXIT_RELOAD_FAILED,
+)
 
 GOOD = """
 [route:main]
@@ -177,7 +182,8 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     # the unit re-read the desk in effect (ADR 0018).
     _quick_wire(monkeypatch)
     reloads = []
-    monkeypatch.setattr(cli, "reload_service", lambda: reloads.append(1) or True)
+    monkeypatch.setattr(cli, "reload_service",
+                        lambda: reloads.append(1) or cli.RELOAD_DONE)
     path = _config_with(tmp_path, {"tracking": GOOD,
                                    "broken": "[route:x]\noutput = 99\nplayback = 1\n"})
     assert cli.main(["--config", str(path), "--profile", "broken"]) == EXIT_CONFIG
@@ -193,11 +199,21 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     assert reloads == [1, 1]
     # A stopped unit is not an error: there is nothing whose verifier
     # could revert the switch, and the log says so rather than nothing.
-    monkeypatch.setattr(cli, "reload_service", lambda: False)
+    monkeypatch.setattr(cli, "reload_service", lambda: cli.RELOAD_NOT_RUNNING)
     caplog.clear()
     with caplog.at_level("INFO"):
         assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert "oscmix.service is not running; nothing to reload" in caplog.text
+    # A running unit that refuses the reload is neither of those: it is
+    # up, on a desk it has not re-read, and the exit code says so.
+    from oscmix_desk.process import RELOAD_FAILED
+
+    monkeypatch.setattr(cli, "reload_service", lambda: RELOAD_FAILED)
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        assert cli.main(["--config", str(path),
+                         "--no-profile"]) == EXIT_RELOAD_FAILED
+    assert "refused the reload" in caplog.text
 
 
 # --------------------------------------------------------------------------
@@ -211,18 +227,19 @@ def test_a_switch_whose_marker_cannot_be_written_does_not_reload(
 
     With the marker unwritten the unit re-reads routing.conf, and its
     reconcile re-applies it over the profile that just landed. The
-    switch is still applied and still exits 0; what it must not do is
-    send the reload that undoes it.
+    switch is still applied; what it must not do is send the reload that
+    undoes it, and the exit code has to say that the desk is temporary
+    so a provisioning script cannot read it as done (0.6.6).
     """
     _quick_wire(monkeypatch)
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or True)
+                        lambda: reloads.append(1) or cli.RELOAD_DONE)
     path = _config_with(tmp_path, {"tracking": GOOD})
     (tmp_path / "active-profile").mkdir()      # a directory: the write fails
     with caplog.at_level("WARNING"):
         assert cli.main(["--config", str(path),
-                         "--profile", "tracking"]) == EXIT_OK
+                         "--profile", "tracking"]) == EXIT_NOT_PERSISTED
     assert reloads == [], "the reload would undo the switch"
     assert "not remembered" in capsys.readouterr().out
     assert "oscmix.service not reloaded" in caplog.text
@@ -235,12 +252,13 @@ def test_no_profile_that_cannot_forget_the_marker_does_not_reload(
     _quick_wire(monkeypatch)
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or True)
+                        lambda: reloads.append(1) or cli.RELOAD_DONE)
     path = _config_with(tmp_path, {"tracking": GOOD})
     marker = tmp_path / "active-profile"
     marker.mkdir()
     (marker / "child").write_text("")          # a non-empty directory
     with caplog.at_level("WARNING"):
-        assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
+        assert cli.main(["--config", str(path),
+                         "--no-profile"]) == EXIT_NOT_PERSISTED
     assert reloads == []
     assert "oscmix.service not reloaded" in caplog.text

@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from .log import log
 
@@ -142,6 +142,34 @@ def udp_port_listening(port: int, proc_root: Path) -> bool:
             if local_port == port:
                 return True
     return False
+
+
+def udp_socket_inodes(port: int, proc_root: Path) -> Set[str]:
+    """Inode numbers of the UDP sockets bound to ``port``.
+
+    The inode is what ties a listening port to the process that holds
+    it: ``/proc/<pid>/fd/<n>`` links to ``socket:[<inode>]``. Without
+    that step, "something holds the port" and "this process holds the
+    port" are the same statement, which is how a cleanup can terminate
+    a process that never had the port.
+    """
+    inodes = set()
+    for name in ("udp", "udp6"):
+        try:
+            lines = (proc_root / "net" / name).read_text().splitlines()[1:]
+        except OSError:
+            continue
+        for line in lines:
+            fields = line.split()
+            if len(fields) < 10 or ":" not in fields[1]:
+                continue
+            try:
+                local_port = int(fields[1].rsplit(":", 1)[1], 16)
+            except ValueError:
+                continue
+            if local_port == port:
+                inodes.add(fields[9])
+    return inodes
 
 
 def resolve_binary(name: str, env_var: str) -> Optional[str]:

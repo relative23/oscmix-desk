@@ -101,12 +101,17 @@ Environment=OSCMIX_LINK_SYNC_DELAY=30
 
 `systemctl --user status oscmix.service` also shows a `Status:` line
 since 0.6.3: `applying routing`, `verifying routing`, `reconciling
-(SIGHUP)`, or `running; verifier finished at HH:MM:SS`. It says what the
-unit is doing; it is not what keeps two writers apart. Since 0.6.5 the
-unit takes the same lock a switch takes, `active-profile.lock` beside
-the config (ADR 0019), so a profile switch right after a replug waits
-for the start-up verifier -- up to twenty seconds -- and says so. Past
-`SWITCH_LOCK_WAIT` it refuses and writes nothing.
+(SIGHUP)`, `running; verifier finished at HH:MM:SS`, or `running;
+reconcile skipped at HH:MM:SS`. The last one means the reconcile stood
+down rather than wrote: the receive port was held, or another writer
+had the device lock. It says what the unit is doing; it is not what
+keeps two writers apart. Since 0.6.5 the unit takes the same lock a
+switch takes, `active-profile.lock` beside the config (ADR 0019), so a
+profile switch right after a replug waits for the start-up verifier --
+up to twenty seconds -- and says so. Past `SWITCH_LOCK_WAIT` it refuses
+and writes nothing. Since 0.6.6 both the unit and a switch read the
+desk *inside* that lock (ADR 0020), so whichever of them gets it first,
+the other applies what was committed rather than what it read earlier.
 
 ## 4. Does the backend accept OSC?
 

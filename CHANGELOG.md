@@ -1,5 +1,78 @@
 # Changelog
 
+## 0.6.6 (2026-09-12)
+
+What a fifth outside review of 0.6.5 found, checked against the code
+and fixed: a lock that serialised the writes but not the decision of
+what to write, three paths that reported success for work that did not
+happen, and a cleanup that signalled by name rather than by ownership.
+The pin does not move and the register table has no new row.
+
+### Fixed
+
+- **The desk is read inside the lock that writes it.** The start parsed
+  the config before it waited for the device, and the reconcile read it
+  before it took the lock. A profile switch committed in that window was
+  overwritten by a snapshot older than it: two writers, correctly
+  serialised, wrong end state. Both now take the lock first and read
+  after, and the machine settings stay with the running process. ADR
+  0020.
+
+- **A backend that never binds its port fails the start.** The port wait
+  logged a warning and carried on, so the routing was written into a
+  port nobody bound -- UDP drops that silently -- and `READY=1` told
+  systemd the desk was set. The start now stops the backend it spawned
+  and exits non-zero instead. ADR 0021.
+
+- **The stale cleanup signals the process that holds the port.** It
+  terminated every `oscmix` of this user as soon as anything held the
+  port, which could stop a second interface's backend and leave the
+  actual holder running. The socket inode from `/proc/net/udp` is
+  resolved through `/proc/<pid>/fd` now, and only that process is
+  signalled, and only when it is an `oscmix` of this user.
+
+- **A reconcile that wrote nothing says so.** `reconcile_now` refuses to
+  write blind when the receive port is held and returns False; the
+  status line said `reconciled` either way. It now reports `reconcile
+  skipped`, which is what an operator reads.
+
+- **A refused reload is no longer reported as "not running".** Both
+  answers were False, so a unit that was up and rejected the reload was
+  described as stopped, with exit 0. Three states now, and a switch
+  whose reload was refused exits 5.
+
+- **A switch that could not be recorded exits 4, not 0.** Suppressing
+  the reload was right and shipped in 0.6.5; telling a provisioning
+  script that the desk is permanent was not.
+
+- **A stop that arrives while waiting for the device lock writes
+  nothing.** The stop check ran only inside the verifier, so a process
+  on its way out could still apply a full routing once the lock came
+  free.
+
+- **The marker write is complete, and its durability is reported.** A
+  short `write(2)` could truncate the profile name, the directory fsync
+  swallowed every error, and removing the marker never synced the
+  directory at all. All three are fixed; a directory that cannot be
+  synced is now a warning that says what is at risk.
+
+- **A lock error is no longer read as contention.** Any `OSError` from
+  `flock` meant "somebody else has it", so a filesystem that cannot lock
+  produced a 30 second wait and then the wrong message. Only `EACCES`,
+  `EAGAIN` and `EWOULDBLOCK` are contention now.
+
+### Changed
+
+- **Documentation that had drifted from the code.** The architecture
+  said Room EQ and `/output/{ch}/phase` cannot be set from a config,
+  which stopped being true when the pin moved in 0.6.0, and described
+  the config parser as refusing everything it does not model, when
+  unknown sections are warned about and ignored on purpose. The README
+  no longer offers the verification line as proof that the playback mix
+  matrix is right: nothing can prove that, because the device never
+  reports it. The mutation policy's own docstring promised absolute
+  survivor and kill gates that it does not enforce.
+
 ## 0.6.5 (2026-09-12)
 
 One lock for every writer of the device, and a switch the marker did

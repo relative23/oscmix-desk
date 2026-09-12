@@ -42,6 +42,10 @@ class FakeChild:
         self.terminated = True
 
 
+class TimeoutExpired(Exception):
+    """subprocess.TimeoutExpired, for the double that stands in for it."""
+
+
 @pytest.fixture
 def lifecycle(session_module, monkeypatch):
     """run_session with every outside interaction replaced.
@@ -50,9 +54,11 @@ def lifecycle(session_module, monkeypatch):
     test can assert not only *that* READY was sent but how often.
     """
     notifications = []
+    children = []
 
     def run(*, seq_client=42, usb_present=True, binaries=True,
-            returncode=0, stop_requested=False, routes=(), **args):
+            returncode=0, stop_requested=False, routes=(), port_ready=True,
+            alive=False, **args):
         monkeypatch.setattr(session_module, "sd_notify", notifications.append)
         monkeypatch.setattr(session_module, "wait_for_seq_client",
                             lambda *a, **k: seq_client)
@@ -64,13 +70,20 @@ def lifecycle(session_module, monkeypatch):
                             lambda *a, **k: None)
         monkeypatch.setattr(session_module, "_install_stop_handlers",
                             lambda *a, **k: None)
+        # True: the port came up. False is the backend that lives but
+        # never binds, which since 0.6.6 fails the start (ADR 0021).
         monkeypatch.setattr(session_module, "_await_backend_port",
-                            lambda *a, **k: None)
+                            lambda *a, **k: port_ready)
         monkeypatch.setattr(session_module, "_apply_and_verify",
                             lambda *a, **k: None)
+        def spawn(*a, **k):
+            child = RunningChild() if alive else FakeChild(returncode)
+            children.append(child)
+            return child
+
         monkeypatch.setattr(session_module, "subprocess",
-                            type("S", (), {"Popen": staticmethod(
-                                lambda *a, **k: FakeChild(returncode))})())
+                            type("S", (), {"Popen": staticmethod(spawn),
+                                           "TimeoutExpired": TimeoutExpired})())
 
         def fake_supervise(child, stop, on_reload=None,
                            reload_requested=None):
@@ -87,6 +100,7 @@ def lifecycle(session_module, monkeypatch):
         return session_module.run_session(make_args(**args), config)
 
     run.notifications = notifications
+    run.children = children
     return run
 
 
@@ -194,8 +208,20 @@ class RunningChild:
 
     def __init__(self):
         self.returncode = None
+        self.terminated = False
+        self.waited = None
 
     def poll(self):
+        return self.returncode
+
+    def terminate(self):
+        self.terminated = True
+        self.returncode = -15
+
+    def wait(self, timeout=None):
+        # Recorded rather than ignored: the grace the caller allows is
+        # part of what a stop does.
+        self.waited = timeout
         return self.returncode
 
 
@@ -486,3 +512,101 @@ def test_a_start_that_cannot_take_the_lock_applies_anyway(
         held.release()
     assert applied, "the start still applies the routing"
     assert "applying anyway" in caplog.text
+
+
+def test_a_backend_that_never_binds_its_port_fails_the_start(session_mod,
+                                                             lifecycle):
+    """Alive but deaf, which READY=1 must not paper over.
+
+    OSC here is UDP: every datagram sent to a port nobody bound is
+    accepted by the kernel and dropped. The routing would be "applied"
+    into nothing, the verifier would confirm nothing, and systemd would
+    have been told the desk is set. The start fails instead, and the
+    backend it started does not outlive it.
+    """
+    assert lifecycle(alive=True, port_ready=False) == session_mod.EXIT_FAILURE
+    assert ready_count(lifecycle.notifications) == 0, \
+        "Type=notify means the routing is on the device"
+    assert lifecycle.children[-1].terminated is True, \
+        "a backend this start will not use must not be left running"
+
+
+def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
+                                               session_mod):
+    """A switch that commits while the start waits for the lock wins.
+
+    The config this process parsed at startup is a snapshot older than
+    that switch. Serialising the writers is not enough if the loser
+    writes a desk nobody asked for any more (0.6.6).
+    """
+    import threading
+
+    from conftest import write_config
+
+    from oscmix_desk import profiles as profiles_mod
+    from oscmix_desk import session as session_module
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    write_config(tmp_path / "profiles" / "later.conf",
+                 "[route:y]\nplayback = 5/6\noutput = 5/6\n")
+    applied = []
+    monkeypatch.setattr(session_module, "apply_routing",
+                        lambda config, *a, **k: applied.append(config))
+    monkeypatch.setattr(session_module, "verify_and_repair",
+                        lambda *a, **k: None)
+    monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
+    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
+    started = session_mod.load_config(path)
+
+    held = profiles_mod.take_device_lock(path)
+    assert held is not None
+
+    def commit_then_release():
+        (tmp_path / "active-profile").write_text("later\n")
+        held.release()
+
+    threading.Timer(0.3, commit_then_release).start()
+    verifier = session_module._apply_and_verify(RunningChild(), started,
+                                                {"stop": False}, path)
+    assert verifier is not None
+    verifier.join(timeout=5)
+    assert [r.output for r in applied[0].routes] == [(5, 6)], \
+        "the start applied the desk it read before waiting"
+    assert applied[0].osc_port == started.osc_port, \
+        "the ports belong to the running process, not to the desk"
+
+
+def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
+                                                     session_mod):
+    # SIGTERM arrived while another writer had the device. Writing the
+    # whole routing on the way out is the opposite of what was asked.
+    import threading
+
+    from conftest import write_config
+
+    from oscmix_desk import profiles as profiles_mod
+    from oscmix_desk import session as session_module
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    applied = []
+    monkeypatch.setattr(session_module, "apply_routing",
+                        lambda *a, **k: applied.append(a))
+    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
+    stop = {"stop": False}
+    held = profiles_mod.take_device_lock(path)
+    assert held is not None
+
+    def stop_then_release():
+        stop["stop"] = True
+        held.release()
+
+    threading.Timer(0.3, stop_then_release).start()
+    verifier = session_module._apply_and_verify(
+        RunningChild(), session_mod.load_config(path), stop, path)
+    assert verifier is None
+    assert applied == [], "nothing is written on the way out"
+    after = profiles_mod.take_device_lock(path, wait=0.2)
+    assert after is not None, "and the lock is released"
+    after.release()

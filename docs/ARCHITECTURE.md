@@ -85,7 +85,7 @@ acyclic graph.
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
 | `registers` | the register model as data: paths, tags, bounds, verification class, policy, per-device channel maps |
-| `config` | parse `routing.conf` into a `Config`, refusing anything the model does not declare |
+| `config` | parse `routing.conf` into a `Config`, refusing what the model declares unsettable and warning about what it does not model at all |
 | `discovery` | find the device: ALSA sequencer clients, USB presence, whether a UDP port is bound |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
 | `reconcile` | `desired` / `observed` / `plan`, and rendering a `Config` back to text |
@@ -110,9 +110,10 @@ write.
 Two consequences run through everything else:
 
 - **A config can set exactly what declares a value domain.** Phantom
-  power, Room EQ and `/output/{ch}/phase` have none, so no `routing.conf`
-  can reach them. That is one rule in one place instead of a list of
-  exceptions in the parser.
+  power has none, so no `routing.conf` can reach it. That is one rule in
+  one place instead of a list of exceptions in the parser, and it is why
+  this page names no families: what a config can reach is a property of
+  the table, and the table moves when the pin does.
 - **The wire type comes from the declared tag**, never from the Python
   value. A `,f` written to a register that reads integers is accepted,
   dropped, and changes nothing.
@@ -162,6 +163,8 @@ channel map and no registers, because oscmix cannot drive it.
 | 1 | runtime failure | restart after 3 s (max 5 per 2 min) |
 | 2 | routing.conf error | **no** restart (`RestartPreventExitStatus=2`) |
 | 3 | `--diff` only: the device and the config disagree | never seen; the service runs no flag |
+| 4 | a switch reached the device but could not be recorded | never seen; flags only |
+| 5 | the unit is running and refused the reload | never seen; flags only |
 
 `diff(1)` returns 1 for "differing" and that is not available here,
 because 1 already means a failure. A caller has to be able to tell *the
@@ -195,10 +198,14 @@ monitoring check report healthy silence while the backend is down.
   This is easy to get wrong and results in a service that keeps running
   after unplug.
 
-- **Stale cleanup is surgical.** If the OSC port is already taken at
-  startup, only processes whose `/proc/<pid>/cmdline` is literally
-  `oscmix` and that belong to the current user get SIGTERM -- no blanket
-  `pkill` patterns.
+- **Stale cleanup signals the holder, not the namesake.** If the OSC
+  port is already taken at startup, the socket inode in `/proc/net/udp`
+  is resolved to the process that holds it through `/proc/<pid>/fd`, and
+  that process is terminated only when it is also an `oscmix` of this
+  user. Anything else keeps the port and the start fails on the port
+  wait. Until 0.6.6 every `oscmix` of the user was terminated as soon as
+  *anything* held the port, which could stop a second interface's
+  backend and leave the actual holder running (ADR 0021).
 
 - **Named PipeWire sinks are generated, not hardcoded.**
   `oscmix-session --pipewire-sinks` derives one loopback sink per stereo

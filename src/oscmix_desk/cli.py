@@ -19,7 +19,9 @@ from .constants import (
     EXIT_CONFIG,
     EXIT_DIFFERS,
     EXIT_FAILURE,
+    EXIT_NOT_PERSISTED,
     EXIT_OK,
+    EXIT_RELOAD_FAILED,
     SERVICE_UNIT,
     __version__,
 )
@@ -27,7 +29,7 @@ from .discovery import device_firmware, device_serial
 from .errors import ConfigError
 from .log import log
 from .pipewire import generate_pipewire_conf, pw_sink_info
-from .process import reload_service
+from .process import RELOAD_DONE, RELOAD_NOT_RUNNING, reload_service
 from .profiles import (
     REFUSED,
     Outcome,
@@ -211,7 +213,10 @@ def _report_outcome(outcome: "Outcome") -> int:
     """One line on stdout and the exit code the outcome maps to.
 
     Shared by the switch and by `--no-profile`, which is the same
-    transaction with routing.conf as the desk (ADR 0018).
+    transaction with routing.conf as the desk (ADR 0018). Four states,
+    four codes: a script that branches on `$?` has to be able to tell
+    "the desk is yours and will stay" from "it is yours until the next
+    start", and neither from "the unit did not hear about it".
     """
     sys.stdout.write(outcome.describe() + "\n")
     if outcome.state == REFUSED:
@@ -223,15 +228,21 @@ def _report_outcome(outcome: "Outcome") -> int:
         log.warning("%s not reloaded: the marker was not written, and its "
                     "reconcile would undo what was just applied",
                     SERVICE_UNIT)
-        return EXIT_OK
+        return EXIT_NOT_PERSISTED
     # The unit's own state has to follow, or its start-up verifier may
     # still be re-applying the desk it started with (process.reload_service).
-    if reload_service():
+    reloaded = reload_service()
+    if reloaded == RELOAD_DONE:
         log.info("%s reloaded, so its own reconcile follows the new desk",
                  SERVICE_UNIT)
-    else:
+        return EXIT_OK
+    if reloaded == RELOAD_NOT_RUNNING:
         log.info("%s is not running; nothing to reload", SERVICE_UNIT)
-    return EXIT_OK
+        return EXIT_OK
+    log.error("%s is running but refused the reload, so it may still be "
+              "acting on the previous desk; send it again with "
+              "systemctl --user reload %s", SERVICE_UNIT, SERVICE_UNIT)
+    return EXIT_RELOAD_FAILED
 
 
 #: Phase numbers as the diff prints them. The apply writes in this

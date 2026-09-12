@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Compare a mutation run against the recorded baseline.
 
-Fails when survivors grow or kills shrink. Both directions matter: a new
-survivor is a new blind spot, and a lost kill means a test stopped
-catching something it used to catch.
+Fails when the *ratio* killed / (killed + survived) falls below
+min_score - tolerance. Absolute counts are deliberately not gated:
+every line added brings its own mutants, so a healthy change with good
+tests would trip a count-based rule. quality/mutation-baseline.json
+carries that reasoning and the measured history.
+
+The wording here said "fails when survivors grow or kills shrink" until
+0.6.6, which is a stricter promise than the code keeps.
 
 Usage: mutmut run && python3 scripts/mutation-policy.py
 """

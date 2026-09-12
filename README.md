@@ -184,8 +184,10 @@ is the routing itself, the mix-matrix gain, and is always written.
 Shortly after startup,
 `oscmix-session` also reads the state back from the device in the
 background and re-sends once on mismatch -- the journal line `routing
-verified against device state` is your proof that the hardware is
-actually configured.
+verified against device state` is your proof that everything the device
+reports back matches. The playback mix matrix is not in that: oscmix
+never reports it, so it is re-established rather than confirmed, and no
+read-back can prove it.
 
 ## Profiles
 
@@ -210,7 +212,8 @@ Leave `[osc]` and `[device]` out of a profile. Those describe the
 machine, not the desk, and are taken from your main config unless a
 profile states them itself.
 
-A switch reports exactly one of three things, and never half-applies:
+A switch reports exactly one of three things, and no partly valid
+config is ever half-applied:
 
 ```
 applied 'tracking' and verified it at the device

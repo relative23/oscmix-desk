@@ -17,6 +17,7 @@ from typing import Dict, Optional
 
 from .config import Config, discover_config_path, profile_path
 from .constants import (
+    CHILD_STOP_GRACE,
     EXIT_FAILURE,
     EXIT_OK,
     PORT_READY_TIMEOUT,
@@ -29,7 +30,7 @@ from .errors import ConfigError
 from .log import log
 from .notify import sd_notify
 from .process import _cleanup_stale_backend, supervise
-from .profiles import effective_config, take_device_lock
+from .profiles import DeviceLock, effective_config, take_device_lock
 from .reconcile import desired, plan
 from .routing import apply_routing, wait_unless_stopped
 from .verify import reconcile_now, verify_and_repair
@@ -105,18 +106,37 @@ def _install_reload_handler(reload_requested: Dict[str, bool]) -> None:
 
 
 def _await_backend_port(child: "subprocess.Popen[bytes]", config: Config,
-                        proc_root: Path) -> None:
-    """Wait until oscmix binds its OSC port, or the child dies trying."""
+                        proc_root: Path) -> bool:
+    """Wait until oscmix binds its OSC port; False when it never did.
+
+    A living backend is not a listening one, and this is UDP: every
+    datagram sent to a port nobody bound is accepted by the kernel and
+    dropped. The apply would look like it worked, the verifier would
+    confirm nothing, and `Type=notify` would have told systemd the desk
+    is set. The caller fails the start instead (0.6.6).
+    """
     deadline = time.monotonic() + PORT_READY_TIMEOUT
     while time.monotonic() < deadline:
         if udp_port_listening(config.osc_port, proc_root):
             log.info("oscmix is listening on UDP %d", config.osc_port)
-            return
+            return True
         if child.poll() is not None:
-            return
+            return False
         time.sleep(0.25)
-    log.warning("oscmix not listening on UDP %d after %.0fs; continuing",
-                config.osc_port, PORT_READY_TIMEOUT)
+    log.error("oscmix is not listening on UDP %d after %.0fs",
+              config.osc_port, PORT_READY_TIMEOUT)
+    return False
+
+
+def _stop_child(child: "subprocess.Popen[bytes]") -> None:
+    """Stop a backend this process started and will not use."""
+    try:
+        child.terminate()
+        child.wait(timeout=CHILD_STOP_GRACE)
+    except subprocess.TimeoutExpired:
+        child.kill()
+    except OSError:
+        pass
 
 
 def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
@@ -136,6 +156,27 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
     three points, with nobody looking again. See
     docs/decisions/0009-verifier-stop-contract.md.
     """
+    # One transaction, from the first write to the verifier's last: a
+    # switch that landed between them would be overwritten by the retry
+    # that follows it, which is what 0.6.3 measured (ADR 0019).
+    lock = take_device_lock(config_path)
+    if lock is None:
+        # A desk with no routing at all is worse than re-applying what
+        # the other writer just wrote, and the reread below makes both
+        # of them the same desk anyway.
+        log.warning("another writer holds the device lock; applying anyway")
+        lock = DeviceLock()
+
+    # The lock may have taken a while. A stop that arrived during the
+    # wait means this process is going away, and writing the whole
+    # routing on the way out is the opposite of what was asked (0.6.6).
+    if stop_requested["stop"] or child.poll() is not None:
+        log.info("stop requested while waiting for the device lock; "
+                 "nothing applied")
+        lock.release()
+        return None
+
+    config = _desk_under_the_lock(config_path, config)
     if not desired(config):
         # Everything the config declares, not only its routes. Since
         # 0.4.0 a file may consist of `[input:3]`, `[eq:input:3]` or
@@ -146,21 +187,22 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         # at one part of the config and treated the rest as empty.
         log.info("nothing declared in the config; leaving mixer state "
                  "untouched")
+        lock.release()
         return None
-
-    # One transaction, from the first write to the verifier's last: a
-    # switch that landed between them would be overwritten by the retry
-    # that follows it, which is what 0.6.3 measured (ADR 0019).
-    lock = take_device_lock(config_path)
-    if lock is None:
-        # A desk with no routing at all is worse than re-applying what
-        # the other writer just wrote, and the marker makes both of them
-        # the same desk anyway.
-        log.warning("another writer holds the device lock; applying anyway")
 
     sd_notify("STATUS=applying routing")
     apply_routing(config, config.osc_port, config.osc_recv_port)
+    return _verify_in_background(child, config, stop_requested, lock)
 
+
+def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
+                          stop_requested: Dict[str, bool],
+                          lock: DeviceLock) -> threading.Thread:
+    """Read the routing back on a thread, and free the lock when done.
+
+    The lock spans the apply and this, because the verifier re-applies:
+    a switch that landed in between would be overwritten by the retry.
+    """
     def should_stop() -> bool:
         # A dead backend counts as a stop: its port is gone, so every
         # write from here would go nowhere and the log would claim a
@@ -179,13 +221,39 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
             sd_notify("STATUS=running; verifier finished at %s"
                       % time.strftime("%H:%M:%S"))
         finally:
-            if lock is not None:
-                lock.release()
+            lock.release()
 
     thread = threading.Thread(target=deferred_verify, name="verify",
                               daemon=True)
     thread.start()
     return thread
+
+
+def _desk_under_the_lock(config_path: Optional[Path],
+                         running: Config) -> Config:
+    """Re-read the desk now that nothing else may write it.
+
+    The config this process started with was read before the lock, and
+    a profile switch committed in between would otherwise be overwritten
+    by a snapshot older than it: serialised writers, wrong result. So
+    the desired state is read inside the lock that writes it (0.6.6).
+
+    Machine settings stay with the running process. The ports and the
+    device name belong to the process, not to the desk, which is the
+    same rule the reconcile follows.
+    """
+    if config_path is None:
+        return running
+    try:
+        fresh, _active = effective_config(config_path)
+    except ConfigError as exc:
+        log.error("%s is no longer usable (%s); applying the desk this "
+                  "process started with", config_path, exc)
+        return running
+    fresh.osc_port = running.osc_port
+    fresh.osc_recv_port = running.osc_recv_port
+    fresh.device_name = running.device_name
+    return fresh
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -249,7 +317,15 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     reload_requested = {"reload": False}
     _install_stop_handlers(child, stop_requested)
     _install_reload_handler(reload_requested)
-    _await_backend_port(child, config, proc_root)
+    if not _await_backend_port(child, config, proc_root) \
+            and child.poll() is None:
+        # Alive but deaf. Routing written into a port nobody bound is
+        # dropped by the kernel without a word, and READY=1 would tell
+        # systemd the desk is set (0.6.6).
+        log.error("backend never bound UDP %d; stopping it and failing the "
+                  "start", config.osc_port)
+        _stop_child(child)
+        return EXIT_FAILURE
 
     verifier = None
     if child.poll() is None:
@@ -309,8 +385,11 @@ def _reconcile(args: argparse.Namespace, config: Config,
     Re-reading is what makes SIGHUP mean what it means everywhere else.
     A config that no longer parses is *not* applied and not fatal: the
     session keeps running on the configuration it already has, which is
-    the state somebody is listening to. Exiting here would take the
-    routing down over a typo in a file nobody was forced to edit.
+    the state somebody is listening to.
+
+    The read happens **inside** the device lock. Outside it, a profile
+    switch committed between the read and the write would be undone by
+    a reconcile that had already decided what to write (0.6.6).
 
     ``verifier`` is the start-up thread, when it exists: the reconcile
     is serialised behind it (``_verifier_finished``).
@@ -318,32 +397,6 @@ def _reconcile(args: argparse.Namespace, config: Config,
     if not _verifier_finished(verifier, stop_requested):
         return
     path = _config_path(args)
-    fresh = config
-    if path is not None:
-        try:
-            # The active profile if one is remembered, routing.conf
-            # otherwise -- the same answer the start gives (ADR 0018),
-            # which is what makes the resume hook's reload re-apply the
-            # desk that was chosen rather than the default one.
-            fresh, active = effective_config(path)
-        except ConfigError as exc:
-            log.error("SIGHUP: %s is not usable (%s); keeping the running "
-                      "configuration", path, exc)
-            return
-        # Name what was actually reloaded. On the first live run this
-        # line said routing.conf while the profile above it was in
-        # effect -- true of the file read, misleading about the desk.
-        log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
-                 profile_path(active, path) if active else path,
-                 len(fresh.routes), len(fresh.channels))
-        # The backend is already bound and already talking to a device.
-        # A reload reconciles the *desk*; the ports and the device name
-        # belong to the process that is running, and changing them here
-        # would mean writing to a port nobody is listening on -- with no
-        # error, because OSC over UDP has no delivery guarantee.
-        fresh.osc_port = config.osc_port
-        fresh.osc_recv_port = config.osc_recv_port
-        fresh.device_name = config.device_name
     # The same lock a switch takes: a reconcile that started while one
     # was writing used to interleave with it (ADR 0019).
     lock = take_device_lock(path)
@@ -352,11 +405,42 @@ def _reconcile(args: argparse.Namespace, config: Config,
                     "skipped -- send the reload again")
         return
     try:
+        fresh = config
+        if path is not None:
+            try:
+                # The active profile if one is remembered, routing.conf
+                # otherwise -- the same answer the start gives (ADR 0018),
+                # which is what makes the resume hook's reload re-apply the
+                # desk that was chosen rather than the default one.
+                fresh, active = effective_config(path)
+            except ConfigError as exc:
+                log.error("SIGHUP: %s is not usable (%s); keeping the running "
+                          "configuration", path, exc)
+                return
+            # Name what was actually reloaded. On the first live run this
+            # line said routing.conf while the profile above it was in
+            # effect -- true of the file read, misleading about the desk.
+            log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
+                     profile_path(active, path) if active else path,
+                     len(fresh.routes), len(fresh.channels))
+            # The backend is already bound and already talking to a device.
+            # A reload reconciles the *desk*; the ports and the device name
+            # belong to the process that is running, and changing them here
+            # would mean writing to a port nobody is listening on -- with no
+            # error, because OSC over UDP has no delivery guarantee.
+            fresh.osc_port = config.osc_port
+            fresh.osc_recv_port = config.osc_recv_port
+            fresh.device_name = config.device_name
         sd_notify("STATUS=reconciling (SIGHUP)")
-        reconcile_now(fresh, "SIGHUP", lambda: stop_requested["stop"])
+        wrote = reconcile_now(fresh, "SIGHUP", lambda: stop_requested["stop"])
     finally:
         lock.release()
-    sd_notify("STATUS=running; reconciled at %s" % time.strftime("%H:%M:%S"))
+    # What it did, not what it was asked to do: a reconcile that stood
+    # down because the receive port is held used to report success
+    # (0.6.6).
+    sd_notify("STATUS=running; %s at %s"
+              % ("reconciled" if wrote else "reconcile skipped",
+                 time.strftime("%H:%M:%S")))
 
 
 def _config_path(args: argparse.Namespace) -> Optional[Path]:
