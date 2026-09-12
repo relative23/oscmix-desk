@@ -90,7 +90,7 @@ it" -- which is the same answer TotalMix gives, minus the snapshot.
 
 ## Where we are (0.6.6)
 
-**0.6.6 (2026-09-12)** is what a fifth outside review of 0.6.5 led to.
+**0.6.6 (2026-09-13)** is what a fifth outside review of 0.6.5 led to.
 The lock serialised the writes but not the decision of what to write,
 so a switch committed while the unit was starting or reconciling could
 be overwritten by an older snapshot; both writers read the desk inside

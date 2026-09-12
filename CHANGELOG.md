@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.6 (2026-09-12)
+## 0.6.6 (2026-09-13)
 
 What a fifth outside review of 0.6.5 found, checked against the code
 and fixed: a lock that serialised the writes but not the decision of
@@ -61,7 +61,46 @@ The pin does not move and the register table has no new row.
   produced a 30 second wait and then the wrong message. Only `EACCES`,
   `EAGAIN` and `EWOULDBLOCK` are contention now.
 
+- **A dry run never switches.** `--profile X --dry-run` took the device
+  lock, wrote the registers and recorded the marker. It loads the
+  profile, prints what would go out and touches nothing now;
+  `--no-profile --dry-run` shows `routing.conf` for the same reason.
+
+- **Two desks asked for in one command are refused before anything is
+  written.** `--profile` with `--no-profile`, `--diff` or
+  `--dump-config` let the first branch in the dispatch win, so a switch
+  happened and was then compared against something else.
+
+- **A port held by a stranger is not backend readiness.** The port wait
+  resolves the socket owner and keeps waiting unless the holder is the
+  backend this process started. It is the other half of a cleanup that
+  deliberately leaves strangers alone (ADR 0021).
+
+- **A failed apply releases the device lock.** An exception from
+  `apply_routing` kept it until the process exited, and the next switch
+  waited out the full timeout and then refused.
+
+- **Invalid UTF-8 in `routing.conf` is a configuration error.** It
+  names the file like every other config error instead of ending in a
+  traceback: `UnicodeDecodeError` is a `ValueError`, and the read
+  caught only `OSError` and the parser's own errors.
+
+- **Deeply nested OSC bundles no longer exhaust the interpreter
+  stack.** A bundle may contain bundles, which costs four bytes a level
+  on the wire and one Python frame here, and this reads whatever the
+  network hands it. The unwrapping is iterative.
+
 ### Changed
+
+- **The mutation run's survivors were read.** They showed five missing
+  assertions and no defect: the marker's write loop, which a mutant
+  turned back into a single write; the two warnings that report a
+  directory fsync that did not happen; the conjunction in the
+  socket-owner check, where either half alone names the first process
+  that has any socket open; the return values of the port wait; and the
+  machine settings carried across the read under the lock. Score 0.740
+  against a floor of 0.720, the not-covered bucket still empty,
+  `min_score` 0.73 -> 0.74.
 
 - **Documentation that had drifted from the code.** The architecture
   said Room EQ and `/output/{ch}/phase` cannot be set from a config,

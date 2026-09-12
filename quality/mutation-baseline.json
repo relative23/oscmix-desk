@@ -232,31 +232,53 @@
     "The stats file was cleared before the by-name re-run again, for the",
     "reason the 0.6.4 entry gives: functions that are new under their",
     "name get only the new tests attributed, and their survivors are then",
-    "fiction."
+    "fiction.",
+    "",
+    "0.6.6 (2026-09-12): 0.739 -> 0.740 on 5612 -> 5878 mutants, for what",
+    "a fifth outside review found: the desk read inside the lock that",
+    "writes it (ADR 0020), a start that fails when the backend never",
+    "binds its port and a cleanup that signals the proven owner of it",
+    "(ADR 0021), and the status, exit codes and marker durability that",
+    "went with them.",
+    "",
+    "Reading the survivors of the new code found no defect and five",
+    "missing assertions, all added: the marker's write loop, which a",
+    "mutant turned back into a single write; the two warnings that report",
+    "a directory fsync it could not do; the conjunction in the",
+    "socket-owner check, where either half alone names the first process",
+    "that has any socket open; the return values of the port wait; and",
+    "the machine settings carried across the read under the lock. What",
+    "survives in the new code is message text, equivalent mutants such as",
+    "announced=None for False, and the 0.1 s poll interval.",
+    "",
+    "Four functions were re-judged by name afterwards with",
+    "mutmut-stats.json cleared: their tests were written after the full",
+    "run had taken its copy of the tree, and a function whose tests are",
+    "newer than the run has survivors that are fiction."
   ],
   "measured": {
+    "total": 5878,
+    "killed": 4339,
+    "survived": 1528,
+    "not_covered": 0,
+    "timeout": 11,
+    "score": 0.74,
+    "run_minutes": 117,
+    "cache": "cleared before the full run; four functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
+    "scope": "register table exempt (ADR 0015)",
+    "note": [
+      "The 0.6.6 release measurement."
+    ]
+  },
+  "previous": {
+    "recorded": "2026-09-12",
     "total": 5612,
     "killed": 4143,
     "survived": 1461,
     "not_covered": 0,
-    "timeout": 8,
     "score": 0.739,
-    "run_minutes": 113,
-    "cache": "cleared before the full run; the changed functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
-    "scope": "register table exempt (ADR 0015)",
-    "note": [
-      "The 0.6.5 release measurement."
-    ]
-  },
-  "previous": {
-    "recorded": "2026-09-11",
-    "total": 5605,
-    "killed": 4131,
-    "survived": 1466,
-    "not_covered": 0,
-    "score": 0.738,
     "why_it_moved": [
-      "The 0.6.4 release measurement; min_score 0.73."
+      "The 0.6.5 release measurement; min_score 0.73."
     ]
   },
   "confirmed_by_ci": {
@@ -277,16 +299,16 @@
       "round-trip tests, the local 0.685 did not."
     ]
   },
-  "min_score": 0.73,
+  "min_score": 0.74,
   "tolerance": 0.01,
   "floor_note": [
-    "The gate is min_score - tolerance = 0.72. That is the number that",
+    "The gate is min_score - tolerance = 0.73. That is the number that",
     "matters: the score may not fall below it. min_score is set at the",
     "measured score rounded down to the hundredth, so the policy neither",
     "fails nor nags on the run it was recorded from -- a baseline that",
     "prints 'raise me' on every CI run teaches people to ignore it.",
     "",
-    "0.019 of headroom on the measured 0.739, the same order as every",
+    "0.010 of headroom on the measured 0.740, the same order as every",
     "raise before it. What eats headroom stayed the same: assertions",
     "getting better or worse, because register rows land inside the",
     "ADR 0015 exemption."
