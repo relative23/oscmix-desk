@@ -9,6 +9,7 @@ ratchet complained, which is the difference from --dump-config: that one
 landed at 53% on cli.py and was found by the gate, on a push.
 """
 
+import pytest
 from conftest import free_udp_port, write_config
 
 from oscmix_desk import cli
@@ -28,6 +29,38 @@ level = 0.0
 [output:1]
 volume = -10.0
 """
+
+
+@pytest.mark.parametrize("selection", [("--profile", "tracking"), ("--no-profile",)])
+def test_a_dry_run_never_switches_or_forgets_a_profile(
+        tmp_path, capsys, monkeypatch, selection):
+    from oscmix_desk import session
+
+    path = _config_with(tmp_path, {"tracking": GOOD})
+    marker = tmp_path / "active-profile"
+    marker.write_text("tracking\n")
+    writes = []
+    _quick_wire(monkeypatch)
+    monkeypatch.setattr(cli, "reload_service", lambda: writes.append("reload"))
+    monkeypatch.setattr(session, "wait_for_seq_client", lambda *a: 42)
+    assert cli.main(["--config", str(path), *selection, "--dry-run"]) == EXIT_OK
+    out = capsys.readouterr().out
+    assert "would run:" in out
+    assert ("would send:" in out) == (selection[0] == "--profile")
+    assert marker.read_text() == "tracking\n"
+    assert not (tmp_path / "active-profile.lock").exists()
+    assert writes == []
+
+
+@pytest.mark.parametrize("extra", ["--diff", "--dump-config", "--no-profile"])
+def test_conflicting_profile_actions_are_rejected_before_writing(
+        tmp_path, monkeypatch, extra):
+    path = _config_with(tmp_path, {"tracking": GOOD})
+    _quick_wire(monkeypatch)
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--config", str(path), "--profile", "tracking", extra])
+    assert exc.value.code == EXIT_CONFIG
+    assert not (tmp_path / "active-profile").exists()
 
 
 def _config_with(tmp_path, profiles):

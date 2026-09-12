@@ -104,6 +104,18 @@ def test_plain_datagram_yields_itself(session_mod):
     assert list(session_mod.iter_osc_messages(message)) == [message]
 
 
+def test_deeply_nested_bundles_do_not_exhaust_the_python_stack(session_mod):
+    from conftest import osc_bundle
+
+    message = session_mod.encode_osc("/output/1/volume", "f", -30.0)
+    nested = message
+    for _ in range(1500):
+        nested = osc_bundle([nested])
+    assert len(nested) < 65507, "the packet fits in a real UDP datagram"
+    assert list(session_mod.iter_osc_messages(
+        osc_bundle([nested, message]))) == [message, message]
+
+
 def test_truncated_bundle_stops_cleanly(session_mod):
     message = session_mod.encode_osc("/x", "i", 1)
     bundle = (b"#bundle\x00" + b"\x00" * 8

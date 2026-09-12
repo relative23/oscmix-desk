@@ -29,7 +29,7 @@ from .discovery import resolve_binary, udp_port_listening, usb_device_present, w
 from .errors import ConfigError
 from .log import log
 from .notify import sd_notify
-from .process import _cleanup_stale_backend, supervise
+from .process import _cleanup_stale_backend, socket_owner, supervise
 from .profiles import DeviceLock, effective_config, take_device_lock
 from .reconcile import desired, plan
 from .routing import apply_routing, wait_unless_stopped
@@ -116,10 +116,20 @@ def _await_backend_port(child: "subprocess.Popen[bytes]", config: Config,
     is set. The caller fails the start instead (0.6.6).
     """
     deadline = time.monotonic() + PORT_READY_TIMEOUT
+    announced = False
     while time.monotonic() < deadline:
         if udp_port_listening(config.osc_port, proc_root):
-            log.info("oscmix is listening on UDP %d", config.osc_port)
-            return True
+            # Bound is not enough: bound *by this backend* is. A
+            # stranger holding the port is not readiness, and the
+            # cleanup deliberately leaves strangers alone (ADR 0021).
+            owner = socket_owner(config.osc_port, proc_root)
+            if owner is None or owner == child.pid:
+                log.info("oscmix is listening on UDP %d", config.osc_port)
+                return True
+            if not announced:
+                log.warning("UDP %d is held by pid %d, not by this backend",
+                            config.osc_port, owner)
+                announced = True
         if child.poll() is not None:
             return False
         time.sleep(0.25)
@@ -191,7 +201,14 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         return None
 
     sd_notify("STATUS=applying routing")
-    apply_routing(config, config.osc_port, config.osc_recv_port)
+    try:
+        apply_routing(config, config.osc_port, config.osc_recv_port)
+    except Exception:
+        # The lock is this process's promise that nobody else writes
+        # while it does. A write that raised must not keep it: the next
+        # switch would wait out the full timeout and then refuse.
+        lock.release()
+        raise
     return _verify_in_background(child, config, stop_requested, lock)
 
 

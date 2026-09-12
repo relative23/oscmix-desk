@@ -657,3 +657,8 @@ def test_an_unknown_section_on_a_modelled_device_still_suggests_a_newer_version(
     assert "newer version" in message
     assert "[frobnicate]" in message
     assert "[route:<name>]" in message, "it lists what this version knows"
+def test_invalid_utf8_is_a_configuration_error(session_mod, tmp_path):
+    path = tmp_path / "routing.conf"
+    path.write_bytes(b"[route:monit\xf6rs]\nplayback=1/2\noutput=1/2\n")
+    with pytest.raises(session_mod.ConfigError, match="cannot read"):
+        session_mod.load_config(path)

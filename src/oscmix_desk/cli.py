@@ -12,7 +12,12 @@ from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
 
 from .backend import loopback
-from .config import Config, discover_config_path, profile_path
+from .config import (
+    Config,
+    discover_config_path,
+    load_config,
+    profile_path,
+)
 from .constants import (
     DEFAULT_DEVICE_TIMEOUT,
     DUMP_LISTEN_SETTLE,
@@ -35,6 +40,7 @@ from .profiles import (
     Outcome,
     describe_profiles,
     effective_config,
+    load_profile,
     restore_main,
     switch_profile,
 )
@@ -112,7 +118,8 @@ def build_arg_parser() -> ArgumentParser:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    args = build_arg_parser().parse_args(argv)
+    parser = build_arg_parser()
+    args = parser.parse_args(argv)
     logging.basicConfig(
         stream=sys.stderr,
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -147,6 +154,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                       args.osc_port)
             return EXIT_CONFIG
         config.osc_port = args.osc_port
+
+    _refuse_conflicting_actions(parser, args)
+
+    if args.dry_run and (args.profile or args.no_profile):
+        return _dry_run_desk(args, config, config_path)
 
     if args.list_profiles:
         for line in describe_profiles(config_path):
@@ -192,6 +204,44 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
         log.error("%s", exc)
         return EXIT_CONFIG
     return EXIT_OK
+
+
+def _refuse_conflicting_actions(parser: ArgumentParser,
+                                args: "argparse.Namespace") -> None:
+    """Two desks asked for in one command is a config error.
+
+    Refusing before anything is written is the promise a bad profile
+    already gets: it costs a message, never a fader (ADR 0011). Until
+    0.6.6 the first branch in the dispatch simply won, so
+    `--profile X --no-profile` switched and `--profile X --diff` wrote
+    the device and then compared it against something else.
+    """
+    if args.profile and (args.no_profile or args.diff or args.dump_config):
+        parser.error("--profile cannot be combined with --no-profile, "
+                     "--diff or --dump-config")
+
+
+def _dry_run_desk(args: "argparse.Namespace", config: Config,
+                  config_path: Optional[Path]) -> int:
+    """Show the desk a switch would apply, without switching to it.
+
+    Until 0.6.6 `--profile X --dry-run` took the lock, wrote the device
+    and recorded the marker, which is the one thing the flag exists to
+    promise it will not do. `--no-profile --dry-run` shows routing.conf
+    for the same reason: it is the desk that command would restore.
+    """
+    try:
+        desk = (load_profile(args.profile, config_path) if args.profile
+                else load_config(config_path))
+    except ConfigError as exc:
+        log.error("configuration error: %s", exc)
+        return EXIT_CONFIG
+    # The ports and the device name belong to this invocation rather
+    # than to the file being shown, so --osc-port and --device win.
+    desk.osc_port = config.osc_port
+    desk.osc_recv_port = config.osc_recv_port
+    desk.device_name = config.device_name
+    return run_session(args, desk)
 
 
 def _switch_profile(name: str, config_path: Optional[Path]) -> int:

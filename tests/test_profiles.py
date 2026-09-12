@@ -779,14 +779,17 @@ def test_a_marker_that_cannot_be_removed_is_a_warning_not_a_crash(tmp_path,
     assert "cannot remove" in caplog.text
 
 
-def test_fsync_of_the_directory_is_best_effort(tmp_path, monkeypatch):
-    profiles._fsync_directory(tmp_path / "does-not-exist")   # no raise
+def test_fsync_of_the_directory_reports_what_it_did(tmp_path, monkeypatch):
+    # Never raises, because some filesystems refuse it. It says so
+    # instead, and the caller turns that into a warning (0.6.6).
+    assert profiles._fsync_directory(tmp_path) is True
+    assert profiles._fsync_directory(tmp_path / "does-not-exist") is False
 
     def refuse(fd):
         raise OSError("fsync unsupported")
 
     monkeypatch.setattr(profiles.os, "fsync", refuse)
-    profiles._fsync_directory(tmp_path)                       # no raise
+    assert profiles._fsync_directory(tmp_path) is False
 
 
 def test_without_a_config_there_is_nothing_to_lock():
@@ -937,3 +940,37 @@ def test_an_applied_switch_that_was_remembered_stays_persisted(
                                       backend=recording_backend)
     assert outcome.persisted is True
     assert "not remembered" not in outcome.describe()
+
+
+def test_a_short_write_is_finished_rather_than_truncated(tmp_path,
+                                                         monkeypatch):
+    """write(2) may write less than it was given without failing.
+
+    The marker is renamed over a correct one, so a truncated name would
+    replace a good desk with a profile that does not exist.
+    """
+    real_write = profiles.os.write
+
+    def one_byte_at_a_time(fd, data):
+        return real_write(fd, data[:1])
+
+    path = _desk(tmp_path, tracking=TRACKING)
+    monkeypatch.setattr(profiles.os, "write", one_byte_at_a_time)
+    assert profiles.remember_active_profile("tracking", path) is True
+    assert (tmp_path / "active-profile").read_text() == "tracking\n"
+
+
+def test_a_directory_that_cannot_be_synced_warns_on_both_paths(
+        tmp_path, monkeypatch, caplog):
+    # The marker is in effect either way; what is not guaranteed is that
+    # it survives a power cut, and that has to be said rather than
+    # swallowed.
+    path = _desk(tmp_path, tracking=TRACKING)
+    monkeypatch.setattr(profiles, "_fsync_directory", lambda _d: False)
+    with caplog.at_level("WARNING"):
+        assert profiles.remember_active_profile("tracking", path) is True
+    assert "may not survive a power cut" in caplog.text
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        assert profiles.forget_active_profile(path) is True
+    assert "may come back after a power cut" in caplog.text

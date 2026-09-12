@@ -333,7 +333,10 @@ def load_config(path: Optional[Path]) -> Config:
     try:
         with open(path, encoding="utf-8") as handle:
             parser.read_file(handle)
-    except (configparser.Error, OSError) as exc:
+    except (configparser.Error, OSError, UnicodeDecodeError) as exc:
+        # UnicodeDecodeError is a ValueError, not an OSError: a config
+        # saved in a single-byte encoding used to leave a traceback
+        # instead of the line that names the file.
         raise ConfigError("cannot read %s: %s" % (path, exc)) from None
 
     pending: List[str] = []

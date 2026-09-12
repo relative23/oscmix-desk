@@ -419,3 +419,16 @@ def test_a_handle_that_cannot_be_read_is_skipped(process_mod, tmp_path,
 
     monkeypatch.setattr(process_mod.os, "readlink", refuse)
     assert process_mod.socket_owner(7222, proc) is None
+
+
+def test_a_link_to_another_socket_is_not_ownership(process_mod, tmp_path):
+    """The prefix and the inode have to hold together.
+
+    With either half alone, the first process that has any socket open
+    is named as the holder of the port -- and this function decides who
+    gets SIGTERM.
+    """
+    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
+                     listening_port=7222)
+    os.symlink("socket:[999]", proc / "201" / "fd" / "4")
+    assert process_mod.socket_owner(7222, proc) is None

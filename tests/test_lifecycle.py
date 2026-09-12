@@ -320,6 +320,7 @@ class PollingChild:
     """A backend whose exit can be scheduled by poll count."""
 
     def __init__(self, exits_after=None, returncode=None):
+        self.pid = 202
         self.polls = 0
         self.exits_after = exits_after
         self.returncode = returncode
@@ -333,6 +334,39 @@ class PollingChild:
 
     def terminate(self):
         self.terminated = True
+
+
+def test_a_strangers_port_is_not_backend_readiness(
+        session_module, monkeypatch, tmp_path):
+    from test_process import fake_proc
+
+    proc = fake_proc(tmp_path, {"201": ("other", "other"),
+                                "202": ("oscmix", "oscmix")},
+                     listening_port=7301, owner="201")
+    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.01)
+    assert session_module._await_backend_port(
+        PollingChild(), session_module.Config(osc_port=7301), proc) is False
+
+
+def test_a_failed_apply_releases_the_device_lock(
+        session_module, session_mod, monkeypatch, tmp_path):
+    from conftest import write_config
+
+    from oscmix_desk.profiles import take_device_lock
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+
+    def fail(*args, **kwargs):
+        raise OSError("send failed")
+
+    monkeypatch.setattr(session_module, "apply_routing", fail)
+    with pytest.raises(OSError, match="send failed"):
+        session_module._apply_and_verify(
+            RunningChild(), session_mod.load_config(path), {"stop": False}, path)
+    lock = take_device_lock(path, wait=0)
+    assert lock is not None, "a failed write leaked its lock descriptor"
+    lock.release()
 
 
 def test_the_port_wait_returns_as_soon_as_the_backend_listens(
@@ -575,6 +609,8 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
         "the start applied the desk it read before waiting"
     assert applied[0].osc_port == started.osc_port, \
         "the ports belong to the running process, not to the desk"
+    assert applied[0].osc_recv_port == started.osc_recv_port
+    assert applied[0].device_name == started.device_name
 
 
 def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
@@ -666,3 +702,27 @@ def test_a_backend_that_is_already_gone_is_not_an_error(session_module):
             raise OSError("no such process")
 
     session_module._stop_child(Gone())      # no raise
+
+
+def test_the_port_wait_answers_whether_the_port_came_up(session_module,
+                                                        monkeypatch, tmp_path):
+    """Three answers, and the caller fails the start on two of them.
+
+    Before 0.6.6 this returned nothing at all, so a backend that was
+    alive and deaf reached READY=1 (ADR 0021).
+    """
+    from oscmix_desk import Config
+
+    config = Config(osc_port=7301)
+    monkeypatch.setattr(session_module, "udp_port_listening", lambda *a: True)
+    assert session_module._await_backend_port(RunningChild(), config,
+                                              tmp_path) is True
+
+    monkeypatch.setattr(session_module, "udp_port_listening", lambda *a: False)
+    assert session_module._await_backend_port(FakeChild(0), config,
+                                              tmp_path) is False, \
+        "a backend that exited is not a port that came up"
+
+    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.2)
+    assert session_module._await_backend_port(RunningChild(), config,
+                                              tmp_path) is False

@@ -70,15 +70,30 @@ def decode_osc(data: bytes) -> Tuple[str, str, Tuple[object, ...]]:
 
 
 def iter_osc_messages(datagram: bytes) -> Iterator[bytes]:
-    """Yield the OSC messages in a datagram, unwrapping #bundle framing."""
-    if datagram.startswith(b"#bundle\x00"):
+    """Yield the OSC messages in a datagram, unwrapping #bundle framing.
+
+    Iterative, not recursive: a bundle may contain bundles, and the
+    nesting costs four bytes a level on the wire while it costs a Python
+    frame here. A datagram that nests a thousand deep fits in a UDP
+    packet; a thousand frames do not fit in the interpreter's stack, and
+    this reads whatever the network hands it.
+
+    Depth first, in wire order, and a truncated element ends the bundle
+    it sits in rather than the whole datagram.
+    """
+    pending = [datagram]
+    while pending:
+        current = pending.pop()
+        if not current.startswith(b"#bundle\x00"):
+            yield current
+            continue
         offset = 16  # "#bundle\0" plus 8-byte time tag
-        while offset + 4 <= len(datagram):
-            (size,) = struct.unpack_from(">i", datagram, offset)
+        elements = []
+        while offset + 4 <= len(current):
+            (size,) = struct.unpack_from(">i", current, offset)
             offset += 4
-            if size <= 0 or offset + size > len(datagram):
-                return
-            yield from iter_osc_messages(datagram[offset:offset + size])
+            if size <= 0 or offset + size > len(current):
+                break
+            elements.append(current[offset:offset + size])
             offset += size
-    else:
-        yield datagram
+        pending.extend(reversed(elements))
