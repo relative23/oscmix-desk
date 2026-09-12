@@ -371,3 +371,51 @@ def test_systemctl_returns_the_exit_status_and_one_without_the_binary(
 
     monkeypatch.setattr(process.subprocess, "run", missing)
     assert real_systemctl("is-active", "x.service") == 1
+
+
+# --------------------------------------------------------------------------
+# Resolving the holder of the port (ADR 0021).
+# --------------------------------------------------------------------------
+
+def test_the_owner_is_unknown_when_no_process_holds_the_inode(process_mod,
+                                                              tmp_path):
+    # The port is listed, but no fd anywhere points at its socket. That
+    # is "cannot be told", not "nobody", and the caller must not guess.
+    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
+                     listening_port=7222)
+    assert process_mod.socket_owner(7222, proc) is None
+
+
+def test_the_owner_is_unknown_when_the_port_is_not_listed(process_mod,
+                                                          tmp_path):
+    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")}, owner="201")
+    assert process_mod.socket_owner(7222, proc) is None
+
+
+def test_a_process_whose_handles_cannot_be_read_is_skipped(process_mod,
+                                                           tmp_path):
+    """Another user's process, or one that exited during the scan.
+
+    Both raise on the fd directory, and both mean "not this one" rather
+    than "give up": the holder may still be further down the list.
+    """
+    proc = fake_proc(tmp_path, {"200": ("sshd", "/usr/sbin/sshd"),
+                                "201": ("oscmix", "oscmix")},
+                     listening_port=7222, owner="201")
+    (proc / "200" / "fd").chmod(0o000)
+    try:
+        assert process_mod.socket_owner(7222, proc) == 201
+    finally:
+        (proc / "200" / "fd").chmod(0o755)
+
+
+def test_a_handle_that_cannot_be_read_is_skipped(process_mod, tmp_path,
+                                                 monkeypatch):
+    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
+                     listening_port=7222, owner="201")
+
+    def refuse(_path):
+        raise OSError("gone")
+
+    monkeypatch.setattr(process_mod.os, "readlink", refuse)
+    assert process_mod.socket_owner(7222, proc) is None

@@ -610,3 +610,59 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
     after = profiles_mod.take_device_lock(path, wait=0.2)
     assert after is not None, "and the lock is released"
     after.release()
+
+
+def test_a_config_that_stopped_parsing_keeps_the_desk_of_this_process(
+        tmp_path, monkeypatch, session_mod, caplog):
+    """Read under the lock, and the file may be mid-edit by then.
+
+    A start that refused to apply anything because somebody was typing
+    would leave the desk unrouted. It applies what this process came up
+    with, and says which file it could not read.
+    """
+    from conftest import write_config
+
+    from oscmix_desk import session as session_module
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    started = session_mod.load_config(path)
+    path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
+    with caplog.at_level("ERROR"):
+        applied = session_module._desk_under_the_lock(path, started)
+    assert applied is started
+    assert "no longer usable" in caplog.text
+
+
+def test_a_backend_that_ignores_the_stop_is_killed(session_module,
+                                                   monkeypatch):
+    # SIGTERM, then the grace, then SIGKILL: the same escalation the
+    # supervisor uses, for the backend a failed start will not use.
+    class Stubborn(RunningChild):
+        def __init__(self):
+            super().__init__()
+            self.killed = False
+
+        def terminate(self):
+            self.terminated = True          # and keeps running
+
+        def wait(self, timeout=None):
+            self.waited = timeout
+            raise session_module.subprocess.TimeoutExpired("oscmix", timeout)
+
+        def kill(self):
+            self.killed = True
+
+    child = Stubborn()
+    session_module._stop_child(child)
+    assert child.terminated is True
+    assert child.killed is True
+    assert child.waited == session_module.CHILD_STOP_GRACE
+
+
+def test_a_backend_that_is_already_gone_is_not_an_error(session_module):
+    class Gone(RunningChild):
+        def terminate(self):
+            raise OSError("no such process")
+
+    session_module._stop_child(Gone())      # no raise

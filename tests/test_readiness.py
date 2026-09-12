@@ -113,3 +113,42 @@ def test_wait_for_seq_client_tolerates_a_missing_proc_file(session_mod,
     # snd_seq not loaded yet: the file simply is not there.
     assert session_mod.wait_for_seq_client("Fireface UCX II", 0.3,
                                            tmp_path / "nothing") is None
+
+
+# --------------------------------------------------------------------------
+# The inode behind the port (ADR 0021).
+# --------------------------------------------------------------------------
+
+def test_the_inode_of_the_bound_socket_is_found(session_mod, tmp_path):
+    # Column ten of /proc/net/udp, and it is what ties the port to the
+    # process that holds it.
+    from oscmix_desk.discovery import udp_socket_inodes
+
+    proc = make_proc(tmp_path, udp=UDP_WITH_OSCMIX, udp6=UDP6_WITH_OSCMIX)
+    assert udp_socket_inodes(7222, proc) == {"123456", "999999"}
+    assert udp_socket_inodes(68, proc) == {"654321"}
+    assert udp_socket_inodes(9999, proc) == set()
+
+
+def test_a_truncated_row_is_skipped_rather_than_believed(session_mod,
+                                                         tmp_path):
+    """A line without the inode column says nothing about ownership.
+
+    Reading it as a match would hand the cleanup a name it cannot
+    resolve, and the cleanup signals processes.
+    """
+    from oscmix_desk.discovery import udp_socket_inodes
+
+    header = UDP_WITH_OSCMIX.splitlines()[0]
+    proc = make_proc(tmp_path, udp=header + "\n  100: 0100007F:1C36 x\n")
+    assert udp_socket_inodes(7222, proc) == set()
+
+
+def test_a_local_address_that_is_not_hex_is_skipped(session_mod, tmp_path):
+    from oscmix_desk.discovery import udp_socket_inodes
+
+    header = UDP_WITH_OSCMIX.splitlines()[0]
+    row = ("  100: 0100007F:ZZZZ 00000000:0000 07 00000000:00000000 "
+           "00:00000000 00000000  1000        0 123456 2 0 0\n")
+    proc = make_proc(tmp_path, udp=header + "\n" + row)
+    assert udp_socket_inodes(7222, proc) == set()
