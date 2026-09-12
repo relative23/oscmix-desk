@@ -580,6 +580,7 @@ def test_a_switch_can_be_asked_not_to_check(tmp_path, recording_backend):
     assert outcome.state == profiles.APPLIED_UNVERIFIED
     assert outcome.name == "tracking"
     assert outcome.reason == profiles.NOT_CHECKED
+    assert outcome.persisted is True, "the marker was written either way"
     assert outcome.unverified == sorted(
         profiles.expected_registers(profiles.load_profile("tracking", path)))
 
@@ -594,6 +595,7 @@ def test_restore_main_can_be_asked_not_to_check(tmp_path, recording_backend):
     assert outcome.state == profiles.APPLIED_UNVERIFIED
     assert outcome.name == "routing.conf"
     assert outcome.reason == profiles.NOT_CHECKED
+    assert outcome.persisted is True, "the marker was removed either way"
     assert outcome.unverified == sorted(
         profiles.expected_registers(profiles.load_config(path)))
     assert not (tmp_path / "active-profile").exists()
@@ -889,6 +891,8 @@ def test_a_lock_file_that_cannot_be_created_warns_and_writes_anyway(tmp_path,
     finally:
         tmp_path.chmod(0o700)
     assert lock is not None
+    assert str(tmp_path / "active-profile.lock") in caplog.text, \
+        "the warning has to name the file somebody must create"
     assert "run install.sh" in caplog.text
     lock.release()
 

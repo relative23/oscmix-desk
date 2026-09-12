@@ -863,3 +863,50 @@ def test_a_reconcile_holds_the_lock_while_it_writes_and_frees_it_after(
     after = profiles_mod.take_device_lock(path, wait=0.2)
     assert after is not None, "and must get in once it is done"
     after.release()
+
+
+def test_a_reconcile_hands_on_the_trigger_the_stop_check_and_its_phases(
+        tmp_path, monkeypatch, session_mod):
+    """What the reconcile passes down is what the journal and the
+    shutdown path depend on: the trigger names the reload in the log
+    line, the stop check is what stops a write mid-shutdown, and the
+    two `STATUS=` notices are what `systemctl --user status` shows.
+    """
+    import argparse
+    import re
+
+    from oscmix_desk import session as session_module
+
+    path = _routes_file(tmp_path)
+    seen = []
+    notices = []
+    monkeypatch.setattr(session_module, "reconcile_now",
+                        lambda *a: seen.append(a))
+    monkeypatch.setattr(session_module, "sd_notify", notices.append)
+    stop = {"stop": False}
+    session_module._reconcile(argparse.Namespace(config=path),
+                              session_mod.Config(), stop)
+
+    assert len(seen) == 1
+    _config, trigger, should_stop = seen[0]
+    assert trigger == "SIGHUP"
+    assert should_stop() is False
+    stop["stop"] = True
+    assert should_stop() is True, "the live flag, not a copy of it"
+    assert notices[0] == "STATUS=reconciling (SIGHUP)"
+    assert re.fullmatch(r"STATUS=running; reconciled at \d\d:\d\d:\d\d",
+                        notices[-1]), notices[-1]
+
+
+def test_the_config_path_falls_back_to_discovery(monkeypatch, session_mod):
+    # The lock and the reload both need it, and a session started
+    # without --config has only the discovery to go on.
+    import argparse
+
+    from oscmix_desk import session as session_module
+
+    monkeypatch.setattr(session_module, "discover_config_path",
+                        lambda: "discovered")
+    assert session_module._config_path(argparse.Namespace()) == "discovered"
+    assert session_module._config_path(
+        argparse.Namespace(config="given")) == "given"
