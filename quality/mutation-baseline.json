@@ -276,31 +276,57 @@
     "Five functions were re-judged by name afterwards with",
     "mutmut-stats.json cleared: their tests were written after the full",
     "run had taken its copy of the tree, and a function whose tests are",
-    "newer than the run has survivors that are fiction."
+    "newer than the run has survivors that are fiction.",
+    "",
+    "0.6.8 (2026-09-14): 0.741 -> 0.742 on 5956 -> 6113 mutants, for what",
+    "an adversarial review of the 0.6.7 lock found: one lock path for",
+    "every writer in /run/oscmix-desk, created by tmpfiles.d, because",
+    "$XDG_RUNTIME_DIR is per user and absent from sudo and cron; a key",
+    "pinned at discovery so it cannot move when the card list empties; a",
+    "key that never guesses between two boxes; and a writer that refuses",
+    "when nothing is bound to the OSC port, because a write nobody",
+    "receives must not be reported as applied (ADR 0023).",
+    "",
+    "The survivors in the new code showed seven missing assertions and no",
+    "defect: the configured serial reaching the lock key of a switch and",
+    "of a restore; the profile name in a refusal for an unreachable",
+    "device; a restore without a runtime directory locking beside the",
+    "config; the real default paths for the lock directory, sysfs and",
+    "proc; the empty serial pinned when the device shows none; and the",
+    "count in the two-box warning. What survives there is log text, the",
+    "character set of the key sanitiser, whose extra letters are",
+    "alphanumeric anyway, and the creation mode of the lock file, which",
+    "the fchmod right after it overrides. Seven functions were re-judged",
+    "by name afterwards with mutmut-stats.json cleared, because those",
+    "tests were written after the full run had taken its copy. An earlier",
+    "run that deleted only mutmut-stats.json re-used verdicts for",
+    "fourteen of nineteen modules from the 0.6.7 tree, after an autouse",
+    "fixture had changed how every mutant is judged; it was discarded and",
+    "mutants/ removed."
   ],
   "measured": {
+    "total": 6113,
+    "killed": 4528,
+    "survived": 1574,
+    "not_covered": 0,
+    "timeout": 11,
+    "score": 0.742,
+    "run_minutes": 124,
+    "cache": "mutants/ removed before the full run; seven functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
+    "scope": "register table exempt (ADR 0015)",
+    "note": [
+      "The 0.6.8 release measurement."
+    ]
+  },
+  "previous": {
+    "recorded": "2026-09-14",
     "total": 5956,
     "killed": 4406,
     "survived": 1539,
     "not_covered": 0,
-    "timeout": 11,
     "score": 0.741,
-    "run_minutes": 119,
-    "cache": "cleared before the full run; five functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
-    "scope": "register table exempt (ADR 0015)",
-    "note": [
-      "The 0.6.7 release measurement."
-    ]
-  },
-  "previous": {
-    "recorded": "2026-09-13",
-    "total": 5878,
-    "killed": 4339,
-    "survived": 1528,
-    "not_covered": 0,
-    "score": 0.74,
     "why_it_moved": [
-      "The 0.6.6 release measurement; min_score 0.74."
+      "The 0.6.7 release measurement; min_score 0.74."
     ]
   },
   "confirmed_by_ci": {
@@ -330,7 +356,7 @@
     "fails nor nags on the run it was recorded from -- a baseline that",
     "prints 'raise me' on every CI run teaches people to ignore it.",
     "",
-    "0.011 of headroom on the measured 0.741, the same order as every",
+    "0.012 of headroom on the measured 0.742, the same order as every",
     "raise before it. What eats headroom stayed the same: assertions",
     "getting better or worse, because register rows land inside the",
     "ADR 0015 exemption."

@@ -1,5 +1,87 @@
 # Changelog
 
+## 0.6.8 (2026-09-14)
+
+What an adversarial review of the 0.6.7 device lock found. Six ways the
+guarantee came apart, four of them measured on a live UCX II, plus the
+writer that never took the lock at all. The pin does not move and the
+register table has no new row.
+
+### Fixed
+
+- **One lock path for every writer on the machine.** `/run/oscmix-desk/`,
+  created by the installer through `tmpfiles.d` with mode 1777, is
+  searched before anything else. `$XDG_RUNTIME_DIR` is per user and
+  absent from `sudo`, `cron` and a bare `ssh host oscmix-session ...`:
+  measured on the desk, a switch with the variable cleared computed a
+  path beside the config, took it in two seconds and wrote the whole
+  routing while a holder held. Two user sessions over one interface held
+  two locks for the same reason, and a runtime directory that went with
+  the last logout freed a lock nobody had released. ADR 0023.
+
+- **An existing shared directory is never fallen back from.** A lock
+  there that cannot be opened is a refusal. Quietly locking somewhere
+  else is the behaviour that walks past the holder.
+
+- **A writer with no config directory takes a real lock.** It used to
+  get a lock object with no descriptor, because the path search needed
+  a config directory once the runtime directory was out of reach.
+
+- **The device key is pinned at discovery.** It is recomputed on every
+  write from `/proc/asound/cards`, which empties the moment the
+  interface is unplugged. Measured across a real unplug: the key moved
+  from `2a39-3fd9-24216011` to `2a39-3fd9-unknown` and a second lock
+  file appeared beside the first, so a reconcile in that window wrote
+  beside the holder rather than after it. After a resume the device
+  re-enumerates, udev restarts the unit and the resume hook sends its
+  reload into exactly that gap.
+
+- **The key never guesses between two boxes.** The serial came from the
+  first matching line of the card list, whichever interface the process
+  was driving, so a writer of the second box keyed on the first box's
+  name and unplugging the first moved the survivor's key. One interface
+  now gives its serial, several give a shared key and a warning naming
+  the remedy, none gives the model alone. The new `[device] serial`
+  names a box outright and always wins.
+
+- **A switch that would reach nobody writes nothing.** No write path
+  checked whether the datagrams would arrive. Measured with the UCX II
+  unplugged: the switch wrote into a port nobody bound, printed
+  `applied`, exited 0 and recorded the marker -- a desired state that
+  had never been at the device, which the next start then applied. The
+  question asked is whether anything is bound to the OSC port, not
+  whether sysfs still lists the interface: a logical disconnect leaves
+  that entry in place, measured, so presence there is not reachability.
+  It refuses now, before the lock, like a bad config.
+
+- **The write sweep holds the device lock.** `scripts/sweep-writes.py`
+  walks every settable register and writes each one, it is in the
+  release checklist, and it took no lock at all.
+
+### Changed
+
+- **`[device] serial`** is a new optional setting, inherited across a
+  profile switch like the ports and the USB id. Only a machine with two
+  interfaces of one model needs it, and the example config ships it
+  commented out: under ADR 0006 an unknown option in a known section is
+  an error, so a `routing.conf` that names `serial` is rejected whole by
+  a 0.6.7 install.
+- **The test suite gets its own `OSCMIX_LOCK_DIR` and a sysfs with the
+  interface present.** `/run/oscmix-desk` is real wherever the installer
+  ran, and without the first the suite would take the lock of the desk
+  the developer is listening to.
+
+- **The mutation run's survivors were read.** They showed seven missing
+  assertions and no defect: the configured serial reaching the lock key
+  of a switch and of a restore, the profile name in a refusal for an
+  unreachable device, a restore without a runtime directory locking
+  beside the config, the real default paths for the lock directory,
+  sysfs and proc, the empty serial pinned when the device shows none,
+  and the count in the two-box warning. Score 0.742 against a floor of
+  0.730, the not-covered bucket still empty, `min_score` unchanged at
+  0.74. A first run that deleted only `mutmut-stats.json` re-used the
+  0.6.7 verdicts for fourteen modules and was discarded.
+
 ## 0.6.7 (2026-09-14)
 
 What a sixth outside review of 0.6.6 found. Two of its points are new

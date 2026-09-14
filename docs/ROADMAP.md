@@ -88,6 +88,25 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
+## Where we are (0.6.8)
+
+**0.6.8 (2026-09-14)** is what an adversarial review of the 0.6.7 lock
+found: the key named the hardware, but the *path* to the lock still
+depended on the caller. `$XDG_RUNTIME_DIR` is per user and absent from
+`sudo`, `cron` and a bare `ssh` command, so a writer without it computed
+a different file and walked past the holder -- measured on the desk, two
+seconds to write a full routing while a holder held. It lives in
+`/run/oscmix-desk/` now, created by the installer through `tmpfiles.d`,
+the one path that depends on neither the environment nor the user nor a
+config directory (ADR 0023). Three more followed from the same review:
+the key was recomputed on every write and moved when the interface was
+unplugged, so a reconcile in that window took a second lock file; two
+identical boxes shared the first one's name, and `[device] serial` now
+names one outright; and a switch to an absent interface reported
+`applied`, exited 0 and recorded a marker for a desk that had never been
+written -- it refuses now. The write sweep, the loudest writer here,
+finally takes the lock too.
+
 ## Where we are (0.6.7)
 
 **0.6.7 (2026-09-14)** is what a sixth outside review of 0.6.6 led to,
