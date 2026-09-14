@@ -33,3 +33,4 @@ silences half the outputs.
 | [0020](0020-the-desk-is-read-under-the-lock.md) | The desk is read under the lock that writes it |
 | [0021](0021-a-start-that-cannot-be-heard-is-not-a-start.md) | A start that cannot be heard is not a start: port readiness and socket-owner cleanup |
 | [0022](0022-the-lock-names-the-device.md) | The lock names the device, and a writer without it does not write |
+| [0023](0023-one-lock-path-for-every-writer.md) | One lock path for every writer, and no writing to an absent device |

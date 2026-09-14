@@ -16,6 +16,7 @@ DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UDEV_RULE="/etc/udev/rules.d/90-rme-fireface.rules"
 SLEEP_HOOK="/usr/lib/systemd/system-sleep/oscmix"
+TMPFILES_CONF="/usr/lib/tmpfiles.d/oscmix-desk.conf"
 
 PURGE=0
 case "${1:-}" in
@@ -72,7 +73,7 @@ if [ -d "$DATA_DIR/glib-2.0/schemas" ]; then
 fi
 systemctl --user daemon-reload
 
-if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ]; then
+if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$TMPFILES_CONF" ]; then
     info "removing the root-installed files (needs root)"
     if SUDO=""; [ "$(id -u)" != 0 ]; then SUDO="sudo"; fi
     if [ -e "$UDEV_RULE" ]; then
@@ -83,6 +84,13 @@ if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ]; then
     if [ -e "$SLEEP_HOOK" ]; then
         $SUDO rm -f "$SLEEP_HOOK" \
             || echo "warning: remove $SLEEP_HOOK manually" >&2
+    fi
+    if [ -f "$TMPFILES_CONF" ]; then
+        # The directory itself lives on tmpfs and goes with the next
+        # boot; removing it here would pull it out from under a writer
+        # that is still holding a lock in it.
+        $SUDO rm -f "$TMPFILES_CONF" \
+            || echo "warning: remove $TMPFILES_CONF manually" >&2
     fi
 fi
 

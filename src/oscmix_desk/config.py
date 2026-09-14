@@ -122,6 +122,10 @@ class GlobalSetting:
 class Config:
     device_name: str = DEFAULT_DEVICE_NAME
     usb_id: str = DEFAULT_USB_ID
+    #: Which box, when the machine has more than one of the same
+    #: model. Empty means "the only one", and two unnamed boxes
+    #: share one lock rather than racing (ADR 0023).
+    serial: str = ""
     osc_port: int = DEFAULT_OSC_PORT
     osc_recv_port: int = DEFAULT_OSC_RECV_PORT
     routes: List[Route] = field(default_factory=list)
@@ -196,7 +200,7 @@ def _parse_bool(raw: str, section: str, option: str) -> bool:
 
 
 _KNOWN_OPTIONS = {
-    "device": {"name", "usb-id"},
+    "device": {"name", "usb-id", "serial"},
     "osc": {"port", "recv-port"},
     "route": {"playback", "input", "output", "level", "volume", "stereo"},
 }
@@ -378,6 +382,14 @@ def _dispatch(parser: "configparser.ConfigParser", config: "Config",
                     "[device] usb-id: expected 'vvvv:pppp' hex format, got %r" % usb_id
                 )
             config.usb_id = usb_id.lower()
+            serial = parser.get(section, "serial",
+                                fallback=config.serial).strip()
+            if serial and not re.fullmatch(r"[0-9A-Za-z]+", serial):
+                raise ConfigError(
+                    "[device] serial: expected the number printed on the "
+                    "box, got %r" % serial
+                )
+            config.serial = serial
         elif section == "osc":
             _parse_osc(parser, section, config)
         elif section.startswith("route:"):

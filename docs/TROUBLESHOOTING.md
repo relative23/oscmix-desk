@@ -107,7 +107,9 @@ down rather than wrote: the receive port was held, or another writer
 had the device lock. It says what the unit is doing; it is not what
 keeps two writers apart. Since 0.6.5 the unit takes the same lock a
 switch takes (ADR 0019), and since 0.6.7 that lock is named after the
-interface and lives in `$XDG_RUNTIME_DIR/oscmix-desk/` (ADR 0022), so a
+interface (ADR 0022). Since 0.6.8 it lives in `/run/oscmix-desk/`,
+which does not depend on the environment, the user or the config
+directory the way `$XDG_RUNTIME_DIR` did (ADR 0023), so a
 profile switch right after a replug waits for the start-up verifier --
 up to twenty seconds -- and says so. Past `SWITCH_LOCK_WAIT` it refuses
 and writes nothing. Since 0.6.6 both the unit and a switch read the

@@ -66,7 +66,8 @@ def lifecycle(session_module, monkeypatch):
 
     def run(*, seq_client=42, usb_present=True, binaries=True,
             returncode=0, stop_requested=False, routes=(), port_ready=True,
-            alive=False, **args):
+            alive=False, config_fields=None, **args):
+        config_fields = config_fields or {}
         monkeypatch.setattr(session_module, "sd_notify", notifications.append)
         monkeypatch.setattr(session_module, "wait_for_seq_client",
                             lambda *a, **k: seq_client)
@@ -104,11 +105,13 @@ def lifecycle(session_module, monkeypatch):
         monkeypatch.setattr(session_module, "supervise", fake_supervise)
 
         from oscmix_desk import Config
-        config = Config(routes=list(routes))
+        config = Config(routes=list(routes), **config_fields)
+        run.config = config
         return session_module.run_session(make_args(**args), config)
 
     run.notifications = notifications
     run.children = children
+    run.config = None
     return run
 
 
@@ -799,3 +802,36 @@ def test_a_stranger_on_the_port_is_reported_once_not_every_poll(
         assert session_module._await_backend_port(
             RunningChild(pid=202), Config(osc_port=7301), proc) is False
     assert caplog.text.count("is held by pid 201") == 1
+
+
+def test_the_serial_is_pinned_once_the_device_is_found(session_module,
+                                                       lifecycle,
+                                                       monkeypatch):
+    """The key must not move under a running writer (ADR 0023).
+
+    It is recomputed on every write from the card list, which empties the
+    moment the interface is unplugged. Measured across a real unplug in
+    0.6.7: the key went from `2a39-3fd9-24216011` to `2a39-3fd9-unknown`
+    and a second lock file appeared beside the first, so a reconcile in
+    that window would have written beside the holder rather than after
+    it.
+    """
+    monkeypatch.setattr(session_module, "device_serial",
+                        lambda *a, **k: "24216011")
+    lifecycle()
+    assert lifecycle.config.serial == "24216011"
+
+    # And once it is gone from the card list, the pinned value stands.
+    monkeypatch.setattr(session_module, "device_serial", lambda *a, **k: None)
+    from oscmix_desk.discovery import device_key
+    assert device_key(lifecycle.config.usb_id,
+                      serial=lifecycle.config.serial) == "2a39-3fd9-24216011"
+
+
+def test_a_configured_serial_is_never_overwritten(session_module, lifecycle,
+                                                  monkeypatch):
+    """`[device] serial` names the box outright, and always wins."""
+    monkeypatch.setattr(session_module, "device_serial",
+                        lambda *a, **k: "99887766")
+    lifecycle(config_fields={"serial": "24216011"})
+    assert lifecycle.config.serial == "24216011"

@@ -21,6 +21,11 @@ name = Fireface UCX II
 # USB vendor:product ID, used to tell "not plugged in" apart from
 # "plugged in but the driver failed".
 usb-id = 2a39:3fd9
+# Which box, when the machine has more than one interface of the same
+# model: the number printed on it, which also appears in the ALSA card
+# list. Leave it out with one interface. With two and no serial, every
+# writer of either shares one lock rather than racing on two.
+#serial = 24216011
 
 [osc]
 # UDP port the oscmix backend listens on.

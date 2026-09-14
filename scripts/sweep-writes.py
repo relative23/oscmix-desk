@@ -50,8 +50,10 @@ from oscmix_desk.constants import (
 from oscmix_desk.discovery import (
     built_backend_revision,
     device_firmware,
+    device_key,
     device_serial,
 )
+from oscmix_desk.profiles import take_device_lock
 
 #: Steps as a fraction of the declared range, smallest first. One percent
 #: is below the quantisation of several families, which is the point: it
@@ -460,9 +462,21 @@ def main() -> int:
                         default=DEFAULT_OSC_RECV_PORT)
     args = parser.parse_args()
 
+    # This walks every settable register and writes each one a different
+    # value. It is the loudest writer in the repository, and until 0.6.8
+    # it took no lock at all: a sweep and the unit's reconcile could
+    # interleave on one device (ADR 0023). No config directory is needed
+    # for it -- the shared lock directory does not depend on one.
+    lock = take_device_lock(None, device_key(DEFAULT_USB_ID))
+    if lock is None:
+        sys.stderr.write("another writer holds the device lock; not "
+                         "sweeping\n")
+        return 1
+
     device = loopback(args.osc_port, args.osc_recv_port)
     listener = device.listen()
     if listener is None:
+        lock.release()
         sys.stderr.write("UDP %d is in use -- close the mixer GUI\n"
                          % args.osc_recv_port)
         return 1
@@ -483,6 +497,7 @@ def main() -> int:
                                     read_all(device, listener))
     finally:
         listener.close()
+        lock.release()
 
     serial = device_serial()
     artifact = {

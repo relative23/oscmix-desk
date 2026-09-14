@@ -20,6 +20,7 @@ a live desk is that a typo costs you a message, not your monitoring.
 """
 
 import os
+import shutil
 import stat
 
 import pytest
@@ -685,7 +686,9 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
     finally:
         os.umask(umask)
     lock = profiles.device_lock_path(path, _key(path))
-    assert stat.S_IMODE(lock.stat().st_mode) == 0o644, "a plain file"
+    # A plain file, and one every writer can open: the shared directory
+    # holds locks for users who did not create them (ADR 0023).
+    assert stat.S_IMODE(lock.stat().st_mode) == 0o666
     assert outcome.state == profiles.REFUSED
     assert outcome.name == "tracking"
     assert "holds the device lock" in outcome.reason
@@ -1098,3 +1101,228 @@ def test_a_switch_without_a_runtime_directory_locks_beside_the_config(
         held.release()
     assert outcome.state == profiles.REFUSED
     assert recording_backend.sent == []
+
+
+# --------------------------------------------------------------------------
+# 0.6.8: one lock path for every writer, and no writing to an absent
+# device (ADR 0023). Each of these is a way the 0.6.7 lock came apart,
+# measured on a live UCX II before it was fixed.
+# --------------------------------------------------------------------------
+
+
+def _shared(tmp_path, monkeypatch):
+    """A stand-in for /run/oscmix-desk, which tests may not touch."""
+    shared = tmp_path / "shared"
+    shared.mkdir(mode=0o1777, exist_ok=True)
+    monkeypatch.setenv("OSCMIX_LOCK_DIR", str(shared))
+    return shared
+
+
+def test_the_shared_directory_wins_over_the_runtime_directory(
+        tmp_path, monkeypatch):
+    shared = _shared(tmp_path, monkeypatch)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+    path = _desk(tmp_path, tracking=TRACKING)
+    assert profiles.device_lock_path(path, "2a39-3fd9-24216011") == \
+        shared / "2a39-3fd9-24216011.lock"
+
+
+def test_a_writer_without_a_runtime_directory_computes_the_same_path(
+        tmp_path, monkeypatch):
+    """The hole this release exists for.
+
+    `$XDG_RUNTIME_DIR` is absent from sudo, cron and a bare ssh command.
+    Measured on the desk in 0.6.7: with a holder on the runtime path, the
+    same switch run without the variable computed a path beside the
+    config, took it in two seconds and wrote the whole routing.
+    """
+    shared = _shared(tmp_path, monkeypatch)
+    path = _desk(tmp_path, tracking=TRACKING)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+    with_env = profiles.device_lock_path(path, "2a39-3fd9-24216011")
+    monkeypatch.delenv("XDG_RUNTIME_DIR")
+    without_env = profiles.device_lock_path(path, "2a39-3fd9-24216011")
+    assert with_env == without_env == shared / "2a39-3fd9-24216011.lock"
+
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+    held = profiles.take_device_lock(path, "2a39-3fd9-24216011")
+    assert held is not None
+    try:
+        monkeypatch.delenv("XDG_RUNTIME_DIR")
+        assert profiles.take_device_lock(
+            path, "2a39-3fd9-24216011", wait=0.2) is None
+    finally:
+        held.release()
+
+
+def test_two_user_sessions_over_one_interface_contend(tmp_path, monkeypatch):
+    """`/run/user/<uid>` is per user; one piece of hardware is not."""
+    shared = _shared(tmp_path, monkeypatch)
+    path = _desk(tmp_path, tracking=TRACKING)
+    key = "2a39-3fd9-24216011"
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run-1000"))
+    first = profiles.take_device_lock(path, key)
+    assert first is not None
+    try:
+        monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run-2000"))
+        assert profiles.device_lock_path(path, key) == \
+            shared / ("%s.lock" % key)
+        assert profiles.take_device_lock(path, key, wait=0.2) is None
+    finally:
+        first.release()
+
+
+def test_a_vanishing_runtime_directory_does_not_free_the_lock(
+        tmp_path, monkeypatch):
+    """It goes with the last logout of a user without lingering.
+
+    In 0.6.7 the holder's file stopped existing and the next writer
+    created a fresh inode and took it.
+    """
+    _shared(tmp_path, monkeypatch)
+    runtime = tmp_path / "run"
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    path = _desk(tmp_path, tracking=TRACKING)
+    held = profiles.take_device_lock(path, "2a39-3fd9-24216011")
+    assert held is not None
+    try:
+        shutil.rmtree(runtime, ignore_errors=True)
+        assert profiles.take_device_lock(
+            path, "2a39-3fd9-24216011", wait=0.2) is None
+    finally:
+        held.release()
+
+
+def test_a_writer_without_a_config_still_takes_the_lock(tmp_path, monkeypatch):
+    """The shared path needs no config directory, so neither does a writer.
+
+    `scripts/sweep-writes.py` is the one that has none, and it is the
+    loudest writer in the repository.
+    """
+    _shared(tmp_path, monkeypatch)
+    held = profiles.take_device_lock(None, "2a39-3fd9-24216011")
+    assert held is not None
+    try:
+        assert profiles.take_device_lock(
+            None, "2a39-3fd9-24216011", wait=0.2) is None
+    finally:
+        held.release()
+
+
+def test_an_existing_shared_directory_is_never_fallen_back_from(
+        tmp_path, monkeypatch, caplog):
+    """Falling back from the directory other writers use is the hole itself.
+
+    A lock that cannot be opened there is a refusal, not a reason to
+    compute a different path: the writer that quietly locks somewhere
+    else is exactly the one that walks past the holder.
+    """
+    if os.getuid() == 0:
+        pytest.skip("root opens anything")
+    shared = _shared(tmp_path, monkeypatch)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+    path = _desk(tmp_path, tracking=TRACKING)
+    shared.chmod(0o500)                      # no new file may be created
+    try:
+        with caplog.at_level("ERROR"):
+            lock = profiles.take_device_lock(path, "2a39-3fd9-24216011")
+    finally:
+        shared.chmod(0o1777)
+    assert lock is None
+    assert str(shared) in caplog.text, "the error names the lock it wanted"
+    assert not (tmp_path / "active-profile.lock").exists(), \
+        "and it must not quietly lock somewhere else"
+    assert not (tmp_path / "run" / "oscmix-desk").exists()
+
+
+def test_a_switch_to_an_absent_interface_writes_nothing(tmp_path, monkeypatch):
+    """0.6.7 reported `applied`, exited 0 and recorded the marker.
+
+    Measured with the UCX II unplugged: eight registers unconfirmed, a
+    marker naming a profile that had never been at the device, and the
+    next start applying it. No backend is handed in here, because the
+    check exists for the caller that opens its own socket.
+    """
+    _shared(tmp_path, monkeypatch)
+    monkeypatch.setenv("OSCMIX_SYSFS_USB", str(tmp_path / "no-usb"))
+    path = _desk(tmp_path, tracking=TRACKING)
+    outcome = profiles.switch_profile("tracking", config_path=path)
+    assert outcome.state == profiles.REFUSED
+    assert "2a39:3fd9" in outcome.reason
+    assert not profiles.active_profile_path(path).exists(), \
+        "and it remembers nothing"
+
+
+def test_a_restore_to_an_absent_interface_writes_nothing(tmp_path, monkeypatch):
+    _shared(tmp_path, monkeypatch)
+    monkeypatch.setenv("OSCMIX_SYSFS_USB", str(tmp_path / "no-usb"))
+    path = _desk(tmp_path, tracking=TRACKING)
+    outcome = profiles.restore_main(config_path=path)
+    assert outcome.state == profiles.REFUSED
+    assert "2a39:3fd9" in outcome.reason
+
+
+def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, monkeypatch):
+    """Presence in sysfs is not reachability.
+
+    Measured on the desk: `authorized=0` emptied the ALSA card list and
+    the sequencer clients while `/sys/bus/usb/devices/5-2` stayed in
+    place with `idVendor` readable -- so a check on sysfs alone still
+    said the device was there, and the switch still reported `applied`
+    for datagrams the kernel dropped. udev stops the unit the moment the
+    device goes, and a stopped unit does the same thing by itself.
+    """
+    _shared(tmp_path, monkeypatch)
+    sysfs = tmp_path / "sysfs"
+    (sysfs / "5-2").mkdir(parents=True)
+    (sysfs / "5-2" / "idVendor").write_text("2a39\n")
+    (sysfs / "5-2" / "idProduct").write_text("3fd9\n")
+    monkeypatch.setenv("OSCMIX_SYSFS_USB", str(sysfs))
+    # A /proc where nothing is bound: the interface is there, the
+    # backend is not.
+    proc = tmp_path / "proc"
+    (proc / "net").mkdir(parents=True)
+    (proc / "net" / "udp").write_text("  sl  local_address rem_address\n")
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    path = _desk(tmp_path, tracking=TRACKING)
+    outcome = profiles.switch_profile("tracking", config_path=path)
+    assert outcome.state == profiles.REFUSED
+    assert "nothing is listening" in outcome.reason
+    assert not profiles.active_profile_path(path).exists()
+
+
+def test_the_serial_is_inherited_like_the_usb_id(tmp_path):
+    """A profile that does not state it keeps the running one.
+
+    Without this a switch would hand the next writer an empty serial,
+    the key would be recomputed from the card list, and the pinning done
+    at start-up would be undone by the first profile change.
+    """
+    path = _desk(tmp_path, tracking=TRACKING)
+    path.write_text(path.read_text() + "\n[device]\nserial = 24216011\n")
+    profile = profiles.load_profile("tracking", path)
+    assert profile.serial == "24216011"
+
+
+def test_the_lock_file_is_openable_by_a_second_user(tmp_path, monkeypatch):
+    """A service with umask 077 would otherwise lock everyone else out.
+
+    `flock` holds on a read-only descriptor, so a second user only needs
+    to *open* the file -- but a lock file created 0600 by the unit
+    cannot be opened by them at all, and `take_device_lock` would turn
+    that into a refusal rather than a wait. Measured on the desk: the
+    unit's own lock file came out `-rw-------` (ADR 0023).
+    """
+    _shared(tmp_path, monkeypatch)
+    umask = os.umask(0o077)
+    try:
+        held = profiles.take_device_lock(None, "2a39-3fd9-24216011")
+    finally:
+        os.umask(umask)
+    assert held is not None
+    try:
+        mode = stat.S_IMODE(
+            profiles.device_lock_path(None, "2a39-3fd9-24216011").stat().st_mode)
+        assert mode == 0o666, "created 0o%o; a second user cannot open it" % mode
+    finally:
+        held.release()

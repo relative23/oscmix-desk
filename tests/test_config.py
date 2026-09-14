@@ -398,11 +398,17 @@ def test_the_known_surface_is_stated_rather_than_discovered(session_mod):
     line in the journal. Failing loudly is the lesser harm. The
     alternative -- putting input routes in a new *section*, which would
     only warn -- was rejected for exactly that reason.
+
+    `serial` was added here in 0.6.8, and the same reading applies: a
+    `routing.conf` that names it is rejected whole by a 0.6.7 install,
+    exit 2. It is opt-in and only needed on a machine with two
+    interfaces of one model, so the example config ships it commented
+    out -- a downgrade keeps working for everyone who never needed it.
     """
     from oscmix_desk import config as config_mod
 
     assert {
-        "device": {"name", "usb-id"},
+        "device": {"name", "usb-id", "serial"},
         "osc": {"port", "recv-port"},
         "route": {"playback", "input", "output", "level", "volume", "stereo"},
     } == config_mod._KNOWN_OPTIONS

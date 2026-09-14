@@ -144,7 +144,8 @@ def udp_port_listening(port: int, proc_root: Path) -> bool:
     return False
 
 
-def device_key(usb_id: str, cards: Path = Path("/proc/asound/cards")) -> str:
+def device_key(usb_id: str, cards: Path = Path("/proc/asound/cards"),
+               serial: Optional[str] = None) -> str:
     """A stable name for the interface every writer contends over.
 
     The USB id says which model, the serial says which box. Together
@@ -153,12 +154,28 @@ def device_key(usb_id: str, cards: Path = Path("/proc/asound/cards")) -> str:
     config directories pointing at one interface are two desks on one
     device, and they must contend (ADR 0022).
 
-    Without a serial the model alone is the key. That over-serialises
-    two identical interfaces on one machine, which is the safe
-    direction: the cost is a wait, not a half-written desk.
+    ``serial`` names the box outright, from `[device] serial`. Without
+    it the card list decides, and only when its answer is unambiguous:
+    one interface gives its serial, several give a shared key, none
+    gives the model alone. Every one of those is a key that every writer
+    of that hardware computes identically, which is the whole point
+    (ADR 0023).
     """
-    serial = device_serial(cards)
-    raw = "%s-%s" % (usb_id, serial or "unknown")
+    if serial:
+        chosen = serial
+    else:
+        serials = device_serials(cards)
+        if len(serials) == 1:
+            chosen = serials[0]
+        elif serials:
+            log.warning("%d Fireface interfaces present and no [device] "
+                        "serial configured; every writer shares one lock. "
+                        "Set serial = <the number printed on the box> to "
+                        "separate them", len(serials))
+            chosen = AMBIGUOUS_SERIAL
+        else:
+            chosen = "unknown"
+    raw = "%s-%s" % (usb_id, chosen)
     return "".join(c if c.isalnum() or c in "-._" else "-" for c in raw)
 
 
@@ -241,17 +258,48 @@ def device_serial(cards: Path = Path("/proc/asound/cards")) -> Optional[str]:
     sweep needed the same answer; two copies would be two places for the
     rule to disagree.
     """
+    serials = device_serials(cards)
+    return serials[0] if serials else None
+
+
+#: Two boxes of one model and no `serial` in `[device]`: the key names
+#: neither of them, so every writer of either shares one lock instead of
+#: racing on two. A wait is the safe direction; a second lock file is
+#: not (ADR 0023).
+AMBIGUOUS_SERIAL = "ambiguous"
+
+
+def device_serials(cards: Path = Path("/proc/asound/cards")) -> List[str]:
+    """Every Fireface serial the ALSA card list shows, in card order.
+
+    More than one means the machine has more than one box, and nothing
+    in the card list says which of them a given process is driving.
+    ``device_key`` refuses to guess in that case rather than naming the
+    first one: reading line one would key a writer of the second box on
+    the first box's name, and unplugging the first would move the
+    survivor's key out from under a writer already holding it.
+    """
     try:
         text = cards.read_text()
     except OSError:
-        return None
+        return []
+    found = []
     for line in text.splitlines():
         if "Fireface" not in line:
             continue
-        found = re.search(r"\((\d{4,})\)", line)
-        if found:
-            return found.group(1)
-    return None
+        match = re.search(r"\((\d{4,})\)", line)
+        # Distinct serials, not matching lines. A card takes two lines in
+        # this file and both carry the name and the number:
+        #
+        #   2 [II24216011 ]: USB-Audio - Fireface UCX II (24216011)
+        #                    RME Fireface UCX II (24216011) at usb-...
+        #
+        # Counting lines made one interface look like two, which put
+        # every desk on the `ambiguous` key -- measured on this machine
+        # the first time the new key ran against real hardware.
+        if match and match.group(1) not in found:
+            found.append(match.group(1))
+    return found
 
 
 def built_backend_revision(repo_root: Path) -> Optional[str]:

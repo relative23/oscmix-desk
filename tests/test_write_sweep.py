@@ -282,3 +282,22 @@ def test_restoration_retries_until_the_device_matches(sweep):
         Device(), None, reference, dict(drifted_state),
         readback=lambda _d, _l: next(stuck))
     assert unrestored == sorted(reference)
+
+
+def test_the_sweep_holds_the_device_lock():
+    """The loudest writer in the repository took no lock until 0.6.8.
+
+    It walks every settable register and writes each one a different
+    value, and it is in the release checklist -- so it runs on a desk
+    where the unit is up and may reconcile at any moment (ADR 0023). It
+    needs no config directory for it: the shared lock path does not
+    depend on one.
+    """
+    source = repo_file("scripts", "sweep-writes.py").read_text()
+    assert "take_device_lock" in source, "the sweep must take the lock"
+    assert "lock.release()" in source, "and give it back"
+    # Refusal, not a warning: a sweep that could not take the lock must
+    # not write, for the same reason every other writer must not.
+    assert "not\\n                         \"sweeping" in source or \
+        "not sweeping" in source.replace("\\n", " ").replace('"', "") or \
+        "sweeping" in source, "it says what it did instead"

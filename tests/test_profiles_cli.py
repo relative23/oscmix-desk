@@ -10,7 +10,7 @@ landed at 53% on cli.py and was found by the gate, on a push.
 """
 
 import pytest
-from conftest import free_udp_port, write_config
+from conftest import free_udp_port, proc_with_ports, write_config
 
 from oscmix_desk import cli
 from oscmix_desk.constants import (
@@ -36,7 +36,7 @@ def test_a_dry_run_never_switches_or_forgets_a_profile(
         tmp_path, capsys, monkeypatch, selection):
     from oscmix_desk import session
 
-    path = _config_with(tmp_path, {"tracking": GOOD})
+    path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     marker = tmp_path / "active-profile"
     marker.write_text("tracking\n")
     writes = []
@@ -55,7 +55,7 @@ def test_a_dry_run_never_switches_or_forgets_a_profile(
 @pytest.mark.parametrize("extra", ["--diff", "--dump-config", "--no-profile"])
 def test_conflicting_profile_actions_are_rejected_before_writing(
         tmp_path, monkeypatch, extra):
-    path = _config_with(tmp_path, {"tracking": GOOD})
+    path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     _quick_wire(monkeypatch)
     with pytest.raises(SystemExit) as exc:
         cli.main(["--config", str(path), "--profile", "tracking", extra])
@@ -63,7 +63,7 @@ def test_conflicting_profile_actions_are_rejected_before_writing(
     assert not (tmp_path / "active-profile").exists()
 
 
-def _config_with(tmp_path, profiles):
+def _config_with(tmp_path, profiles, monkeypatch=None):
     """A routing.conf plus a profiles/ directory beside it.
 
     The ports are free ones, and the profiles inherit them from here
@@ -78,13 +78,23 @@ def _config_with(tmp_path, profiles):
             "a profile fixture must not state its own port -- inheriting "
             "it from the tmp_path config is what keeps this off the "
             "hardware")
+    send_port, recv_port = free_udp_port(), free_udp_port()
+    if monkeypatch is not None:
+        # Since 0.6.8 a switch that opens its own socket refuses when
+        # nothing holds the send port, because a write nobody receives
+        # must not be reported as applied (ADR 0023). These tests drive
+        # the real CLI against no backend on purpose -- what they assert
+        # is the outcome-to-exit-code translation, not reachability,
+        # which has its own test. So the port is shown as bound.
+        monkeypatch.setenv("OSCMIX_PROC_ROOT",
+                           str(proc_with_ports(tmp_path / "proc", send_port)))
     return write_config(tmp_path / "routing.conf",
                         "[osc]\nport = %d\nrecv-port = %d\n"
-                        % (free_udp_port(), free_udp_port()))
+                        % (send_port, recv_port))
 
 
-def test_listing_profiles_prints_one_line_each(tmp_path, capsys):
-    path = _config_with(tmp_path, {"tracking": GOOD, "mixdown": GOOD})
+def test_listing_profiles_prints_one_line_each(tmp_path, capsys, monkeypatch):
+    path = _config_with(tmp_path, {"tracking": GOOD, "mixdown": GOOD}, monkeypatch)
     assert cli.main(["--config", str(path), "--list-profiles"]) == EXIT_OK
     lines = capsys.readouterr().out.strip().splitlines()
     assert len(lines) == 2
@@ -100,7 +110,7 @@ def test_listing_with_no_profiles_prints_nothing_and_succeeds(tmp_path,
 
 
 def test_a_refused_profile_exits_config_and_says_nothing_was_written(
-        tmp_path, capsys):
+        tmp_path, capsys, monkeypatch):
     """The exit code a script branches on.
 
     EXIT_CONFIG rather than EXIT_FAILURE because it is the same failure
@@ -108,7 +118,7 @@ def test_a_refused_profile_exits_config_and_says_nothing_was_written(
     happened. A script that retries on failure must not retry this.
     """
     path = _config_with(tmp_path, {
-        "bad": "[route:x]\noutput = 99\nplayback = 1\n"})
+        "bad": "[route:x]\noutput = 99\nplayback = 1\n"}, monkeypatch)
     assert cli.main(["--config", str(path), "--profile", "bad"]) == EXIT_CONFIG
     out = capsys.readouterr().out
     assert "refused" in out
@@ -116,8 +126,8 @@ def test_a_refused_profile_exits_config_and_says_nothing_was_written(
     assert "bad" in out
 
 
-def test_a_missing_profile_exits_config(tmp_path, capsys):
-    path = _config_with(tmp_path, {})
+def test_a_missing_profile_exits_config(tmp_path, capsys, monkeypatch):
+    path = _config_with(tmp_path, {}, monkeypatch)
     assert cli.main(["--config", str(path),
                      "--profile", "nosuch"]) == EXIT_CONFIG
     assert "nosuch" in capsys.readouterr().out
@@ -145,7 +155,7 @@ def test_an_applied_but_unverifiable_switch_still_exits_ok(tmp_path, capsys,
     monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.05)
     monkeypatch.setattr(profiles_mod, "VERIFY_TIMEOUT", 0.3)
 
-    path = _config_with(tmp_path, {"tracking": GOOD})
+    path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     assert cli.main(["--config", str(path),
                      "--profile", "tracking"]) == EXIT_OK
     out = capsys.readouterr().out
@@ -176,7 +186,7 @@ def _quick_wire(monkeypatch):
 def test_no_profile_applies_routing_conf_and_forgets(tmp_path, capsys,
                                                      monkeypatch):
     _quick_wire(monkeypatch)
-    path = _config_with(tmp_path, {"tracking": GOOD})
+    path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     (tmp_path / "active-profile").write_text("tracking\n")
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert "routing.conf" in capsys.readouterr().out
@@ -197,7 +207,7 @@ def test_no_profile_with_a_broken_routing_conf_exits_config(tmp_path, capsys):
 def test_a_switch_is_remembered_and_the_listing_shows_it(tmp_path, capsys,
                                                           monkeypatch):
     _quick_wire(monkeypatch)
-    path = _config_with(tmp_path, {"tracking": GOOD, "mixdown": GOOD})
+    path = _config_with(tmp_path, {"tracking": GOOD, "mixdown": GOOD}, monkeypatch)
     assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
     capsys.readouterr()
     assert cli.main(["--config", str(path), "--list-profiles"]) == EXIT_OK
@@ -217,8 +227,11 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
                         lambda: reloads.append(1) or cli.RELOAD_DONE)
-    path = _config_with(tmp_path, {"tracking": GOOD,
-                                   "broken": "[route:x]\noutput = 99\nplayback = 1\n"})
+    path = _config_with(
+        tmp_path,
+        {"tracking": GOOD,
+         "broken": "[route:x]\noutput = 99\nplayback = 1\n"},
+        monkeypatch)
     assert cli.main(["--config", str(path), "--profile", "broken"]) == EXIT_CONFIG
     assert reloads == [], "a refused switch has nothing to hand over"
     capsys.readouterr()
@@ -268,7 +281,7 @@ def test_a_switch_whose_marker_cannot_be_written_does_not_reload(
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
                         lambda: reloads.append(1) or cli.RELOAD_DONE)
-    path = _config_with(tmp_path, {"tracking": GOOD})
+    path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     (tmp_path / "active-profile").mkdir()      # a directory: the write fails
     with caplog.at_level("WARNING"):
         assert cli.main(["--config", str(path),
@@ -286,7 +299,7 @@ def test_no_profile_that_cannot_forget_the_marker_does_not_reload(
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
                         lambda: reloads.append(1) or cli.RELOAD_DONE)
-    path = _config_with(tmp_path, {"tracking": GOOD})
+    path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     marker = tmp_path / "active-profile"
     marker.mkdir()
     (marker / "child").write_text("")          # a non-empty directory

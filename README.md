@@ -244,7 +244,8 @@ applies `routing.conf` again and forgets the profile;
 `--list-profiles` marks the active one. A remembered profile that no
 longer loads falls back to `routing.conf` with a warning, and keeps
 warning until you decide. While the switch writes, it holds
-a lock named after the interface in `$XDG_RUNTIME_DIR/oscmix-desk/`,
+a lock named after the interface in `/run/oscmix-desk/`,
+the one path every writer on the machine computes the same way,
 and so does the service for
 its own apply, verifier and reconcile: one writer at a time, whichever
 it is ([ADR 0019](docs/decisions/0019-one-lock-for-every-writer.md)).

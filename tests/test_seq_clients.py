@@ -117,3 +117,70 @@ def test_a_broken_checkout_answers_none_not_an_exception(tmp_path):
 
     (tmp_path / "build" / "oscmix" / ".git").mkdir(parents=True)
     assert built_backend_revision(tmp_path) is None
+
+
+def test_device_serials_lists_every_box(tmp_path):
+    """More than one line means more than one interface."""
+    from oscmix_desk.discovery import device_serials
+
+    cards = tmp_path / "cards"
+    cards.write_text(
+        " 0 [NVidia     ]: HDA-Intel - HDA NVidia\n"
+        " 2 [II24216011 ]: USB-Audio - Fireface UCX II (24216011)\n"
+        " 3 [II99887766 ]: USB-Audio - Fireface UCX II (99887766)\n")
+    assert device_serials(cards) == ["24216011", "99887766"]
+    assert device_serials(tmp_path / "missing") == []
+
+
+def test_the_key_refuses_to_guess_between_two_boxes(tmp_path, caplog):
+    """0.6.7 named the first line, whichever box the process was driving.
+
+    Two consequences, both measured against fake card lists: a writer of
+    the second box keyed on the first box's name, and unplugging the
+    first box moved the survivor's key out from under a running writer.
+    """
+    from oscmix_desk.discovery import AMBIGUOUS_SERIAL, device_key
+
+    cards = tmp_path / "cards"
+    cards.write_text(
+        " 2 [II24216011 ]: USB-Audio - Fireface UCX II (24216011)\n"
+        " 3 [II99887766 ]: USB-Audio - Fireface UCX II (99887766)\n")
+    with caplog.at_level("WARNING"):
+        key = device_key("2a39:3fd9", cards)
+    assert key == "2a39-3fd9-" + AMBIGUOUS_SERIAL
+    assert "serial" in caplog.text, "the warning names the remedy"
+
+    # And with the box named, it is that box's key and no warning is due.
+    assert device_key("2a39:3fd9", cards, serial="99887766") == \
+        "2a39-3fd9-99887766"
+
+
+def test_one_box_and_no_box_are_unchanged(tmp_path):
+    from oscmix_desk.discovery import device_key
+
+    cards = tmp_path / "cards"
+    cards.write_text(" 2 [X]: USB-Audio - Fireface UCX II (24216011)\n")
+    assert device_key("2a39:3fd9", cards) == "2a39-3fd9-24216011"
+    assert device_key("2a39:3fd9", tmp_path / "gone") == "2a39-3fd9-unknown"
+
+
+def test_one_card_spanning_two_lines_is_one_interface(tmp_path):
+    """`/proc/asound/cards` gives every card a continuation line.
+
+    Both lines carry the name and the serial in brackets. Counting
+    matching lines rather than distinct serials made a single UCX II
+    look like two interfaces, and every writer on the machine went to
+    the `ambiguous` key -- measured against the real file the first time
+    the new key ran on hardware.
+    """
+    from oscmix_desk.discovery import device_key, device_serials
+
+    cards = tmp_path / "cards"
+    cards.write_text(
+        " 0 [NVidia         ]: HDA-Intel - HDA NVidia\n"
+        "                      HDA NVidia at 0xdc080000 irq 169\n"
+        " 2 [II24216011     ]: USB-Audio - Fireface UCX II (24216011)\n"
+        "                      RME Fireface UCX II (24216011) at "
+        "usb-0000:77:00.0-2, high speed\n")
+    assert device_serials(cards) == ["24216011"]
+    assert device_key("2a39:3fd9", cards) == "2a39-3fd9-24216011"

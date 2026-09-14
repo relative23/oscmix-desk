@@ -47,7 +47,7 @@ from typing import Iterator, List, Optional, Sequence, Tuple
 from .backend import Backend, loopback
 from .config import Config, list_profiles, load_config, profile_path
 from .constants import SWITCH_LOCK_WAIT, VERIFY_TIMEOUT
-from .discovery import device_key
+from .discovery import device_key, udp_port_listening, usb_device_present
 from .errors import ConfigError
 from .log import log
 from .registers import device_for_name
@@ -183,6 +183,7 @@ MACHINE_SETTINGS = (
     ("osc", "recv-port", "osc_recv_port"),
     ("device", "name", "device_name"),
     ("device", "usb-id", "usb_id"),
+    ("device", "serial", "serial"),
 )
 
 
@@ -326,6 +327,51 @@ def _fsync_directory(directory: Path) -> bool:
 #: `--config` do not contend.
 SWITCH_LOCK = "active-profile.lock"
 
+#: The one path that is the same for every writer on the machine,
+#: created 1777 by tmpfiles.d. Overridable for tests through
+#: OSCMIX_LOCK_DIR; a directory that is absent means the root steps of
+#: the installer never ran, and the search falls through to the ones
+#: that depend on the caller (ADR 0023).
+SHARED_LOCK_DIR = "/run/oscmix-desk"
+
+
+def _unreachable(config: Config) -> Optional[str]:
+    """Why a write would go nowhere, or None when it would arrive.
+
+    A write to an unreachable device is not a write: the datagrams land
+    in a port nobody bound and the kernel drops them without a word.
+    Until 0.6.8 a switch did exactly that, reported `applied`, exited 0
+    and recorded the marker -- a desired state that had never been at
+    the device, which the next start then applied.
+
+    Two ways it goes nowhere, and they need different words. The
+    interface can be gone. But *presence in sysfs is not reachability*:
+    a logical disconnect leaves the whole directory in place with
+    `idVendor` readable, measured on this desk -- `authorized=0` emptied
+    the card list and the sequencer clients while
+    `/sys/bus/usb/devices/5-2` stayed exactly as it was, and a check on
+    sysfs alone still said the device was there. The backend can also
+    simply not be running, which udev arranges the moment the device
+    goes, and which a stopped unit arranges by itself.
+
+    The bound port is the question that covers both. Checked before the
+    lock, like a bad config (ADR 0011): a refusal that costs nothing
+    should wait for nothing (ADR 0023).
+    """
+    sysfs = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
+    if not usb_device_present(config.usb_id, sysfs):
+        return "%s is not connected" % config.usb_id
+    proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
+    if not udp_port_listening(config.osc_port, proc_root):
+        return ("nothing is listening on UDP %d, so the backend is not "
+                "running" % config.osc_port)
+    return None
+
+
+def _refused_for_the_device(name: str, reason: str) -> "Outcome":
+    log.error("profile %r refused, nothing written: %s", name, reason)
+    return Outcome(state=REFUSED, name=name, reason=reason)
+
 
 class DeviceLock:
     """A held device lock, or a stand-in for "there was nothing to lock".
@@ -353,26 +399,37 @@ def device_lock_path(config_path: Optional[Path],
                      key: Optional[str] = None) -> Optional[Path]:
     """Where the lock for this device lives.
 
-    `$XDG_RUNTIME_DIR/oscmix-desk/<key>.lock` when a runtime directory
-    and a device key are both known: the lock then names the hardware,
-    so two `--config` directories pointing at one interface contend as
-    they must, and the unit can create it itself (ADR 0022).
+    `/run/oscmix-desk/<key>.lock` whenever that directory exists, which
+    the installer creates through tmpfiles.d. It is the only candidate
+    that depends on neither the environment nor the user nor the config
+    directory, so every writer of one interface computes it identically
+    -- including one under sudo, cron or a bare ssh command, which have
+    no `$XDG_RUNTIME_DIR` and used to walk straight past a holder
+    (ADR 0023).
 
-    Beside the config otherwise, which is where it lived until 0.6.7 and
-    is the only place a session without a runtime directory can put it.
-    None when there is no config either: nothing to lock, nothing to
-    contend with.
+    `$XDG_RUNTIME_DIR/oscmix-desk/` second, for a machine whose
+    installer never ran the root steps. Beside the config last, for a
+    session with neither. None when there is no config either: nothing
+    to lock, nothing to contend with.
     """
-    runtime = os.environ.get("XDG_RUNTIME_DIR")
-    if key and runtime:
-        directory = Path(runtime) / "oscmix-desk"
-        try:
-            directory.mkdir(parents=True, exist_ok=True)
-        except OSError as exc:
-            log.warning("cannot use %s (%s); falling back to the config "
-                        "directory", directory, exc)
-        else:
-            return directory / ("%s.lock" % key)
+    if key:
+        shared = Path(os.environ.get("OSCMIX_LOCK_DIR", SHARED_LOCK_DIR))
+        if shared.is_dir():
+            # It exists, so every other writer on this machine is using
+            # it. Falling back from here would put this process on a
+            # different path from the holder, which is the hole the
+            # runtime directory had (ADR 0023). Unusable is a refusal.
+            return shared / ("%s.lock" % key)
+        runtime = os.environ.get("XDG_RUNTIME_DIR")
+        if runtime:
+            directory = Path(runtime) / "oscmix-desk"
+            try:
+                directory.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                log.warning("cannot use %s (%s); falling back to the config "
+                            "directory", directory, exc)
+            else:
+                return directory / ("%s.lock" % key)
     marker = active_profile_path(config_path)
     return None if marker is None else marker.with_name(SWITCH_LOCK)
 
@@ -388,9 +445,22 @@ def _open_lock(path: Path) -> Optional[int]:
     than into an unlocked write (ADR 0022).
     """
     try:
-        return os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
+        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o666)
     except OSError:
         pass
+    else:
+        # The mode above is masked by the process umask, and a service
+        # with umask 077 creates a lock file only it can open. In the
+        # shared directory that is the difference between a second user
+        # waiting for the lock and being unable to see it at all
+        # (ADR 0023). Only the creator can chmod it; for everyone else
+        # the file already exists with the right mode, and the failure
+        # is not theirs to fix.
+        try:
+            os.fchmod(fd, 0o666)
+        except OSError:
+            pass
+        return fd
     try:
         return os.open(path, os.O_RDONLY)
     except OSError:
@@ -550,7 +620,15 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         log.error("profile %r refused, nothing written: %s", name, exc)
         return Outcome(state=REFUSED, name=name, reason=str(exc))
 
-    with _switch_lock(config_path, device_key(config.usb_id)) as held:
+    # Only when this process opens the socket itself. A caller that
+    # hands in a backend owns the other end of it -- that is the
+    # test seam, and the only caller that uses it.
+    unreachable = _unreachable(config) if backend is None else None
+    if unreachable:
+        return _refused_for_the_device(name, unreachable)
+
+    with _switch_lock(config_path,
+                      device_key(config.usb_id, serial=config.serial)) as held:
         if not held:
             return _refused_for_the_lock(name)
         device = backend if backend is not None else loopback(
@@ -589,7 +667,15 @@ def restore_main(config_path: Optional[Path] = None,
     except ConfigError as exc:
         log.error("routing.conf refused, nothing written: %s", exc)
         return Outcome(state=REFUSED, name="routing.conf", reason=str(exc))
-    with _switch_lock(config_path, device_key(config.usb_id)) as held:
+    # Only when this process opens the socket itself. A caller that
+    # hands in a backend owns the other end of it -- that is the
+    # test seam, and the only caller that uses it.
+    unreachable = _unreachable(config) if backend is None else None
+    if unreachable:
+        return _refused_for_the_device("routing.conf", unreachable)
+
+    with _switch_lock(config_path,
+                      device_key(config.usb_id, serial=config.serial)) as held:
         if not held:
             return _refused_for_the_lock("routing.conf")
         device = backend if backend is not None else loopback(

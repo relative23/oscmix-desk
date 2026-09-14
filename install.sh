@@ -32,6 +32,7 @@ DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UDEV_RULE="/etc/udev/rules.d/90-rme-fireface.rules"
 SLEEP_HOOK="/usr/lib/systemd/system-sleep/oscmix"
+TMPFILES_CONF="/usr/lib/tmpfiles.d/oscmix-desk.conf"
 
 DO_BUILD=1
 DO_UDEV=1
@@ -317,6 +318,21 @@ if [ "$DO_UDEV" = 1 ]; then
         fi
     else
         warn "no system-sleep directory; skipping the resume hook"
+    fi
+
+    # The lock directory every writer of an interface shares. Without
+    # it the path falls back to $XDG_RUNTIME_DIR, which sudo, cron and a
+    # bare ssh command do not have -- and a writer that computes a
+    # different path does not contend with the holder (ADR 0023).
+    info "installing the shared lock directory (needs root)"
+    if $SUDO install -m 644 "$PROJECT_DIR/systemd/tmpfiles.d/oscmix-desk.conf" \
+            "$TMPFILES_CONF" \
+        && $SUDO systemd-tmpfiles --create "$TMPFILES_CONF"; then
+        info "lock directory: /run/oscmix-desk"
+    else
+        warn "could not install $TMPFILES_CONF; run these by hand:"
+        warn "  sudo install -m 644 systemd/tmpfiles.d/oscmix-desk.conf $TMPFILES_CONF"
+        warn "  sudo systemd-tmpfiles --create $TMPFILES_CONF"
     fi
 else
     info "skipping the root steps (--no-udev): no hotplug autostart, no"

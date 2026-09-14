@@ -27,6 +27,7 @@ from .constants import (
 )
 from .discovery import (
     device_key,
+    device_serial,
     resolve_binary,
     udp_port_listening,
     usb_device_present,
@@ -184,7 +185,8 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
     # One transaction, from the first write to the verifier's last: a
     # switch that landed between them would be overwritten by the retry
     # that follows it, which is what 0.6.3 measured (ADR 0019).
-    lock = take_device_lock(config_path, device_key(config.usb_id))
+    lock = take_device_lock(config_path,
+                            device_key(config.usb_id, serial=config.serial))
     if lock is None:
         # Until 0.6.7 this wrote anyway, on the grounds that a desk with
         # no routing is worse than a re-apply. It also made "every writer
@@ -317,6 +319,22 @@ def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
     return EXIT_OK
 
 
+def _pin_the_serial(config: Config) -> None:
+    """Fix the device key for the life of this process.
+
+    The key is recomputed on every write, and `device_serial` reads the
+    card list, which empties the moment the interface is unplugged: a
+    reconcile landing in that window would compute `<usb id>-unknown`,
+    take a *different* lock file, and write beside the holder. Pinning
+    the serial the device showed at discovery keeps every later writer
+    in this process on one key (ADR 0023). A configured serial wins, and
+    a device that showed none leaves it empty, which is the same key it
+    would have computed anyway.
+    """
+    if not config.serial:
+        config.serial = device_serial() or ""
+
+
 def run_session(args: argparse.Namespace, config: Config) -> int:
     """Discover the device, run the backend, and supervise it."""
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
@@ -337,6 +355,8 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
         )
         return EXIT_FAILURE
     log.info("found %r as ALSA sequencer client %d", config.device_name, client)
+
+    _pin_the_serial(config)
 
     if args.dry_run:
         _print_dry_run(client, config)
@@ -437,7 +457,8 @@ def _reconcile(args: argparse.Namespace, config: Config,
     path = _config_path(args)
     # The same lock a switch takes: a reconcile that started while one
     # was writing used to interleave with it (ADR 0019).
-    lock = take_device_lock(path, device_key(config.usb_id))
+    lock = take_device_lock(path,
+                            device_key(config.usb_id, serial=config.serial))
     if lock is None:
         log.warning("SIGHUP: the device lock is not available; reconcile "
                     "skipped -- send the reload again")
