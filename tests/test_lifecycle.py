@@ -778,3 +778,24 @@ def test_a_device_unplugged_during_the_start_is_still_a_clean_no_op(
     assert lifecycle(port_ready=False, returncode=0,
                      usb_present=False) == session_mod.EXIT_OK
     assert ready_count(lifecycle.notifications) == 1
+
+
+def test_a_stranger_on_the_port_is_reported_once_not_every_poll(
+        session_module, monkeypatch, tmp_path, caplog):
+    """Once, not once per 0.25 s, and not never.
+
+    The announcement flag is the whole difference between a line that
+    explains a stalled start and either silence or a hundred copies of
+    the same sentence.
+    """
+    from test_process import fake_proc
+
+    from oscmix_desk import Config
+
+    proc = fake_proc(tmp_path, {"201": ("other", "other")},
+                     listening_port=7301, owner="201")
+    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.6)
+    with caplog.at_level("WARNING"):
+        assert session_module._await_backend_port(
+            RunningChild(pid=202), Config(osc_port=7301), proc) is False
+    assert caplog.text.count("is held by pid 201") == 1

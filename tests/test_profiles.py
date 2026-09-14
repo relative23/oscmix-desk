@@ -1040,3 +1040,23 @@ def test_two_configs_over_one_device_take_the_same_lock(tmp_path, monkeypatch):
     assert held is not None
     assert profiles.take_device_lock(second, key, wait=0.2) is None
     held.release()
+
+
+def test_without_a_runtime_directory_the_config_path_is_the_lock(
+        tmp_path, monkeypatch):
+    """The fallback the runtime directory usually hides.
+
+    With `$XDG_RUNTIME_DIR` set, the config path no longer decides where
+    the lock lives, so nothing observes it being passed. A session
+    without a runtime directory is the case where it still does.
+    """
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    path = _desk(tmp_path, tracking=TRACKING)
+    lock = profiles.take_device_lock(path, "2a39-3fd9-24216011")
+    assert lock is not None
+    assert (tmp_path / "active-profile.lock").exists()
+    assert profiles.take_device_lock(path, "2a39-3fd9-24216011",
+                                     wait=0.2) is None
+    lock.release()
+    # And with no config either there is nothing to contend over.
+    assert profiles.take_device_lock(None, "2a39-3fd9-24216011") is not None
