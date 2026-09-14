@@ -1248,7 +1248,8 @@ def test_a_switch_to_an_absent_interface_writes_nothing(tmp_path, monkeypatch):
     path = _desk(tmp_path, tracking=TRACKING)
     outcome = profiles.switch_profile("tracking", config_path=path)
     assert outcome.state == profiles.REFUSED
-    assert "2a39:3fd9" in outcome.reason
+    assert outcome.name == "tracking", "a refusal says what it refused"
+    assert outcome.reason == "2a39:3fd9 is not connected"
     assert not profiles.active_profile_path(path).exists(), \
         "and it remembers nothing"
 
@@ -1259,7 +1260,8 @@ def test_a_restore_to_an_absent_interface_writes_nothing(tmp_path, monkeypatch):
     path = _desk(tmp_path, tracking=TRACKING)
     outcome = profiles.restore_main(config_path=path)
     assert outcome.state == profiles.REFUSED
-    assert "2a39:3fd9" in outcome.reason
+    assert outcome.name == "routing.conf"
+    assert outcome.reason == "2a39:3fd9 is not connected"
 
 
 def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, monkeypatch):
@@ -1326,3 +1328,90 @@ def test_the_lock_file_is_openable_by_a_second_user(tmp_path, monkeypatch):
         assert mode == 0o666, "created 0o%o; a second user cannot open it" % mode
     finally:
         held.release()
+
+
+def test_a_configured_serial_is_the_key_a_switch_and_a_restore_lock_on(
+        tmp_path, monkeypatch, recording_backend):
+    """`[device] serial` separates two boxes only if a writer uses it.
+
+    Two identical interfaces without it share one lock; with it, each
+    desk contends on its own box's key and nothing else. A switch that
+    dropped the configured serial would key on the card list instead --
+    another box's number, or `ambiguous` -- and walk past a holder of
+    its own box (ADR 0023).
+    """
+    _shared(tmp_path, monkeypatch)
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    path = _desk(tmp_path, main=GOOD + "\n[device]\nserial = 99887766\n",
+                 tracking=TRACKING)
+    held = profiles.take_device_lock(None, "2a39-3fd9-99887766")
+    assert held is not None
+    try:
+        switched = profiles.switch_profile("tracking", config_path=path,
+                                           backend=recording_backend)
+        restored = profiles.restore_main(config_path=path,
+                                         backend=recording_backend)
+    finally:
+        held.release()
+    assert switched.state == profiles.REFUSED
+    assert restored.state == profiles.REFUSED
+    assert "holds the device lock" in switched.reason
+    assert recording_backend.sent == []
+
+
+def test_a_restore_without_a_runtime_directory_locks_beside_the_config(
+        tmp_path, recording_backend, monkeypatch):
+    """The config path still decides the lock for a bare session.
+
+    The switch has this test already; the restore takes the same lock by
+    a separate call, and nothing observed it passing the path down.
+    """
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    path = _desk(tmp_path, tracking=TRACKING)
+    held = profiles.take_device_lock(path, _key(path))
+    assert held is not None
+    assert (tmp_path / "active-profile.lock").exists()
+    try:
+        outcome = profiles.restore_main(config_path=path,
+                                        backend=recording_backend)
+    finally:
+        held.release()
+    assert outcome.state == profiles.REFUSED
+    assert recording_backend.sent == []
+
+
+def test_without_an_override_the_lock_directory_is_the_shared_one(
+        tmp_path, monkeypatch):
+    """`OSCMIX_LOCK_DIR` is for tests; production reads the real path."""
+    shared = tmp_path / "shared"
+    shared.mkdir(mode=0o1777)
+    monkeypatch.delenv("OSCMIX_LOCK_DIR", raising=False)
+    monkeypatch.setattr(profiles, "SHARED_LOCK_DIR", str(shared))
+    assert profiles.device_lock_path(None, "2a39-3fd9-24216011") == \
+        shared / "2a39-3fd9-24216011.lock"
+
+
+def test_reachability_reads_the_real_sysfs_and_proc_by_default(monkeypatch):
+    """The overrides are test seams; the defaults are what a desk runs."""
+    from pathlib import Path
+
+    from oscmix_desk import Config
+
+    monkeypatch.delenv("OSCMIX_SYSFS_USB", raising=False)
+    monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
+    seen = []
+    present, bound = [True], [True]
+    monkeypatch.setattr(profiles, "usb_device_present",
+                        lambda usb_id, sysfs: seen.append(sysfs) or present[0])
+    monkeypatch.setattr(profiles, "udp_port_listening",
+                        lambda port, proc: seen.append(proc) or bound[0])
+    config = Config()
+    assert profiles._unreachable(config) is None
+    assert seen == [Path("/sys/bus/usb/devices"), Path("/proc")]
+
+    bound[0] = False
+    assert profiles._unreachable(config) == (
+        "nothing is listening on UDP 7222, so the backend is not running")
+    present[0] = False
+    assert profiles._unreachable(config) == "2a39:3fd9 is not connected"

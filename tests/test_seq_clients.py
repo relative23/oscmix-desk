@@ -149,6 +149,8 @@ def test_the_key_refuses_to_guess_between_two_boxes(tmp_path, caplog):
         key = device_key("2a39:3fd9", cards)
     assert key == "2a39-3fd9-" + AMBIGUOUS_SERIAL
     assert "serial" in caplog.text, "the warning names the remedy"
+    assert "2 Fireface interfaces present" in caplog.text, \
+        "and says how many it found"
 
     # And with the box named, it is that box's key and no warning is due.
     assert device_key("2a39:3fd9", cards, serial="99887766") == \

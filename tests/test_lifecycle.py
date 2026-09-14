@@ -835,3 +835,12 @@ def test_a_configured_serial_is_never_overwritten(session_module, lifecycle,
                         lambda *a, **k: "99887766")
     lifecycle(config_fields={"serial": "24216011"})
     assert lifecycle.config.serial == "24216011"
+
+
+def test_a_device_that_shows_no_serial_pins_an_empty_one(session_module,
+                                                         lifecycle,
+                                                         monkeypatch):
+    """Empty, not a placeholder: it is the key the card list gives anyway."""
+    monkeypatch.setattr(session_module, "device_serial", lambda *a, **k: None)
+    lifecycle()
+    assert lifecycle.config.serial == ""
