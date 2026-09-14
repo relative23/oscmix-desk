@@ -25,11 +25,20 @@ from conftest import repo_file
 
 
 def _key(path):
-    """The device key the code under test derives for this config."""
-    from oscmix_desk.discovery import device_key
+    """The device key the code under test derives for this config.
+
+    From the same resolution the code uses, against the /proc the suite
+    points it at (ADR 0024) -- not against the machine's own card list.
+    """
+    import os
+    from pathlib import Path
+
+    from oscmix_desk.discovery import resolve_device
     from oscmix_desk.profiles import load_config
 
-    return device_key(load_config(path).usb_id)
+    config = load_config(path)
+    return resolve_device(config.usb_id, config.device_name, config.serial,
+                          Path(os.environ["OSCMIX_PROC_ROOT"])).key
 
 
 def unit_text():

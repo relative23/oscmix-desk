@@ -60,15 +60,16 @@ def free_udp_port():
             return port
 
 
-def proc_with_ports(directory, *ports):
-    """A /proc/net/udp in which each of ``ports`` is bound.
+def fake_proc(directory, bound=(), boxes=()):
+    """A /proc for device resolution and port identity (ADR 0024).
 
-    Since 0.6.8 a switch that opens its own socket refuses when nothing
-    holds the OSC port, because a write nobody receives must not be
-    reported as applied (ADR 0023). A test that drives the real CLI
-    without a backend still needs to reach the code past that check, and
-    it is the *outcome-to-exit-code* translation it is testing, not
-    reachability -- which has its own test.
+    ``boxes`` are (client, serial) pairs: each becomes a sequencer client
+    named ``Fireface UCX II (<serial>)`` and a card, so the resolution
+    sees what a machine with those interfaces shows. ``bound`` are
+    (port, comm, client) triples: a UDP socket on ``port`` held by a
+    process named ``comm`` -- and, when ``client`` is not None, an
+    alsaseqio child of it bridging that client, which is how the unit's
+    ``alsaseqio <client>:1 oscmix`` looks once alsaseqio has forked.
 
     Returns the directory to point `OSCMIX_PROC_ROOT` at.
     """
@@ -77,12 +78,52 @@ def proc_with_ports(directory, *ports):
     header = ("  sl  local_address rem_address   st tx_queue rx_queue tr"
               " tm->when retrnsmt   uid  timeout inode ref pointer drops")
     rows = [header]
-    for index, port in enumerate(ports):
+    for index, (port, comm, client) in enumerate(bound):
+        inode = 100000 + index
         rows.append("%5d: 0100007F:%04X 00000000:0000 07 00000000:00000000"
                     " 00:00000000 00000000  1000        0 %d 2 0 0"
-                    % (index, port, 100000 + index))
+                    % (index, port, inode))
+        holder = 40000 + 10 * index
+        _fake_process(directory, holder, comm, 1, [comm, "-r", "udp"],
+                      socket_inode=inode)
+        if client is not None:
+            _fake_process(directory, holder + 1, "alsaseqio", holder,
+                          ["alsaseqio", "%d:1" % client, "oscmix"])
     (net / "udp").write_text("\n".join(rows) + "\n")
+    seq = directory / "asound" / "seq"
+    seq.mkdir(parents=True, exist_ok=True)
+    (seq / "clients").write_text("".join(
+        'Client %3d : "Fireface UCX II (%s)" [Kernel Legacy]\n'
+        % (client, serial) for client, serial in boxes))
+    (directory / "asound" / "cards").write_text("".join(
+        " %d [II%s ]: USB-Audio - Fireface UCX II (%s)\n"
+        "      RME Fireface UCX II (%s) at usb-0000:77:00.0-%d\n"
+        % (i + 2, serial, serial, serial, i + 1)
+        for i, (_client, serial) in enumerate(boxes)))
     return directory
+
+
+def _fake_process(directory, pid, comm, ppid, argv, socket_inode=None):
+    entry = directory / str(pid)
+    (entry / "fd").mkdir(parents=True, exist_ok=True)
+    (entry / "comm").write_text(comm + "\n")
+    (entry / "stat").write_text("%d (%s) S %d 0 0\n" % (pid, comm, ppid))
+    (entry / "cmdline").write_bytes(
+        b"\0".join(a.encode() for a in argv) + b"\0")
+    if socket_inode is not None:
+        (entry / "fd" / "3").symlink_to("socket:[%d]" % socket_inode)
+
+
+def proc_with_ports(directory, *ports):
+    """A /proc in which an oscmix of this user holds each of ``ports``.
+
+    A test that drives the real CLI without a backend still has to get
+    past the reachability check -- since 0.6.9 that means an oscmix of
+    this user on the port, not merely a bound one (ADR 0024) -- because
+    it is the outcome-to-exit-code translation it is testing, and
+    reachability has tests of its own.
+    """
+    return fake_proc(directory, bound=[(port, "oscmix", None) for port in ports])
 
 
 def read_until_ready(notify_sock):

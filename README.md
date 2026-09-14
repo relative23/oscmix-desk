@@ -249,6 +249,13 @@ the one path every writer on the machine computes the same way,
 and so does the service for
 its own apply, verifier and reconcile: one writer at a time, whichever
 it is ([ADR 0019](docs/decisions/0019-one-lock-for-every-writer.md)).
+That directory belongs to the group `audio`, so the user running the
+desk has to be in it; the installer warns when it is not. A switch
+writes only to the backend that drives this desk's interface, and with
+two identical interfaces on one machine `[device] serial` has to say
+which one a desk is for -- without it nothing writes, rather than
+configuring whichever box the kernel found first
+([ADR 0024](docs/decisions/0024-one-interface-resolved-once.md)).
 If the marker cannot be written -- a read-only config directory, a full
 disk -- the switch says so and does not reload the service, because
 that reload would re-read `routing.conf` and undo it. While a profile is active, edits to

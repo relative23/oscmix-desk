@@ -13,11 +13,12 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from .config import Config, discover_config_path, profile_path
 from .constants import (
     CHILD_STOP_GRACE,
+    EXIT_CONFIG,
     EXIT_FAILURE,
     EXIT_OK,
     PORT_READY_TIMEOUT,
@@ -26,14 +27,14 @@ from .constants import (
     VERIFY_SETTLE,
 )
 from .discovery import (
-    device_key,
-    device_serial,
+    lock_key,
     resolve_binary,
+    resolve_device,
     udp_port_listening,
     usb_device_present,
     wait_for_seq_client,
 )
-from .errors import ConfigError
+from .errors import ConfigError, DeviceAmbiguous, DeviceLockUnavailable
 from .log import log
 from .notify import sd_notify
 from .process import _cleanup_stale_backend, socket_owner, supervise
@@ -186,7 +187,7 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
     # switch that landed between them would be overwritten by the retry
     # that follows it, which is what 0.6.3 measured (ADR 0019).
     lock = take_device_lock(config_path,
-                            device_key(config.usb_id, serial=config.serial))
+                            lock_key(config.usb_id, config.serial))
     if lock is None:
         # Until 0.6.7 this wrote anyway, on the grounds that a desk with
         # no routing is worse than a re-apply. It also made "every writer
@@ -194,7 +195,7 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         # the opposite of what a guarantee is. systemd restarts the unit;
         # a write nobody serialised cannot be taken back (ADR 0022).
         log.error("the device lock is not available; not applying routing")
-        return None
+        raise DeviceLockUnavailable(config.usb_id)
 
     # The lock may have taken a while. A stop that arrived during the
     # wait means this process is going away, and writing the whole
@@ -319,20 +320,59 @@ def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
     return EXIT_OK
 
 
-def _pin_the_serial(config: Config) -> None:
+def _find_client(args: argparse.Namespace, config: Config, proc_root: Path,
+                 sysfs_usb: Path) -> Tuple[Optional[int], int]:
+    """The sequencer client of this desk's interface, with its serial pinned.
+
+    Returns the client, or None and the exit code the start ends with.
+    `[device] serial` selects the box among identical ones; without it
+    more than one candidate is a configuration error, exit 2, which
+    `RestartPreventExitStatus=2` keeps from becoming a restart loop.
+    Until 0.6.9 the first matching client was bound, so a desk with two
+    identical interfaces configured whichever the kernel enumerated
+    first (ADR 0024).
+    """
+    log.info("waiting for %r (ALSA sequencer, timeout %.0fs)",
+             config.device_name, args.timeout)
+    try:
+        client = wait_for_seq_client(config.device_name, args.timeout,
+                                     proc_root, config.serial)
+        if client is not None:
+            _pin_the_serial(config, proc_root)
+    except DeviceAmbiguous as exc:
+        log.error("%s -- set [device] serial to the number on the box", exc)
+        return None, EXIT_CONFIG
+    if client is None:
+        if not usb_device_present(config.usb_id, sysfs_usb):
+            log.info("device %s not connected; nothing to do", config.usb_id)
+            sd_notify("READY=1")  # Type=notify: a clean no-op start
+            return None, EXIT_OK
+        log.error(
+            "USB device %s is connected but no ALSA sequencer client named %r%s "
+            "appeared within %.0fs -- is snd-usb-audio loaded?",
+            config.usb_id, config.device_name,
+            " with serial %s" % config.serial if config.serial else "",
+            args.timeout,
+        )
+        return None, EXIT_FAILURE
+    log.info("found %r as ALSA sequencer client %d", config.device_name, client)
+    return client, EXIT_OK
+
+
+def _pin_the_serial(config: Config, proc_root: Path) -> None:
     """Fix the device key for the life of this process.
 
-    The key is recomputed on every write, and `device_serial` reads the
-    card list, which empties the moment the interface is unplugged: a
-    reconcile landing in that window would compute `<usb id>-unknown`,
-    take a *different* lock file, and write beside the holder. Pinning
-    the serial the device showed at discovery keeps every later writer
-    in this process on one key (ADR 0023). A configured serial wins, and
-    a device that showed none leaves it empty, which is the same key it
-    would have computed anyway.
+    The key names the interface this process is bound to, from the same
+    resolution a switch uses, so the two cannot name different boxes --
+    in 0.6.8 the unit pinned the first serial in the card list while a
+    switch keyed on `ambiguous`, two lock files over one desk. Pinned
+    because the card list empties the moment the interface is unplugged,
+    and a reconcile in that window would otherwise take a different lock
+    (ADR 0023, ADR 0024). A configured serial is already the answer.
     """
     if not config.serial:
-        config.serial = device_serial() or ""
+        config.serial = resolve_device(config.usb_id, config.device_name,
+                                       "", proc_root).serial
 
 
 def run_session(args: argparse.Namespace, config: Config) -> int:
@@ -340,23 +380,9 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
 
-    log.info("waiting for %r (ALSA sequencer, timeout %.0fs)",
-             config.device_name, args.timeout)
-    client = wait_for_seq_client(config.device_name, args.timeout, proc_root)
+    client, code = _find_client(args, config, proc_root, sysfs_usb)
     if client is None:
-        if not usb_device_present(config.usb_id, sysfs_usb):
-            log.info("device %s not connected; nothing to do", config.usb_id)
-            sd_notify("READY=1")  # Type=notify: a clean no-op start
-            return EXIT_OK
-        log.error(
-            "USB device %s is connected but no ALSA sequencer client named %r "
-            "appeared within %.0fs -- is snd-usb-audio loaded?",
-            config.usb_id, config.device_name, args.timeout,
-        )
-        return EXIT_FAILURE
-    log.info("found %r as ALSA sequencer client %d", config.device_name, client)
-
-    _pin_the_serial(config)
+        return code
 
     if args.dry_run:
         _print_dry_run(client, config)
@@ -387,10 +413,20 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
 
     verifier = None
     if child.poll() is None:
-        verifier = _apply_and_verify(child, config, stop_requested,
-                                     _config_path(args))
-        # The service is "started": backend up, routing applied.
-        sd_notify("READY=1")
+        try:
+            verifier = _apply_and_verify(child, config, stop_requested,
+                                         _config_path(args))
+            # The service is "started": backend up, routing applied --
+            # and only then. READY=1 used to follow a lock refusal too,
+            # telling systemd the desk was set while nothing had been
+            # written (0.6.7, 0.6.8).
+            sd_notify("READY=1")
+        except DeviceLockUnavailable:
+            # A failed start is retried after RestartSec; a held lock is
+            # a wait, not a desk (ADR 0022, ADR 0024).
+            log.error("failing the start so systemd tries again")
+            _stop_child(child)
+            return EXIT_FAILURE
 
     returncode = supervise(child, stop_requested,
                            on_reload=lambda: _reconcile(args, config,
@@ -457,8 +493,7 @@ def _reconcile(args: argparse.Namespace, config: Config,
     path = _config_path(args)
     # The same lock a switch takes: a reconcile that started while one
     # was writing used to interleave with it (ADR 0019).
-    lock = take_device_lock(path,
-                            device_key(config.usb_id, serial=config.serial))
+    lock = take_device_lock(path, lock_key(config.usb_id, config.serial))
     if lock is None:
         log.warning("SIGHUP: the device lock is not available; reconcile "
                     "skipped -- send the reload again")

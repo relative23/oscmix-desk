@@ -38,7 +38,9 @@ import configparser
 import contextlib
 import errno
 import fcntl
+import grp
 import os
+import stat
 import time
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -47,9 +49,15 @@ from typing import Iterator, List, Optional, Sequence, Tuple
 from .backend import Backend, loopback
 from .config import Config, list_profiles, load_config, profile_path
 from .constants import SWITCH_LOCK_WAIT, VERIFY_TIMEOUT
-from .discovery import device_key, udp_port_listening, usb_device_present
-from .errors import ConfigError
+from .discovery import (
+    Device,
+    resolve_device,
+    udp_port_listening,
+    usb_device_present,
+)
+from .errors import ConfigError, DeviceAmbiguous
 from .log import log
+from .process import port_holder
 from .registers import device_for_name
 from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
@@ -335,36 +343,69 @@ SWITCH_LOCK = "active-profile.lock"
 SHARED_LOCK_DIR = "/run/oscmix-desk"
 
 
-def _unreachable(config: Config) -> Optional[str]:
-    """Why a write would go nowhere, or None when it would arrive.
+class _Refused(Exception):
+    """Why a writer will not write, carried to the outcome."""
+
+
+def _proc_root() -> Path:
+    return Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
+
+
+def _target(config: Config, reach: bool) -> Device:
+    """The interface this write is for, or _Refused with the reason.
+
+    One resolution for the lock key and for the reachability check, so
+    the two cannot describe different boxes (ADR 0024). ``reach`` is
+    False when the caller hands in its own backend and so owns the other
+    end of the socket -- the test seam, and the only caller that uses it.
+    Ambiguity refuses either way: it is about which lock to take.
+    """
+    try:
+        device = resolve_device(config.usb_id, config.device_name,
+                                config.serial, _proc_root())
+    except DeviceAmbiguous as exc:
+        raise _Refused(str(exc)) from exc
+    if reach:
+        reason = _unreachable(config, device)
+        if reason is not None:
+            raise _Refused(reason)
+    return device
+
+
+def _unreachable(config: Config, device: Device) -> Optional[str]:
+    """Why a write would not reach this interface, or None when it would.
 
     A write to an unreachable device is not a write: the datagrams land
-    in a port nobody bound and the kernel drops them without a word.
-    Until 0.6.8 a switch did exactly that, reported `applied`, exited 0
-    and recorded the marker -- a desired state that had never been at
-    the device, which the next start then applied.
+    in a port nobody bound, or in the wrong one, and a switch that
+    reports `applied` for that records a desired state that was never at
+    the device.
 
-    Two ways it goes nowhere, and they need different words. The
-    interface can be gone. But *presence in sysfs is not reachability*:
-    a logical disconnect leaves the whole directory in place with
-    `idVendor` readable, measured on this desk -- `authorized=0` emptied
-    the card list and the sequencer clients while
-    `/sys/bus/usb/devices/5-2` stayed exactly as it was, and a check on
-    sysfs alone still said the device was there. The backend can also
-    simply not be running, which udev arranges the moment the device
-    goes, and which a stopped unit arranges by itself.
-
-    The bound port is the question that covers both. Checked before the
-    lock, like a bad config (ADR 0011): a refusal that costs nothing
-    should wait for nothing (ADR 0023).
+    Presence in sysfs is not reachability -- a logical disconnect leaves
+    the sysfs entry in place (0.6.8) -- and a bound port is not either:
+    in 0.6.8 a stranger's socket on the OSC port took a whole routing
+    and the marker was set. The port has to be held by an oscmix of this
+    user, and when its alsaseqio parent says which client it bridges,
+    that has to be the interface resolved above (ADR 0024).
     """
     sysfs = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
     if not usb_device_present(config.usb_id, sysfs):
         return "%s is not connected" % config.usb_id
-    proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
-    if not udp_port_listening(config.osc_port, proc_root):
+    port = config.osc_port
+    if not udp_port_listening(port, _proc_root()):
         return ("nothing is listening on UDP %d, so the backend is not "
-                "running" % config.osc_port)
+                "running" % port)
+    holder = port_holder(port, _proc_root())
+    if holder is None or not holder.oscmix:
+        return ("UDP %d is held by %s, not by an oscmix backend of this user"
+                % (port, "pid %d" % holder.pid if holder is not None
+                   else "a process that cannot be identified"))
+    if device.serial and holder.serial and holder.serial != device.serial:
+        return ("the backend on UDP %d drives the interface %s, not %s"
+                % (port, holder.serial, device.serial))
+    if (device.client is not None and holder.client is not None
+            and holder.client != device.client):
+        return ("the backend on UDP %d bridges sequencer client %d, not %d"
+                % (port, holder.client, device.client))
     return None
 
 
@@ -434,6 +475,20 @@ def device_lock_path(config_path: Optional[Path],
     return None if marker is None else marker.with_name(SWITCH_LOCK)
 
 
+#: How every lock file is opened. The shared directory is writable by a
+#: whole group, so what sits at a lock path may have been put there by
+#: someone else. O_NOFOLLOW refuses a symbolic link instead of following
+#: it -- 0.6.8 followed one and chmod'ed its target to 0666, stopped only
+#: by fs.protected_symlinks. O_NONBLOCK keeps a FIFO from blocking open()
+#: until a writer appears -- a planted one hung every writer, the 30 s
+#: wait included (ADR 0024).
+_LOCK_OPEN = os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+
+#: Owner and group: the shared directory belongs to `audio`, and every
+#: writer of the interface is in it. Nobody else may hold the lock.
+LOCK_FILE_MODE = 0o660
+
+
 def _open_lock(path: Path) -> Optional[int]:
     """Open the lock file read-write, or read-only, or not at all.
 
@@ -443,28 +498,80 @@ def _open_lock(path: Path) -> Optional[int]:
     and a read-only one holds it exactly as well. None means there is no
     descriptor to lock, which the caller turns into a refusal rather
     than into an unlocked write (ADR 0022).
+
+    Only a regular file is a lock. A directory, FIFO, socket or device
+    at the path is refused, whoever put it there (ADR 0024).
     """
-    try:
-        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o666)
-    except OSError:
-        pass
-    else:
-        # The mode above is masked by the process umask, and a service
-        # with umask 077 creates a lock file only it can open. In the
-        # shared directory that is the difference between a second user
-        # waiting for the lock and being unable to see it at all
-        # (ADR 0023). Only the creator can chmod it; for everyone else
-        # the file already exists with the right mode, and the failure
-        # is not theirs to fix.
-        try:
-            os.fchmod(fd, 0o666)
-        except OSError:
-            pass
+    fd = _open_regular(path, os.O_RDWR | os.O_CREAT)
+    if fd is not None:
+        _share_with_the_directory_group(fd, path)
         return fd
+    return _open_regular(path, os.O_RDONLY)
+
+
+def _open_regular(path: Path, flags: int) -> Optional[int]:
     try:
-        return os.open(path, os.O_RDONLY)
+        fd = os.open(path, flags | _LOCK_OPEN, LOCK_FILE_MODE)
     except OSError:
         return None
+    try:
+        regular = stat.S_ISREG(os.fstat(fd).st_mode)
+    except OSError:
+        regular = False
+    if not regular:
+        os.close(fd)
+        return None
+    return fd
+
+
+def _share_with_the_directory_group(fd: int, path: Path) -> None:
+    """Give a lock file this process owns the directory's group and 0660.
+
+    The mode passed to open() is masked by the umask, so a unit with
+    umask 077 would create a file no other writer can open. Only a file
+    this process owns, with exactly one link, is touched: anything else
+    at that path is not this process's to change.
+
+    The unit itself can chmod but not regroup: a sandboxed user service
+    runs in a user namespace that maps only the user's own group, and
+    fchown to `audio` fails there with EINVAL. It does not need to -- a
+    file created in the setgid directory has the group already, and the
+    tmpfiles.d `z` line regroups one that predates it (ADR 0024).
+    """
+    try:
+        info = os.fstat(fd)
+        group = os.stat(path.parent).st_gid
+    except OSError:
+        return
+    if info.st_uid != os.geteuid() or info.st_nlink != 1:
+        return
+    try:
+        os.fchmod(fd, LOCK_FILE_MODE)
+        if info.st_gid != group:
+            os.fchown(fd, -1, group)
+    except OSError:
+        pass
+
+
+def _why_unopenable(path: Path) -> str:
+    """What a person needs to know to clear a lock that cannot be opened."""
+    try:
+        info = os.lstat(path)
+    except OSError as exc:
+        return "%s; %s belongs to group %s" % (
+            exc.strerror or exc, path.parent, _group_of(path.parent))
+    if stat.S_ISLNK(info.st_mode):
+        return "it is a symbolic link"
+    if not stat.S_ISREG(info.st_mode):
+        return "it is not a regular file"
+    return "it belongs to uid %d and this user cannot open it" % info.st_uid
+
+
+def _group_of(directory: Path) -> str:
+    try:
+        return grp.getgrgid(os.stat(directory).st_gid).gr_name
+    except (OSError, KeyError):
+        return "an unknown group"
 
 
 def take_device_lock(config_path: Optional[Path],
@@ -485,7 +592,8 @@ def take_device_lock(config_path: Optional[Path],
         return DeviceLock()          # no config, so nothing to contend with
     fd = _open_lock(path)
     if fd is None:
-        log.error("cannot open the device lock at %s", path)
+        log.error("cannot open the device lock at %s: %s", path,
+                  _why_unopenable(path))
         return None
     deadline = time.monotonic() + (SWITCH_LOCK_WAIT if wait is None else wait)
     announced = False
@@ -620,15 +728,12 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         log.error("profile %r refused, nothing written: %s", name, exc)
         return Outcome(state=REFUSED, name=name, reason=str(exc))
 
-    # Only when this process opens the socket itself. A caller that
-    # hands in a backend owns the other end of it -- that is the
-    # test seam, and the only caller that uses it.
-    unreachable = _unreachable(config) if backend is None else None
-    if unreachable:
-        return _refused_for_the_device(name, unreachable)
+    try:
+        target = _target(config, reach=backend is None)
+    except _Refused as refusal:
+        return _refused_for_the_device(name, str(refusal))
 
-    with _switch_lock(config_path,
-                      device_key(config.usb_id, serial=config.serial)) as held:
+    with _switch_lock(config_path, target.key) as held:
         if not held:
             return _refused_for_the_lock(name)
         device = backend if backend is not None else loopback(
@@ -667,15 +772,12 @@ def restore_main(config_path: Optional[Path] = None,
     except ConfigError as exc:
         log.error("routing.conf refused, nothing written: %s", exc)
         return Outcome(state=REFUSED, name="routing.conf", reason=str(exc))
-    # Only when this process opens the socket itself. A caller that
-    # hands in a backend owns the other end of it -- that is the
-    # test seam, and the only caller that uses it.
-    unreachable = _unreachable(config) if backend is None else None
-    if unreachable:
-        return _refused_for_the_device("routing.conf", unreachable)
+    try:
+        target = _target(config, reach=backend is None)
+    except _Refused as refusal:
+        return _refused_for_the_device("routing.conf", str(refusal))
 
-    with _switch_lock(config_path,
-                      device_key(config.usb_id, serial=config.serial)) as held:
+    with _switch_lock(config_path, target.key) as held:
         if not held:
             return _refused_for_the_lock("routing.conf")
         device = backend if backend is not None else loopback(

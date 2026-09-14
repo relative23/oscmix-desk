@@ -23,8 +23,11 @@ name = Fireface UCX II
 usb-id = 2a39:3fd9
 # Which box, when the machine has more than one interface of the same
 # model: the number printed on it, which also appears in the ALSA card
-# list. Leave it out with one interface. With two and no serial, every
-# writer of either shares one lock rather than racing on two.
+# list and in `aconnect -l`. It selects the interface the backend
+# bridges and names its lock. Leave it out with one interface. With two
+# identical ones it is required: without it the service exits with a
+# configuration error and every switch refuses, rather than configuring
+# whichever box the kernel enumerated first.
 #serial = 24216011
 
 [osc]

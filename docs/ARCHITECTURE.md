@@ -81,18 +81,18 @@ acyclic graph.
 | Module | What it owns |
 |---|---|
 | `constants` | every timing constant and exit code, each with the measurement that produced it |
-| `errors` | `ConfigError`, the one exception a user ever sees |
+| `errors` | `ConfigError`, the one exception a user ever sees, and the two refusals that are not config text: an ambiguous interface and an unavailable device lock |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
 | `registers` | the register model as data: paths, tags, bounds, verification class, policy, per-device channel maps |
 | `config` | parse `routing.conf` into a `Config`, refusing what the model declares unsettable and warning about what it does not model at all |
-| `discovery` | find the device: ALSA sequencer clients, USB presence, whether a UDP port is bound |
+| `discovery` | find the device and resolve which interface a desk is for: serial, sequencer client and lock key from one answer; USB presence; whether a UDP port is bound |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
 | `reconcile` | `desired` / `observed` / `plan`, and rendering a `Config` back to text |
 | `backend` | the one place that opens a socket to the device; its `Traits` name the upstream behaviour the timing constants work around |
 | `routing` | send a plan in two phases, with the link barrier between them |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
-| `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap |
+| `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and say who holds a port and which interface that backend bridges |
 | `pipewire` | generate named virtual sinks from the same config |
 | `profiles` | switch to `profiles/<name>.conf` as a transaction, reporting an outcome rather than raising |
 | `session` | the service lifecycle: wait for the device, start the backend, apply, signal ready, verify, shut down |
@@ -206,6 +206,16 @@ monitoring check report healthy silence while the backend is down.
   wait. Until 0.6.6 every `oscmix` of the user was terminated as soon as
   *anything* held the port, which could stop a second interface's
   backend and leave the actual holder running (ADR 0021).
+
+- **One interface, resolved once.** `discovery.resolve_device` answers
+  which interface a desk is for -- serial, sequencer client and lock key
+  together -- and the service, a switch, a restore and a reconcile all
+  use that one answer. `[device] serial` selects among identical
+  interfaces; without it more than one candidate is refused, never
+  guessed. A switch writes only when the OSC port is held by an `oscmix`
+  of this user whose `alsaseqio` bridges the resolved client, and the
+  lock directory belongs to the group `audio`, whose members alone can
+  create or hold a lock in it (ADR 0024).
 
 - **Named PipeWire sinks are generated, not hardcoded.**
   `oscmix-session --pipewire-sinks` derives one loopback sink per stereo

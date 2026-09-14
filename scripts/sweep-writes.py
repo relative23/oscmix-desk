@@ -42,6 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from oscmix_desk import registers as R
 from oscmix_desk.backend import loopback
 from oscmix_desk.constants import (
+    DEFAULT_DEVICE_NAME,
     DEFAULT_OSC_PORT,
     DEFAULT_OSC_RECV_PORT,
     DEFAULT_USB_ID,
@@ -50,9 +51,10 @@ from oscmix_desk.constants import (
 from oscmix_desk.discovery import (
     built_backend_revision,
     device_firmware,
-    device_key,
     device_serial,
+    resolve_device,
 )
+from oscmix_desk.errors import DeviceAmbiguous
 from oscmix_desk.profiles import take_device_lock
 
 #: Steps as a fraction of the declared range, smallest first. One percent
@@ -467,7 +469,16 @@ def main() -> int:
     # it took no lock at all: a sweep and the unit's reconcile could
     # interleave on one device (ADR 0023). No config directory is needed
     # for it -- the shared lock directory does not depend on one.
-    lock = take_device_lock(None, device_key(DEFAULT_USB_ID))
+    try:
+        device = resolve_device(DEFAULT_USB_ID, DEFAULT_DEVICE_NAME, "",
+                                Path("/proc"))
+    except DeviceAmbiguous as exc:
+        # The sweep writes to whichever backend holds the default port and
+        # names the box in its artifact; with two boxes it could do
+        # neither honestly (ADR 0024).
+        sys.stderr.write("%s; the sweep supports one interface\n" % exc)
+        return 1
+    lock = take_device_lock(None, device.key)
     if lock is None:
         sys.stderr.write("another writer holds the device lock; not "
                          "sweeping\n")

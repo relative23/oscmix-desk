@@ -116,6 +116,38 @@ and writes nothing. Since 0.6.6 both the unit and a switch read the
 desk *inside* that lock (ADR 0020), so whichever of them gets it first,
 the other applies what was committed rather than what it read earlier.
 
+Since 0.6.9 a start that cannot take the lock fails instead of reporting
+ready, and systemd tries again after a few seconds (ADR 0024). Three
+refusals name their cause in the journal and on the command line:
+
+```
+cannot open the device lock at /run/oscmix-desk/2a39-3fd9-24216011.lock:
+  Permission denied; /run/oscmix-desk belongs to group audio
+```
+
+The user is not in `audio`: `sudo usermod -aG audio $USER`, then log in
+again. `it is a symbolic link` or `it is not a regular file` means
+something other than a lock sits at that path; it is not this user's to
+remove, and a reboot clears `/run`.
+
+```
+2 interfaces match 'Fireface UCX II' and [device] serial does not say
+  which one this desk is for: Fireface UCX II (24216011), ...
+```
+
+Set `serial` under `[device]` to the number printed on the box -- the
+same number that appears in brackets here. The service exits with code 2
+for this and is not restarted until the config changes.
+
+```
+the backend on UDP 7222 drives the interface 24216011, not 99887766
+UDP 7222 is held by pid 4711, not by an oscmix backend of this user
+```
+
+A switch found a process on the OSC port that is not the backend for
+this desk's interface, and wrote nothing. `ss -ulnp | grep 7222` shows
+who it is; two desks for two interfaces need two ports.
+
 ## 4. Does the backend accept OSC?
 
 ```sh

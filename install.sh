@@ -328,7 +328,14 @@ if [ "$DO_UDEV" = 1 ]; then
     if $SUDO install -m 644 "$PROJECT_DIR/systemd/tmpfiles.d/oscmix-desk.conf" \
             "$TMPFILES_CONF" \
         && $SUDO systemd-tmpfiles --create "$TMPFILES_CONF"; then
-        info "lock directory: /run/oscmix-desk"
+        info "lock directory: /run/oscmix-desk (group audio)"
+        # Only members of `audio` can take the lock; everyone else is
+        # refused, the unit included (ADR 0024).
+        if ! id -nG "$(id -un)" | tr ' ' '\n' | grep -qx audio; then
+            warn "$(id -un) is not in the group audio, so it cannot take the"
+            warn "device lock and every start and switch will be refused:"
+            warn "  sudo usermod -aG audio $(id -un)   (then log in again)"
+        fi
     else
         warn "could not install $TMPFILES_CONF; run these by hand:"
         warn "  sudo install -m 644 systemd/tmpfiles.d/oscmix-desk.conf $TMPFILES_CONF"

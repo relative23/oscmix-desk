@@ -40,7 +40,11 @@ ALLOWED_IMPORTS = {
     "log": set(),
     "osc": set(),
     "notify": {"log"},
-    "discovery": {"log"},
+    # `errors` since 0.6.9: two identical interfaces without
+    # `[device] serial` are a configuration the user has to fix, and the
+    # leaf that finds the interfaces is the one that can tell (ADR 0024).
+    # errors is itself a leaf, so no direction in the graph changes.
+    "discovery": {"errors", "log"},
     # log is a leaf: one named logger, configured by the CLI entry point
     # before load_config runs. config gained it for the unknown-section
     # warning of ADR 0006 -- a warning has to reach the journal, and
@@ -79,8 +83,13 @@ ALLOWED_IMPORTS = {
     # an exit code -- the mapping to one is the CLI's business.
     # `discovery` since 0.6.7: the device lock is keyed by the interface,
     # and the serial that names it is the leaf's to answer (ADR 0022).
+    # `process` since 0.6.9: a switch accepts the OSC port only from an
+    # oscmix of this user that bridges the resolved interface, which is
+    # the question the start's stale cleanup already asks through
+    # process.socket_owner (ADR 0024). process imports nothing above
+    # discovery, so no cycle.
     "profiles": {"backend", "config", "constants", "discovery", "errors",
-                 "log", "registers", "routing", "verify"},
+                 "log", "process", "registers", "routing", "verify"},
     "launcher": {"constants", "discovery"},
     # constants only, and only for the fader range: the register table
     # declares the device's bounds, and writing -65.0/6.0 here as well

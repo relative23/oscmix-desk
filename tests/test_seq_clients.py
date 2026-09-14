@@ -132,38 +132,12 @@ def test_device_serials_lists_every_box(tmp_path):
     assert device_serials(tmp_path / "missing") == []
 
 
-def test_the_key_refuses_to_guess_between_two_boxes(tmp_path, caplog):
-    """0.6.7 named the first line, whichever box the process was driving.
+def test_the_lock_key_names_the_box_and_nothing_a_path_can_abuse():
+    from oscmix_desk.discovery import lock_key
 
-    Two consequences, both measured against fake card lists: a writer of
-    the second box keyed on the first box's name, and unplugging the
-    first box moved the survivor's key out from under a running writer.
-    """
-    from oscmix_desk.discovery import AMBIGUOUS_SERIAL, device_key
-
-    cards = tmp_path / "cards"
-    cards.write_text(
-        " 2 [II24216011 ]: USB-Audio - Fireface UCX II (24216011)\n"
-        " 3 [II99887766 ]: USB-Audio - Fireface UCX II (99887766)\n")
-    with caplog.at_level("WARNING"):
-        key = device_key("2a39:3fd9", cards)
-    assert key == "2a39-3fd9-" + AMBIGUOUS_SERIAL
-    assert "serial" in caplog.text, "the warning names the remedy"
-    assert "2 Fireface interfaces present" in caplog.text, \
-        "and says how many it found"
-
-    # And with the box named, it is that box's key and no warning is due.
-    assert device_key("2a39:3fd9", cards, serial="99887766") == \
-        "2a39-3fd9-99887766"
-
-
-def test_one_box_and_no_box_are_unchanged(tmp_path):
-    from oscmix_desk.discovery import device_key
-
-    cards = tmp_path / "cards"
-    cards.write_text(" 2 [X]: USB-Audio - Fireface UCX II (24216011)\n")
-    assert device_key("2a39:3fd9", cards) == "2a39-3fd9-24216011"
-    assert device_key("2a39:3fd9", tmp_path / "gone") == "2a39-3fd9-unknown"
+    assert lock_key("2a39:3fd9", "24216011") == "2a39-3fd9-24216011"
+    assert lock_key("2a39:3fd9", "") == "2a39-3fd9-unknown"
+    assert lock_key("2a39:3fd9", "../x/y") == "2a39-3fd9-..-x-y"
 
 
 def test_one_card_spanning_two_lines_is_one_interface(tmp_path):
@@ -175,7 +149,7 @@ def test_one_card_spanning_two_lines_is_one_interface(tmp_path):
     the `ambiguous` key -- measured against the real file the first time
     the new key ran on hardware.
     """
-    from oscmix_desk.discovery import device_key, device_serials
+    from oscmix_desk.discovery import device_serials
 
     cards = tmp_path / "cards"
     cards.write_text(
@@ -185,4 +159,3 @@ def test_one_card_spanning_two_lines_is_one_interface(tmp_path):
         "                      RME Fireface UCX II (24216011) at "
         "usb-0000:77:00.0-2, high speed\n")
     assert device_serials(cards) == ["24216011"]
-    assert device_key("2a39:3fd9", cards) == "2a39-3fd9-24216011"

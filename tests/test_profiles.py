@@ -30,11 +30,20 @@ from oscmix_desk import profiles
 
 
 def _key(path):
-    """The device key the code under test derives for this config."""
-    from oscmix_desk.discovery import device_key
+    """The device key the code under test derives for this config.
+
+    From the same resolution the code uses, against the /proc the suite
+    points it at (ADR 0024) -- not against the machine's own card list.
+    """
+    import os
+    from pathlib import Path
+
+    from oscmix_desk.discovery import resolve_device
     from oscmix_desk.profiles import load_config
 
-    return device_key(load_config(path).usb_id)
+    config = load_config(path)
+    return resolve_device(config.usb_id, config.device_name, config.serial,
+                          Path(os.environ["OSCMIX_PROC_ROOT"])).key
 
 GOOD = """
 [route:main]
@@ -686,9 +695,9 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
     finally:
         os.umask(umask)
     lock = profiles.device_lock_path(path, _key(path))
-    # A plain file, and one every writer can open: the shared directory
-    # holds locks for users who did not create them (ADR 0023).
-    assert stat.S_IMODE(lock.stat().st_mode) == 0o666
+    # A plain file every writer of the interface can open -- owner and
+    # group, the group being the shared directory's (ADR 0024).
+    assert stat.S_IMODE(lock.stat().st_mode) == 0o660
     assert outcome.state == profiles.REFUSED
     assert outcome.name == "tracking"
     assert "holds the device lock" in outcome.reason
@@ -997,15 +1006,17 @@ def test_a_directory_that_cannot_be_synced_warns_on_both_paths(
 # --------------------------------------------------------------------------
 
 def test_the_device_key_names_the_box_not_the_file(tmp_path):
-    from oscmix_desk.discovery import device_key
+    from conftest import fake_proc
 
-    cards = tmp_path / "cards"
-    cards.write_text(" 2 [II24216011  ]: USB-Audio - Fireface UCX II "
-                     "(24216011)\n")
-    assert device_key("2a39:3fd9", cards) == "2a39-3fd9-24216011"
-    # No serial to be had: the model alone, which over-serialises two
-    # identical interfaces rather than letting them write at once.
-    assert device_key("2a39:3fd9", tmp_path / "gone") == "2a39-3fd9-unknown"
+    from oscmix_desk.discovery import resolve_device
+
+    proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc).key == \
+        "2a39-3fd9-24216011"
+    # No interface to be had: the model alone.
+    empty = fake_proc(tmp_path / "empty")
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", empty).key == \
+        "2a39-3fd9-unknown"
 
 
 def test_the_lock_lives_in_the_runtime_directory(tmp_path, monkeypatch):
@@ -1309,11 +1320,11 @@ def test_the_serial_is_inherited_like_the_usb_id(tmp_path):
 def test_the_lock_file_is_openable_by_a_second_user(tmp_path, monkeypatch):
     """A service with umask 077 would otherwise lock everyone else out.
 
-    `flock` holds on a read-only descriptor, so a second user only needs
-    to *open* the file -- but a lock file created 0600 by the unit
-    cannot be opened by them at all, and `take_device_lock` would turn
-    that into a refusal rather than a wait. Measured on the desk: the
-    unit's own lock file came out `-rw-------` (ADR 0023).
+    `flock` holds on a read-only descriptor, so a second writer only
+    needs to *open* the file -- but a lock file created 0600 by the unit
+    cannot be opened by anyone else at all. Measured on the desk: the
+    unit's own lock file came out `-rw-------`. Owner and group since
+    0.6.9, the group being the directory's (ADR 0024).
     """
     _shared(tmp_path, monkeypatch)
     umask = os.umask(0o077)
@@ -1323,12 +1334,12 @@ def test_the_lock_file_is_openable_by_a_second_user(tmp_path, monkeypatch):
         os.umask(umask)
     assert held is not None
     try:
-        mode = stat.S_IMODE(
-            profiles.device_lock_path(None, "2a39-3fd9-24216011").stat().st_mode)
-        assert mode == 0o666, "created 0o%o; a second user cannot open it" % mode
+        info = profiles.device_lock_path(None, "2a39-3fd9-24216011").stat()
+        assert stat.S_IMODE(info.st_mode) == 0o660, \
+            "created 0o%o; a second writer cannot open it" % stat.S_IMODE(info.st_mode)
+        assert info.st_gid == (tmp_path / "shared").stat().st_gid
     finally:
         held.release()
-
 
 def test_a_configured_serial_is_the_key_a_switch_and_a_restore_lock_on(
         tmp_path, monkeypatch, recording_backend):
@@ -1397,21 +1408,40 @@ def test_reachability_reads_the_real_sysfs_and_proc_by_default(monkeypatch):
     from pathlib import Path
 
     from oscmix_desk import Config
+    from oscmix_desk.discovery import Device
+    from oscmix_desk.process import PortHolder
 
     monkeypatch.delenv("OSCMIX_SYSFS_USB", raising=False)
     monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
     seen = []
     present, bound = [True], [True]
+    holder = [PortHolder(pid=7, oscmix=True, client=24, serial="24216011")]
     monkeypatch.setattr(profiles, "usb_device_present",
                         lambda usb_id, sysfs: seen.append(sysfs) or present[0])
     monkeypatch.setattr(profiles, "udp_port_listening",
                         lambda port, proc: seen.append(proc) or bound[0])
+    monkeypatch.setattr(profiles, "port_holder",
+                        lambda port, proc: seen.append(proc) or holder[0])
     config = Config()
-    assert profiles._unreachable(config) is None
-    assert seen == [Path("/sys/bus/usb/devices"), Path("/proc")]
+    box = Device(usb_id="2a39:3fd9", serial="24216011", client=24)
+    assert profiles._unreachable(config, box) is None
+    assert seen == [Path("/sys/bus/usb/devices"), Path("/proc"), Path("/proc")]
 
+    holder[0] = PortHolder(pid=7, oscmix=True, client=28, serial="99887766")
+    assert profiles._unreachable(config, box) == (
+        "the backend on UDP 7222 drives the interface 99887766, not 24216011")
+    holder[0] = PortHolder(pid=7, oscmix=True, client=28, serial=None)
+    assert profiles._unreachable(config, box) == (
+        "the backend on UDP 7222 bridges sequencer client 28, not 24")
+    holder[0] = PortHolder(pid=7, oscmix=False, client=None, serial=None)
+    assert profiles._unreachable(config, box) == (
+        "UDP 7222 is held by pid 7, not by an oscmix backend of this user")
+    holder[0] = None
+    assert profiles._unreachable(config, box) == (
+        "UDP 7222 is held by a process that cannot be identified, not by an "
+        "oscmix backend of this user")
     bound[0] = False
-    assert profiles._unreachable(config) == (
+    assert profiles._unreachable(config, box) == (
         "nothing is listening on UDP 7222, so the backend is not running")
     present[0] = False
-    assert profiles._unreachable(config) == "2a39:3fd9 is not connected"
+    assert profiles._unreachable(config, box) == "2a39:3fd9 is not connected"

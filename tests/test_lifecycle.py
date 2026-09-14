@@ -16,11 +16,20 @@ import pytest
 
 
 def _key(path):
-    """The device key the code under test derives for this config."""
-    from oscmix_desk.discovery import device_key
+    """The device key the code under test derives for this config.
+
+    From the same resolution the code uses, against the /proc the suite
+    points it at (ADR 0024) -- not against the machine's own card list.
+    """
+    import os
+    from pathlib import Path
+
+    from oscmix_desk.discovery import resolve_device
     from oscmix_desk.profiles import load_config
 
-    return device_key(load_config(path).usb_id)
+    config = load_config(path)
+    return resolve_device(config.usb_id, config.device_name, config.serial,
+                          Path(os.environ["OSCMIX_PROC_ROOT"])).key
 
 
 @pytest.fixture
@@ -66,11 +75,17 @@ def lifecycle(session_module, monkeypatch):
 
     def run(*, seq_client=42, usb_present=True, binaries=True,
             returncode=0, stop_requested=False, routes=(), port_ready=True,
-            alive=False, config_fields=None, **args):
+            alive=False, config_fields=None, lock_unavailable=False,
+            ambiguous=False, **args):
         config_fields = config_fields or {}
         monkeypatch.setattr(session_module, "sd_notify", notifications.append)
-        monkeypatch.setattr(session_module, "wait_for_seq_client",
-                            lambda *a, **k: seq_client)
+        def wait(*a, **k):
+            if ambiguous:
+                from oscmix_desk.errors import DeviceAmbiguous
+                raise DeviceAmbiguous("2 interfaces match 'Fireface UCX II'")
+            return seq_client
+
+        monkeypatch.setattr(session_module, "wait_for_seq_client", wait)
         monkeypatch.setattr(session_module, "usb_device_present",
                             lambda *a, **k: usb_present)
         monkeypatch.setattr(session_module, "resolve_binary",
@@ -83,8 +98,12 @@ def lifecycle(session_module, monkeypatch):
         # never binds, which since 0.6.6 fails the start (ADR 0021).
         monkeypatch.setattr(session_module, "_await_backend_port",
                             lambda *a, **k: port_ready)
-        monkeypatch.setattr(session_module, "_apply_and_verify",
-                            lambda *a, **k: None)
+        def apply(*a, **k):
+            if lock_unavailable:
+                from oscmix_desk.errors import DeviceLockUnavailable
+                raise DeviceLockUnavailable("2a39:3fd9")
+
+        monkeypatch.setattr(session_module, "_apply_and_verify", apply)
         def spawn(*a, **k):
             child = RunningChild() if alive else FakeChild(returncode)
             children.append(child)
@@ -556,14 +575,17 @@ def test_a_start_that_cannot_take_the_lock_writes_nothing(
     monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 0.3)
     held = profiles_mod.take_device_lock(path, _key(path))
     assert held is not None
+    from oscmix_desk.errors import DeviceLockUnavailable
+
     try:
-        with caplog.at_level("ERROR"):
-            verifier = session_module._apply_and_verify(
+        with caplog.at_level("ERROR"), pytest.raises(DeviceLockUnavailable):
+            session_module._apply_and_verify(
                 RunningChild(), session_mod.load_config(path),
                 {"stop": False}, path)
     finally:
         held.release()
-    assert verifier is None, "nothing to verify, because nothing was written"
+    # Raised, not returned as None: None also means "nothing declared"
+    # and "a stop arrived", and run_session sent READY=1 for all three.
     assert applied == []
     assert "device lock is not available" in caplog.text
 
@@ -804,43 +826,76 @@ def test_a_stranger_on_the_port_is_reported_once_not_every_poll(
     assert caplog.text.count("is held by pid 201") == 1
 
 
-def test_the_serial_is_pinned_once_the_device_is_found(session_module,
-                                                       lifecycle,
+def _machine(tmp_path, monkeypatch, boxes):
+    from conftest import fake_proc
+
+    proc = fake_proc(tmp_path / "proc", boxes=boxes)
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    return proc
+
+
+def test_the_serial_is_pinned_once_the_device_is_found(lifecycle, tmp_path,
                                                        monkeypatch):
     """The key must not move under a running writer (ADR 0023).
 
-    It is recomputed on every write from the card list, which empties the
-    moment the interface is unplugged. Measured across a real unplug in
-    0.6.7: the key went from `2a39-3fd9-24216011` to `2a39-3fd9-unknown`
-    and a second lock file appeared beside the first, so a reconcile in
-    that window would have written beside the holder rather than after
-    it.
+    It is recomputed on every write, and the card list empties the moment
+    the interface is unplugged. Measured across a real unplug in 0.6.7:
+    the key went from `2a39-3fd9-24216011` to `2a39-3fd9-unknown` and a
+    second lock file appeared beside the first. The pinned serial is the
+    one in the name of the client the unit bound (ADR 0024).
     """
-    monkeypatch.setattr(session_module, "device_serial",
-                        lambda *a, **k: "24216011")
+    proc = _machine(tmp_path, monkeypatch, boxes=[(42, "24216011")])
     lifecycle()
     assert lifecycle.config.serial == "24216011"
 
-    # And once it is gone from the card list, the pinned value stands.
-    monkeypatch.setattr(session_module, "device_serial", lambda *a, **k: None)
-    from oscmix_desk.discovery import device_key
-    assert device_key(lifecycle.config.usb_id,
-                      serial=lifecycle.config.serial) == "2a39-3fd9-24216011"
+    # And once the machine forgets the interface, the pinned key stands.
+    (proc / "asound" / "cards").write_text("")
+    (proc / "asound" / "seq" / "clients").write_text("")
+    from oscmix_desk.discovery import lock_key
+    assert lock_key(lifecycle.config.usb_id, lifecycle.config.serial) == \
+        "2a39-3fd9-24216011"
 
 
-def test_a_configured_serial_is_never_overwritten(session_module, lifecycle,
+def test_a_configured_serial_is_never_overwritten(lifecycle, tmp_path,
                                                   monkeypatch):
     """`[device] serial` names the box outright, and always wins."""
-    monkeypatch.setattr(session_module, "device_serial",
-                        lambda *a, **k: "99887766")
+    _machine(tmp_path, monkeypatch, boxes=[(42, "99887766")])
     lifecycle(config_fields={"serial": "24216011"})
     assert lifecycle.config.serial == "24216011"
 
 
-def test_a_device_that_shows_no_serial_pins_an_empty_one(session_module,
-                                                         lifecycle,
+def test_a_device_that_shows_no_serial_pins_an_empty_one(lifecycle, tmp_path,
                                                          monkeypatch):
     """Empty, not a placeholder: it is the key the card list gives anyway."""
-    monkeypatch.setattr(session_module, "device_serial", lambda *a, **k: None)
+    _machine(tmp_path, monkeypatch, boxes=[])
     lifecycle()
     assert lifecycle.config.serial == ""
+
+
+def test_a_start_without_the_lock_fails_and_never_signals_ready(
+        session_mod, lifecycle):
+    """READY=1 only after the routing was applied (ADR 0024).
+
+    0.6.7 and 0.6.8 refused to write without the lock -- and then sent
+    READY=1 anyway, so systemd reported a started desk that had never
+    been written, and nothing retried. ADR 0022 said the start fails.
+    It does now: EXIT_FAILURE, the backend stopped, and Restart=on-failure
+    tries again after RestartSec.
+    """
+    code = lifecycle(alive=True, lock_unavailable=True)
+    assert code == session_mod.EXIT_FAILURE
+    assert ready_count(lifecycle.notifications) == 0
+    assert lifecycle.children[-1].terminated, "the backend it spawned is stopped"
+
+
+def test_an_ambiguous_interface_is_a_config_error_before_anything_starts(
+        session_mod, lifecycle):
+    """Two identical interfaces and no `[device] serial`: exit 2, not a guess.
+
+    Exit 2 is in RestartPreventExitStatus, so a config that cannot say
+    which box it is for does not become a restart loop (ADR 0024).
+    """
+    code = lifecycle(alive=True, ambiguous=True)
+    assert code == session_mod.EXIT_CONFIG
+    assert ready_count(lifecycle.notifications) == 0
+    assert lifecycle.children == [], "no backend is started for a guess"

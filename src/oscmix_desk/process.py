@@ -3,14 +3,21 @@
 from __future__ import annotations
 
 import os
+import re
 import signal
 import subprocess
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from .constants import CHILD_STOP_GRACE, SERVICE_UNIT, STALE_BACKEND_SETTLE
-from .discovery import udp_port_listening, udp_socket_inodes
+from .discovery import (
+    parse_seq_clients,
+    serial_in,
+    udp_port_listening,
+    udp_socket_inodes,
+)
 from .log import log
 
 
@@ -77,6 +84,115 @@ def socket_owner(port: int, proc_root: Path) -> Optional[int]:
             if target.startswith("socket:[") and target[8:-1] in inodes:
                 return int(entry.name)
     return None
+
+
+@dataclass(frozen=True)
+class PortHolder:
+    """Who holds a UDP port, as far as /proc can tell.
+
+    ``oscmix`` is whether it is an oscmix backend of this user (any
+    user's, for root). ``client`` is the sequencer client its alsaseqio
+    parent bridges -- the unit starts ``alsaseqio <client>:1 oscmix`` --
+    and ``serial`` the number in that client's name. Either is None when
+    the chain cannot be followed, which is not the same as a mismatch.
+    """
+
+    pid: int
+    oscmix: bool
+    client: Optional[int]
+    serial: Optional[str]
+
+
+def port_holder(port: int, proc_root: Path) -> Optional[PortHolder]:
+    """The process holding ``port`` and the interface it drives, or None.
+
+    "Something is bound" is not "the backend for this box is bound". A
+    profile switch that asked only the first question wrote a whole
+    routing into a stranger's socket, reported `applied` and recorded
+    the marker -- measured against a plain Python socket in 0.6.8
+    (ADR 0024). The start already knew better: it accepts the port only
+    from the child it spawned.
+    """
+    owner = socket_owner(port, proc_root)
+    if owner is None:
+        return None
+    entry = proc_root / str(owner)
+    client = _bridged_client(entry, proc_root)
+    return PortHolder(pid=owner, oscmix=_is_oscmix_of_this_user(entry),
+                      client=client, serial=_client_serial(client, proc_root))
+
+
+def _is_oscmix_of_this_user(entry: Path) -> bool:
+    uid = os.getuid()
+    try:
+        if uid != 0 and entry.stat().st_uid != uid:
+            return False
+        comm = (entry / "comm").read_text().strip()
+        argv0 = (entry / "cmdline").read_bytes().split(b"\0")[0]
+    except OSError:
+        return False
+    return "oscmix" in (comm, os.path.basename(argv0.decode(errors="replace")))
+
+
+#: ``alsaseqio 24:1 oscmix ...``: client and port of the bridged device.
+_BRIDGE_ARG = re.compile(rb"(\d+):\d+")
+
+
+def _bridged_client(entry: Path, proc_root: Path) -> Optional[int]:
+    """The sequencer client the alsaseqio beside ``entry`` bridges.
+
+    The unit runs ``alsaseqio 24:1 oscmix ...``. alsaseqio forks, the
+    original process execs oscmix and binds the port, and the child stays
+    alsaseqio with the client in its argv -- measured on the desk, where
+    the port holder is the *parent* of the alsaseqio. Children are looked
+    at first; a parent that carries the argument is accepted too, for a
+    bridge that runs the other way round.
+    """
+    holder = entry.name
+    for candidate in _children_of(holder, proc_root) + _parent_of(entry, proc_root):
+        try:
+            args = (candidate / "cmdline").read_bytes().split(b"\0")
+        except OSError:
+            continue
+        for arg in args[1:]:
+            match = _BRIDGE_ARG.fullmatch(arg)
+            if match:
+                return int(match.group(1))
+    return None
+
+
+def _children_of(pid: str, proc_root: Path) -> List[Path]:
+    children = []
+    for candidate in sorted(proc_root.iterdir()):
+        if not candidate.name.isdigit():
+            continue
+        if _ppid(candidate) == pid:
+            children.append(candidate)
+    return children
+
+
+def _parent_of(entry: Path, proc_root: Path) -> List[Path]:
+    parent = _ppid(entry)
+    return [proc_root / parent] if parent is not None else []
+
+
+def _ppid(entry: Path) -> Optional[str]:
+    """Field four of /proc/<pid>/stat, read past the parenthesised comm."""
+    try:
+        return (entry / "stat").read_text().rsplit(")", 1)[1].split()[1]
+    except (OSError, IndexError):
+        return None
+
+
+def _client_serial(client: Optional[int], proc_root: Path) -> Optional[str]:
+    if client is None:
+        return None
+    try:
+        text = (proc_root / "asound" / "seq" / "clients").read_text()
+    except OSError:
+        return None
+    name = dict(parse_seq_clients(text)).get(client)
+    return serial_in(name) if name is not None else None
 
 
 def _cleanup_stale_backend(port: int, proc_root: Path) -> None:
