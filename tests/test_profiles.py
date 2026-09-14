@@ -27,6 +27,14 @@ from conftest import write_config
 
 from oscmix_desk import profiles
 
+
+def _key(path):
+    """The device key the code under test derives for this config."""
+    from oscmix_desk.discovery import device_key
+    from oscmix_desk.profiles import load_config
+
+    return device_key(load_config(path).usb_id)
+
 GOOD = """
 [route:main]
 output = 1/2
@@ -669,14 +677,14 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
     monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
     umask = os.umask(0o022)
     try:
-        with profiles._switch_lock(path) as held:
+        with profiles._switch_lock(path, _key(path)) as held:
             assert held
             with caplog.at_level("INFO"):
                 outcome = profiles.switch_profile("tracking", config_path=path,
                                                   backend=recording_backend)
     finally:
         os.umask(umask)
-    lock = tmp_path / "active-profile.lock"
+    lock = profiles.device_lock_path(path, _key(path))
     assert stat.S_IMODE(lock.stat().st_mode) == 0o644, "a plain file"
     assert outcome.state == profiles.REFUSED
     assert outcome.name == "tracking"
@@ -802,7 +810,7 @@ def test_no_profile_refuses_when_another_switch_holds_the_lock(
     path = _desk(tmp_path, tracking=TRACKING)
     (tmp_path / "active-profile").write_text("tracking\n")
     monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
-    with profiles._switch_lock(path):
+    with profiles._switch_lock(path, _key(path)):
         outcome = profiles.restore_main(path, backend=recording_backend)
     assert outcome.state == profiles.REFUSED
     assert outcome.name == "routing.conf"
@@ -846,13 +854,13 @@ def test_a_config_directory_that_cannot_be_written_is_a_warning(tmp_path,
 
 def test_the_device_lock_is_exclusive_and_released(tmp_path):
     path = _desk(tmp_path, tracking=TRACKING)
-    lock = profiles.take_device_lock(path)
+    lock = profiles.take_device_lock(path, _key(path))
     assert lock is not None
-    assert (tmp_path / "active-profile.lock").exists()
-    assert profiles.take_device_lock(path, wait=0.2) is None, \
+    assert profiles.device_lock_path(path, _key(path)).exists()
+    assert profiles.take_device_lock(path, _key(path), wait=0.2) is None, \
         "a second writer must not hold it at the same time"
     lock.release()
-    second = profiles.take_device_lock(path, wait=0.2)
+    second = profiles.take_device_lock(path, _key(path), wait=0.2)
     assert second is not None
     second.release()
     lock.release()          # releasing twice is not an error
@@ -873,31 +881,36 @@ def test_the_unit_locks_a_file_it_cannot_open_for_writing(tmp_path):
     lock_file.write_text("")
     lock_file.chmod(0o444)
     try:
-        lock = profiles.take_device_lock(path)
+        lock = profiles.take_device_lock(path, _key(path))
         assert lock is not None
-        assert profiles.take_device_lock(path, wait=0.2) is None
+        assert profiles.take_device_lock(path, _key(path), wait=0.2) is None
         lock.release()
     finally:
         lock_file.chmod(0o644)
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root writes anywhere")
-def test_a_lock_file_that_cannot_be_created_warns_and_writes_anyway(tmp_path,
-                                                                   caplog):
-    # An install older than ADR 0019 has no lock file, and the unit
-    # cannot make one. Refusing to drive the device would be worse.
+@pytest.mark.skipif(os.geteuid() == 0, reason="root opens anything")
+def test_a_lock_that_cannot_be_opened_is_a_refusal(tmp_path, monkeypatch,
+                                                   caplog):
+    """No lock, no write (ADR 0022).
+
+    Until 0.6.7 this warned and wrote anyway, which made "every writer
+    holds one lock" true only while nothing went wrong. Every caller
+    refuses now: a switch says so, a reconcile stands down, and a start
+    fails so systemd can try again.
+    """
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     path = _desk(tmp_path, tracking=TRACKING)
     tmp_path.chmod(0o500)
     try:
-        with caplog.at_level("WARNING"):
-            lock = profiles.take_device_lock(path)
+        with caplog.at_level("ERROR"):
+            lock = profiles.take_device_lock(path, _key(path))
     finally:
         tmp_path.chmod(0o700)
-    assert lock is not None
+    assert lock is None
     assert str(tmp_path / "active-profile.lock") in caplog.text, \
-        "the warning has to name the file somebody must create"
-    assert "run install.sh" in caplog.text
-    lock.release()
+        "the error has to name the lock it could not open"
 
 
 def test_a_switch_that_cannot_remember_says_so_in_the_outcome(
@@ -974,3 +987,56 @@ def test_a_directory_that_cannot_be_synced_warns_on_both_paths(
     with caplog.at_level("WARNING"):
         assert profiles.forget_active_profile(path) is True
     assert "may come back after a power cut" in caplog.text
+
+
+# --------------------------------------------------------------------------
+# The lock names the device (ADR 0022).
+# --------------------------------------------------------------------------
+
+def test_the_device_key_names_the_box_not_the_file(tmp_path):
+    from oscmix_desk.discovery import device_key
+
+    cards = tmp_path / "cards"
+    cards.write_text(" 2 [II24216011  ]: USB-Audio - Fireface UCX II "
+                     "(24216011)\n")
+    assert device_key("2a39:3fd9", cards) == "2a39-3fd9-24216011"
+    # No serial to be had: the model alone, which over-serialises two
+    # identical interfaces rather than letting them write at once.
+    assert device_key("2a39:3fd9", tmp_path / "gone") == "2a39-3fd9-unknown"
+
+
+def test_the_lock_lives_in_the_runtime_directory(tmp_path, monkeypatch):
+    runtime = tmp_path / "run"
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
+    path = _desk(tmp_path, tracking=TRACKING)
+    assert profiles.device_lock_path(path, "2a39-3fd9-24216011") == \
+        runtime / "oscmix-desk" / "2a39-3fd9-24216011.lock"
+    assert (runtime / "oscmix-desk").is_dir(), "and it is created"
+
+
+def test_without_a_runtime_directory_the_lock_stays_beside_the_config(
+        tmp_path, monkeypatch):
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    path = _desk(tmp_path, tracking=TRACKING)
+    assert profiles.device_lock_path(path, "2a39-3fd9-24216011") == \
+        tmp_path / "active-profile.lock"
+    assert profiles.device_lock_path(None, "2a39-3fd9-24216011") is None
+
+
+def test_two_configs_over_one_device_take_the_same_lock(tmp_path, monkeypatch):
+    """The point of keying on the hardware.
+
+    Two config directories describing one interface are two desks on one
+    device. Until 0.6.7 they held two different lock files and wrote at
+    the same time.
+    """
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
+    first = _desk(tmp_path / "a", tracking=TRACKING)
+    second = _desk(tmp_path / "b", tracking=TRACKING)
+    key = "2a39-3fd9-24216011"
+    assert profiles.device_lock_path(first, key) == \
+        profiles.device_lock_path(second, key)
+    held = profiles.take_device_lock(first, key)
+    assert held is not None
+    assert profiles.take_device_lock(second, key, wait=0.2) is None
+    held.release()

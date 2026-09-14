@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased
+
+What a sixth outside review of 0.6.6 found. Two of its points are new
+defects, two are the guarantees the lock did not actually give. The pin
+does not move and the register table has no new row.
+
+### Fixed
+
+- **A bound port counts only when its owner is this backend.** An owner
+  that could not be resolved was read as readiness, while the stale
+  cleanup reads the same uncertainty as "touch nobody". One doubt, two
+  opposite answers; the strict reading is the one that matches the
+  comment and the ADR.
+
+- **A backend that exits before it binds no longer collects READY.**
+  The start-failure branch asked whether the child was still alive, so
+  a backend that bound nothing and then exited 0 skipped it and reached
+  `READY=1` through the exit mapping. The question is now whether the
+  device is still there: if it is, the start fails; if the interface
+  went away, the clean no-op start is what it always was.
+
+- **The lock names the device, not the config directory.** Two
+  `--config` directories over one interface held two different locks
+  over one piece of hardware. The key is the USB id and the serial, and
+  the file lives in `$XDG_RUNTIME_DIR/oscmix-desk/`, which the unit
+  creates through `RuntimeDirectory=` instead of the installer creating
+  it in a read-only home. ADR 0022.
+
+- **A writer that cannot hold the lock does not write.** A missing lock
+  file, a filesystem that cannot lock, and a wait that ran out all
+  ended in the start applying the routing anyway. That made "every
+  writer holds one lock" conditional on nothing going wrong. The start
+  now fails and systemd retries.
+
+### Changed
+
+- **`reload_service`'s docstring** described the two-state function it
+  stopped being in 0.6.6.
+
 ## 0.6.6 (2026-09-13)
 
 What a fifth outside review of 0.6.5 found, checked against the code

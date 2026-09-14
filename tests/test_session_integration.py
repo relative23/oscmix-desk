@@ -104,6 +104,15 @@ with open(os.environ["STUB_PROC_UDP"], "w") as f:
     f.write("  100: 0100007F:%04X 00000000:0000 07 00000000:00000000 "
             "00:00000000 00000000  1000        0 1 2 0 0\\n" % port)
 
+# And the link that proves this process holds it. Since 0.6.7 the
+# session accepts a bound port only from an owner it can resolve, so
+# the stub has to look like a real backend in /proc as well.
+proc_root = os.path.dirname(os.path.dirname(os.environ["STUB_PROC_UDP"]))
+handles = os.path.join(proc_root, str(os.getpid()), "fd")
+os.makedirs(handles, exist_ok=True)
+if not os.path.lexists(os.path.join(handles, "3")):
+    os.symlink("socket:[1]", os.path.join(handles, "3"))
+
 stored = []
 log = open(os.path.join(stub_dir, "datagrams.hex"), "a")
 while running[0]:

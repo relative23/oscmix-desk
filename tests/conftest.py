@@ -98,6 +98,19 @@ def load_executable(name):
 
 
 @pytest.fixture(autouse=True)
+def _own_runtime_dir(tmp_path_factory, monkeypatch):
+    """No test may touch the device lock of the machine it runs on.
+
+    Since 0.6.7 the lock lives in `$XDG_RUNTIME_DIR/oscmix-desk`, keyed
+    by the interface (ADR 0022). On a developer machine with the service
+    running, a test taking that lock would block the real desk, and a
+    test that leaves one held would block it for good.
+    """
+    monkeypatch.setenv("XDG_RUNTIME_DIR",
+                       str(tmp_path_factory.mktemp("runtime")))
+
+
+@pytest.fixture(autouse=True)
 def _no_real_systemctl(monkeypatch):
     """No test reaches the machine's own user manager.
 

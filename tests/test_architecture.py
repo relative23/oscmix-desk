@@ -77,8 +77,10 @@ ALLOWED_IMPORTS = {
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
-    "profiles": {"backend", "config", "constants", "errors", "log",
-                 "registers", "routing", "verify"},
+    # `discovery` since 0.6.7: the device lock is keyed by the interface,
+    # and the serial that names it is the leaf's to answer (ADR 0022).
+    "profiles": {"backend", "config", "constants", "discovery", "errors",
+                 "log", "registers", "routing", "verify"},
     "launcher": {"constants", "discovery"},
     # constants only, and only for the fader range: the register table
     # declares the device's bounds, and writing -65.0/6.0 here as well

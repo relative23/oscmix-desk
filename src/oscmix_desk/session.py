@@ -25,7 +25,13 @@ from .constants import (
     VERIFIER_STOP_GRACE,
     VERIFY_SETTLE,
 )
-from .discovery import resolve_binary, udp_port_listening, usb_device_present, wait_for_seq_client
+from .discovery import (
+    device_key,
+    resolve_binary,
+    udp_port_listening,
+    usb_device_present,
+    wait_for_seq_client,
+)
 from .errors import ConfigError
 from .log import log
 from .notify import sd_notify
@@ -122,13 +128,22 @@ def _await_backend_port(child: "subprocess.Popen[bytes]", config: Config,
             # Bound is not enough: bound *by this backend* is. A
             # stranger holding the port is not readiness, and the
             # cleanup deliberately leaves strangers alone (ADR 0021).
+            #
+            # An owner that cannot be resolved is not this backend
+            # either. The cleanup already reads that uncertainty as
+            # "touch nobody"; reading it here as "ready" was the same
+            # doubt answered two opposite ways (0.6.7).
             owner = socket_owner(config.osc_port, proc_root)
-            if owner is None or owner == child.pid:
+            if owner == child.pid:
                 log.info("oscmix is listening on UDP %d", config.osc_port)
                 return True
             if not announced:
-                log.warning("UDP %d is held by pid %d, not by this backend",
-                            config.osc_port, owner)
+                if owner is None:
+                    log.warning("UDP %d is bound, but the process holding it "
+                                "cannot be identified", config.osc_port)
+                else:
+                    log.warning("UDP %d is held by pid %d, not by this "
+                                "backend", config.osc_port, owner)
                 announced = True
         if child.poll() is not None:
             return False
@@ -169,13 +184,15 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
     # One transaction, from the first write to the verifier's last: a
     # switch that landed between them would be overwritten by the retry
     # that follows it, which is what 0.6.3 measured (ADR 0019).
-    lock = take_device_lock(config_path)
+    lock = take_device_lock(config_path, device_key(config.usb_id))
     if lock is None:
-        # A desk with no routing at all is worse than re-applying what
-        # the other writer just wrote, and the reread below makes both
-        # of them the same desk anyway.
-        log.warning("another writer holds the device lock; applying anyway")
-        lock = DeviceLock()
+        # Until 0.6.7 this wrote anyway, on the grounds that a desk with
+        # no routing is worse than a re-apply. It also made "every writer
+        # holds one lock" conditional on nothing going wrong, which is
+        # the opposite of what a guarantee is. systemd restarts the unit;
+        # a write nobody serialised cannot be taken back (ADR 0022).
+        log.error("the device lock is not available; not applying routing")
+        return None
 
     # The lock may have taken a while. A stop that arrived during the
     # wait means this process is going away, and writing the whole
@@ -335,13 +352,17 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     _install_stop_handlers(child, stop_requested)
     _install_reload_handler(reload_requested)
     if not _await_backend_port(child, config, proc_root) \
-            and child.poll() is None:
-        # Alive but deaf. Routing written into a port nobody bound is
-        # dropped by the kernel without a word, and READY=1 would tell
-        # systemd the desk is set (0.6.6).
-        log.error("backend never bound UDP %d; stopping it and failing the "
-                  "start", config.osc_port)
-        _stop_child(child)
+            and usb_device_present(config.usb_id, sysfs_usb):
+        # The port never came up while the device is still there.
+        # Routing written into a port nobody bound is dropped by the
+        # kernel without a word, and READY=1 would tell systemd the desk
+        # is set. A backend that exited cleanly before binding used to
+        # reach that READY through the exit mapping (0.6.7); the device
+        # being gone is still the clean no-op it always was.
+        log.error("backend never bound UDP %d; failing the start",
+                  config.osc_port)
+        if child.poll() is None:
+            _stop_child(child)
         return EXIT_FAILURE
 
     verifier = None
@@ -416,9 +437,9 @@ def _reconcile(args: argparse.Namespace, config: Config,
     path = _config_path(args)
     # The same lock a switch takes: a reconcile that started while one
     # was writing used to interleave with it (ADR 0019).
-    lock = take_device_lock(path)
+    lock = take_device_lock(path, device_key(config.usb_id))
     if lock is None:
-        log.warning("SIGHUP: another writer holds the device lock; reconcile "
+        log.warning("SIGHUP: the device lock is not available; reconcile "
                     "skipped -- send the reload again")
         return
     try:

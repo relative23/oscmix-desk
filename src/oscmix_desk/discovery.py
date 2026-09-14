@@ -144,6 +144,24 @@ def udp_port_listening(port: int, proc_root: Path) -> bool:
     return False
 
 
+def device_key(usb_id: str, cards: Path = Path("/proc/asound/cards")) -> str:
+    """A stable name for the interface every writer contends over.
+
+    The USB id says which model, the serial says which box. Together
+    they name the hardware rather than the file that happens to describe
+    it, which is what a lock over a device has to be keyed on: two
+    config directories pointing at one interface are two desks on one
+    device, and they must contend (ADR 0022).
+
+    Without a serial the model alone is the key. That over-serialises
+    two identical interfaces on one machine, which is the safe
+    direction: the cost is a wait, not a half-written desk.
+    """
+    serial = device_serial(cards)
+    raw = "%s-%s" % (usb_id, serial or "unknown")
+    return "".join(c if c.isalnum() or c in "-._" else "-" for c in raw)
+
+
 def udp_socket_inodes(port: int, proc_root: Path) -> Set[str]:
     """Inode numbers of the UDP sockets bound to ``port``.
 

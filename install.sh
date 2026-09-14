@@ -227,13 +227,10 @@ fi
 install -D -m 644 "$PROJECT_DIR/config/routing.conf.example" \
     "$CONFIG_DIR/routing.conf.example"
 
-# The lock every writer of the device takes (ADR 0019). The service
-# takes it too and cannot create it: its home is mounted read-only, and
-# flock needs no write access, only a file that is already there.
-if [ ! -e "$CONFIG_DIR/active-profile.lock" ]; then
-    info "creating the device lock at $CONFIG_DIR/active-profile.lock"
-    install -D -m 644 /dev/null "$CONFIG_DIR/active-profile.lock"
-fi
+# No lock file to create since 0.6.7: it lives in $XDG_RUNTIME_DIR,
+# keyed by the interface, and the unit creates it through
+# RuntimeDirectory= (ADR 0022). A leftover from an older install is
+# harmless and is left where it is.
 
 
 # systemd's user instance belongs to the login session, not to $HOME. It

@@ -13,6 +13,12 @@ StartLimitBurst=5
 # has been applied; verification then runs in the background.
 Type=notify
 ExecStart=%h/.local/bin/oscmix-session
+# The device lock lives here since 0.6.7, keyed by the interface rather
+# than by a config directory (ADR 0022). systemd creates it under
+# $XDG_RUNTIME_DIR for this user; the unit cannot create it under its
+# own read-only home, and a lock it cannot take is a start it refuses.
+RuntimeDirectory=oscmix-desk
+RuntimeDirectoryPreserve=yes
 # Reconcile without restarting: re-read routing.conf, read the device
 # back, and re-apply what the config pins -- leaving alone what it
 # remembers (ADR 0012, ADR 0013).

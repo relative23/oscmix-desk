@@ -24,6 +24,14 @@ import re
 from conftest import repo_file
 
 
+def _key(path):
+    """The device key the code under test derives for this config."""
+    from oscmix_desk.discovery import device_key
+    from oscmix_desk.profiles import load_config
+
+    return device_key(load_config(path).usb_id)
+
+
 def unit_text():
     return repo_file("systemd", "oscmix.service").read_text()
 
@@ -832,7 +840,7 @@ def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
     monkeypatch.setattr(session_module, "reconcile_now",
                         lambda *a, **k: applied.append(a))
     monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 0.3)
-    held = profiles_mod.take_device_lock(path)
+    held = profiles_mod.take_device_lock(path, _key(path))
     assert held is not None
     try:
         with caplog.at_level("WARNING"):
@@ -856,11 +864,11 @@ def test_a_reconcile_holds_the_lock_while_it_writes_and_frees_it_after(
     monkeypatch.setattr(
         session_module, "reconcile_now",
         lambda *a, **k: during.append(
-            profiles_mod.take_device_lock(path, wait=0.1)))
+            profiles_mod.take_device_lock(path, _key(path), wait=0.1)))
     session_module._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
     assert during == [None], "a switch must not get in while this writes"
-    after = profiles_mod.take_device_lock(path, wait=0.2)
+    after = profiles_mod.take_device_lock(path, _key(path), wait=0.2)
     assert after is not None, "and must get in once it is done"
     after.release()
 
@@ -958,7 +966,7 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
                         lambda config, *a: applied.append(config) or True)
     monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
 
-    held = profiles_mod.take_device_lock(path)
+    held = profiles_mod.take_device_lock(path, _key(path))
     assert held is not None
 
     def commit_then_release():

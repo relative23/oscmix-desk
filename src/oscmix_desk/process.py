@@ -197,7 +197,11 @@ RELOAD_FAILED = "failed"
 
 
 def reload_service() -> str:
-    """Ask the running unit to reconcile now. False when it is not running.
+    """Ask the running unit to reconcile now, and say what came of it.
+
+    One of RELOAD_NOT_RUNNING, RELOAD_DONE or RELOAD_FAILED. The middle
+    of those three is not a failure and the last one is: a unit that is
+    up and refused the reload is acting on a desk it has not re-read.
 
     A profile switch writes the device from a second process. For up to
     about 22 s after a start the unit's own verifier is still re-applying

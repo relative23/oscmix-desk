@@ -15,6 +15,14 @@ import time
 import pytest
 
 
+def _key(path):
+    """The device key the code under test derives for this config."""
+    from oscmix_desk.discovery import device_key
+    from oscmix_desk.profiles import load_config
+
+    return device_key(load_config(path).usb_id)
+
+
 @pytest.fixture
 def session_module():
     from oscmix_desk import session
@@ -206,7 +214,8 @@ def test_a_signal_death_is_named_not_just_numbered(session_module, monkeypatch,
 class RunningChild:
     """A backend that is still up, so a verifier may start."""
 
-    def __init__(self):
+    def __init__(self, pid=202):
+        self.pid = pid
         self.returncode = None
         self.terminated = False
         self.waited = None
@@ -364,7 +373,7 @@ def test_a_failed_apply_releases_the_device_lock(
     with pytest.raises(OSError, match="send failed"):
         session_module._apply_and_verify(
             RunningChild(), session_mod.load_config(path), {"stop": False}, path)
-    lock = take_device_lock(path, wait=0)
+    lock = take_device_lock(path, _key(path), wait=0)
     assert lock is not None, "a failed write leaked its lock descriptor"
     lock.release()
 
@@ -380,17 +389,21 @@ def test_the_port_wait_returns_as_soon_as_the_backend_listens(
         asked.append((port, root))
         return next(answers)
 
+    from test_process import fake_proc
+
+    proc = fake_proc(tmp_path, {"202": ("oscmix", "oscmix")},
+                     listening_port=7301, owner="202")
     monkeypatch.setattr(session_module, "udp_port_listening", listening)
     monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 5.0)
     child = PollingChild()
     started = time.monotonic()
     with caplog.at_level("INFO"):
         session_module._await_backend_port(child, Config(osc_port=7301),
-                                           tmp_path)
+                                           proc)
     assert "listening on UDP 7301" in caplog.text
     # The configured port and the given /proc root, every time -- not
     # whatever a stub that ignores its arguments would accept.
-    assert asked == [(7301, tmp_path)] * 3
+    assert asked == [(7301, proc)] * 3
     assert "not listening" not in caplog.text
     assert time.monotonic() - started < 2.0, "it waited out the timeout"
 
@@ -475,7 +488,7 @@ def test_stop_handlers_do_not_terminate_a_backend_that_is_already_gone(
 def _lock_probe(path):
     from oscmix_desk import profiles as profiles_mod
 
-    return profiles_mod.take_device_lock(path, wait=0.1)
+    return profiles_mod.take_device_lock(path, _key(path), wait=0.1)
 
 
 def test_the_start_holds_the_device_lock_until_the_verifier_is_done(
@@ -515,10 +528,15 @@ def test_the_start_holds_the_device_lock_until_the_verifier_is_done(
     after.release()
 
 
-def test_a_start_that_cannot_take_the_lock_applies_anyway(
+def test_a_start_that_cannot_take_the_lock_writes_nothing(
         tmp_path, monkeypatch, session_mod, caplog):
-    # A desk with no routing at all is worse than re-applying what the
-    # other writer just wrote, and the marker makes them the same desk.
+    """No lock, no write (ADR 0022).
+
+    Until 0.6.7 the start applied anyway, on the grounds that a desk
+    with no routing is worse than a re-apply. It also made the whole
+    guarantee conditional: a write nobody serialised is the one thing
+    the lock exists to prevent, and systemd can restart a unit.
+    """
     from conftest import write_config
 
     from oscmix_desk import profiles as profiles_mod
@@ -533,19 +551,18 @@ def test_a_start_that_cannot_take_the_lock_applies_anyway(
                         lambda *a, **k: None)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
     monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 0.3)
-    held = profiles_mod.take_device_lock(path)
+    held = profiles_mod.take_device_lock(path, _key(path))
     assert held is not None
     try:
-        with caplog.at_level("WARNING"):
+        with caplog.at_level("ERROR"):
             verifier = session_module._apply_and_verify(
                 RunningChild(), session_mod.load_config(path),
                 {"stop": False}, path)
-        assert verifier is not None
-        verifier.join(timeout=5)
     finally:
         held.release()
-    assert applied, "the start still applies the routing"
-    assert "applying anyway" in caplog.text
+    assert verifier is None, "nothing to verify, because nothing was written"
+    assert applied == []
+    assert "device lock is not available" in caplog.text
 
 
 def test_a_backend_that_never_binds_its_port_fails_the_start(session_mod,
@@ -593,7 +610,7 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
     monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
     started = session_mod.load_config(path)
 
-    held = profiles_mod.take_device_lock(path)
+    held = profiles_mod.take_device_lock(path, _key(path))
     assert held is not None
 
     def commit_then_release():
@@ -631,7 +648,7 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
                         lambda *a, **k: applied.append(a))
     monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
     stop = {"stop": False}
-    held = profiles_mod.take_device_lock(path)
+    held = profiles_mod.take_device_lock(path, _key(path))
     assert held is not None
 
     def stop_then_release():
@@ -643,7 +660,7 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
         RunningChild(), session_mod.load_config(path), stop, path)
     assert verifier is None
     assert applied == [], "nothing is written on the way out"
-    after = profiles_mod.take_device_lock(path, wait=0.2)
+    after = profiles_mod.take_device_lock(path, _key(path), wait=0.2)
     assert after is not None, "and the lock is released"
     after.release()
 
@@ -706,23 +723,58 @@ def test_a_backend_that_is_already_gone_is_not_an_error(session_module):
 
 def test_the_port_wait_answers_whether_the_port_came_up(session_module,
                                                         monkeypatch, tmp_path):
-    """Three answers, and the caller fails the start on two of them.
+    """Four answers, and the caller fails the start on three of them.
 
     Before 0.6.6 this returned nothing at all, so a backend that was
-    alive and deaf reached READY=1 (ADR 0021).
+    alive and deaf reached READY=1 (ADR 0021). Since 0.6.7 a bound port
+    counts only when its owner can be shown to be this backend: the
+    cleanup already reads an unresolvable owner as "touch nobody", and
+    reading it here as "ready" answered one doubt two opposite ways.
     """
+    from test_process import fake_proc
+
     from oscmix_desk import Config
 
     config = Config(osc_port=7301)
-    monkeypatch.setattr(session_module, "udp_port_listening", lambda *a: True)
-    assert session_module._await_backend_port(RunningChild(), config,
-                                              tmp_path) is True
+    proc = fake_proc(tmp_path, {"202": ("oscmix", "oscmix")},
+                     listening_port=7301, owner="202")
+    assert session_module._await_backend_port(RunningChild(pid=202), config,
+                                              proc) is True
+
+    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.2)
+    assert session_module._await_backend_port(RunningChild(pid=999), config,
+                                              proc) is False, \
+        "a port held by somebody else is not this backend listening"
+
+    nobody = fake_proc(tmp_path / "b", {"202": ("oscmix", "oscmix")},
+                       listening_port=7301)
+    assert session_module._await_backend_port(RunningChild(pid=202), config,
+                                              nobody) is False, \
+        "an owner nobody can resolve is not this backend either"
 
     monkeypatch.setattr(session_module, "udp_port_listening", lambda *a: False)
     assert session_module._await_backend_port(FakeChild(0), config,
-                                              tmp_path) is False, \
+                                              proc) is False, \
         "a backend that exited is not a port that came up"
 
-    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.2)
-    assert session_module._await_backend_port(RunningChild(), config,
-                                              tmp_path) is False
+
+def test_a_backend_that_exits_before_it_binds_fails_the_start(session_mod,
+                                                              lifecycle):
+    """Clean exit is not readiness either.
+
+    The start-failure branch used to ask whether the child was still
+    alive, so a backend that bound nothing and then exited 0 skipped it
+    and collected READY=1 from the exit mapping instead (0.6.7).
+    """
+    assert lifecycle(port_ready=False, returncode=0) == session_mod.EXIT_FAILURE
+    assert ready_count(lifecycle.notifications) == 0
+
+
+def test_a_device_unplugged_during_the_start_is_still_a_clean_no_op(
+        session_mod, lifecycle):
+    # The port never came up because the interface went away. That is
+    # the one case where a start without routing is the right answer,
+    # and systemd must not be told it failed.
+    assert lifecycle(port_ready=False, returncode=0,
+                     usb_present=False) == session_mod.EXIT_OK
+    assert ready_count(lifecycle.notifications) == 1

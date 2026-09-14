@@ -47,6 +47,7 @@ from typing import Iterator, List, Optional, Sequence, Tuple
 from .backend import Backend, loopback
 from .config import Config, list_profiles, load_config, profile_path
 from .constants import SWITCH_LOCK_WAIT, VERIFY_TIMEOUT
+from .discovery import device_key
 from .errors import ConfigError
 from .log import log
 from .registers import device_for_name
@@ -348,14 +349,43 @@ class DeviceLock:
             os.close(fd)
 
 
+def device_lock_path(config_path: Optional[Path],
+                     key: Optional[str] = None) -> Optional[Path]:
+    """Where the lock for this device lives.
+
+    `$XDG_RUNTIME_DIR/oscmix-desk/<key>.lock` when a runtime directory
+    and a device key are both known: the lock then names the hardware,
+    so two `--config` directories pointing at one interface contend as
+    they must, and the unit can create it itself (ADR 0022).
+
+    Beside the config otherwise, which is where it lived until 0.6.7 and
+    is the only place a session without a runtime directory can put it.
+    None when there is no config either: nothing to lock, nothing to
+    contend with.
+    """
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if key and runtime:
+        directory = Path(runtime) / "oscmix-desk"
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            log.warning("cannot use %s (%s); falling back to the config "
+                        "directory", directory, exc)
+        else:
+            return directory / ("%s.lock" % key)
+    marker = active_profile_path(config_path)
+    return None if marker is None else marker.with_name(SWITCH_LOCK)
+
+
 def _open_lock(path: Path) -> Optional[int]:
     """Open the lock file read-write, or read-only, or not at all.
 
-    The unit runs with `ProtectHome=read-only`, so it can neither create
-    the file nor open it for writing. `flock` needs neither: the lock
-    lives on the open file description, and a read-only one holds it
-    exactly as well. None means the file is not there -- the installer
-    creates it, and an older install has to be told rather than blocked.
+    The unit runs with `ProtectHome=read-only`, so under a config
+    directory it can neither create the file nor open it for writing.
+    `flock` needs neither: the lock lives on the open file description,
+    and a read-only one holds it exactly as well. None means there is no
+    descriptor to lock, which the caller turns into a refusal rather
+    than into an unlocked write (ADR 0022).
     """
     try:
         return os.open(path, os.O_RDWR | os.O_CREAT, 0o644)
@@ -368,24 +398,25 @@ def _open_lock(path: Path) -> Optional[int]:
 
 
 def take_device_lock(config_path: Optional[Path],
+                     key: Optional[str] = None,
                      wait: Optional[float] = None) -> Optional[DeviceLock]:
-    """Take the lock every writer of this desk holds, or None after the wait.
+    """Take the lock every writer of this device holds, or None.
 
     Every writer: a switch, `--no-profile`, and the unit's own apply,
-    verifier and reconcile (ADR 0019). What the caller does with None is
-    its own contract -- a switch refuses, a start writes anyway, a
-    reconcile stands down -- because the cost of writing over another
-    writer is not the same in the three places.
+    verifier and reconcile (ADR 0019). None means it is not held, for
+    any reason -- contention that outlasted the wait, a lock file that
+    cannot be opened, a filesystem that cannot lock. Every caller
+    refuses on None since 0.6.7: a write nobody serialised is the thing
+    the lock exists to prevent, and "apply anyway" made the guarantee
+    conditional on nothing having gone wrong (ADR 0022).
     """
-    marker = active_profile_path(config_path)
-    if marker is None:
-        return DeviceLock()
-    path = marker.with_name(SWITCH_LOCK)
+    path = device_lock_path(config_path, key)
+    if path is None:
+        return DeviceLock()          # no config, so nothing to contend with
     fd = _open_lock(path)
     if fd is None:
-        log.warning("no device lock at %s; writing without one -- run "
-                    "install.sh to create it", path)
-        return DeviceLock()
+        log.error("cannot open the device lock at %s", path)
+        return None
     deadline = time.monotonic() + (SWITCH_LOCK_WAIT if wait is None else wait)
     announced = False
     while True:
@@ -397,9 +428,9 @@ def take_device_lock(config_path: Optional[Path],
                 # Not contention: a filesystem that cannot lock, or a
                 # descriptor that is gone. Waiting 30 s to say "somebody
                 # else has it" would be the wrong answer to both.
-                log.error("cannot lock %s (%s); writing without it", path, exc)
+                log.error("cannot lock %s (%s)", path, exc)
                 os.close(fd)
-                return DeviceLock()
+                return None
             if time.monotonic() >= deadline:
                 os.close(fd)
                 return None
@@ -410,14 +441,15 @@ def take_device_lock(config_path: Optional[Path],
             time.sleep(0.1)
 
 
-def _switch_lock_held(config_path: Optional[Path]) -> Iterator[bool]:
+def _switch_lock_held(config_path: Optional[Path],
+                      key: Optional[str] = None) -> Iterator[bool]:
     """Hold the device lock for this config, or yield False after the wait.
 
     Taken *after* the profile parsed: a refusal for a bad config needs
     no lock and costs nothing, as ADR 0011 promises. Without a config
     there is no directory to lock in and nothing to contend with.
     """
-    lock = take_device_lock(config_path)
+    lock = take_device_lock(config_path, key)
     if lock is None:
         yield False
         return
@@ -518,7 +550,7 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         log.error("profile %r refused, nothing written: %s", name, exc)
         return Outcome(state=REFUSED, name=name, reason=str(exc))
 
-    with _switch_lock(config_path) as held:
+    with _switch_lock(config_path, device_key(config.usb_id)) as held:
         if not held:
             return _refused_for_the_lock(name)
         device = backend if backend is not None else loopback(
@@ -557,7 +589,7 @@ def restore_main(config_path: Optional[Path] = None,
     except ConfigError as exc:
         log.error("routing.conf refused, nothing written: %s", exc)
         return Outcome(state=REFUSED, name="routing.conf", reason=str(exc))
-    with _switch_lock(config_path) as held:
+    with _switch_lock(config_path, device_key(config.usb_id)) as held:
         if not held:
             return _refused_for_the_lock("routing.conf")
         device = backend if backend is not None else loopback(
