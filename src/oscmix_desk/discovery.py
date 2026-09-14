@@ -120,7 +120,8 @@ def select_seq_client(text: str, device_name: str, serial: str = "",
             "%d interfaces match %r and [device] serial does not say which "
             "one this desk is for: %s" % (
                 len(matches), device_name,
-                ", ".join(name for _number, name in matches)))
+                ", ".join("%s (client %d)" % (name, number)
+                          for number, name in matches)))
     return matches[0][0] if matches else None
 
 

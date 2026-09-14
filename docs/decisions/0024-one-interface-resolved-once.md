@@ -184,6 +184,11 @@ owns the directory.
   item for several interfaces lands.
 - The mount sandbox protects only where the distribution lets the user
   manager apply it; docs/SECURITY-MODEL.md says how to check.
+- A client counts only when it is named exactly like a card, which is
+  how the kernel names the legacy sequencer client of a USB audio card
+  (card shortname, both truncated alike). A MIDI 2.0 device whose client
+  is named after its UMP endpoint would not match. The models the pinned
+  oscmix supports, UCX II and 802, use legacy clients.
 - The layering gains two edges, both toward leaves or down the graph:
   `discovery` imports `errors`, `profiles` imports `process`.
 - Only one of the six probes still needs a person to run it: a lock file

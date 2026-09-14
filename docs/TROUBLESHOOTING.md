@@ -136,7 +136,7 @@ remove, and a reboot clears `/run`.
 
 ```
 2 interfaces match 'Fireface UCX II' and [device] serial does not say
-  which one this desk is for: Fireface UCX II (24216011), ...
+  which one this desk is for: Fireface UCX II (24216011) (client 24), ...
 ```
 
 Set `serial` under `[device]` to the number printed on the box -- the

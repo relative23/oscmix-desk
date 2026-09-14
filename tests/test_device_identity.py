@@ -396,8 +396,8 @@ def test_the_client_is_selected_by_serial_and_never_guessed():
                              "Fireface UCX II") == A[0]
     with pytest.raises(DeviceAmbiguous) as raised:
         select_seq_client(text, "Fireface UCX II")
-    assert "Fireface UCX II (24216011), Fireface UCX II (99887766)" in \
-        str(raised.value)
+    assert ("Fireface UCX II (24216011) (client 24), "
+            "Fireface UCX II (99887766) (client 28)") in str(raised.value)
 
 
 def test_the_card_list_decides_when_no_client_is_up(tmp_path):
