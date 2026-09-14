@@ -1060,3 +1060,41 @@ def test_without_a_runtime_directory_the_config_path_is_the_lock(
     lock.release()
     # And with no config either there is nothing to contend over.
     assert profiles.take_device_lock(None, "2a39-3fd9-24216011") is not None
+
+
+def test_a_runtime_directory_that_cannot_be_made_falls_back_and_says_so(
+        tmp_path, monkeypatch, caplog):
+    # A file where the directory should be: mkdir raises, and the lock
+    # has to land beside the config rather than nowhere.
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("")
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(blocker))
+    path = _desk(tmp_path, tracking=TRACKING)
+    with caplog.at_level("WARNING"):
+        where = profiles.device_lock_path(path, "2a39-3fd9-24216011")
+    assert where == tmp_path / "active-profile.lock"
+    assert str(blocker / "oscmix-desk") in caplog.text, \
+        "the warning names the directory it could not use"
+
+
+def test_a_switch_without_a_runtime_directory_locks_beside_the_config(
+        tmp_path, recording_backend, monkeypatch):
+    """The config path still decides where the lock lives, sometimes.
+
+    With a runtime directory in play it does not, so nothing observes
+    the switch passing it down. Without one it does, and a switch must
+    then contend with a lock held there.
+    """
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    path = _desk(tmp_path, tracking=TRACKING)
+    held = profiles.take_device_lock(path, _key(path))
+    assert held is not None
+    assert (tmp_path / "active-profile.lock").exists()
+    try:
+        outcome = profiles.switch_profile("tracking", config_path=path,
+                                          backend=recording_backend)
+    finally:
+        held.release()
+    assert outcome.state == profiles.REFUSED
+    assert recording_backend.sent == []

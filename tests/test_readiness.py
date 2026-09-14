@@ -152,3 +152,19 @@ def test_a_local_address_that_is_not_hex_is_skipped(session_mod, tmp_path):
            "00:00000000 00000000  1000        0 123456 2 0 0\n")
     proc = make_proc(tmp_path, udp=header + "\n" + row)
     assert udp_socket_inodes(7222, proc) == set()
+
+
+def test_a_broken_row_does_not_end_the_table(session_mod, tmp_path):
+    """A line this cannot parse is one line, not the end of the file.
+
+    With `break` instead of `continue` the socket after a malformed row
+    is invisible, and an invisible socket is an unresolvable owner: the
+    start would refuse a port its own backend holds.
+    """
+    from oscmix_desk.discovery import udp_socket_inodes
+
+    header = UDP_WITH_OSCMIX.splitlines()[0]
+    good = UDP_WITH_OSCMIX.splitlines()[1]
+    proc = make_proc(tmp_path, udp="\n".join([header, "  99: nonsense",
+                                              good]) + "\n")
+    assert udp_socket_inodes(7222, proc) == {"123456"}
