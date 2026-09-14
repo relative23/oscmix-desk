@@ -34,8 +34,11 @@ Restart=on-failure
 RestartSec=3
 # Exit code 2 means a routing.conf error -- restarting cannot fix that.
 RestartPreventExitStatus=2
-# Device wait (30s) + port wait (10s) + verification, with headroom.
-TimeoutStartSec=75
+# The worst case to READY=1 is constants.startup_budget(): the device
+# wait, the stale-backend settle, the port wait, the link barrier and,
+# since the start holds the device lock, the lock wait (0.6.9 found that
+# term missing). tests/test_unit_file.py keeps 10 s of margin on it.
+TimeoutStartSec=100
 TimeoutStopSec=10
 
 # Sandboxing, restricted to what a *user* unit can actually enforce.
@@ -63,8 +66,14 @@ ProtectKernelTunables=yes
 ProtectControlGroups=yes
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
-# The config lives under ~/.config and is only ever read.
-ReadWritePaths=
+# The config lives under ~/.config and is only ever read. The one write
+# is the device lock in the shared lock directory. Where a user manager
+# can apply ProtectSystem=strict, /run is read-only without this line and
+# no lock file can be created -- measured under the system manager, which
+# applies the sandbox; Ubuntu's user manager silently does not, because
+# AppArmor denies it the mount namespace (docs/SECURITY-MODEL.md). The
+# dash: a machine without the directory falls back to RuntimeDirectory=.
+ReadWritePaths=-/run/oscmix-desk
 
 [Install]
 WantedBy=default.target

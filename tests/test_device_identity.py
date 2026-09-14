@@ -506,3 +506,66 @@ def test_a_refusal_in_a_directory_of_an_unknown_group_still_says_why(
     finally:
         shared.chmod(0o770)
     assert "belongs to group an unknown group" in caplog.text
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root creates anything")
+def test_a_read_only_lock_directory_is_named_as_such(tmp_path, monkeypatch,
+                                                      caplog):
+    """Under a sandbox that applies ProtectSystem=strict, /run is read-only.
+
+    The shipped unit could not create a lock file there -- measured under
+    the system manager, which applies the sandbox -- and the refusal said
+    "No such file or directory". It names the cause and the fix now.
+    """
+    shared = _lock_dir(tmp_path, monkeypatch)
+    shared.chmod(0o500)
+    real = os.statvfs
+
+    class ReadOnly:
+        f_flag = os.ST_RDONLY
+
+    monkeypatch.setattr(profiles.os, "statvfs",
+                        lambda p: ReadOnly() if str(p) == str(shared) else real(p))
+    try:
+        with caplog.at_level("ERROR"):
+            assert _take("k") is None
+    finally:
+        shared.chmod(0o770)
+    assert ("%s is read-only for this process; a service needs "
+            "ReadWritePaths=-%s" % (shared, shared)) in caplog.text
+
+
+def test_the_unit_declares_the_lock_directory_writable():
+    unit = repo_file("systemd", "oscmix.service").read_text()
+    assert "\nReadWritePaths=-/run/oscmix-desk\n" in unit
+
+
+def test_a_snapshot_names_the_resolved_box(tmp_path, monkeypatch):
+    from oscmix_desk import Config, cli
+
+    one = fake_proc(tmp_path / "one", boxes=[B])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(one))
+    assert cli._snapshot_serial(Config()) == B[1]
+    two = fake_proc(tmp_path / "two", boxes=[A, B])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(two))
+    assert cli._snapshot_serial(Config()) == "ambiguous"
+    assert cli._snapshot_serial(Config(serial=A[1])) == A[1]
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(tmp_path / "none")))
+    assert cli._snapshot_serial(Config()) == "?"
+
+
+def test_hardware_evidence_refuses_to_name_one_of_two_boxes(tmp_path,
+                                                             monkeypatch):
+    import importlib.util
+
+    from oscmix_desk import Config
+
+    spec = importlib.util.spec_from_file_location(
+        "verify_hardware", repo_file("scripts", "verify-hardware.py"))
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    monkeypatch.setenv("OSCMIX_PROC_ROOT",
+                       str(fake_proc(tmp_path, boxes=[A, B])))
+    with pytest.raises(DeviceAmbiguous):
+        tool.device_serial(Config())
+    assert tool.device_serial(Config(serial=B[1])) == B[1]

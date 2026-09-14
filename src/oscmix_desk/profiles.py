@@ -557,6 +557,8 @@ def _why_unopenable(path: Path) -> str:
     """What a person needs to know to clear a lock that cannot be opened."""
     try:
         info = os.lstat(path)
+    except FileNotFoundError:
+        return _why_not_creatable(path.parent)
     except OSError as exc:
         return "%s; %s belongs to group %s" % (
             exc.strerror or exc, path.parent, _group_of(path.parent))
@@ -565,6 +567,25 @@ def _why_unopenable(path: Path) -> str:
     if not stat.S_ISREG(info.st_mode):
         return "it is not a regular file"
     return "it belongs to uid %d and this user cannot open it" % info.st_uid
+
+
+def _why_not_creatable(directory: Path) -> str:
+    """Why no lock file could be created in ``directory``.
+
+    A read-only mount says so by name: under a sandbox that applies
+    ProtectSystem=strict, /run is read-only unless the unit declares the
+    directory writable, and "no such file" was the message that case
+    produced (measured, 0.6.9).
+    """
+    try:
+        read_only = bool(os.statvfs(directory).f_flag & os.ST_RDONLY)
+    except OSError:
+        read_only = False
+    if read_only:
+        return ("%s is read-only for this process; a service needs "
+                "ReadWritePaths=-%s" % (directory, directory))
+    return "it cannot be created in %s, which belongs to group %s" % (
+        directory, _group_of(directory))
 
 
 def _group_of(directory: Path) -> str:

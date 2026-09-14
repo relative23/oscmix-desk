@@ -14,9 +14,11 @@ LEGACY_LIB_DIR="$HOME/.local/lib/oscmix-autostart"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/oscmix"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
-UDEV_RULE="/etc/udev/rules.d/90-rme-fireface.rules"
-SLEEP_HOOK="/usr/lib/systemd/system-sleep/oscmix"
-TMPFILES_CONF="/usr/lib/tmpfiles.d/oscmix-desk.conf"
+# Overridable for the test suite only, which must never reach the real
+# files on a developer machine.
+UDEV_RULE="${OSCMIX_UDEV_RULE:-/etc/udev/rules.d/90-rme-fireface.rules}"
+SLEEP_HOOK="${OSCMIX_SLEEP_HOOK:-/usr/lib/systemd/system-sleep/oscmix}"
+TMPFILES_CONF="${OSCMIX_TMPFILES_CONF:-/usr/lib/tmpfiles.d/oscmix-desk.conf}"
 
 PURGE=0
 case "${1:-}" in
@@ -74,6 +76,14 @@ fi
 systemctl --user daemon-reload
 
 if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$TMPFILES_CONF" ]; then
+  if ! manages_this_home; then
+    # The system files serve whichever installation the session's home
+    # has. Removing them from a scratch home took away the real desk's
+    # hotplug rule, resume hook and lock directory -- the same trap as
+    # the service above, one level down.
+    warn "not removing $UDEV_RULE, $SLEEP_HOOK or $TMPFILES_CONF:"
+    warn "they serve the installation in systemd's session home, not $HOME."
+  else
     info "removing the root-installed files (needs root)"
     if SUDO=""; [ "$(id -u)" != 0 ]; then SUDO="sudo"; fi
     if [ -e "$UDEV_RULE" ]; then
@@ -92,6 +102,7 @@ if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$TMPFILES_CONF" ]; then
         $SUDO rm -f "$TMPFILES_CONF" \
             || echo "warning: remove $TMPFILES_CONF manually" >&2
     fi
+  fi
 fi
 
 if [ "$PURGE" = 1 ]; then

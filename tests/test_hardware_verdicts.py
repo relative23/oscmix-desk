@@ -374,10 +374,12 @@ def test_the_evidence_names_the_particular_device():
     """
     source = repo_file("scripts", "verify-hardware.py").read_text()
     assert '"serial"' in source
-    # The reading rule moved into the library when the write sweep needed
-    # the same answer; the script delegates, and the behaviour is tested
-    # against a fake cards file in test_seq_clients.py.
-    assert "discovery_device_serial" in source
+    # The reading rule lives in the library's one resolution since 0.6.9:
+    # evidence names the box the config selects, and refuses a machine
+    # with two it cannot tell apart rather than naming the first (ADR
+    # 0024). The behaviour is tested in test_device_identity.py.
+    assert "resolve_device(" in source
+    assert "except DeviceAmbiguous" in source
     import inspect
 
     from oscmix_desk import discovery

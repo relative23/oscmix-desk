@@ -145,14 +145,13 @@ def seconds(raw):
     return float(raw.rstrip("s"))
 
 
-def test_the_service_declares_no_writable_path(unit):
-    # docs/SECURITY-MODEL.md states that the session writes nothing, and
-    # an empty ReadWritePaths is the strongest form a unit can say it in.
-    # 0.3.0 (--dump-config, profiles, cached state) is what will want to
-    # relax this; the security model argues that case in advance, and
-    # this assertion is what keeps the relaxation from being quiet.
-    assert directive(unit, "ReadWritePaths") == ""
-
+def test_the_service_writes_only_the_lock_directory(unit):
+    # The session writes exactly one thing: the device lock. Anything
+    # more is a decision docs/SECURITY-MODEL.md argues first, and this
+    # assertion keeps it from happening quietly. The line is not
+    # decoration: measured under a manager that applies ProtectSystem,
+    # the unit without it could not create a lock file at all (0.6.9).
+    assert directive(unit, "ReadWritePaths") == "-/run/oscmix-desk"
 
 # --------------------------------------------------------------------------
 # The timing budget has to compose -- roadmap item H.
@@ -236,14 +235,15 @@ def test_the_budget_names_every_wait_on_the_path(unit):
     expected = (constants.DEFAULT_DEVICE_TIMEOUT
                 + constants.STALE_BACKEND_SETTLE
                 + constants.PORT_READY_TIMEOUT
+                + constants.SWITCH_LOCK_WAIT
                 + max(constants.LINK_ECHO_TIMEOUT, constants.LINK_SETTLE))
     assert constants.startup_budget() == expected
     # The link barrier is one wait or the other, never both: the settle
     # only runs when the echo could not be observed at all.
     assert constants.startup_budget() < (
         constants.DEFAULT_DEVICE_TIMEOUT + constants.STALE_BACKEND_SETTLE
-        + constants.PORT_READY_TIMEOUT + constants.LINK_ECHO_TIMEOUT
-        + constants.LINK_SETTLE)
+        + constants.PORT_READY_TIMEOUT + constants.SWITCH_LOCK_WAIT
+        + constants.LINK_ECHO_TIMEOUT + constants.LINK_SETTLE)
 
 
 def test_verification_is_off_the_startup_path_structurally(unit):

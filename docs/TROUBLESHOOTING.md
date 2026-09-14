@@ -126,7 +126,9 @@ cannot open the device lock at /run/oscmix-desk/2a39-3fd9-24216011.lock:
 ```
 
 The user is not in `audio`: `sudo usermod -aG audio $USER`, then log in
-again. `it is a symbolic link` or `it is not a regular file` means
+again. `/run/oscmix-desk is read-only for this process` comes from a unit
+whose sandbox applies and whose `ReadWritePaths` does not name the
+directory -- an edited or outdated `oscmix.service`; reinstall it. `it is a symbolic link` or `it is not a regular file` means
 something other than a lock sits at that path; it is not this user's to
 remove, and a reboot clears `/run`.
 

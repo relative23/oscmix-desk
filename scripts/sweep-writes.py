@@ -51,7 +51,6 @@ from oscmix_desk.constants import (
 from oscmix_desk.discovery import (
     built_backend_revision,
     device_firmware,
-    device_serial,
     resolve_device,
 )
 from oscmix_desk.errors import DeviceAmbiguous
@@ -470,15 +469,15 @@ def main() -> int:
     # interleave on one device (ADR 0023). No config directory is needed
     # for it -- the shared lock directory does not depend on one.
     try:
-        device = resolve_device(DEFAULT_USB_ID, DEFAULT_DEVICE_NAME, "",
-                                Path("/proc"))
+        interface = resolve_device(DEFAULT_USB_ID, DEFAULT_DEVICE_NAME, "",
+                                   Path("/proc"))
     except DeviceAmbiguous as exc:
         # The sweep writes to whichever backend holds the default port and
         # names the box in its artifact; with two boxes it could do
         # neither honestly (ADR 0024).
         sys.stderr.write("%s; the sweep supports one interface\n" % exc)
         return 1
-    lock = take_device_lock(None, device.key)
+    lock = take_device_lock(None, interface.key)
     if lock is None:
         sys.stderr.write("another writer holds the device lock; not "
                          "sweeping\n")
@@ -510,7 +509,7 @@ def main() -> int:
         listener.close()
         lock.release()
 
-    serial = device_serial()
+    serial = interface.serial or None
     artifact = {
         "taken": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "device": ("Fireface UCX II, serial %s" % serial if serial

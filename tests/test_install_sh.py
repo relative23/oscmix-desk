@@ -315,3 +315,53 @@ def test_install_arms_the_service_when_the_session_matches(tmp_path):
 
     assert result.returncode == 0
     assert "enable --quiet oscmix.service" in log.read_text()
+
+
+def _fake_system_files(tmp_path, env):
+    files = {}
+    for name, var in (("udev.rules", "OSCMIX_UDEV_RULE"),
+                      ("sleep-hook", "OSCMIX_SLEEP_HOOK"),
+                      ("tmpfiles.conf", "OSCMIX_TMPFILES_CONF")):
+        path = tmp_path / "system" / name
+        path.parent.mkdir(exist_ok=True)
+        path.write_text("x")
+        env[var] = str(path)
+        files[var] = path
+    return files
+
+
+def test_uninstall_from_a_scratch_home_leaves_the_system_files_alone(tmp_path):
+    """A scratch-home uninstall removed the real desk's system files.
+
+    Found while running the 0.6.8 release checklist: the uninstall of a
+    throwaway home reached for the udev rule, the resume hook and the
+    tmpfiles.d entry that the session's own installation depends on,
+    and only a sudo that could not ask for a password kept them.
+    """
+    _home, env, log = make_fake_home(tmp_path)
+    files = _fake_system_files(tmp_path, env)
+    run("install.sh", ["--no-build", "--no-udev"], env)
+    session_home_stub(tmp_path, "/home/somebodyelse")
+    log.write_text("")
+
+    result = run("uninstall.sh", [], env)
+
+    assert result.returncode == 0
+    assert "sudo rm" not in log.read_text()
+    assert "not removing" in result.stderr
+    assert all(path.exists() for path in files.values())
+
+
+def test_uninstall_of_the_session_s_home_removes_the_system_files(tmp_path):
+    home, env, log = make_fake_home(tmp_path)
+    _fake_system_files(tmp_path, env)
+    run("install.sh", ["--no-build", "--no-udev"], env)
+    session_home_stub(tmp_path, str(home))
+    log.write_text("")
+
+    result = run("uninstall.sh", [], env)
+
+    assert result.returncode == 0
+    calls = log.read_text()
+    for var in ("OSCMIX_UDEV_RULE", "OSCMIX_SLEEP_HOOK", "OSCMIX_TMPFILES_CONF"):
+        assert "sudo rm -f %s" % env[var] in calls

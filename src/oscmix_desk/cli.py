@@ -30,8 +30,8 @@ from .constants import (
     SERVICE_UNIT,
     __version__,
 )
-from .discovery import device_firmware, device_serial
-from .errors import ConfigError
+from .discovery import device_firmware, resolve_device
+from .errors import ConfigError, DeviceAmbiguous
 from .log import log
 from .pipewire import generate_pipewire_conf, pw_sink_info
 from .process import RELOAD_DONE, RELOAD_NOT_RUNNING, reload_service
@@ -115,6 +115,22 @@ def build_arg_parser() -> ArgumentParser:
     parser.add_argument("--verbose", action="store_true", help="debug logging")
     parser.add_argument("--version", action="version", version=__version__)
     return parser
+
+
+def _snapshot_serial(config: Config) -> str:
+    """The box a snapshot names in its header, from the one resolution.
+
+    Until 0.6.9 it named the first serial in the card list, which on a
+    machine with two interfaces could be the box the snapshot did not
+    read (ADR 0024).
+    """
+    try:
+        device = resolve_device(config.usb_id, config.device_name,
+                                config.serial,
+                                Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
+    except DeviceAmbiguous:
+        return "ambiguous"
+    return device.serial or "?"
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -341,7 +357,7 @@ def _snapshot(config: Config) -> int:
     # file that does not say cannot be checked later.
     sys.stdout.write(
         "# oscmix-session --snapshot: %d registers; %s serial %s, usb %s, "
-        "dsp %s\n" % (len(rows), config.device_name, device_serial() or "?",
+        "dsp %s\n" % (len(rows), config.device_name, _snapshot_serial(config),
                        firmware["usb_revision"] or "?",
                        "?" if firmware["dsp_version"] is None
                        else firmware["dsp_version"]))

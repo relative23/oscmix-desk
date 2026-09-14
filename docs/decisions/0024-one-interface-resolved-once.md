@@ -46,6 +46,30 @@ fs.protected_symlinks=1 stood in the way; some containers run without it.
 local user pre-create a lock file only they could open, or hold one for
 ever. Both ended in refusals for the real desk.
 
+A last sweep before release, asked for so that nothing would surface after
+it, found four more on the same path:
+
+**The unit could not write the lock directory where its sandbox applies.**
+`ReadWritePaths=` was empty. Ubuntu's user manager silently skips the
+mount sandbox (AppArmor denies it the mount namespace), so the desk here
+worked. Under the system manager, which applies it, `/run` was read-only
+and the lock file could not be created -- every start would have been
+refused, and the refusal said "No such file or directory".
+
+**The start budget left out the lock wait.** `startup_budget()` and the
+test that holds it against `TimeoutStartSec` had no term for the 30 s the
+start has waited for the device lock since 0.6.5.
+
+**A reload could change the interface under a running process.** The desk
+re-read under the lock kept the running ports and device name but took
+`usb-id` and `serial` from the file, so a profile naming another box
+changed what the reload described while the lock and the backend stayed
+with the first.
+
+**A scratch-home uninstall reached for the machine's system files.** It
+removed the udev rule, resume hook and tmpfiles.d entry that the session's
+own installation depends on; only a sudo that could not prompt kept them.
+
 ## Decision
 
 **One resolution.** `discovery.resolve_device` answers, from the config
@@ -79,6 +103,14 @@ block; on the refusal it stops the backend it spawned and exits 1, and
 says S_ISREG. The mode and group are changed only for a file this
 process owns with exactly one link: 0660, and the directory's group.
 
+**The unit declares the one directory it writes.**
+`ReadWritePaths=-/run/oscmix-desk`, and a refusal in a read-only directory
+names the directive. `startup_budget()` includes `SWITCH_LOCK_WAIT`, and
+`TimeoutStartSec` is 100. A re-read keeps `usb_id` and `serial` from the
+running process as it keeps the ports. `uninstall.sh` leaves the system
+files alone when systemd's session serves another home, as it already did
+for the service.
+
 **The trust circle is `audio`.** `/run/oscmix-desk` is 3770 root:audio.
 Members can create, open and hold locks; the setgid bit gives new files
 the group, the sticky bit keeps members from removing each other's.
@@ -95,6 +127,16 @@ owns the directory.
 - A lock held for longer than the wait makes the unit retry every
   `RestartSec` plus the wait, loudly, instead of reporting a started
   desk. Five failures inside `StartLimitIntervalSec` stop the retries.
+- A switch by one user against another user's running desk is refused:
+  `/proc/<pid>/fd` of another user's process cannot be read, so the port
+  holder cannot be identified. That is correct -- the config, the marker
+  and the unit are per user -- and it is stated here so it is not taken
+  for a defect.
+- One unit per machine. With two identical interfaces `[device] serial`
+  picks the one the desk is for; the other has no desk until the roadmap
+  item for several interfaces lands.
+- The mount sandbox protects only where the distribution lets the user
+  manager apply it; docs/SECURITY-MODEL.md says how to check.
 - The layering gains two edges, both toward leaves or down the graph:
   `discovery` imports `errors`, `profiles` imports `process`.
 - Only one of the six probes still needs a person to run it: a lock file

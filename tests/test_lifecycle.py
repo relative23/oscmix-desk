@@ -624,7 +624,10 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
 
     path = write_config(tmp_path / "routing.conf",
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    # A profile may state [device] -- and must not move the interface a
+    # running start has already bound and locked for (ADR 0024).
     write_config(tmp_path / "profiles" / "later.conf",
+                 "[device]\nusb-id = 1234:5678\nserial = 99887766\n"
                  "[route:y]\nplayback = 5/6\noutput = 5/6\n")
     applied = []
     monkeypatch.setattr(session_module, "apply_routing",
@@ -653,6 +656,9 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
         "the ports belong to the running process, not to the desk"
     assert applied[0].osc_recv_port == started.osc_recv_port
     assert applied[0].device_name == started.device_name
+    assert (applied[0].usb_id, applied[0].serial) == \
+        (started.usb_id, started.serial), \
+        "the interface belongs to the running process too"
 
 
 def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,

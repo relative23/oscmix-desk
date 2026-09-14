@@ -302,29 +302,6 @@ def resolve_binary(name: str, env_var: str) -> Optional[str]:
     return None
 
 
-def device_serial(cards: Path = Path("/proc/asound/cards")) -> Optional[str]:
-    """The interface's serial, as RME prints it on the box.
-
-    Read from ``/proc/asound/cards``, where the USB-Audio driver puts
-    the device's own product string::
-
-        2 [II24216011  ]: USB-Audio - Fireface UCX II (24216011)
-
-    Not the USB ``iSerial`` (``3A179EA663AB340`` here), which is a
-    different number and not the one anybody can check against the
-    hardware -- and not the one this repository's recorded dumps carry.
-
-    Evidence names a *particular* box. Two Fireface units on one desk is
-    a configuration the roadmap intends to support, and an artifact that
-    does not say which one it measured stops being evidence the moment
-    there is a second. Lived in ``verify-hardware.py`` until the write
-    sweep needed the same answer; two copies would be two places for the
-    rule to disagree.
-    """
-    serials = device_serials(cards)
-    return serials[0] if serials else None
-
-
 def device_serials(cards: Path = Path("/proc/asound/cards")) -> List[str]:
     """Every Fireface serial the ALSA card list shows, in card order.
 

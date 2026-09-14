@@ -179,6 +179,9 @@ def startup_budget(device_timeout: float = DEFAULT_DEVICE_TIMEOUT) -> float:
     * ``device_timeout``    -- ``wait_for_seq_client``
     * ``STALE_BACKEND_SETTLE`` -- ``_cleanup_stale_backend``
     * ``PORT_READY_TIMEOUT``   -- ``_await_backend_port``
+    * ``SWITCH_LOCK_WAIT``  -- ``take_device_lock`` in
+      ``_apply_and_verify``: the start has waited for the device lock
+      since 0.6.5, and until 0.6.9 the budget did not say so
     * the link barrier      -- ``LINK_ECHO_TIMEOUT`` when the receive
       port is observable, ``LINK_SETTLE`` when the mixer GUI holds it.
       Never both, so the worst case is the larger.
@@ -189,4 +192,5 @@ def startup_budget(device_timeout: float = DEFAULT_DEVICE_TIMEOUT) -> float:
     return (device_timeout
             + STALE_BACKEND_SETTLE
             + PORT_READY_TIMEOUT
+            + SWITCH_LOCK_WAIT
             + max(LINK_ECHO_TIMEOUT, LINK_SETTLE))

@@ -56,26 +56,25 @@ def test_empty_input(session_mod):
     assert session_mod.find_seq_client("", "Fireface UCX II") is None
 
 
-def test_device_serial_reads_the_product_string(tmp_path):
+def test_device_serials_read_the_product_string(tmp_path):
     """The number RME prints on the box, not the USB iSerial.
 
-    Moved into the library from verify-hardware.py when the write sweep
-    needed the same answer -- an evidence artifact that cannot name its
-    box stops being evidence the moment there is a second one.
+    An evidence artifact that cannot name its box stops being evidence
+    the moment there is a second one; which box a process is for is
+    decided by discovery.resolve_device on top of this (ADR 0024).
     """
-    from oscmix_desk.discovery import device_serial
+    from oscmix_desk.discovery import device_serials
 
     cards = tmp_path / "cards"
     cards.write_text(
         " 0 [NVidia       ]: HDA-Intel - HDA NVidia\n"
         " 2 [II24216011   ]: USB-Audio - Fireface UCX II (24216011)\n")
-    assert device_serial(cards) == "24216011"
+    assert device_serials(cards) == ["24216011"]
 
     cards.write_text(" 0 [NVidia ]: HDA-Intel - HDA NVidia\n")
-    assert device_serial(cards) is None
+    assert device_serials(cards) == []
 
-    assert device_serial(tmp_path / "missing") is None
-
+    assert device_serials(tmp_path / "missing") == []
 
 def test_built_backend_revision_reads_the_checkout(tmp_path):
     """The revision comes from the checkout, not from the pin.

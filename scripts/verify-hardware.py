@@ -49,8 +49,12 @@ from oscmix_desk import (
     load_config,
 )
 from oscmix_desk.constants import LEVEL_MIN
-from oscmix_desk.discovery import built_backend_revision, device_firmware
-from oscmix_desk.discovery import device_serial as discovery_device_serial
+from oscmix_desk.discovery import (
+    built_backend_revision,
+    device_firmware,
+    resolve_device,
+)
+from oscmix_desk.errors import DeviceAmbiguous
 
 EXIT_SKIP = 77
 # How much louder an output must be when its own side carries the tone
@@ -274,9 +278,17 @@ def playback_sinks() -> Dict[Tuple[int, ...], str]:
     return found
 
 
-def device_serial() -> Optional[str]:
-    """The interface's serial; see ``discovery.device_serial``."""
-    return discovery_device_serial()
+def device_serial(config) -> Optional[str]:
+    """The serial of the interface this measures, from the one resolution.
+
+    Raises DeviceAmbiguous on a machine with two identical interfaces and
+    no `[device] serial`: evidence that cannot say which box it measured
+    is not evidence, and naming the first one is how 0.6.8 did it.
+    """
+    proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
+    device = resolve_device(config.usb_id, config.device_name, config.serial,
+                            proc_root)
+    return device.serial or None
 
 
 def is_stereo(positions: Sequence[str]) -> bool:
@@ -400,6 +412,12 @@ def main() -> int:
         return EXIT_SKIP
 
     config = load_config(args.config or discover_config_path())
+    try:
+        serial = device_serial(config)
+    except DeviceAmbiguous as exc:
+        print("refused: %s -- set [device] serial in the config it measures"
+              % exc, file=sys.stderr)
+        return 1
     pairs = [route for route in config.routes if len(route.output) == 2]
     if not pairs:
         print("skip: no stereo routes configured", file=sys.stderr)
@@ -522,7 +540,7 @@ def main() -> int:
         # playback pair.
         "sink_channels": {name: (sink_layout(name) or (name, []))[1]
                           for name in sorted(set(sinks.values()))},
-        "serial": device_serial(),
+        "serial": serial,
         "oscmix_revision": backend_revision(),
         # Which firmware the numbers below were taken against. Two
         # artifacts that differ here are measurements of two devices,

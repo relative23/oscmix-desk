@@ -290,6 +290,11 @@ def _desk_under_the_lock(config_path: Optional[Path],
     fresh.osc_port = running.osc_port
     fresh.osc_recv_port = running.osc_recv_port
     fresh.device_name = running.device_name
+    # And the interface: the lock was taken and the backend bound for
+    # this process's usb id and pinned serial, and a profile naming
+    # another box does not move either of them (ADR 0024).
+    fresh.usb_id = running.usb_id
+    fresh.serial = running.serial
     return fresh
 
 
@@ -525,6 +530,8 @@ def _reconcile(args: argparse.Namespace, config: Config,
             fresh.osc_port = config.osc_port
             fresh.osc_recv_port = config.osc_recv_port
             fresh.device_name = config.device_name
+            fresh.usb_id = config.usb_id
+            fresh.serial = config.serial
         sd_notify("STATUS=reconciling (SIGHUP)")
         wrote = reconcile_now(fresh, "SIGHUP", lambda: stop_requested["stop"])
     finally:
