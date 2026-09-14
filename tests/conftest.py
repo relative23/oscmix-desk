@@ -181,9 +181,14 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
     """
     monkeypatch.setenv("XDG_RUNTIME_DIR",
                        str(tmp_path_factory.mktemp("runtime")))
-    monkeypatch.setenv(
-        "OSCMIX_LOCK_DIR",
-        str(tmp_path_factory.mktemp("nolockdir") / "absent"))
+    absent = str(tmp_path_factory.mktemp("nolockdir") / "absent")
+    monkeypatch.setenv("OSCMIX_LOCK_DIR", absent)
+    # The default too, not only the variable that overrides it. A mutant
+    # that renames the variable falls back to /run/oscmix-desk, and the
+    # 0.6.9 mutation run left lock files there -- tests that could have
+    # held the running desk's lock while they ran.
+    from oscmix_desk import profiles
+    monkeypatch.setattr(profiles, "SHARED_LOCK_DIR", absent)
 
 
 @pytest.fixture(autouse=True)
