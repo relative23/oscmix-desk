@@ -53,20 +53,26 @@ _CLIENT_NUMBER_RE = re.compile(r"^Client\s+(\d+)\s*:", re.MULTILINE)
 
 
 def _kernel_clients(text: str) -> List[Tuple[int, str]]:
-    """(number, name) of every client the kernel created for a card.
+    """(number, name) of every client the kernel lists as its own.
 
-    A client number that begins more than one line is dropped with all of
-    them: a name containing a newline can forge a whole line, and a forged
-    line for a number that exists repeats that number. What a forger can
-    still do -- a line for a number of its own, naming a box that is
-    plugged in -- ends in an ambiguity refusal, not in a bind, because the
-    card list has to show the serial too (see ``resolve_device``).
+    The kernel never lists a client number twice. A number that begins
+    more than one line was forged -- a client name may contain a newline --
+    and nothing in the file says which of the lines is real, so that is a
+    refusal with its reason rather than a guess, or a silent drop that
+    made the real interface vanish (found by review, 0.6.9).
     """
     numbers = collections.Counter(
         int(number) for number in _CLIENT_NUMBER_RE.findall(text))
+    repeated = sorted(number for number, count in numbers.items() if count > 1)
+    if repeated:
+        raise DeviceAmbiguous(
+            "sequencer client %s is listed more than once in "
+            "/proc/asound/seq/clients, so a client name forges lines and "
+            "no interface can be told from it"
+            % ", ".join(str(number) for number in repeated))
     return [(int(number), name)
             for number, name, kind in _CLIENT_LINE_RE.findall(text)
-            if kind == "Kernel" and numbers[int(number)] == 1]
+            if kind == "Kernel"]
 
 
 def _model(name: str) -> str:
@@ -88,7 +94,7 @@ def _named(names: Sequence[str], device_name: str) -> List[int]:
 
 
 def select_seq_client(text: str, device_name: str, serial: str = "",
-                      shown: Optional[Sequence[str]] = None) -> Optional[int]:
+                      cards: Optional[Sequence[str]] = None) -> Optional[int]:
     """The one sequencer client this desk is for, or None if it is not there.
 
     ``serial`` narrows the name match to one box. Without it, more than
@@ -97,16 +103,18 @@ def select_seq_client(text: str, device_name: str, serial: str = "",
     it would configure an arbitrary box while its lock named another.
     DeviceAmbiguous says so and names the remedy (ADR 0024).
 
-    Only kernel clients count. ``shown``, when given, is the serials the
-    card list shows; a client whose name carries a serial that no card
-    has is not an interface, whatever it calls itself.
+    Only kernel clients count. ``cards``, when given, is the product name
+    of every card the kernel lists, and a client counts only when its name
+    is one of them exactly: the kernel names a card's client after the
+    card, and a client name is whatever the program that opened the
+    sequencer chose. A line forged into the file for a box that is not
+    plugged in, or under a name no card has, is not an interface.
     """
-    clients = _kernel_clients(text)
+    clients = [(number, name) for number, name in _kernel_clients(text)
+               if cards is None or name in cards]
     clients = [clients[i] for i in _named([n for _c, n in clients], device_name)]
     matches = [(number, name) for number, name in clients
-               if (not serial or serial_in(name) == serial)
-               and (shown is None or serial_in(name) is None
-                    or serial_in(name) in shown)]
+               if not serial or serial_in(name) == serial]
     if len(matches) > 1:
         raise DeviceAmbiguous(
             "%d interfaces match %r and [device] serial does not say which "
@@ -288,8 +296,8 @@ def resolve_device(usb_id: str, device_name: str, serial: str,
     except OSError:
         text = ""
     cards_file = proc_root / "asound" / "cards"
-    shown = device_serials(cards_file) if cards_file.is_file() else None
-    client = select_seq_client(text, device_name, serial, shown)
+    client = select_seq_client(text, device_name, serial,
+                               card_products(cards_file))
     cards = device_serials(cards_file, device_name)
     if not serial and len(cards) > 1:
         raise DeviceAmbiguous(
@@ -389,11 +397,19 @@ def resolve_binary(name: str, env_var: str) -> Optional[str]:
 #: II (24216011)``. The driver id has no spaces; the product runs to the
 #: serial. A card's second line repeats name and serial and is not read.
 _CARD_LINE_RE = re.compile(
-    r"^\s*\d+\s+\[[^\]]*\]:\s*\S+\s+-\s+(.*?\(\d{4,}\))\s*$", re.MULTILINE)
+    r"^\s*\d+\s+\[[^\]]*\]:\s*\S+\s+-\s+(.*?)\s*$", re.MULTILINE)
+
+
+def card_products(cards: Path) -> Optional[List[str]]:
+    """The product name of every card the kernel lists, or None if unreadable."""
+    try:
+        return _CARD_LINE_RE.findall(cards.read_text(errors="replace"))
+    except OSError:
+        return None
 
 
 def device_serials(cards: Path = Path("/proc/asound/cards"),
-                   device_name: str = "Fireface") -> List[str]:
+                   device_name: str = "") -> List[str]:
     """Every serial the ALSA card list shows for ``device_name``, in order.
 
     Matched on the model the way the sequencer clients are, so a Fireface
@@ -406,11 +422,7 @@ def device_serials(cards: Path = Path("/proc/asound/cards"),
     in the card list says which of them a given process is driving;
     ``resolve_device`` refuses to guess (ADR 0024).
     """
-    try:
-        text = cards.read_text(errors="replace")
-    except OSError:
-        return []
-    products = _CARD_LINE_RE.findall(text)
+    products = card_products(cards) or []
     found: List[str] = []
     for index in _named(products, device_name):
         serial = serial_in(products[index])

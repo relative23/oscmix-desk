@@ -94,13 +94,16 @@ whose name carries that number. Without it neither the kernel's
 sequencer clients nor the card list may show more than one interface of
 the configured model -- the card list catches a second box whose client
 is not up yet -- and more than one raises DeviceAmbiguous instead of
-picking. Only clients the kernel created count, read strictly from the
-end of each line, a client number that appears twice is dropped, and a
-client whose name carries a serial no card shows is not an interface.
-That stops a user-space program from binding a desk; a member of `audio`
-with sequencer access can still forge a line naming a box that is plugged
-in and so force an ambiguity refusal -- but that member can write the
-interface through `/dev/snd` directly anyway. The configured model is
+picking. Only clients the kernel lists as its own count, read strictly
+from the end of each line, and only when a client's name is exactly the
+product name of a card the kernel lists -- the kernel names a card's
+client after the card, while a client name is chosen by whatever opened
+the sequencer. A client number listed twice means a name forged a line,
+and that is an ambiguity refusal with its reason. What a member of
+`audio` with sequencer access can still do is forge a line that repeats
+a plugged-in box's name or number and so force that refusal; the same
+member can write the interface through `/dev/snd` directly anyway, which
+is why the group is the boundary. The configured model is
 matched exactly first, so a Fireface of another model, even one whose
 name starts with this one's, is not a second candidate. The unit exits 2
 for ambiguity, which `RestartPreventExitStatus=2` keeps from looping; a

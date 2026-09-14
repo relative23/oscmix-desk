@@ -759,11 +759,16 @@ def test_a_quote_in_a_client_name_does_not_make_it_a_kernel_client():
     assert select_seq_client(KERNEL_A + spoof, "Fireface UCX II") == A[0]
 
 
-def test_a_forged_line_that_repeats_a_client_number_drops_that_number():
-    """A name with a newline can forge a whole line for an existing client."""
+def test_a_forged_line_that_repeats_a_client_number_is_refused_as_such():
+    """A name with a newline can forge a whole line for an existing client.
+
+    Nothing says which of the two lines is real. Dropping both made the
+    real interface vanish and the start loop; a refusal names the cause.
+    """
     forged = ('Client 130 : "x\nClient  28 : "Fireface UCX II (24216011)" '
               '[Kernel Legacy]\ny" [User Legacy]\n')
-    assert select_seq_client(KERNEL_B + forged, "Fireface UCX II") is None
+    with pytest.raises(DeviceAmbiguous, match="listed more than once"):
+        select_seq_client(KERNEL_B + forged, "Fireface UCX II")
 
 
 def test_a_forged_client_for_a_box_no_card_shows_is_not_an_interface(tmp_path):
@@ -812,3 +817,32 @@ def test_a_desk_named_for_the_wrong_model_fails_instead_of_looking_unplugged(
     code, _unit, notified = _run_the_unit(tmp_path, monkeypatch, path, [], [])
     assert code == session_module.EXIT_FAILURE
     assert notified == []
+
+
+def test_a_forged_kernel_line_without_a_serial_or_under_a_bare_name_is_ignored(
+        tmp_path):
+    """Its name is not a card's product name, so it is not an interface."""
+    proc = fake_proc(tmp_path, boxes=[A])
+    _add_clients(proc, b'Client 140 : "Fireface UCX II" [Kernel Legacy]\n'
+                       b'Client 141 : "UCX II" [Kernel Legacy]\n')
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc) == \
+        Device(usb_id="2a39:3fd9", serial=A[1], client=A[0])
+    assert resolve_device("2a39:3fd9", "UCX II", "", proc).client == A[0]
+
+    unplugged = fake_proc(tmp_path / "unplugged")
+    _add_clients(unplugged, b'Client 140 : "Fireface UCX II" [Kernel Legacy]\n')
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "",
+                          unplugged).client is None
+
+
+def test_a_client_listed_before_its_card_waits_for_the_card(tmp_path):
+    """The kernel may show the client a moment before the card line."""
+    proc = fake_proc(tmp_path, boxes=[A])
+    cards = proc / "asound" / "cards"
+    listed = cards.read_text()
+    cards.write_text("")
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc).client \
+        is None
+    cards.write_text(listed)
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc).client \
+        == A[0]

@@ -366,7 +366,7 @@ def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
     start failed and was restarted for ever (found by review, 0.6.9).
     """
     cards = proc_root / "asound" / "cards"
-    # Against every Fireface card, not the configured model: a desk whose
+    # Against every card, not the configured model: a desk whose
     # name is wrong for the box it names must fail loudly, not report the
     # box as unplugged. And only when the list can be read at all.
     absent = not usb_device_present(config.usb_id, sysfs_usb) or (
