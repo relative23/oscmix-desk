@@ -436,3 +436,73 @@ def test_the_sweep_resolves_its_device_and_refuses_two():
     source = repo_file("scripts", "sweep-writes.py").read_text()
     assert "resolve_device(" in source
     assert "except DeviceAmbiguous" in source
+
+
+# --------------------------------------------------------------------------
+# The edges of the identity: other users, missing files, the unit sandbox.
+# --------------------------------------------------------------------------
+
+def test_another_user_s_oscmix_is_not_this_desk_s_backend(tmp_path, monkeypatch):
+    """Name is not ownership; for root, any user's oscmix is still oscmix."""
+    from oscmix_desk import process
+
+    port = free_udp_port()
+    proc = fake_proc(tmp_path, boxes=[B], bound=[(port, "oscmix", B[0])])
+    someone_else = os.getuid() + 1       # read before os.getuid is replaced
+    monkeypatch.setattr(process.os, "getuid", lambda: someone_else)
+    assert port_holder(port, proc).oscmix is False
+    monkeypatch.setattr(process.os, "getuid", lambda: 0)
+    assert port_holder(port, proc).oscmix is True
+
+
+def test_a_known_client_without_a_readable_client_list_has_no_serial(tmp_path):
+    port = free_udp_port()
+    proc = fake_proc(tmp_path, boxes=[B], bound=[(port, "oscmix", B[0])])
+    (proc / "asound" / "seq" / "clients").unlink()
+    holder = port_holder(port, proc)
+    assert (holder.client, holder.serial) == (B[0], None)
+
+
+def test_a_lock_file_that_cannot_be_regrouped_is_still_a_lock(
+        tmp_path, monkeypatch):
+    """Measured in the unit: fchown to `audio` fails with EINVAL there.
+
+    A sandboxed user service runs in a user namespace that maps only the
+    user's own group. The mode still changes, the lock is still held,
+    and nothing is raised (ADR 0024).
+    """
+    _lock_dir(tmp_path, monkeypatch)
+    others = [g for g in os.getgroups() if g != os.getegid()]
+    if others:
+        os.chown(tmp_path / "locks", -1, others[0])
+
+    def refuse(*_args):
+        raise OSError(errno.EINVAL, "Invalid argument")
+
+    monkeypatch.setattr(profiles.os, "fchown", refuse)
+    umask = os.umask(0o077)
+    try:
+        held = _take("k")
+    finally:
+        os.umask(umask)
+    assert held is not None
+    held.release()
+    assert stat.S_IMODE((tmp_path / "locks" / "k.lock").stat().st_mode) == 0o660
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root opens anything")
+def test_a_refusal_in_a_directory_of_an_unknown_group_still_says_why(
+        tmp_path, monkeypatch, caplog):
+    shared = _lock_dir(tmp_path, monkeypatch)
+    shared.chmod(0o500)
+
+    def unknown(_gid):
+        raise KeyError(_gid)
+
+    monkeypatch.setattr(profiles.grp, "getgrgid", unknown)
+    try:
+        with caplog.at_level("ERROR"):
+            assert _take("k") is None
+    finally:
+        shared.chmod(0o770)
+    assert "belongs to group an unknown group" in caplog.text
