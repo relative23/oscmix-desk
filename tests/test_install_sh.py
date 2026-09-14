@@ -365,3 +365,22 @@ def test_uninstall_of_the_session_s_home_removes_the_system_files(tmp_path):
     calls = log.read_text()
     for var in ("OSCMIX_UDEV_RULE", "OSCMIX_SLEEP_HOOK", "OSCMIX_TMPFILES_CONF"):
         assert "sudo rm -f %s" % env[var] in calls
+
+
+def test_install_warns_a_user_who_is_not_in_audio(tmp_path):
+    """Outside `audio` the lock cannot be taken, and every start refuses."""
+    home, env, _log = make_fake_home(tmp_path)
+    stub = tmp_path / "stub-bin" / "id"
+    stub.write_text('#!/bin/sh\n'
+                    'case "$1" in\n'
+                    '  -un) echo tester ;;\n'
+                    '  -nG) echo "tester users" ;;\n'
+                    '  -u) echo 1000 ;;\n'
+                    '  *) exec /usr/bin/id "$@" ;;\n'
+                    'esac\n')
+    stub.chmod(0o755)
+    session_home_stub(tmp_path, str(home))
+    result = run("install.sh", ["--no-build"], env)
+    assert result.returncode == 0, result.stderr
+    assert "is not in the group audio" in result.stderr
+    assert "usermod -aG audio tester" in result.stderr

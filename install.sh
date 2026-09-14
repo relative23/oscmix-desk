@@ -334,7 +334,9 @@ if [ "$DO_UDEV" = 1 ]; then
         if ! id -nG "$(id -un)" | tr ' ' '\n' | grep -qx audio; then
             warn "$(id -un) is not in the group audio, so it cannot take the"
             warn "device lock and every start and switch will be refused:"
-            warn "  sudo usermod -aG audio $(id -un)   (then log in again)"
+            warn "  sudo usermod -aG audio $(id -un)"
+            warn "then start a new login session (with lingering enabled:"
+            warn "  sudo systemctl restart user@$(id -u))"
         fi
     else
         warn "could not install $TMPFILES_CONF; run these by hand:"

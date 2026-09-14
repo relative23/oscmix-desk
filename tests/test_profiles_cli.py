@@ -42,7 +42,10 @@ def test_a_dry_run_never_switches_or_forgets_a_profile(
     writes = []
     _quick_wire(monkeypatch)
     monkeypatch.setattr(cli, "reload_service", lambda: writes.append("reload"))
-    monkeypatch.setattr(session, "wait_for_seq_client", lambda *a: 42)
+    from oscmix_desk.discovery import Device
+
+    monkeypatch.setattr(session, "wait_for_device",
+                        lambda usb_id, *a: Device(usb_id, "", 42))
     assert cli.main(["--config", str(path), *selection, "--dry-run"]) == EXIT_OK
     out = capsys.readouterr().out
     assert "would run:" in out

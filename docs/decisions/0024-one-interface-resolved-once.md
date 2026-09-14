@@ -47,7 +47,8 @@ local user pre-create a lock file only they could open, or hold one for
 ever. Both ended in refusals for the real desk.
 
 A last sweep before release, asked for so that nothing would surface after
-it, found four more on the same path:
+it, found four more on the same path, and an independent review of the
+result found the rest (below the four):
 
 **The unit could not write the lock directory where its sandbox applies.**
 `ReadWritePaths=` was empty. Ubuntu's user manager silently skips the
@@ -70,20 +71,41 @@ with the first.
 removed the udev rule, resume hook and tmpfiles.d entry that the session's
 own installation depends on; only a sudo that could not prompt kept them.
 
+**From the independent review.** A switch checked the port holder before
+a lock wait of up to 30 s and never after it, so a backend that changed in
+between still received the desk. Any process on the machine whose
+kernel-truncated name was not valid UTF-8 made every switch raise. With
+the card list and the clients gone but a backend alive, a switch without
+`[device] serial` keyed on `unknown` beside the unit's lock. A Fireface of
+another model beside a UCX II made both desks ambiguous, because the card
+list counted every Fireface. A configured serial that was not plugged in,
+beside another box of the model, turned the start into a restart loop. A
+user-space sequencer client could name itself into the selection. A
+serial with letters passed validation and could never match. And the
+start found its client in one read of the machine and its serial in a
+second.
+
 ## Decision
 
 **One resolution.** `discovery.resolve_device` answers, from the config
 and the machine, which interface a desk is for: its serial, its
 sequencer client and its lock key. `[device] serial` selects the client
-whose name carries that number. Without it there must be exactly one
-candidate -- in the sequencer clients, or in the card list when no client
-is up -- and more than one raises DeviceAmbiguous instead of picking. The
-unit exits 2 for it, which `RestartPreventExitStatus=2` keeps from
-looping; a switch and a restore refuse with the same words. The unit
-pins the serial of the client it bound, from the same resolution, so its
-key and a switch's cannot differ.
+whose name carries that number. Without it neither the kernel's
+sequencer clients nor the card list may show more than one interface of
+the configured model -- the card list catches a second box whose client
+is not up yet -- and more than one raises DeviceAmbiguous instead of
+picking. Only clients the kernel created count, so a user-space program
+cannot name itself into the choice, and only the configured model, so a
+Fireface of another model is not a second candidate. The unit exits 2
+for ambiguity, which `RestartPreventExitStatus=2` keeps from looping; a
+switch and a restore refuse with the same words. The start waits for the
+resolved interface itself and binds its client and pins its serial from
+that one answer, so its key and a switch's cannot differ. A configured
+serial the machine does not show is "not connected", the clean no-op
+start, even while another box of the model is plugged in.
 
-**The port has to be held by this interface's backend.** A switch or
+**The port has to be held by this interface's backend, before and after
+the lock.** A switch or
 restore that opens its own socket asks `process.port_holder`: the socket
 inode leads to the holding process, which must be an oscmix of this user
 (any user's, for root), and the alsaseqio beside it -- its child on a
@@ -91,7 +113,13 @@ real desk, where alsaseqio forks and the original process execs oscmix
 -- names the client it bridges. When that client or its serial is known
 and is not the resolved interface, the write is refused. A holder whose
 bridge cannot be followed is accepted on its name alone; that is weaker,
-and it is still a different statement from "something is bound".
+and it is still a different statement from "something is bound". An interface
+without a visible sequencer client is refused outright: no client, no
+backend for it, whatever holds the port. And because the lock wait can
+take 30 s, the whole check runs again once the lock is held, and a
+resolution that changed meanwhile is a refusal too. What remains is the
+milliseconds between that check and the first datagram, which a UDP
+write cannot close.
 
 **No lock, no READY.** `_apply_and_verify` raises DeviceLockUnavailable.
 `run_session` sends READY=1 only after an apply returned, in the same
@@ -125,8 +153,17 @@ owns the directory.
 - The user running the unit must be in `audio`. The installer warns when
   it is not; the refusal names the group.
 - A lock held for longer than the wait makes the unit retry every
-  `RestartSec` plus the wait, loudly, instead of reporting a started
-  desk. Five failures inside `StartLimitIntervalSec` stop the retries.
+  `RestartSec` plus the wait -- about 33 s -- loudly, instead of
+  reporting a started desk. Five of those never fit into
+  `StartLimitIntervalSec=120`, so the retries go on for as long as the
+  lock is held; each one is a line in the journal.
+- `--snapshot`, `--diff` and `--dump-config` only read, and they read
+  whatever backend holds the OSC port. The snapshot's header names the
+  interface that backend bridges, not the one the config resolves to.
+- Without `[device] serial`, a second identical interface that
+  enumerates after the start has bound is not seen by that start. The
+  next switch sees it and refuses; set the serial on a machine that may
+  have two.
 - A switch by one user against another user's running desk is refused:
   `/proc/<pid>/fd` of another user's process cannot be read, so the port
   holder cannot be identified. That is correct -- the config, the marker

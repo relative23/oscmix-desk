@@ -79,13 +79,20 @@ def lifecycle(session_module, monkeypatch):
             ambiguous=False, **args):
         config_fields = config_fields or {}
         monkeypatch.setattr(session_module, "sd_notify", notifications.append)
-        def wait(*a, **k):
-            if ambiguous:
-                from oscmix_desk.errors import DeviceAmbiguous
-                raise DeviceAmbiguous("2 interfaces match 'Fireface UCX II'")
-            return seq_client
+        def wait(usb_id, device_name, serial, timeout, proc_root):
+            from oscmix_desk.discovery import Device, resolve_device
+            from oscmix_desk.errors import DeviceAmbiguous
 
-        monkeypatch.setattr(session_module, "wait_for_seq_client", wait)
+            if ambiguous:
+                raise DeviceAmbiguous("2 interfaces match 'Fireface UCX II'")
+            if seq_client is None:
+                return None
+            # The client is the fixture's; the serial is what the /proc
+            # the test points at shows for it, through the real resolution.
+            found = resolve_device(usb_id, device_name, serial, proc_root)
+            return Device(usb_id=usb_id, serial=found.serial, client=seq_client)
+
+        monkeypatch.setattr(session_module, "wait_for_device", wait)
         monkeypatch.setattr(session_module, "usb_device_present",
                             lambda *a, **k: usb_present)
         monkeypatch.setattr(session_module, "resolve_binary",

@@ -34,7 +34,7 @@ from .discovery import device_firmware, resolve_device
 from .errors import ConfigError, DeviceAmbiguous
 from .log import log
 from .pipewire import generate_pipewire_conf, pw_sink_info
-from .process import RELOAD_DONE, RELOAD_NOT_RUNNING, reload_service
+from .process import RELOAD_DONE, RELOAD_NOT_RUNNING, port_holder, reload_service
 from .profiles import (
     REFUSED,
     Outcome,
@@ -118,16 +118,21 @@ def build_arg_parser() -> ArgumentParser:
 
 
 def _snapshot_serial(config: Config) -> str:
-    """The box a snapshot names in its header, from the one resolution.
+    """The box a snapshot names in its header: the one it read.
 
-    Until 0.6.9 it named the first serial in the card list, which on a
-    machine with two interfaces could be the box the snapshot did not
-    read (ADR 0024).
+    The read goes to whatever backend holds the OSC port, so the header
+    names the interface that backend bridges when that can be followed,
+    and the resolved interface otherwise. In 0.6.9's first form it named
+    the resolved box even when the port belonged to another one's backend
+    (found by review); until 0.6.9, the first serial in the card list.
     """
+    proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
+    holder = port_holder(config.osc_port, proc_root)
+    if holder is not None and holder.serial:
+        return holder.serial
     try:
         device = resolve_device(config.usb_id, config.device_name,
-                                config.serial,
-                                Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
+                                config.serial, proc_root)
     except DeviceAmbiguous:
         return "ambiguous"
     return device.serial or "?"

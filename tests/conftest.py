@@ -118,12 +118,14 @@ def proc_with_ports(directory, *ports):
     """A /proc in which an oscmix of this user holds each of ``ports``.
 
     A test that drives the real CLI without a backend still has to get
-    past the reachability check -- since 0.6.9 that means an oscmix of
-    this user on the port, not merely a bound one (ADR 0024) -- because
+    past the reachability check -- since 0.6.9 that means a visible
+    interface and an oscmix of this user on the port bridging its client,
+    not merely a bound port (ADR 0024) -- because
     it is the outcome-to-exit-code translation it is testing, and
     reachability has tests of its own.
     """
-    return fake_proc(directory, bound=[(port, "oscmix", None) for port in ports])
+    return fake_proc(directory, boxes=[(24, "24216011")],
+                     bound=[(port, "oscmix", 24) for port in ports])
 
 
 def read_until_ready(notify_sock):

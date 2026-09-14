@@ -27,12 +27,12 @@ from .constants import (
     VERIFY_SETTLE,
 )
 from .discovery import (
+    device_serials,
     lock_key,
     resolve_binary,
-    resolve_device,
     udp_port_listening,
     usb_device_present,
-    wait_for_seq_client,
+    wait_for_device,
 )
 from .errors import ConfigError, DeviceAmbiguous, DeviceLockUnavailable
 from .log import log
@@ -330,54 +330,57 @@ def _find_client(args: argparse.Namespace, config: Config, proc_root: Path,
     """The sequencer client of this desk's interface, with its serial pinned.
 
     Returns the client, or None and the exit code the start ends with.
-    `[device] serial` selects the box among identical ones; without it
-    more than one candidate is a configuration error, exit 2, which
-    `RestartPreventExitStatus=2` keeps from becoming a restart loop.
-    Until 0.6.9 the first matching client was bound, so a desk with two
-    identical interfaces configured whichever the kernel enumerated
-    first (ADR 0024).
+    Client and serial come from one resolution: `[device] serial` selects
+    the box among identical ones, and without it more than one candidate
+    is a configuration error, exit 2, which `RestartPreventExitStatus=2`
+    keeps from becoming a restart loop. Until 0.6.9 the first matching
+    client was bound and the serial worked out separately (ADR 0024).
+
+    The serial is pinned because it is read again on every write, and the
+    card list empties the moment the interface is unplugged: a reconcile
+    in that window would otherwise take a different lock (ADR 0023).
     """
     log.info("waiting for %r (ALSA sequencer, timeout %.0fs)",
              config.device_name, args.timeout)
     try:
-        client = wait_for_seq_client(config.device_name, args.timeout,
-                                     proc_root, config.serial)
-        if client is not None:
-            _pin_the_serial(config, proc_root)
+        device = wait_for_device(config.usb_id, config.device_name,
+                                 config.serial, args.timeout, proc_root)
     except DeviceAmbiguous as exc:
         log.error("%s -- set [device] serial to the number on the box", exc)
         return None, EXIT_CONFIG
-    if client is None:
-        if not usb_device_present(config.usb_id, sysfs_usb):
-            log.info("device %s not connected; nothing to do", config.usb_id)
-            sd_notify("READY=1")  # Type=notify: a clean no-op start
-            return None, EXIT_OK
-        log.error(
-            "USB device %s is connected but no ALSA sequencer client named %r%s "
-            "appeared within %.0fs -- is snd-usb-audio loaded?",
-            config.usb_id, config.device_name,
-            " with serial %s" % config.serial if config.serial else "",
-            args.timeout,
-        )
-        return None, EXIT_FAILURE
-    log.info("found %r as ALSA sequencer client %d", config.device_name, client)
-    return client, EXIT_OK
+    if device is None:
+        return None, _no_client(args, config, proc_root, sysfs_usb)
+    config.serial = device.serial
+    log.info("found %r as ALSA sequencer client %d", config.device_name,
+             device.client)
+    return device.client, EXIT_OK
 
 
-def _pin_the_serial(config: Config, proc_root: Path) -> None:
-    """Fix the device key for the life of this process.
+def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
+               sysfs_usb: Path) -> int:
+    """The exit code for a start whose interface never showed a client.
 
-    The key names the interface this process is bound to, from the same
-    resolution a switch uses, so the two cannot name different boxes --
-    in 0.6.8 the unit pinned the first serial in the card list while a
-    switch keyed on `ambiguous`, two lock files over one desk. Pinned
-    because the card list empties the moment the interface is unplugged,
-    and a reconcile in that window would otherwise take a different lock
-    (ADR 0023, ADR 0024). A configured serial is already the answer.
+    Not connected is the clean no-op it has always been. That includes a
+    configured serial the machine does not show while another box of the
+    model is plugged in: USB presence alone said "connected" there, and the
+    start failed and was restarted for ever (found by review, 0.6.9).
     """
-    if not config.serial:
-        config.serial = resolve_device(config.usb_id, config.device_name,
-                                       "", proc_root).serial
+    absent = not usb_device_present(config.usb_id, sysfs_usb) or (
+        bool(config.serial) and config.serial not in device_serials(
+            proc_root / "asound" / "cards", config.device_name))
+    if absent:
+        log.info("device %s%s not connected; nothing to do", config.usb_id,
+                 " with serial %s" % config.serial if config.serial else "")
+        sd_notify("READY=1")  # Type=notify: a clean no-op start
+        return EXIT_OK
+    log.error(
+        "USB device %s is connected but no ALSA sequencer client named %r%s "
+        "appeared within %.0fs -- is snd-usb-audio loaded?",
+        config.usb_id, config.device_name,
+        " with serial %s" % config.serial if config.serial else "",
+        args.timeout,
+    )
+    return EXIT_FAILURE
 
 
 def run_session(args: argparse.Namespace, config: Config) -> int:

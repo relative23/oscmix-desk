@@ -384,10 +384,13 @@ def _dispatch(parser: "configparser.ConfigParser", config: "Config",
             config.usb_id = usb_id.lower()
             serial = parser.get(section, "serial",
                                 fallback=config.serial).strip()
-            if serial and not re.fullmatch(r"[0-9A-Za-z]+", serial):
+            # Digits, as RME prints them and as the sequencer client name
+            # carries them: a serial the selection can never match would
+            # only turn into a start that waits and fails (0.6.9).
+            if serial and not re.fullmatch(r"\d{4,}", serial):
                 raise ConfigError(
                     "[device] serial: expected the number printed on the "
-                    "box, got %r" % serial
+                    "box (digits only), got %r" % serial
                 )
             config.serial = serial
         elif section == "osc":

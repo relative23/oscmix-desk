@@ -473,8 +473,11 @@ def test_a_lock_file_that_cannot_be_regrouped_is_still_a_lock(
     """
     _lock_dir(tmp_path, monkeypatch)
     others = [g for g in os.getgroups() if g != os.getegid()]
-    if others:
-        os.chown(tmp_path / "locks", -1, others[0])
+    if not others:
+        # With one group the directory's group is the file's already, so
+        # fchown is never reached and this would pass for no reason.
+        pytest.skip("the test user belongs to one group only")
+    os.chown(tmp_path / "locks", -1, others[0])
 
     def refuse(*_args):
         raise OSError(errno.EINVAL, "Invalid argument")
@@ -569,3 +572,173 @@ def test_hardware_evidence_refuses_to_name_one_of_two_boxes(tmp_path,
     with pytest.raises(DeviceAmbiguous):
         tool.device_serial(Config())
     assert tool.device_serial(Config(serial=B[1])) == B[1]
+
+
+# --------------------------------------------------------------------------
+# What an independent review of this release found before it shipped.
+# --------------------------------------------------------------------------
+
+def _add_clients(proc, text):
+    clients = proc / "asound" / "seq" / "clients"
+    clients.write_bytes(clients.read_bytes() + text)
+
+
+def test_a_backend_that_changes_during_the_lock_wait_is_refused_after_it(
+        tmp_path, monkeypatch, recording_backend):
+    """Checked before a 30 s wait and never again, the switch wrote anyway."""
+    port = free_udp_port()
+    proc = fake_proc(tmp_path / "proc", boxes=[A, B],
+                     bound=[(port, "oscmix", B[0])])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    _lock_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 5.0)
+    path = _desk(tmp_path, port, serial=B[1])
+    wired = []
+    monkeypatch.setattr(profiles, "loopback",
+                        lambda send, recv: wired.append(send) or recording_backend)
+    held = profiles.take_device_lock(None, KEY_B)
+    assert held is not None
+
+    def backend_swapped_then_lock_released():
+        bridge = next(p for p in proc.iterdir() if p.name.isdigit()
+                      and (p / "comm").read_text().strip() == "alsaseqio")
+        (bridge / "cmdline").write_bytes(b"alsaseqio\x0024:1\x00oscmix\x00")
+        held.release()
+
+    threading.Timer(0.3, backend_swapped_then_lock_released).start()
+    outcome = profiles.switch_profile("b", config_path=path, verify=False)
+    assert outcome.state == profiles.REFUSED
+    assert outcome.reason == ("the backend on UDP %d drives the interface "
+                              "%s, not %s" % (port, A[1], B[1]))
+    assert wired == []
+    assert recording_backend.sent == []
+    assert not profiles.active_profile_path(path).exists()
+
+
+def test_names_that_are_not_utf8_do_not_break_a_switch(tmp_path, monkeypatch,
+                                                        recording_backend):
+    """The kernel cuts comm at 15 bytes, and user space names its clients."""
+    port = free_udp_port()
+    proc = fake_proc(tmp_path / "proc", boxes=[B], bound=[(port, "oscmix", B[0])])
+    odd = proc / "45000"
+    (odd / "fd").mkdir(parents=True)
+    (odd / "comm").write_bytes(b"abc\xce\n")
+    (odd / "stat").write_bytes(b"45000 (abc\xce) S 1 0 0\n")
+    (odd / "cmdline").write_bytes(b"")
+    _add_clients(proc, b'Client 130 : "\xff\xfe" [User Legacy]\n')
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    _lock_dir(tmp_path, monkeypatch)
+    path = _desk(tmp_path, port, serial=B[1])
+    monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
+    assert profiles.switch_profile("b", config_path=path, verify=False).applied
+
+
+def test_a_backend_left_without_its_interface_is_not_written_to(
+        tmp_path, monkeypatch, recording_backend):
+    """No card, no client, an oscmix still on the port, no serial configured.
+
+    The serial comparisons had nothing to compare, and the switch keyed on
+    `2a39-3fd9-unknown` beside the unit's own lock.
+    """
+    port = free_udp_port()
+    proc = fake_proc(tmp_path / "proc", bound=[(port, "oscmix", B[0])])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    _lock_dir(tmp_path, monkeypatch)
+    path = _desk(tmp_path, port)
+    keys = []
+    _record_keys(monkeypatch, profiles, keys)
+    monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
+    outcome = profiles.switch_profile("b", config_path=path, verify=False)
+    assert outcome.state == profiles.REFUSED
+    assert outcome.reason == ("2a39:3fd9 is not visible to ALSA, so no backend "
+                              "can be driving it")
+    assert keys == []
+
+
+def test_a_fireface_of_another_model_is_not_a_second_candidate(tmp_path):
+    """Counting every Fireface line made a UCX II beside an 802 ambiguous."""
+    proc = fake_proc(tmp_path, boxes=[A])
+    cards = proc / "asound" / "cards"
+    cards.write_text(cards.read_text()
+                     + " 5 [Fireface802 ]: USB-Audio - Fireface 802 (23456789)\n")
+    _add_clients(proc, b'Client  32 : "Fireface 802 (23456789)" [Kernel Legacy]\n')
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc) == \
+        Device(usb_id="2a39:3fd9", serial=A[1], client=A[0])
+
+
+def test_a_second_box_still_enumerating_is_not_ignored(tmp_path):
+    """Its card is listed, its client is not up yet: not a choice either."""
+    proc = fake_proc(tmp_path, boxes=[A, B])
+    (proc / "asound" / "seq" / "clients").write_text(
+        'Client  24 : "Fireface UCX II (24216011)" [Kernel Legacy]\n')
+    with pytest.raises(DeviceAmbiguous):
+        resolve_device("2a39:3fd9", "Fireface UCX II", "", proc)
+
+
+def test_a_user_space_client_cannot_pose_as_the_interface(tmp_path):
+    proc = fake_proc(tmp_path, boxes=[A])
+    _add_clients(proc, b'Client 129 : "Fireface UCX II (99887766)" [User Legacy]\n')
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc) == \
+        Device(usb_id="2a39:3fd9", serial=A[1], client=A[0])
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", B[1], proc).client \
+        is None
+
+
+def test_a_configured_box_that_is_not_plugged_in_is_a_clean_no_op(
+        tmp_path, monkeypatch):
+    """Another box of the model made USB presence say "connected".
+
+    The start then failed after its wait and was restarted for ever.
+    """
+    proc = fake_proc(tmp_path / "proc", boxes=[A])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    _lock_dir(tmp_path, monkeypatch)
+    path = _desk(tmp_path, free_udp_port(), serial=B[1])
+    started = []
+    code, _unit, notified = _run_the_unit(tmp_path, monkeypatch, path,
+                                          started, [])
+    assert code == session_module.EXIT_OK
+    assert notified == ["READY=1"]
+    assert started == []
+
+
+def test_a_serial_with_letters_is_a_config_error(tmp_path):
+    """It passed validation and could never be matched by the selection."""
+    from oscmix_desk.errors import ConfigError
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[device]\nserial = ABC123\n" + DESK)
+    with pytest.raises(ConfigError, match="digits only"):
+        profiles.load_config(path)
+
+
+def test_a_snapshot_names_the_box_its_backend_drives(tmp_path, monkeypatch):
+    from oscmix_desk import Config, cli
+
+    port = free_udp_port()
+    proc = fake_proc(tmp_path, boxes=[A, B], bound=[(port, "oscmix", A[0])])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    assert cli._snapshot_serial(Config(serial=B[1], osc_port=port)) == A[1]
+
+
+def test_the_sweep_refuses_two_boxes_before_it_takes_anything(monkeypatch,
+                                                              capsys):
+    import importlib.util
+    import sys
+
+    spec = importlib.util.spec_from_file_location(
+        "sweep_writes_identity", repo_file("scripts", "sweep-writes.py"))
+    sweep = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sweep)
+
+    def ambiguous(*_args):
+        raise DeviceAmbiguous("2 interfaces match 'Fireface UCX II'")
+
+    taken = []
+    monkeypatch.setattr(sweep, "resolve_device", ambiguous)
+    monkeypatch.setattr(sweep, "take_device_lock",
+                        lambda *a, **k: taken.append(a))
+    monkeypatch.setattr(sys, "argv", ["sweep-writes.py"])
+    assert sweep.main() == 1
+    assert taken == []
+    assert "the sweep supports one interface" in capsys.readouterr().err

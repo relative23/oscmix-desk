@@ -40,7 +40,7 @@ def find_stale_backends(proc_root: Path) -> List[int]:
         if not owned:
             continue
         try:
-            comm = (entry / "comm").read_text().strip()
+            comm = (entry / "comm").read_text(errors="replace").strip()
         except OSError:
             comm = ""
         try:
@@ -127,7 +127,10 @@ def _is_oscmix_of_this_user(entry: Path) -> bool:
     try:
         if uid != 0 and entry.stat().st_uid != uid:
             return False
-        comm = (entry / "comm").read_text().strip()
+        # errors="replace": the kernel cuts comm at 15 bytes, which can
+        # split a multibyte character, and any process on the machine is
+        # read here -- a strict decode raised out of every switch (0.6.9).
+        comm = (entry / "comm").read_text(errors="replace").strip()
         argv0 = (entry / "cmdline").read_bytes().split(b"\0")[0]
     except OSError:
         return False
@@ -179,7 +182,8 @@ def _parent_of(entry: Path, proc_root: Path) -> List[Path]:
 def _ppid(entry: Path) -> Optional[str]:
     """Field four of /proc/<pid>/stat, read past the parenthesised comm."""
     try:
-        return (entry / "stat").read_text().rsplit(")", 1)[1].split()[1]
+        return (entry / "stat").read_text(errors="replace").rsplit(
+            ")", 1)[1].split()[1]
     except (OSError, IndexError):
         return None
 
@@ -188,7 +192,8 @@ def _client_serial(client: Optional[int], proc_root: Path) -> Optional[str]:
     if client is None:
         return None
     try:
-        text = (proc_root / "asound" / "seq" / "clients").read_text()
+        text = (proc_root / "asound" / "seq" / "clients").read_text(
+            errors="replace")
     except OSError:
         return None
     name = dict(parse_seq_clients(text)).get(client)

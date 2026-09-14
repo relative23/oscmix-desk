@@ -125,8 +125,9 @@ cannot open the device lock at /run/oscmix-desk/2a39-3fd9-24216011.lock:
   Permission denied; /run/oscmix-desk belongs to group audio
 ```
 
-The user is not in `audio`: `sudo usermod -aG audio $USER`, then log in
-again. `/run/oscmix-desk is read-only for this process` comes from a unit
+The user is not in `audio`: `sudo usermod -aG audio $USER`, then start a
+new login session -- or, where the user manager outlives logins
+(lingering), `sudo systemctl restart user@$(id -u)`. `/run/oscmix-desk is read-only for this process` comes from a unit
 whose sandbox applies and whose `ReadWritePaths` does not name the
 directory -- an edited or outdated `oscmix.service`; reinstall it. `it is a symbolic link` or `it is not a regular file` means
 something other than a lock sits at that path; it is not this user's to
@@ -139,7 +140,8 @@ remove, and a reboot clears `/run`.
 
 Set `serial` under `[device]` to the number printed on the box -- the
 same number that appears in brackets here. The service exits with code 2
-for this and is not restarted until the config changes.
+for this, and systemd does not restart it on its own; a replug or the
+next login starts it again, and it exits 2 again until the serial is set.
 
 ```
 the backend on UDP 7222 drives the interface 24216011, not 99887766

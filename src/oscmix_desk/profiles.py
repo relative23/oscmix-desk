@@ -372,6 +372,25 @@ def _target(config: Config, reach: bool) -> Device:
     return device
 
 
+def _still_the_target(config: Config, target: Device) -> Optional[str]:
+    """Why a write must not go ahead after the lock wait, or None.
+
+    The wait can take 30 s, and the backend on the port can change in
+    that time: checked only before it, a switch wrote to whatever held the
+    port afterwards and recorded the marker (found by review, 0.6.9). A
+    window of milliseconds remains between this and the first datagram;
+    it is the one a UDP write cannot close.
+    """
+    try:
+        now = _target(config, reach=True)
+    except _Refused as refusal:
+        return str(refusal)
+    if now.key != target.key:
+        return ("the interface changed while waiting for the device lock "
+                "(%s, now %s)" % (target.key, now.key))
+    return None
+
+
 def _unreachable(config: Config, device: Device) -> Optional[str]:
     """Why a write would not reach this interface, or None when it would.
 
@@ -390,6 +409,16 @@ def _unreachable(config: Config, device: Device) -> Optional[str]:
     sysfs = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
     if not usb_device_present(config.usb_id, sysfs):
         return "%s is not connected" % config.usb_id
+    if device.client is None:
+        # The backend bridges a sequencer client; no client, no backend for
+        # this box -- whatever holds the port. Checked here and not only by
+        # the serial comparison below, which has nothing to compare once
+        # the card list and the clients are gone: in that state a switch
+        # keyed on `<usb id>-unknown` and wrote beside the unit's lock
+        # (found by review, 0.6.9).
+        return ("%s%s is not visible to ALSA, so no backend can be driving it"
+                % (config.usb_id,
+                   " with serial %s" % device.serial if device.serial else ""))
     port = config.osc_port
     if not udp_port_listening(port, _proc_root()):
         return ("nothing is listening on UDP %d, so the backend is not "
@@ -757,6 +786,9 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
     with _switch_lock(config_path, target.key) as held:
         if not held:
             return _refused_for_the_lock(name)
+        changed = _still_the_target(config, target) if backend is None else None
+        if changed is not None:
+            return _refused_for_the_device(name, changed)
         device = backend if backend is not None else loopback(
             config.osc_port, config.osc_recv_port)
         _write(config, device)
@@ -801,6 +833,9 @@ def restore_main(config_path: Optional[Path] = None,
     with _switch_lock(config_path, target.key) as held:
         if not held:
             return _refused_for_the_lock("routing.conf")
+        changed = _still_the_target(config, target) if backend is None else None
+        if changed is not None:
+            return _refused_for_the_device("routing.conf", changed)
         device = backend if backend is not None else loopback(
             config.osc_port, config.osc_recv_port)
         _write(config, device)

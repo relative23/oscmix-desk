@@ -40,6 +40,13 @@ def serial_in(name: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
+#: A client the kernel created for a card. A user-space program may name
+#: its own client anything, "Fireface UCX II (24216011)" included, and
+#: must not be able to make a desk ambiguous or bind it (ADR 0024).
+_KERNEL_CLIENT_RE = re.compile(r'^Client\s+(\d+)\s*:\s*"(.*)"\s*\[Kernel',
+                               re.MULTILINE)
+
+
 def select_seq_client(text: str, device_name: str,
                       serial: str = "") -> Optional[int]:
     """The one sequencer client this desk is for, or None if it is not there.
@@ -50,7 +57,8 @@ def select_seq_client(text: str, device_name: str,
     it would configure an arbitrary box while its lock named another.
     DeviceAmbiguous says so and names the remedy (ADR 0024).
     """
-    matches = [(number, name) for number, name in parse_seq_clients(text)
+    matches = [(int(number), name)
+               for number, name in _KERNEL_CLIENT_RE.findall(text)
                if device_name in name
                and (not serial or serial_in(name) == serial)]
     if len(matches) > 1:
@@ -77,8 +85,8 @@ def wait_for_seq_client(device_name: str, timeout: float,
     deadline = time.monotonic() + timeout
     while True:
         if clients_file.is_file():
-            client = select_seq_client(clients_file.read_text(), device_name,
-                                       serial)
+            client = select_seq_client(
+                clients_file.read_text(errors="replace"), device_name, serial)
             if client is not None:
                 return client
         else:
@@ -216,31 +224,58 @@ def resolve_device(usb_id: str, device_name: str, serial: str,
     """Which interface a desk is for, from its config and the machine.
 
     ``serial`` from `[device] serial` names the box outright. Without it
-    there must be exactly one candidate -- in the sequencer clients if
-    any are up, in the card list otherwise -- and more than one raises
-    DeviceAmbiguous rather than picking. The serial comes from the
-    client the desk would bind, falling back to the card list only when
-    no client is up, so a process and its lock describe the same box.
+    neither the kernel's sequencer clients nor the card list may show more
+    than one interface matching ``device_name``: the card list catches a
+    second box whose client is not up yet, which the clients alone would
+    miss while two interfaces enumerate one after the other. More than one
+    raises DeviceAmbiguous rather than picking. Both lists are matched on
+    the model name, so a Fireface of another model beside it is not a
+    second candidate (ADR 0024).
+
+    The serial comes from the client this desk binds, and from the card
+    list only when no client is up, so a process and its lock describe the
+    same box. One read of each file per call.
     """
-    clients_file = proc_root / "asound" / "seq" / "clients"
     try:
-        text = clients_file.read_text()
+        text = (proc_root / "asound" / "seq" / "clients").read_text(
+            errors="replace")
     except OSError:
         text = ""
     client = select_seq_client(text, device_name, serial)
-    cards = device_serials(proc_root / "asound" / "cards")
+    cards = device_serials(proc_root / "asound" / "cards", device_name)
     if not serial and len(cards) > 1:
         raise DeviceAmbiguous(
-            "%d Fireface interfaces are connected (%s) and [device] serial "
-            "does not say which one this desk is for"
-            % (len(cards), ", ".join(cards)))
+            "%d interfaces match %r (%s) and [device] serial does not say "
+            "which one this desk is for" % (len(cards), device_name,
+                                            ", ".join(cards)))
     if not serial and client is not None:
-        name = dict(parse_seq_clients(text))[client]
+        name = {int(n): s for n, s in _KERNEL_CLIENT_RE.findall(text)}[client]
         serial = serial_in(name) or ""
     if not serial and len(cards) == 1:
         serial = cards[0]
     return Device(usb_id=usb_id, serial=serial, client=client)
 
+
+def wait_for_device(usb_id: str, device_name: str, serial: str,
+                    timeout: float, proc_root: Path) -> Optional[Device]:
+    """The resolved interface once its sequencer client is up, or None.
+
+    The start binds the client and pins the serial from the same
+    resolution, read once per poll, rather than finding a client and then
+    working out the serial from a second look at the machine (ADR 0024).
+    """
+    clients_file = proc_root / "asound" / "seq" / "clients"
+    deadline = time.monotonic() + timeout
+    while True:
+        if clients_file.is_file():
+            device = resolve_device(usb_id, device_name, serial, proc_root)
+            if device.client is not None:
+                return device
+        else:
+            _trigger_snd_seq_load()
+        if time.monotonic() >= deadline:
+            return None
+        time.sleep(1.0)
 
 def udp_socket_inodes(port: int, proc_root: Path) -> Set[str]:
     """Inode numbers of the UDP sockets bound to ``port``.
@@ -302,8 +337,13 @@ def resolve_binary(name: str, env_var: str) -> Optional[str]:
     return None
 
 
-def device_serials(cards: Path = Path("/proc/asound/cards")) -> List[str]:
-    """Every Fireface serial the ALSA card list shows, in card order.
+def device_serials(cards: Path = Path("/proc/asound/cards"),
+                   device_name: str = "Fireface") -> List[str]:
+    """Every serial the ALSA card list shows for ``device_name``, in order.
+
+    Matched on the model name, so a Fireface 802 beside a UCX II is not a
+    second UCX II -- counting every "Fireface" line made that machine
+    ambiguous for either desk (found by review, 0.6.9).
 
     More than one means the machine has more than one box, and nothing
     in the card list says which of them a given process is driving.
@@ -312,12 +352,12 @@ def device_serials(cards: Path = Path("/proc/asound/cards")) -> List[str]:
     first box while a switch keyed on another name (ADR 0024).
     """
     try:
-        text = cards.read_text()
+        text = cards.read_text(errors="replace")
     except OSError:
         return []
     found = []
     for line in text.splitlines():
-        if "Fireface" not in line:
+        if device_name not in line:
             continue
         match = _SERIAL_RE.search(line)
         # Distinct serials, not matching lines. A card takes two lines in

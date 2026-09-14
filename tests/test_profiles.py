@@ -1291,11 +1291,11 @@ def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, monkeypatch):
     (sysfs / "5-2" / "idVendor").write_text("2a39\n")
     (sysfs / "5-2" / "idProduct").write_text("3fd9\n")
     monkeypatch.setenv("OSCMIX_SYSFS_USB", str(sysfs))
-    # A /proc where nothing is bound: the interface is there, the
-    # backend is not.
-    proc = tmp_path / "proc"
-    (proc / "net").mkdir(parents=True)
-    (proc / "net" / "udp").write_text("  sl  local_address rem_address\n")
+    # A /proc where the interface is visible to ALSA and nothing is bound:
+    # the interface is there, the backend is not.
+    from conftest import fake_proc
+
+    proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
     path = _desk(tmp_path, tracking=TRACKING)
     outcome = profiles.switch_profile("tracking", config_path=path)
