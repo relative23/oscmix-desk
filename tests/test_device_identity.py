@@ -846,3 +846,202 @@ def test_a_client_listed_before_its_card_waits_for_the_card(tmp_path):
     cards.write_text(listed)
     assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc).client \
         == A[0]
+
+
+# --------------------------------------------------------------------------
+# What the mutation run of this release left unobserved.
+# --------------------------------------------------------------------------
+
+def test_the_serial_comes_from_the_client_when_the_card_list_is_unreadable(
+        tmp_path):
+    proc = fake_proc(tmp_path, boxes=[B])
+    (proc / "asound" / "cards").unlink()
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc) == \
+        Device(usb_id="2a39:3fd9", serial=B[1], client=B[0])
+
+
+def test_waiting_returns_the_device_once_its_client_comes_up(tmp_path):
+    from oscmix_desk.discovery import wait_for_device
+
+    proc = fake_proc(tmp_path, boxes=[B])
+    clients = proc / "asound" / "seq" / "clients"
+    listed = clients.read_text()
+    clients.write_text("")
+    threading.Timer(0.3, lambda: clients.write_text(listed)).start()
+    assert wait_for_device("2a39:3fd9", "Fireface UCX II", "", 5.0, proc) == \
+        Device(usb_id="2a39:3fd9", serial=B[1], client=B[0])
+
+
+def test_a_card_list_that_is_not_utf8_is_still_read(tmp_path):
+    from oscmix_desk.discovery import card_products
+
+    cards = tmp_path / "cards"
+    cards.write_bytes(b" 0 [X ]: HDA-Intel - HDA \xff\xfe\n"
+                      b" 2 [II24216011 ]: USB-Audio - Fireface UCX II (24216011)\n")
+    assert card_products(cards)[1] == "Fireface UCX II (24216011)"
+
+
+def _holder(tmp_path, comm, argv, children=(), stat_comm=None):
+    """A /proc with one UDP holder whose comm, argv and children we choose."""
+    port = free_udp_port()
+    proc = fake_proc(tmp_path, boxes=[B], bound=[(port, "oscmix", None)])
+    entry = next(p for p in proc.iterdir() if p.name.isdigit())
+    (entry / "comm").write_bytes(comm)
+    (entry / "cmdline").write_bytes(argv)
+    for pid, child_stat, child_argv in children:
+        child = proc / str(pid)
+        (child / "fd").mkdir(parents=True)
+        if child_stat is not None:
+            (child / "stat").write_bytes(child_stat % entry.name.encode())
+        if child_argv is not None:
+            (child / "cmdline").write_bytes(child_argv)
+    return port, proc
+
+
+def test_an_oscmix_is_known_by_its_name_or_by_its_program(tmp_path):
+    by_program = _holder(tmp_path / "a", b"osc-renamed\n",
+                         b"/home/u/.local/bin/oscmix\x00-r\x00udp\x00")
+    by_name = _holder(tmp_path / "b", b"oscmix\n", b"/usr/bin/python3\x00x\x00")
+    neither = _holder(tmp_path / "c", b"python3\n", b"/usr/bin/python3\x00x\x00")
+    assert port_holder(*by_program).oscmix is True
+    assert port_holder(*by_name).oscmix is True
+    assert port_holder(*neither).oscmix is False
+
+
+def test_an_unreadable_or_undecodable_holder_is_not_an_oscmix(tmp_path):
+    port, proc = _holder(tmp_path / "a", b"oscmix\n", b"oscmix\x00")
+    entry = next(p for p in proc.iterdir() if p.name.isdigit())
+    (entry / "comm").unlink()
+    assert port_holder(port, proc).oscmix is False
+    odd = _holder(tmp_path / "b", b"\xff\xfe\n", b"/x/\xffoscmix\x00")
+    assert port_holder(*odd).oscmix is False
+
+
+def test_the_bridge_is_found_past_an_unreadable_sibling_and_a_bracket_in_a_name(
+        tmp_path):
+    port, proc = _holder(
+        tmp_path, b"oscmix\n", b"oscmix\x00",
+        children=[
+            (39999, b"39999 (gone) S %s 0 0\n", None),         # no cmdline
+            (40005, b"40005 (als)aseqio) S %s 0 0\n",
+             b"alsaseqio\x0028:1\x00oscmix\x00"),
+        ])
+    holder = port_holder(port, proc)
+    assert (holder.client, holder.serial) == (B[0], B[1])
+
+
+def test_a_start_with_no_client_reads_the_real_usb_presence(tmp_path,
+                                                             monkeypatch):
+    """The start's no-client path, with sysfs as it is, not a stand-in."""
+    import argparse
+
+    from oscmix_desk import Config
+
+    monkeypatch.setattr(session_module, "wait_for_device", lambda *a: None)
+    monkeypatch.setattr(session_module, "sd_notify", lambda message: None)
+    proc = fake_proc(tmp_path / "proc")
+    args = argparse.Namespace(timeout=0.1)
+    empty = tmp_path / "no-usb"
+    empty.mkdir()
+    assert session_module._find_client(args, Config(), proc, empty) == \
+        (None, session_module.EXIT_OK)
+    present = tmp_path / "usb"
+    (present / "5-2").mkdir(parents=True)
+    (present / "5-2" / "idVendor").write_text("2a39\n")
+    (present / "5-2" / "idProduct").write_text("3fd9\n")
+    assert session_module._find_client(args, Config(), proc, present) == \
+        (None, session_module.EXIT_FAILURE)
+
+
+def test_a_restore_also_checks_again_after_the_lock_wait(
+        tmp_path, monkeypatch, recording_backend):
+    port = free_udp_port()
+    proc = fake_proc(tmp_path / "proc", boxes=[A, B],
+                     bound=[(port, "oscmix", B[0])])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    _lock_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 5.0)
+    path = _desk(tmp_path, port, serial=B[1])
+    monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
+    held = profiles.take_device_lock(None, KEY_B)
+
+    def swapped_then_released():
+        bridge = next(p for p in proc.iterdir() if p.name.isdigit()
+                      and (p / "comm").read_text().strip() == "alsaseqio")
+        (bridge / "cmdline").write_bytes(b"alsaseqio\x0024:1\x00oscmix\x00")
+        held.release()
+
+    threading.Timer(0.3, swapped_then_released).start()
+    outcome = profiles.restore_main(config_path=path, verify=False)
+    assert outcome.state == profiles.REFUSED
+    assert outcome.name == "routing.conf"
+    assert outcome.reason == ("the backend on UDP %d drives the interface "
+                              "%s, not %s" % (port, A[1], B[1]))
+    assert recording_backend.sent == []
+
+
+def test_the_switch_refusal_after_the_wait_names_the_profile(
+        tmp_path, monkeypatch, recording_backend):
+    port = free_udp_port()
+    proc = fake_proc(tmp_path / "proc", boxes=[B], bound=[(port, "oscmix", B[0])])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    _lock_dir(tmp_path, monkeypatch)
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 5.0)
+    path = _desk(tmp_path, port, serial=B[1])
+    held = profiles.take_device_lock(None, KEY_B)
+
+    def backend_gone_then_released():
+        (proc / "net" / "udp").write_text("  sl  local_address\n")
+        held.release()
+
+    threading.Timer(0.3, backend_gone_then_released).start()
+    outcome = profiles.switch_profile("b", config_path=path, verify=False)
+    assert (outcome.state, outcome.name) == (profiles.REFUSED, "b")
+    assert "nothing is listening on UDP" in outcome.reason
+
+
+def test_a_restore_that_cannot_reach_its_interface_takes_no_lock(
+        tmp_path, monkeypatch, recording_backend):
+    port = free_udp_port()
+    monkeypatch.setenv("OSCMIX_PROC_ROOT",
+                       str(fake_proc(tmp_path / "proc", bound=[(port, "oscmix", 28)])))
+    _lock_dir(tmp_path, monkeypatch)
+    keys = []
+    _record_keys(monkeypatch, profiles, keys)
+    outcome = profiles.restore_main(config_path=_desk(tmp_path, port),
+                                    verify=False)
+    assert outcome.state == profiles.REFUSED
+    assert keys == [], "refused before the lock, like a bad config"
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root searches anything")
+def test_a_lock_directory_that_cannot_be_searched_says_permission_and_group(
+        tmp_path, monkeypatch, caplog):
+    """What a user outside `audio` sees for /run/oscmix-desk (measured)."""
+    shared = _lock_dir(tmp_path, monkeypatch)
+    shared.chmod(0o600)                 # readable, not searchable
+    try:
+        with caplog.at_level("ERROR"):
+            assert _take("k") is None
+    finally:
+        shared.chmod(0o770)
+    record = next(r.getMessage() for r in caplog.records
+                  if "cannot open the device lock" in r.getMessage())
+    assert record.endswith(": Permission denied; %s belongs to group %s"
+                           % (shared, profiles._group_of(shared)))
+
+
+def test_a_snapshot_reads_the_real_proc_by_default(monkeypatch):
+    from pathlib import Path
+
+    from oscmix_desk import Config, cli
+
+    seen = []
+    monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
+    monkeypatch.setattr(cli, "port_holder",
+                        lambda port, proc: seen.append(proc) or None)
+    monkeypatch.setattr(cli, "resolve_device",
+                        lambda usb, name, serial, proc: seen.append(proc)
+                        or Device(usb, B[1], B[0]))
+    assert cli._snapshot_serial(Config()) == B[1]
+    assert seen == [Path("/proc"), Path("/proc")]
