@@ -88,7 +88,19 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.6)
+## Where we are (0.6.7)
+
+**0.6.7 (2026-09-14)** is what a sixth outside review of 0.6.6 led to,
+and it is mostly about what the lock actually promised. It is keyed by
+the interface now, `<usb id>-<serial>` in `$XDG_RUNTIME_DIR/oscmix-desk/`
+rather than one file per config directory, so two desks over one device
+contend as they must; and a writer that cannot hold it no longer writes,
+where the start used to apply anyway and make the whole guarantee
+conditional on nothing going wrong (ADR 0022). Two defects in the start
+path went with it: a bound port counted as readiness even when its owner
+could not be resolved, and a backend that exited before binding still
+collected READY through the exit mapping. The pin does not move; the
+register table has no new row.
 
 **0.6.6 (2026-09-13)** is what a fifth outside review of 0.6.5 led to.
 The lock serialised the writes but not the decision of what to write,

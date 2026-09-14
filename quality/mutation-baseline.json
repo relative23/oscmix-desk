@@ -254,31 +254,53 @@
     "Four functions were re-judged by name afterwards with",
     "mutmut-stats.json cleared: their tests were written after the full",
     "run had taken its copy of the tree, and a function whose tests are",
+    "newer than the run has survivors that are fiction.",
+    "",
+    "0.6.7 (2026-09-14): 0.740 -> 0.741 on 5878 -> 5956 mutants, for what",
+    "a sixth outside review found: a lock keyed by the interface rather",
+    "than by a config directory, and refused rather than skipped when it",
+    "cannot be held (ADR 0022); a bound port that counts only when its",
+    "owner is this backend; and a backend that exits before binding no",
+    "longer collecting READY through the exit mapping.",
+    "",
+    "What survives in the new code is message text and equivalents. The",
+    "lock path argument is one of them: with a runtime directory present",
+    "device_lock_path ignores the config path, so take_device_lock(None,",
+    "key) is the same call. In udp_socket_inodes a field that holds one",
+    "colon splits the same from either end, and the header is skipped by",
+    "slicing rather than by the guard, so that guard's continue only ever",
+    "sees a mangled line -- as do the two in socket_owner, where a",
+    "directory that cannot be read would have to sort before the owner to",
+    "be told from a break.",
+    "",
+    "Five functions were re-judged by name afterwards with",
+    "mutmut-stats.json cleared: their tests were written after the full",
+    "run had taken its copy of the tree, and a function whose tests are",
     "newer than the run has survivors that are fiction."
   ],
   "measured": {
+    "total": 5956,
+    "killed": 4406,
+    "survived": 1539,
+    "not_covered": 0,
+    "timeout": 11,
+    "score": 0.741,
+    "run_minutes": 119,
+    "cache": "cleared before the full run; five functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
+    "scope": "register table exempt (ADR 0015)",
+    "note": [
+      "The 0.6.7 release measurement."
+    ]
+  },
+  "previous": {
+    "recorded": "2026-09-13",
     "total": 5878,
     "killed": 4339,
     "survived": 1528,
     "not_covered": 0,
-    "timeout": 11,
     "score": 0.74,
-    "run_minutes": 117,
-    "cache": "cleared before the full run; four functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
-    "scope": "register table exempt (ADR 0015)",
-    "note": [
-      "The 0.6.6 release measurement."
-    ]
-  },
-  "previous": {
-    "recorded": "2026-09-12",
-    "total": 5612,
-    "killed": 4143,
-    "survived": 1461,
-    "not_covered": 0,
-    "score": 0.739,
     "why_it_moved": [
-      "The 0.6.5 release measurement; min_score 0.73."
+      "The 0.6.6 release measurement; min_score 0.74."
     ]
   },
   "confirmed_by_ci": {
@@ -308,7 +330,7 @@
     "fails nor nags on the run it was recorded from -- a baseline that",
     "prints 'raise me' on every CI run teaches people to ignore it.",
     "",
-    "0.010 of headroom on the measured 0.740, the same order as every",
+    "0.011 of headroom on the measured 0.741, the same order as every",
     "raise before it. What eats headroom stayed the same: assertions",
     "getting better or worse, because register rows land inside the",
     "ADR 0015 exemption."

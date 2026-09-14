@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.7 (2026-09-14)
 
 What a sixth outside review of 0.6.6 found. Two of its points are new
 defects, two are the guarantees the lock did not actually give. The pin
@@ -38,6 +38,18 @@ does not move and the register table has no new row.
 
 - **`reload_service`'s docstring** described the two-state function it
   stopped being in 0.6.6.
+
+- **The test suite gets its own `XDG_RUNTIME_DIR`.** Without it a test
+  would take the lock of the desk the developer is listening to.
+
+- **The mutation run's survivors were read.** They showed five missing
+  assertions and no defect: the stranger on the port, reported once
+  rather than on every poll; the fallback beside the config when there
+  is no runtime directory, for a start and for a switch; the runtime
+  directory that cannot be made, which says so; and a broken row in
+  `/proc/net/udp`, which does not end the table. Score 0.741 against a
+  floor of 0.730, the not-covered bucket still empty, `min_score`
+  unchanged at 0.74.
 
 ## 0.6.6 (2026-09-13)
 
