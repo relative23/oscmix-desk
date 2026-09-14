@@ -365,9 +365,13 @@ def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
     model is plugged in: USB presence alone said "connected" there, and the
     start failed and was restarted for ever (found by review, 0.6.9).
     """
+    cards = proc_root / "asound" / "cards"
+    # Against every Fireface card, not the configured model: a desk whose
+    # name is wrong for the box it names must fail loudly, not report the
+    # box as unplugged. And only when the list can be read at all.
     absent = not usb_device_present(config.usb_id, sysfs_usb) or (
-        bool(config.serial) and config.serial not in device_serials(
-            proc_root / "asound" / "cards", config.device_name))
+        bool(config.serial) and cards.is_file()
+        and config.serial not in device_serials(cards))
     if absent:
         log.info("device %s%s not connected; nothing to do", config.usb_id,
                  " with serial %s" % config.serial if config.serial else "")

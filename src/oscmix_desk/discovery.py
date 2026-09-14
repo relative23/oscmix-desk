@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import collections
 import os
 import re
 import shutil
@@ -40,15 +41,54 @@ def serial_in(name: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-#: A client the kernel created for a card. A user-space program may name
-#: its own client anything, "Fireface UCX II (24216011)" included, and
-#: must not be able to make a desk ambiguous or bind it (ADR 0024).
-_KERNEL_CLIENT_RE = re.compile(r'^Client\s+(\d+)\s*:\s*"(.*)"\s*\[Kernel',
-                               re.MULTILINE)
+#: One line of /proc/asound/seq/clients, read from its end: the client
+#: type in brackets closes the line, and the name is everything between
+#: the first quote and the last quote before it. A client name is chosen
+#: by whoever opens the sequencer and may carry quotes and brackets of its
+#: own -- `Fireface UCX II (99887766)" [Kernel` passed an unanchored match
+#: and bound a user-space client (found by review, 0.6.9).
+_CLIENT_LINE_RE = re.compile(
+    r'^Client\s+(\d+)\s*:\s*"(.*)"\s*\[(\w+)[^\]\n]*\]\s*$', re.MULTILINE)
+_CLIENT_NUMBER_RE = re.compile(r"^Client\s+(\d+)\s*:", re.MULTILINE)
 
 
-def select_seq_client(text: str, device_name: str,
-                      serial: str = "") -> Optional[int]:
+def _kernel_clients(text: str) -> List[Tuple[int, str]]:
+    """(number, name) of every client the kernel created for a card.
+
+    A client number that begins more than one line is dropped with all of
+    them: a name containing a newline can forge a whole line, and a forged
+    line for a number that exists repeats that number. What a forger can
+    still do -- a line for a number of its own, naming a box that is
+    plugged in -- ends in an ambiguity refusal, not in a bind, because the
+    card list has to show the serial too (see ``resolve_device``).
+    """
+    numbers = collections.Counter(
+        int(number) for number in _CLIENT_NUMBER_RE.findall(text))
+    return [(int(number), name)
+            for number, name, kind in _CLIENT_LINE_RE.findall(text)
+            if kind == "Kernel" and numbers[int(number)] == 1]
+
+
+def _model(name: str) -> str:
+    """A device name without the serial RME appends to it in brackets."""
+    return _SERIAL_RE.sub("", name).strip()
+
+
+def _named(names: Sequence[str], device_name: str) -> List[int]:
+    """Indices of the names that are ``device_name``, exactly if any are.
+
+    `[device] name` has always been a substring match, and stays one; but
+    a model whose name is the start of another's -- `Fireface 802` beside
+    a `Fireface 802 FS` -- is matched exactly first, so it is not two
+    candidates (found by review, 0.6.9).
+    """
+    exact = [i for i, name in enumerate(names)
+             if name == device_name or _model(name) == device_name]
+    return exact or [i for i, name in enumerate(names) if device_name in name]
+
+
+def select_seq_client(text: str, device_name: str, serial: str = "",
+                      shown: Optional[Sequence[str]] = None) -> Optional[int]:
     """The one sequencer client this desk is for, or None if it is not there.
 
     ``serial`` narrows the name match to one box. Without it, more than
@@ -56,11 +96,17 @@ def select_seq_client(text: str, device_name: str,
     whichever interface the kernel enumerated first, and a desk bound to
     it would configure an arbitrary box while its lock named another.
     DeviceAmbiguous says so and names the remedy (ADR 0024).
+
+    Only kernel clients count. ``shown``, when given, is the serials the
+    card list shows; a client whose name carries a serial that no card
+    has is not an interface, whatever it calls itself.
     """
-    matches = [(int(number), name)
-               for number, name in _KERNEL_CLIENT_RE.findall(text)
-               if device_name in name
-               and (not serial or serial_in(name) == serial)]
+    clients = _kernel_clients(text)
+    clients = [clients[i] for i in _named([n for _c, n in clients], device_name)]
+    matches = [(number, name) for number, name in clients
+               if (not serial or serial_in(name) == serial)
+               and (shown is None or serial_in(name) is None
+                    or serial_in(name) in shown)]
     if len(matches) > 1:
         raise DeviceAmbiguous(
             "%d interfaces match %r and [device] serial does not say which "
@@ -241,15 +287,17 @@ def resolve_device(usb_id: str, device_name: str, serial: str,
             errors="replace")
     except OSError:
         text = ""
-    client = select_seq_client(text, device_name, serial)
-    cards = device_serials(proc_root / "asound" / "cards", device_name)
+    cards_file = proc_root / "asound" / "cards"
+    shown = device_serials(cards_file) if cards_file.is_file() else None
+    client = select_seq_client(text, device_name, serial, shown)
+    cards = device_serials(cards_file, device_name)
     if not serial and len(cards) > 1:
         raise DeviceAmbiguous(
             "%d interfaces match %r (%s) and [device] serial does not say "
             "which one this desk is for" % (len(cards), device_name,
                                             ", ".join(cards)))
     if not serial and client is not None:
-        name = {int(n): s for n, s in _KERNEL_CLIENT_RE.findall(text)}[client]
+        name = dict(_kernel_clients(text))[client]
         serial = serial_in(name) or ""
     if not serial and len(cards) == 1:
         serial = cards[0]
@@ -337,39 +385,37 @@ def resolve_binary(name: str, env_var: str) -> Optional[str]:
     return None
 
 
+#: The first line of a card: `` 2 [II24216011 ]: USB-Audio - Fireface UCX
+#: II (24216011)``. The driver id has no spaces; the product runs to the
+#: serial. A card's second line repeats name and serial and is not read.
+_CARD_LINE_RE = re.compile(
+    r"^\s*\d+\s+\[[^\]]*\]:\s*\S+\s+-\s+(.*?\(\d{4,}\))\s*$", re.MULTILINE)
+
+
 def device_serials(cards: Path = Path("/proc/asound/cards"),
                    device_name: str = "Fireface") -> List[str]:
     """Every serial the ALSA card list shows for ``device_name``, in order.
 
-    Matched on the model name, so a Fireface 802 beside a UCX II is not a
-    second UCX II -- counting every "Fireface" line made that machine
-    ambiguous for either desk (found by review, 0.6.9).
+    Matched on the model the way the sequencer clients are, so a Fireface
+    802 beside a UCX II is not a second UCX II -- counting every "Fireface"
+    line made that machine ambiguous for either desk (found by review,
+    0.6.9). One entry per card: its second line repeats the serial, and
+    counting lines made one interface look like two (measured, 0.6.8).
 
     More than one means the machine has more than one box, and nothing
-    in the card list says which of them a given process is driving.
-    ``resolve_device`` refuses to guess in that case rather than naming
-    the first one: 0.6.8 read line one here, and the unit keyed on the
-    first box while a switch keyed on another name (ADR 0024).
+    in the card list says which of them a given process is driving;
+    ``resolve_device`` refuses to guess (ADR 0024).
     """
     try:
         text = cards.read_text(errors="replace")
     except OSError:
         return []
-    found = []
-    for line in text.splitlines():
-        if device_name not in line:
-            continue
-        match = _SERIAL_RE.search(line)
-        # Distinct serials, not matching lines. A card takes two lines in
-        # this file and both carry the name and the number:
-        #
-        #   2 [II24216011 ]: USB-Audio - Fireface UCX II (24216011)
-        #                    RME Fireface UCX II (24216011) at usb-...
-        #
-        # Counting lines made one interface look like two -- measured on
-        # this machine the first time the 0.6.8 key ran on hardware.
-        if match and match.group(1) not in found:
-            found.append(match.group(1))
+    products = _CARD_LINE_RE.findall(text)
+    found: List[str] = []
+    for index in _named(products, device_name):
+        serial = serial_in(products[index])
+        if serial and serial not in found:
+            found.append(serial)
     return found
 
 

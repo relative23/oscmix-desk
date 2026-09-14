@@ -125,9 +125,10 @@ cannot open the device lock at /run/oscmix-desk/2a39-3fd9-24216011.lock:
   Permission denied; /run/oscmix-desk belongs to group audio
 ```
 
-The user is not in `audio`: `sudo usermod -aG audio $USER`, then start a
-new login session -- or, where the user manager outlives logins
-(lingering), `sudo systemctl restart user@$(id -u)`. `/run/oscmix-desk is read-only for this process` comes from a unit
+The user is not in `audio`: `sudo usermod -aG audio $USER`, then log out
+of every session or reboot, so that the user manager itself starts again
+with the new group. A new terminal is not enough, and with lingering
+enabled neither is a single logout. `/run/oscmix-desk is read-only for this process` comes from a unit
 whose sandbox applies and whose `ReadWritePaths` does not name the
 directory -- an edited or outdated `oscmix.service`; reinstall it. `it is a symbolic link` or `it is not a regular file` means
 something other than a lock sits at that path; it is not this user's to

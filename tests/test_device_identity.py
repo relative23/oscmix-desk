@@ -742,3 +742,73 @@ def test_the_sweep_refuses_two_boxes_before_it_takes_anything(monkeypatch,
     assert sweep.main() == 1
     assert taken == []
     assert "the sweep supports one interface" in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
+# The re-review: names that forge lines, models that share a prefix, and a
+# misconfigured desk that must not look unplugged.
+# --------------------------------------------------------------------------
+
+KERNEL_A = 'Client  24 : "Fireface UCX II (24216011)" [Kernel Legacy]\n'
+KERNEL_B = 'Client  28 : "Fireface UCX II (99887766)" [Kernel Legacy]\n'
+
+
+def test_a_quote_in_a_client_name_does_not_make_it_a_kernel_client():
+    spoof = 'Client 130 : "Fireface UCX II (99887766)" [Kernel" [User Legacy]\n'
+    assert select_seq_client(KERNEL_A + spoof, "Fireface UCX II", B[1]) is None
+    assert select_seq_client(KERNEL_A + spoof, "Fireface UCX II") == A[0]
+
+
+def test_a_forged_line_that_repeats_a_client_number_drops_that_number():
+    """A name with a newline can forge a whole line for an existing client."""
+    forged = ('Client 130 : "x\nClient  28 : "Fireface UCX II (24216011)" '
+              '[Kernel Legacy]\ny" [User Legacy]\n')
+    assert select_seq_client(KERNEL_B + forged, "Fireface UCX II") is None
+
+
+def test_a_forged_client_for_a_box_no_card_shows_is_not_an_interface(tmp_path):
+    proc = fake_proc(tmp_path, boxes=[A])
+    _add_clients(proc, b'Client 140 : "Fireface UCX II (99887766)" '
+                       b'[Kernel Legacy]\n')
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", B[1], proc).client \
+        is None
+    assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc) == \
+        Device(usb_id="2a39:3fd9", serial=A[1], client=A[0])
+
+
+def test_a_model_whose_name_starts_another_is_matched_exactly(tmp_path):
+    clients = ('Client  24 : "Fireface 802 (11112222)" [Kernel Legacy]\n'
+               'Client  28 : "Fireface 802 FS (33334444)" [Kernel Legacy]\n')
+    assert select_seq_client(clients, "Fireface 802") == 24
+    assert select_seq_client(clients, "Fireface 802 FS") == 28
+    # A name with its serial is still a name, and a part of one still
+    # matches when nothing matches exactly.
+    assert select_seq_client(clients, "Fireface 802 FS (33334444)") == 28
+    assert select_seq_client(KERNEL_A, "UCX II") == A[0]
+    cards = tmp_path / "cards"
+    cards.write_text(" 2 [F802 ]: USB-Audio - Fireface 802 (11112222)\n"
+                     " 3 [F802FS ]: USB-Audio - Fireface 802 FS (33334444)\n")
+    from oscmix_desk.discovery import device_serials
+    assert device_serials(cards, "Fireface 802") == ["11112222"]
+    assert device_serials(cards) == ["11112222", "33334444"]
+
+
+def test_a_desk_named_for_the_wrong_model_fails_instead_of_looking_unplugged(
+        tmp_path, monkeypatch):
+    """The box is there under another model name: exit 1, not "nothing to do"."""
+    proc = fake_proc(tmp_path / "proc")
+    (proc / "asound" / "cards").write_text(
+        " 2 [UFX ]: USB-Audio - Fireface UFX II (55554444)\n")
+    (proc / "asound" / "seq" / "clients").write_text(
+        'Client  24 : "Fireface UFX II (55554444)" [Kernel Legacy]\n')
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    _lock_dir(tmp_path, monkeypatch)
+    path = _desk(tmp_path, free_udp_port(), serial="55554444")
+    code, _unit, notified = _run_the_unit(tmp_path, monkeypatch, path, [], [])
+    assert code == session_module.EXIT_FAILURE
+    assert notified == []
+
+    (proc / "asound" / "cards").unlink()          # and an unreadable list
+    code, _unit, notified = _run_the_unit(tmp_path, monkeypatch, path, [], [])
+    assert code == session_module.EXIT_FAILURE
+    assert notified == []

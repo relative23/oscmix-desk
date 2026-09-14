@@ -94,9 +94,15 @@ whose name carries that number. Without it neither the kernel's
 sequencer clients nor the card list may show more than one interface of
 the configured model -- the card list catches a second box whose client
 is not up yet -- and more than one raises DeviceAmbiguous instead of
-picking. Only clients the kernel created count, so a user-space program
-cannot name itself into the choice, and only the configured model, so a
-Fireface of another model is not a second candidate. The unit exits 2
+picking. Only clients the kernel created count, read strictly from the
+end of each line, a client number that appears twice is dropped, and a
+client whose name carries a serial no card shows is not an interface.
+That stops a user-space program from binding a desk; a member of `audio`
+with sequencer access can still forge a line naming a box that is plugged
+in and so force an ambiguity refusal -- but that member can write the
+interface through `/dev/snd` directly anyway. The configured model is
+matched exactly first, so a Fireface of another model, even one whose
+name starts with this one's, is not a second candidate. The unit exits 2
 for ambiguity, which `RestartPreventExitStatus=2` keeps from looping; a
 switch and a restore refuse with the same words. The start waits for the
 resolved interface itself and binds its client and pins its serial from
@@ -159,7 +165,8 @@ owns the directory.
   lock is held; each one is a line in the journal.
 - `--snapshot`, `--diff` and `--dump-config` only read, and they read
   whatever backend holds the OSC port. The snapshot's header names the
-  interface that backend bridges, not the one the config resolves to.
+  interface that backend bridges when that can be followed, and the one
+  the config resolves to otherwise.
 - Without `[device] serial`, a second identical interface that
   enumerates after the start has bound is not seen by that start. The
   next switch sees it and refuses; set the serial on a machine that may

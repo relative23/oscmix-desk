@@ -335,8 +335,8 @@ if [ "$DO_UDEV" = 1 ]; then
             warn "$(id -un) is not in the group audio, so it cannot take the"
             warn "device lock and every start and switch will be refused:"
             warn "  sudo usermod -aG audio $(id -un)"
-            warn "then start a new login session (with lingering enabled:"
-            warn "  sudo systemctl restart user@$(id -u))"
+            warn "then log out of every session, or reboot, so the user"
+            warn "manager starts again with the new group"
         fi
     else
         warn "could not install $TMPFILES_CONF; run these by hand:"
