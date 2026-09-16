@@ -88,7 +88,34 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.8)
+## Where we are (0.6.9)
+
+**0.6.9 (2026-09-16)** is what a review of the 0.6.8 lock found, in the
+order a second reviewer gave it. The interface was worked out four
+times -- the service bound the first matching client and pinned the first
+serial of the card list, a switch keyed on a rule of its own, and the OSC
+port was taken from whoever held it -- and with two identical boxes the
+four disagreed. One resolution answers all of it now, `[device] serial`
+selects the box, and more than one candidate without it is refused
+rather than guessed (ADR 0024). A switch writes only to the backend that
+bridges that interface; a start without the lock fails instead of
+reporting ready; the lock file is opened without following links or
+blocking on a FIFO; and `/run/oscmix-desk` belongs to the group `audio`
+instead of every local user. The review's architecture test -- two
+identical UCX II, the desk for the second, every path on its lock and
+its backend -- is in the suite. A last sweep before release found the
+rest on the same path: the unit could not have written the lock
+directory wherever its sandbox actually applies (Ubuntu's user manager
+silently skips it, which is why the desk here never showed it), the start
+budget left out the lock wait, a reload could change the interface under
+a running process, and a scratch-home uninstall reached for the
+machine's system files. The security model now says which hardening
+applies on which system. An independent review of that result, run
+before release rather than after it, found nine more -- among them a
+backend check made before a 30 s lock wait and never after it, a process
+name that crashed every switch, and a Fireface of another model that
+made a UCX II ambiguous -- and each is a test that fails on the commit
+before the fix.
 
 **0.6.8 (2026-09-14)** is what an adversarial review of the 0.6.7 lock
 found: the key named the hardware, but the *path* to the lock still
@@ -106,8 +133,6 @@ names one outright; and a switch to an absent interface reported
 `applied`, exited 0 and recorded a marker for a desk that had never been
 written -- it refuses now. The write sweep, the loudest writer here,
 finally takes the lock too.
-
-## Where we are (0.6.7)
 
 **0.6.7 (2026-09-14)** is what a sixth outside review of 0.6.6 led to,
 and it is mostly about what the lock actually promised. It is keyed by

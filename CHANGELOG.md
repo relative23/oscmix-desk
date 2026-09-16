@@ -1,5 +1,135 @@
 # Changelog
 
+## 0.6.9 (2026-09-16)
+
+What a review of the 0.6.8 device lock found, in the order a second
+reviewer put it. Six defects, each reproduced by a probe before it was
+fixed, and each probe a regression test now -- together with the
+architecture test that review asked for. The pin does not move and the
+register table has no new row.
+
+### Fixed
+
+- **The interface is resolved once.** Serial, sequencer client and lock
+  key come from one answer, `discovery.resolve_device`: the service binds
+  and pins from it, a switch and a restore check against it, and a
+  reconcile uses the serial the service pinned. 0.6.8 worked it out four
+  times: with two identical interfaces and no `[device] serial` the
+  service keyed on `2a39-3fd9-24216011` while a switch keyed on
+  `2a39-3fd9-ambiguous`, two lock files over one desk, and a config
+  naming box B still bound box A. `[device] serial` now selects the
+  client the backend bridges; without it, more than one candidate is a
+  configuration error for all of them -- exit 2 for the service, which
+  `RestartPreventExitStatus` keeps from looping. ADR 0024.
+
+- **A switch writes only to the backend of its interface.** A bound OSC
+  port was enough: a plain Python socket on it received a whole routing,
+  the switch reported `applied-unverified` and recorded the marker. The
+  holder has to be an `oscmix` of this user now, and when the
+  `alsaseqio` beside it names the client it bridges, that has to be the
+  resolved interface.
+
+- **A start without the device lock fails.** 0.6.7 and 0.6.8 refused to
+  write and then sent `READY=1`, so systemd reported a desk that had
+  never been written and nothing retried -- while ADR 0022 said the start
+  fails. It does: the backend is stopped, the exit code is 1, and
+  `Restart=on-failure` tries again. `READY=1` follows only an apply that
+  returned, in the same block.
+
+- **A FIFO at the lock path no longer hangs every writer.** The read-only
+  fallback blocked in `open()` until a writer appeared; the probe was
+  still blocked after 25 s, the 30 s lock wait never reached, and the
+  service's start would have hung the same way. Lock files are opened
+  `O_NONBLOCK` and accepted only when `fstat` says regular file.
+
+- **A symlink at the lock path is refused, not followed.** 0.6.8 followed
+  a planted link and chmod'ed its target to 0666; only
+  `fs.protected_symlinks` stood in the way. `O_NOFOLLOW`, and a lock
+  file's mode and group change only when this process owns it and it
+  has exactly one link.
+
+- **The lock directory's trust circle is the group `audio`.**
+  `/run/oscmix-desk` is 3770 root:audio instead of 1777, and lock files
+  are 0660 with the directory's group. With 1777 any local account could
+  pre-create a lock file nobody else could open, or hold one for ever.
+
+- **The unit can write the lock directory wherever its sandbox applies.**
+  `ReadWritePaths=` was empty. Ubuntu's user manager drops the mount
+  sandbox without a word -- AppArmor denies it a mount namespace -- so the
+  desk worked here, but under a manager that applies
+  `ProtectSystem=strict` `/run` is read-only: measured under the system
+  manager, the 0.6.8 unit
+  could not create a lock file and every start would have been refused.
+  `ReadWritePaths=-/run/oscmix-desk` now, and a refusal in a read-only
+  directory names that directive instead of "No such file or directory".
+
+- **The start budget includes the lock wait.** `startup_budget()` had no
+  term for the 30 s the start has waited for the device lock since 0.6.5,
+  so the test against `TimeoutStartSec` could not see it. It is in the
+  sum, and `TimeoutStartSec` is 100 to keep 10 s of margin.
+
+- **A reload keeps the interface of the running process.** The desk read
+  under the lock took `usb-id` and `serial` from the file while keeping
+  the running ports, so a profile naming another box described a
+  different interface than the lock and the backend belonged to.
+
+- **A scratch-home uninstall leaves the system files alone.** It reached
+  for the udev rule, the resume hook and the tmpfiles.d entry the
+  session's own installation depends on. It now skips them, with a
+  warning, whenever systemd's session serves another home -- as it already
+  did for the service.
+
+- **What an independent review of this release found before it shipped.**
+  A switch checked the port holder before a lock wait of up to 30 s and
+  never after it; it checks again once the lock is held. Any process whose
+  kernel-truncated name was not valid UTF-8 made every switch raise; /proc
+  is decoded leniently. A backend left without its card and client took a
+  switch keyed on `unknown` beside the unit's lock; an interface with no
+  visible sequencer client is refused. A Fireface of another model beside
+  a UCX II made both ambiguous; the card list is matched on the model. A
+  configured serial that was not plugged in, beside another box of the
+  model, looped the start; it is the clean no-op now. Only a kernel
+  sequencer client named exactly like a card counts as an interface, a
+  client number listed twice is refused as forged, a
+  model is matched exactly before it is matched as a substring, a serial
+  must be digits, the
+  start binds and pins from one read of the machine, and the snapshot
+  header names the box it actually read.
+
+### Changed
+
+- **The mutation run's survivors were read.** They showed missing
+  assertions and no defect, among them the serial read from a client when
+  the card list is unreadable, the restore's re-check after the lock, the
+  start's no-client path against a real sysfs, and the port holder's
+  detection by program as well as by name. Score 0.762 on 6649 mutants,
+  the not-covered bucket still empty, `min_score` 0.74 -> 0.76. The full
+  run used a mutant tree removed beforehand; thirteen functions were
+  re-judged by name.
+
+- **The security model says what applies.** On Ubuntu the user manager
+  silently skips `ProtectSystem`, `ProtectHome` and `PrivateTmp`;
+  `NoNewPrivileges` and the seccomp filter do apply. The document says
+  so, and how to check a machine.
+- **`[device] serial` selects the interface**, not only the name of its
+  lock, and is required when two identical interfaces are connected.
+- **A lock that cannot be opened says why:** a missing group
+  membership, a symbolic link, something that is not a regular file.
+- **The installer warns when the user is not in `audio`.**
+- **Upgrading from 0.6.8:** the user running the desk has to be in
+  `audio`. The installer's root step turns the directory into 3770
+  root:audio and regroups a lock file 0.6.8 left behind; the unit cannot
+  do the latter itself, because a sandboxed user service runs in a user
+  namespace where `audio` is not mapped and `fchown` fails with EINVAL.
+- **The write sweep resolves its interface** and refuses to run with two.
+- **`device_key` and `device_serial` are gone.** Once every path
+  resolves the interface, a second way to name it is the split this
+  release removes. The hardware evidence and the write sweep name the
+  resolved box, the snapshot header names the box its backend drives,
+  and the evidence tool refuses a machine with two it cannot tell apart.
+- **The layering gains two edges:** `discovery` imports `errors`, and
+  `profiles` imports `process`. Both point at a leaf or down the graph.
+
 ## 0.6.8 (2026-09-14)
 
 What an adversarial review of the 0.6.7 device lock found. Six ways the

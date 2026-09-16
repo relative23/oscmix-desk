@@ -302,31 +302,59 @@
     "run that deleted only mutmut-stats.json re-used verdicts for",
     "fourteen of nineteen modules from the 0.6.7 tree, after an autouse",
     "fixture had changed how every mutant is judged; it was discarded and",
-    "mutants/ removed."
+    "mutants/ removed.",
+    "",
+    "0.6.9 (2026-09-14): 0.742 -> 0.762 on 6113 -> 6649 mutants, for what",
+    "a review of the 0.6.8 lock found: one resolution for serial,",
+    "sequencer client and lock key; a switch that writes only to the",
+    "backend bridging that interface; a start that fails without the lock",
+    "instead of sending READY=1; lock files opened O_NOFOLLOW |",
+    "O_NONBLOCK and used only when regular; and /run/oscmix-desk for the",
+    "group audio (ADR 0024).",
+    "",
+    "The survivors in the new code showed missing assertions and no",
+    "defect: the serial read from the client when the card list is",
+    "unreadable, the wait returning once a client comes up, a card list",
+    "that is not UTF-8, an oscmix known by its program or its name and an",
+    "unreadable holder, the bridge found past an unreadable sibling and",
+    "past a bracket in a process name, the start's no-client path against",
+    "a real sysfs, the restore's re-check after the lock and the names",
+    "its refusals carry, a restore refused before the lock, the refusal",
+    "for a lock directory that cannot be searched, and the snapshot's",
+    "default /proc. What survives there is log text, handlers that only",
+    "run when /proc changes between two reads of it, the creation mode of",
+    "a lock file the fchmod after it overrides, and the character set of",
+    "the lock key. Thirteen functions were re-judged by name with",
+    "mutmut-stats.json cleared, because those tests were written after",
+    "the full run had taken its copy. The full run took 133 minutes on a",
+    "machine at a load of 16 to 38. The thirteenth, device_lock_path,",
+    "after the suite was kept out of /run/oscmix-desk: mutants renaming",
+    "the lock-directory variable had reached the real directory; the",
+    "score did not move."
   ],
   "measured": {
-    "total": 6113,
-    "killed": 4528,
-    "survived": 1574,
+    "total": 6649,
+    "killed": 5059,
+    "survived": 1580,
     "not_covered": 0,
-    "timeout": 11,
-    "score": 0.742,
-    "run_minutes": 124,
-    "cache": "mutants/ removed before the full run; seven functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
+    "timeout": 10,
+    "score": 0.762,
+    "run_minutes": 133,
+    "cache": "mutants/ removed before the full run; thirteen functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
     "scope": "register table exempt (ADR 0015)",
     "note": [
-      "The 0.6.8 release measurement."
+      "The 0.6.9 release measurement."
     ]
   },
   "previous": {
     "recorded": "2026-09-14",
-    "total": 5956,
-    "killed": 4406,
-    "survived": 1539,
+    "total": 6113,
+    "killed": 4528,
+    "survived": 1574,
     "not_covered": 0,
-    "score": 0.741,
+    "score": 0.742,
     "why_it_moved": [
-      "The 0.6.7 release measurement; min_score 0.74."
+      "The 0.6.8 release measurement; min_score 0.74."
     ]
   },
   "confirmed_by_ci": {
@@ -347,16 +375,16 @@
       "round-trip tests, the local 0.685 did not."
     ]
   },
-  "min_score": 0.74,
+  "min_score": 0.76,
   "tolerance": 0.01,
   "floor_note": [
-    "The gate is min_score - tolerance = 0.73. That is the number that",
+    "The gate is min_score - tolerance = 0.75. That is the number that",
     "matters: the score may not fall below it. min_score is set at the",
     "measured score rounded down to the hundredth, so the policy neither",
     "fails nor nags on the run it was recorded from -- a baseline that",
     "prints 'raise me' on every CI run teaches people to ignore it.",
     "",
-    "0.012 of headroom on the measured 0.742, the same order as every",
+    "0.012 of headroom on the measured 0.762, the same order as every",
     "raise before it. What eats headroom stayed the same: assertions",
     "getting better or worse, because register rows land inside the",
     "ADR 0015 exemption."
