@@ -40,7 +40,7 @@ from .process import (
     RELOAD_NOT_RUNNING,
     port_holder,
     reload_service,
-    unit_environment,
+    unit_process,
 )
 from .profiles import (
     REFUSED,
@@ -377,12 +377,23 @@ def _report_outcome(outcome: "Outcome",
 
 
 def _unit_desk() -> Optional[Path]:
-    """The config the running unit resolves, or None when that cannot be told."""
-    environment = unit_environment(
-        Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
-    if environment is None:
+    """The config the running unit resolves, or None when that cannot be told.
+
+    Worked out the way the unit did (session._config_path): --config on
+    its command line first, then its environment. Its own parser reads
+    the command line, so an abbreviated or ``--config=`` form counts as
+    it did there. A relative path is the unit's, taken against the
+    unit's working directory, not this shell's.
+    """
+    unit = unit_process(Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
+    if unit is None:
         return None
-    return discover_config_path(environment)
+    try:
+        args, _ = build_arg_parser().parse_known_args(list(unit.argv[1:]))
+    except SystemExit:
+        return None
+    named = args.config or discover_config_path(unit.environ)
+    return None if named is None else unit.cwd / named
 
 
 def _same_file(one: Path, other: Optional[Path]) -> bool:

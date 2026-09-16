@@ -151,17 +151,26 @@ def discover_config_path(
     named = env.get("OSCMIX_CONFIG")
     if named:
         return Path(named)
-    xdg = env.get("XDG_CONFIG_HOME") or os.path.join(_home(env), ".config")
-    for candidate in (Path(xdg) / "oscmix" / "routing.conf",
-                      Path("/etc/oscmix/routing.conf")):
+    home = _home(env)
+    xdg = env.get("XDG_CONFIG_HOME") or (home and os.path.join(home, ".config"))
+    candidates = [Path("/etc/oscmix/routing.conf")]
+    if xdg:
+        candidates.insert(0, Path(xdg) / "oscmix" / "routing.conf")
+    for candidate in candidates:
         if candidate.is_file():
             return candidate
     return None
 
 
-def _home(env: Mapping[str, str]) -> str:
-    """HOME from ``env``, else the password database: what ``~`` expands to."""
-    return env.get("HOME") or pwd.getpwuid(os.getuid()).pw_dir
+def _home(env: Mapping[str, str]) -> Optional[str]:
+    """HOME from ``env``, else the password database -- what ``~`` expands
+    to -- or None for a uid without an entry, where ``~`` stays ``~``."""
+    if env.get("HOME"):
+        return env["HOME"]
+    try:
+        return pwd.getpwuid(os.getuid()).pw_dir
+    except KeyError:
+        return None
 
 
 def _parse_channels(raw: str, section: str, option: str) -> Tuple[int, ...]:

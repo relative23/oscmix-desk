@@ -13,10 +13,12 @@ that box's lock and reaching that box's backend, and nothing else.
 
 import argparse
 import errno
+import io
 import os
 import socket
 import stat
 import threading
+from pathlib import Path
 
 import pytest
 from conftest import fake_proc, free_udp_port, repo_file, write_config
@@ -1107,6 +1109,14 @@ def test_a_backend_whose_session_is_gone_is_stale(tmp_path, monkeypatch):
     assert killed == [int(holder.name)]
 
 
+def _unit(environ=None, argv=("oscmix-session",), cwd="/"):
+    """A stubbed `unit_process` answer."""
+    from oscmix_desk.process import UnitProcess
+
+    return lambda *a: UnitProcess(argv=tuple(argv), environ=dict(environ or {}),
+                                  cwd=Path(cwd))
+
+
 def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch,
                                                             capsys):
     """The unit re-applied its own routing.conf over the switch (0.6.9)."""
@@ -1120,7 +1130,7 @@ def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch
     unit_desk = tmp_path / "unit" / "routing.conf"
     unit_desk.parent.mkdir()
     unit_desk.write_text(DESK)
-    monkeypatch.setattr(cli, "unit_environment", lambda *a: {})
+    monkeypatch.setattr(cli, "unit_process", _unit())
     monkeypatch.setattr(cli, "discover_config_path", lambda *a: unit_desk)
     assert cli._report_outcome(outcome, tmp_path / "other.conf") == cli.EXIT_OK
     assert reloads == []
@@ -1151,8 +1161,8 @@ def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
     outcome = profiles.Outcome(state=profiles.APPLIED_UNVERIFIED, name="x",
                                reason=profiles.NOT_CHECKED, persisted=True)
     # The unit names its desk in its own Environment=.
-    monkeypatch.setattr(cli, "unit_environment",
-                        lambda *a: {"OSCMIX_CONFIG": str(unit_desk)})
+    monkeypatch.setattr(cli, "unit_process",
+                        _unit({"OSCMIX_CONFIG": str(unit_desk)}))
     # The shell's OSCMIX_CONFIG names another file: no --config, and the
     # switch was still for the other desk (the 0.6.9 bug via the env).
     monkeypatch.setenv("OSCMIX_CONFIG", str(other))
@@ -1161,8 +1171,8 @@ def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
     # A --config naming the unit's own file is the unit's desk.
     assert cli._report_outcome(outcome, unit_desk) == cli.EXIT_OK
     assert reloads == [1]
-    # No unit environment to read: reload as before.
-    monkeypatch.setattr(cli, "unit_environment", lambda *a: None)
+    # No unit process to read: reload as before.
+    monkeypatch.setattr(cli, "unit_process", lambda *a: None)
     assert cli._report_outcome(outcome, other) == cli.EXIT_OK
     assert reloads == [1, 1]
     capsys.readouterr()
@@ -1187,44 +1197,92 @@ def test_the_unit_s_desk_is_resolved_in_the_unit_s_environment(tmp_path,
     monkeypatch.setenv("XDG_CONFIG_HOME", str(shell.parent.parent))
     monkeypatch.setenv("OSCMIX_CONFIG", str(tmp_path / "elsewhere.conf"))
     by_xdg = desk(tmp_path / "unit-xdg")
-    monkeypatch.setattr(cli, "unit_environment", lambda *a: {
-        "XDG_CONFIG_HOME": str(by_xdg.parent.parent)})
+    monkeypatch.setattr(cli, "unit_process", _unit({
+        "XDG_CONFIG_HOME": str(by_xdg.parent.parent)}))
     assert cli._unit_desk() == by_xdg
     by_home = desk(tmp_path / "unit-home" / ".config")
-    monkeypatch.setattr(cli, "unit_environment", lambda *a: {
-        "HOME": str(tmp_path / "unit-home")})
+    monkeypatch.setattr(cli, "unit_process", _unit({
+        "HOME": str(tmp_path / "unit-home")}))
     assert cli._unit_desk() == by_home
     # OSCMIX_CONFIG in the unit wins over both, existing or not.
-    monkeypatch.setattr(cli, "unit_environment", lambda *a: {
-        "OSCMIX_CONFIG": str(tmp_path / "named.conf"), "HOME": str(tmp_path)})
+    monkeypatch.setattr(cli, "unit_process", _unit({
+        "OSCMIX_CONFIG": str(tmp_path / "named.conf"), "HOME": str(tmp_path)}))
     assert cli._unit_desk() == tmp_path / "named.conf"
 
 
-def test_the_unit_s_environment_is_its_main_process_s(tmp_path, monkeypatch):
-    """Read from /proc/<MainPID>/environ: no quoting to undo, and the
-    manager's XDG_CONFIG_HOME and HOME are in it, which `systemctl show
+def test_the_unit_s_desk_is_its_config_argument_before_its_environment(
+        tmp_path, monkeypatch):
+    """A unit started with `--config /x` runs /x whatever its environment
+    says, as session._config_path reads it; a relative path is against
+    the unit's working directory, not this shell's."""
+    from oscmix_desk import cli
+
+    environ = {"OSCMIX_CONFIG": str(tmp_path / "env.conf")}
+    (tmp_path / "shell").mkdir()
+    monkeypatch.chdir(tmp_path / "shell")
+    for argv in (("oscmix-session", "--config", "/x/routing.conf"),
+                 ("oscmix-session", "--config=/x/routing.conf"),
+                 ("oscmix-session", "--conf", "/x/routing.conf", "--timeout", "5")):
+        monkeypatch.setattr(cli, "unit_process", _unit(environ, argv, "/unit"))
+        assert cli._unit_desk() == Path("/x/routing.conf"), argv
+    monkeypatch.setattr(cli, "unit_process",
+                        _unit(environ, ("oscmix-session", "--config", "desk/r.conf"),
+                              "/unit"))
+    assert cli._unit_desk() == Path("/unit/desk/r.conf")
+    monkeypatch.setattr(cli, "unit_process",
+                        _unit({"OSCMIX_CONFIG": "desk/r.conf"}, cwd="/unit"))
+    assert cli._unit_desk() == Path("/unit/desk/r.conf")
+    # A command line this parser cannot read: cannot be told.
+    monkeypatch.setattr(cli, "unit_process",
+                        _unit(environ, ("oscmix-session", "--config"), "/unit"))
+    monkeypatch.setattr(cli.sys, "stderr", io.StringIO())
+    assert cli._unit_desk() is None
+    # No desk anywhere: None, and the switch reloads as before.
+    monkeypatch.setattr(cli, "unit_process", _unit({"HOME": str(tmp_path)}))
+    assert cli._unit_desk() is None
+
+
+def test_the_unit_s_process_is_read_from_proc(tmp_path, monkeypatch):
+    """/proc/<MainPID>/{cmdline,environ,cwd}: no quoting to undo, and the
+    manager's XDG_CONFIG_HOME and HOME are there, which `systemctl show
     -p Environment` never lists."""
     from oscmix_desk import process
 
-    (tmp_path / "4242").mkdir()
-    (tmp_path / "4242" / "environ").write_bytes(
+    entry = tmp_path / "4242"
+    entry.mkdir()
+    (entry / "cmdline").write_bytes(b"python3\0oscmix-session\0--config\0/my desk/r.conf\0")
+    (entry / "environ").write_bytes(
         b"HOME=/home/x\0OSCMIX_CONFIG=/home/x/my desk/routing.conf\0"
         b"NOEQUALS\0\0EMPTY=\0")
+    (entry / "cwd").symlink_to(tmp_path)
     answers = {"MainPID": "4242\n"}
     monkeypatch.setattr(process, "_systemctl_output",
                         lambda *verb: answers.get(verb[2]))
-    assert process.unit_environment(tmp_path) == {
-        "HOME": "/home/x", "OSCMIX_CONFIG": "/home/x/my desk/routing.conf",
-        "EMPTY": ""}
+    unit = process.unit_process(tmp_path)
+    assert unit == process.UnitProcess(
+        argv=("python3", "oscmix-session", "--config", "/my desk/r.conf"),
+        environ={"HOME": "/home/x", "EMPTY": "",
+                 "OSCMIX_CONFIG": "/home/x/my desk/routing.conf"},
+        cwd=tmp_path)
+    # Exited but not reaped: cmdline and environ read empty. Not told.
+    (entry / "cmdline").write_bytes(b"")
+    assert process.unit_process(tmp_path) is None
+    (entry / "cmdline").write_bytes(b"x\0")
+    (entry / "environ").write_bytes(b"")
+    assert process.unit_process(tmp_path) is None
+    (entry / "environ").write_bytes(b"A=b\0")
+    assert process.unit_process(tmp_path) is not None
+    (entry / "cwd").unlink()
+    assert process.unit_process(tmp_path) is None
     # Not running: MainPID is 0. Unreadable or absent: None as well.
     answers["MainPID"] = "0\n"
-    assert process.unit_environment(tmp_path) is None
+    assert process.unit_process(tmp_path) is None
     answers["MainPID"] = "4243\n"
-    assert process.unit_environment(tmp_path) is None
+    assert process.unit_process(tmp_path) is None
     answers["MainPID"] = "garbage"
-    assert process.unit_environment(tmp_path) is None
+    assert process.unit_process(tmp_path) is None
     answers.clear()
-    assert process.unit_environment(tmp_path) is None
+    assert process.unit_process(tmp_path) is None
 
 
 def test_an_empty_profile_name_is_a_refused_switch_not_a_start(

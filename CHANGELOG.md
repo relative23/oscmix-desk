@@ -20,9 +20,10 @@ new row.
 - **A switch of another desk does not reload the unit.** `--config X
   --profile Y` asked the unit to reconcile, and the unit re-applied its
   own `routing.conf` over the switch. The reload is sent only when the
-  switch is for the config the unit runs -- resolved in the unit's own
-  environment, read from `/proc/<MainPID>/environ`, since the shell's
-  `OSCMIX_CONFIG`, `XDG_CONFIG_HOME` or `HOME` can name another file.
+  switch is for the config the unit runs -- worked out as the unit did,
+  from `--config` on its command line and its own environment, read
+  from `/proc/<MainPID>/`, since the shell's `OSCMIX_CONFIG`,
+  `XDG_CONFIG_HOME` or `HOME` can name another file.
 
 - **Every pair of actions is refused, not three.** `--no-profile --diff`
   restored the desk and never diffed; `--profile X --snapshot` switched

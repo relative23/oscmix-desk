@@ -9,7 +9,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 from .constants import CHILD_STOP_GRACE, SERVICE_UNIT, STALE_BACKEND_SETTLE
 from .discovery import (
@@ -342,29 +342,48 @@ def _systemctl(*verb: str) -> int:
         return 1
 
 
-def unit_environment(proc_root: Path) -> Optional[Dict[str, str]]:
-    """The environment the unit's main process runs in, or None.
+@dataclass(frozen=True)
+class UnitProcess:
+    """What the unit's main process was started with (0.6.10)."""
+
+    argv: Tuple[str, ...]
+    environ: Dict[str, str]
+    cwd: Path
+
+
+def unit_process(proc_root: Path) -> Optional[UnitProcess]:
+    """The unit's main process as it was started, or None.
 
     A switch reloads the unit only when it changed the unit's own desk,
-    and the unit's desk is what `discover_config_path` finds in the
-    *unit's* environment -- not in the shell that runs the switch
-    (0.6.10). Read from ``/proc/<MainPID>/environ``, which is exactly
-    what the unit resolved its desk in: ``systemctl show -p Environment``
-    lists only the unit file's own lines, not the manager's
-    XDG_CONFIG_HOME or HOME, and quotes values with spaces.
-    None when the unit is not running or the read fails.
+    and the unit's desk is what the unit itself resolved: `--config` on
+    its command line, else `discover_config_path` in *its* environment,
+    a relative path against *its* working directory -- none of which is
+    always the shell's that runs the switch (0.6.10). Read from
+    ``/proc/<MainPID>/``, which is exactly that: ``systemctl show -p
+    Environment`` lists only the unit file's own lines, not the
+    manager's XDG_CONFIG_HOME or HOME, and quotes values with spaces.
+    None when the unit is not running, when it has exited but is not
+    reaped yet (its files read empty), or when the read fails.
     """
     shown = _systemctl_output("show", "-p", "MainPID", "--value", SERVICE_UNIT)
     pid = shown.strip() if shown is not None else ""
     if not pid.isdigit() or pid == "0":
         return None
+    entry = proc_root / pid
     try:
-        raw = (proc_root / pid / "environ").read_bytes()
+        argv = entry.joinpath("cmdline").read_bytes()
+        environ = entry.joinpath("environ").read_bytes()
+        cwd = os.readlink(entry / "cwd")
     except OSError:
         return None
-    pairs = (item.split(b"=", 1) for item in raw.split(b"\0") if item)
-    return {os.fsdecode(name): os.fsdecode(value)
-            for name, value in (pair for pair in pairs if len(pair) == 2)}
+    if not argv or not environ:
+        return None
+    pairs = (item.split(b"=", 1) for item in environ.split(b"\0") if item)
+    return UnitProcess(
+        argv=tuple(os.fsdecode(arg) for arg in argv.rstrip(b"\0").split(b"\0")),
+        environ={os.fsdecode(name): os.fsdecode(value)
+                 for name, value in (pair for pair in pairs if len(pair) == 2)},
+        cwd=Path(cwd))
 
 
 def _systemctl_output(*verb: str) -> Optional[str]:
