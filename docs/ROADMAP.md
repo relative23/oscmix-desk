@@ -88,7 +88,23 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.9)
+## Where we are (0.6.10)
+
+**0.6.10 (unreleased)** is what a full check of the released 0.6.9
+found -- gates, the live desk, and two independent reviews of the whole
+tree rather than of a diff. Two behaviours were wrong: a session started
+by hand terminated the running unit's backend, and a switch made with
+`--config` for another file asked the unit to reconcile its own desk
+over it. Behind those, a layer of smaller defects that had never been
+exercised: only three of twenty-one action pairs were refused, a config
+read differently depending on the order of its sections, Ctrl-C before
+the backend ran was a traceback, a profile marker that was not UTF-8
+raised on every start, and the launcher polled the wrong port while a
+profile with its own `[osc]` was active. The rest is documentation
+that described an earlier release -- the lock's location and ownership
+in the unit and the installer, a `StopWhenUnneeded` that never fires
+on an enabled unit, ten decision records now carrying an amendment for
+what later releases changed. Nothing in the routing moved.
 
 **0.6.9 (2026-09-16)** is what a review of the 0.6.8 lock found, in the
 order a second reviewer gave it. The interface was worked out four
