@@ -1364,3 +1364,81 @@ def test_the_launcher_and_the_session_agree_on_what_a_profile_name_is():
     rule = 'r"[A-Za-z0-9][A-Za-z0-9._-]*"'
     assert rule in inspect.getsource(config.profile_path)
     assert rule in inspect.getsource(launcher._active_profile_port)
+
+
+# --------------------------------------------------------------------------
+# 0.6.10 mutation run: what its survivors showed no test observed.
+# --------------------------------------------------------------------------
+
+def test_a_session_named_past_the_interpreter_or_under_init_is_not_one(
+        tmp_path, monkeypatch):
+    """Only argv[0] or argv[1] names the program -- `python3 <script>` or
+    the script itself. A later argument that happens to be called
+    oscmix-session is an editor's file, and a backend whose parent is
+    pid 1 has no session whatever pid 1 runs."""
+    from oscmix_desk import process
+
+    port, proc, holder, cleanup = _backend_with_parent(
+        tmp_path, ["vim", "-R", "oscmix-session"])
+    monkeypatch.setattr(process.os, "getuid", os.getuid)
+    monkeypatch.setattr(process, "STALE_BACKEND_SETTLE", 0.0)
+    killed = []
+    monkeypatch.setattr(process, "_terminate", killed.append)
+    assert cleanup(port, proc) is None
+    assert killed == [int(holder.name)]
+    init = proc / "1"
+    init.mkdir()
+    (init / "cmdline").write_bytes(b"oscmix-session\0")
+    (holder / "stat").write_text("%s (oscmix) S 1 0 0\n" % holder.name)
+    assert process._supervising_session(holder, proc) is None
+    # An argv that is not UTF-8 is read, not raised on.
+    (proc / "39000" / "cmdline").write_bytes(
+        b"python3\0/opt/\xff/oscmix-session\0")
+    (holder / "stat").write_text("%s (oscmix) S 39000 0 0\n" % holder.name)
+    assert process._supervising_session(holder, proc) == 39000
+
+
+def test_the_unit_s_main_pid_is_asked_for_exactly(tmp_path, monkeypatch):
+    """`systemctl --user show -p MainPID --value oscmix.service`: without
+    --value the answer is `MainPID=4242`, which is no pid."""
+    from oscmix_desk import process
+
+    asked = []
+    monkeypatch.setattr(process, "_systemctl_output",
+                        lambda *verb: asked.append(verb) or "0\n")
+    assert process.unit_process(tmp_path) is None
+    assert asked == [("show", "-p", "MainPID", "--value", "oscmix.service")]
+    # "0" is not running even where a /proc/0 would answer.
+    zero = tmp_path / "0"
+    zero.mkdir()
+    (zero / "cmdline").write_bytes(b"x\0")
+    (zero / "environ").write_bytes(b"A=b\0")
+    (zero / "cwd").symlink_to(tmp_path)
+    assert process.unit_process(tmp_path) is None
+    # A value may contain "=": only the first one separates the name.
+    entry = tmp_path / "4242"
+    entry.mkdir()
+    (entry / "cmdline").write_bytes(b"x\0")
+    (entry / "environ").write_bytes(b"OSCMIX_CONFIG=/a=b/routing.conf\0")
+    (entry / "cwd").symlink_to(tmp_path)
+    monkeypatch.setattr(process, "_systemctl_output", lambda *verb: "4242\n")
+    assert process.unit_process(tmp_path).environ == {
+        "OSCMIX_CONFIG": "/a=b/routing.conf"}
+
+
+def test_the_unit_desk_reads_the_real_proc_and_compares_files_safely(
+        tmp_path, monkeypatch):
+    from oscmix_desk import cli
+
+    roots = []
+    monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
+    monkeypatch.setattr(cli, "unit_process", lambda root: roots.append(root))
+    assert cli._unit_desk() is None
+    assert roots == [Path("/proc")]
+    assert cli._same_file(tmp_path / "a", None) is False
+
+    def unreadable(self, *a, **k):
+        raise OSError("loop")
+
+    monkeypatch.setattr(cli.Path, "resolve", unreadable)
+    assert cli._same_file(tmp_path / "a", tmp_path / "a") is False

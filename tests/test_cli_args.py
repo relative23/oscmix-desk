@@ -34,8 +34,16 @@ def _run(tmp_path, capsys, monkeypatch, text, info, *extra, dump="[]"):
     path = tmp_path / "routing.conf"
     path.write_text(text)
     monkeypatch.setattr(cli, "pw_dump_objects",
-                        lambda: None if dump is None else [])
-    monkeypatch.setattr(cli, "find_sink", lambda objects, name, target: info)
+                        lambda: None if dump is None else [{"id": 1}])
+    target = extra[extra.index("--pipewire-target") + 1] \
+        if "--pipewire-target" in extra else None
+
+    def find_sink(objects, name, wanted):
+        assert (objects, name, wanted) == ([{"id": 1}], "Fireface UCX II",
+                                           target)
+        return info
+
+    monkeypatch.setattr(cli, "find_sink", find_sink)
     code = cli.main(["--config", str(path), "--pipewire-sinks", *extra])
     return code, capsys.readouterr().out
 
@@ -181,3 +189,23 @@ def test_an_interrupt_is_an_exit_code_not_a_traceback(monkeypatch):
 
     monkeypatch.setattr(cli, "_main", interrupted)
     assert cli.main([]) == 130
+
+
+def test_the_refusal_words_and_its_boundaries(capsys):
+    """`--timeout 0` is a valid answer -- do not wait -- and the refusals
+    are argparse errors in the program's name, not log lines."""
+    from oscmix_desk import cli
+
+    parser = cli.build_arg_parser()
+    cli._refuse_conflicting_actions(parser, parser.parse_args(["--timeout", "0"]))
+    for argv, words in ((["--diff", "--snapshot"],
+                         "--diff and --snapshot cannot be combined"),
+                        (["--dry-run", "--diff"],
+                         "--dry-run cannot be combined with --diff"),
+                        (["--timeout", "-1"],
+                         ("--timeout must be a finite number of seconds, "
+                          "not -1.0"))):
+        with pytest.raises(SystemExit):
+            cli._refuse_conflicting_actions(parser, parser.parse_args(argv))
+        assert capsys.readouterr().err.splitlines()[-1] == \
+            "oscmix-session: error: " + words

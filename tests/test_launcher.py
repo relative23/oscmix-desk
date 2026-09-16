@@ -135,6 +135,10 @@ def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
     clean_env.chdir(tmp_path)
     passwd_home = type("pw", (), {"pw_dir": str(home)})()
 
+    def this_user(uid):
+        assert uid == os.getuid(), uid
+        return passwd_home
+
     def no_entry(uid):
         raise KeyError(uid)
 
@@ -153,7 +157,7 @@ def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
     for case, passwd in cases:
         clean_env.setenv("HOME", str(home))
         clean_env.setattr(pwd, "getpwuid",
-                          passwd if callable(passwd) else lambda uid, p=passwd: p)
+                          passwd if callable(passwd) else this_user)
         for name in ("OSCMIX_CONFIG", "XDG_CONFIG_HOME"):
             clean_env.delenv(name, raising=False)
         for name, value in case.items():
@@ -511,3 +515,29 @@ def test_the_port_of_the_active_profile_wins(launch_mod, clean_env, tmp_path):
     assert launch_mod.load_settings()[1] == (9001,)
     (tmp_path / "active-profile").write_text("../evil\n")   # never a path
     assert launch_mod.load_settings()[1] == (9001,)
+
+
+def test_settings_read_like_the_backend_reads_them(launch_mod, clean_env,
+                                                  tmp_path):
+    """Inline comments are comments, as in config.load_config, and a profile
+    name may start with a capital, as config.profile_path allows."""
+    conf = write_conf(tmp_path / "routing.conf",
+                      "[device]\nusb-id = 2a39:3fd9  # UCX II\n"
+                      "[osc]\nport = 9001 ; the desk\n")
+    (tmp_path / "profiles").mkdir()
+    write_conf(tmp_path / "profiles" / "Live.conf",
+               "[osc]\nport = 9100  # the live rig\n")
+    clean_env.setenv("OSCMIX_CONFIG", str(conf))
+    assert launch_mod.load_settings() == ("2a39:3fd9", (9001,))
+    (tmp_path / "active-profile").write_text("Live\n")
+    assert launch_mod.load_settings() == ("2a39:3fd9", (9100, 9001))
+
+
+def test_the_backend_poll_asks_the_given_proc(launch_mod, clean_env, tmp_path):
+    asked = []
+    clean_env.setattr(launch_mod, "systemctl_user", lambda *_v: 0)
+    clean_env.setattr(launch_mod, "udp_port_listening",
+                      lambda port, root: asked.append((port, root)) and False)
+    clean_env.setattr(launch_mod, "BACKEND_WAIT", 0.0)
+    assert launch_mod.ensure_backend((9100, 9001), tmp_path) is False
+    assert asked == [(9100, tmp_path), (9001, tmp_path)]

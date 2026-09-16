@@ -1054,3 +1054,23 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
                               session_mod.Config(), {"stop": False})
     assert [r.output for r in applied[0].routes] == [(5, 6)], \
         "the reconcile applied the desk it read before waiting"
+
+
+def test_the_reconcile_locks_the_desk_it_reloads(tmp_path, monkeypatch,
+                                                 session_mod):
+    """The lock is taken for the session's config path and the interface
+    it pinned; a None path would key the fallback lock beside nothing."""
+    import argparse
+
+    from oscmix_desk import session as session_module
+
+    path = _routes_file(tmp_path)
+    taken = []
+    monkeypatch.setattr(session_module, "take_device_lock",
+                        lambda where, key: taken.append((where, key)))
+    monkeypatch.setattr(session_module, "sd_notify", lambda *_a: None)
+    config = session_mod.Config()
+    config.serial = "24216011"
+    session_module._reconcile(argparse.Namespace(config=path), config,
+                              {"stop": False})
+    assert taken == [(path, "2a39-3fd9-24216011")]

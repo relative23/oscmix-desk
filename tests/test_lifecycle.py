@@ -933,3 +933,23 @@ def test_a_backend_that_cannot_be_written_to_fails_the_start_cleanly(
     assert code == session_mod.EXIT_FAILURE
     assert ready_count(lifecycle.notifications) == 0
     assert lifecycle.children[-1].terminated
+
+
+def test_a_start_that_applied_says_ready_exactly_and_hands_on_its_config(
+        monkeypatch, tmp_path):
+    """The mutation run of 0.6.10 found no test that read the READY line
+    itself, nor one that saw the config path reach the verifier -- the
+    path its lock is keyed beside when there is no shared directory."""
+    from oscmix_desk import session
+
+    notices = []
+    handed = []
+    monkeypatch.setattr(session, "sd_notify", notices.append)
+    monkeypatch.setattr(session, "_apply_and_verify",
+                        lambda child, config, stop, path: handed.append(path)
+                        or "verifier")
+    path = tmp_path / "routing.conf"
+    assert session._apply_or_fail(None, session.Config(), {"stop": False},
+                                  path) == ("verifier", None)
+    assert notices == ["READY=1"]
+    assert handed == [path]

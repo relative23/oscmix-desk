@@ -256,7 +256,8 @@ def test_config_discovery_resolves_in_the_environment_it_is_given(
     monkeypatch.setenv("HOME", str(tmp_path / "shell-home"))
     assert session_mod.discover_config_path({"HOME": str(home)}) == expected
     monkeypatch.setattr(config_mod.pwd, "getpwuid",
-                        lambda uid: type("pw", (), {"pw_dir": str(home)})())
+                        lambda uid: type("pw", (), {"pw_dir": str(home)})()
+                        if uid == config_mod.os.getuid() else None)
     assert session_mod.discover_config_path({}) == expected
     assert session_mod.discover_config_path(
         {"OSCMIX_CONFIG": str(tmp_path / "named.conf")}) \

@@ -193,3 +193,40 @@ def test_a_quote_in_a_route_name_does_not_break_the_conf(session_mod):
         make_config(session_mod, routes), target="alsa_output.fireface")
     assert 'node.description = "the \\"big\\" room"' in conf
     assert 'node.name = "oscmix.the__big__room"' in conf
+
+
+def test_pw_dump_is_run_once_bounded_and_as_text(monkeypatch):
+    """The call behind pw_dump_objects, with subprocess replaced: a hung
+    PipeWire must not hang the CLI, and a failing pw-dump is "could not be
+    read", never its partial output."""
+    import subprocess
+
+    from oscmix_desk import pipewire
+
+    seen = []
+
+    def which(name):
+        seen.append(name)
+        return "/usr/bin/pw-dump"
+
+    class Done:
+        stdout = '[{"id": 7}]'
+
+    def run(argv, **kw):
+        assert argv == ["/usr/bin/pw-dump"]
+        assert kw == {"capture_output": True, "text": True, "timeout": 10,
+                      "check": True}
+        return Done()
+
+    monkeypatch.setattr(pipewire.shutil, "which", which)
+    monkeypatch.setattr(pipewire.subprocess, "run", run)
+    assert pipewire.pw_dump_objects() == [{"id": 7}]
+    assert seen == ["pw-dump"]
+
+    def failing(argv, **kw):
+        raise subprocess.CalledProcessError(1, argv, output="[]")
+
+    monkeypatch.setattr(pipewire.subprocess, "run", failing)
+    assert pipewire.pw_dump_objects() is None
+    monkeypatch.setattr(pipewire.shutil, "which", lambda name: None)
+    assert pipewire.pw_dump_objects() is None
