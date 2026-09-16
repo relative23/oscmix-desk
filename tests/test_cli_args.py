@@ -1,5 +1,7 @@
 """Command-line overrides are bounded like the file they override."""
 
+from itertools import permutations
+
 import pytest
 
 
@@ -84,13 +86,10 @@ _ACTION_FLAGS = ["--profile x", "--no-profile", "--diff", "--dump-config",
                  "--snapshot", "--pipewire-sinks", "--list-profiles"]
 
 
-@pytest.mark.parametrize("first", _ACTION_FLAGS)
-@pytest.mark.parametrize("second", _ACTION_FLAGS)
+@pytest.mark.parametrize(("first", "second"), list(permutations(_ACTION_FLAGS, 2)))
 def test_two_actions_in_one_command_are_refused_before_anything_runs(
         first, second, monkeypatch, capsys):
     """`--no-profile --diff` restored the desk and never diffed (0.6.9)."""
-    if first == second:
-        pytest.skip("the same flag twice is one action")
     from oscmix_desk import cli
 
     touched = []
