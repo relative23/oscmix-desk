@@ -138,6 +138,10 @@ class Config:
     policies: Dict[Tuple[str, str], str] = field(default_factory=dict)
 
 
+#: The last place a desk is looked for, after the user's own.
+SYSTEM_CONFIG = Path("/etc/oscmix/routing.conf")
+
+
 def discover_config_path(
         environ: Optional[Mapping[str, str]] = None) -> Optional[Path]:
     """Return the first existing config file in the search order.
@@ -157,7 +161,7 @@ def discover_config_path(
     if not xdg or not os.path.isabs(xdg):
         home = _home(env)
         xdg = home and os.path.join(home, ".config")
-    candidates = [Path("/etc/oscmix/routing.conf")]
+    candidates = [SYSTEM_CONFIG]
     if xdg:
         candidates.insert(0, Path(xdg) / "oscmix" / "routing.conf")
     for candidate in candidates:

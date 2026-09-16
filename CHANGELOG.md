@@ -3,9 +3,10 @@
 ## Unreleased
 
 What a full check of the released 0.6.9 found -- gates, the live desk,
-and two independent reviews of the whole tree rather than of a diff. Two
-behaviours were wrong; the rest is documentation that described an
-earlier release. The pin does not move and the register table has no
+and independent reviews of the whole tree rather than of a diff. Two
+behaviours were wrong in ways a user meets; behind them a layer of
+smaller defects nothing had exercised, and documentation that described
+an earlier release. The pin does not move and the register table has no
 new row.
 
 ### Fixed
@@ -29,7 +30,13 @@ new row.
   restored the desk and never diffed; `--profile X --snapshot` switched
   and printed nothing; `--list-profiles --profile X` listed and did not
   switch. One action per invocation now, and `--dry-run` only with a
-  start, a switch or a restore.
+  start, a switch or a restore. The refusal comes before any file is
+  read: after it, a broken `routing.conf` answered a conflicting pair
+  with a configuration error that named neither flag.
+
+- **`--profile ''` is a switch, and refused.** The empty name was falsy,
+  fell through every action and started a session; it is exit 2 now,
+  like any name that is not a profile.
 
 - **A config reads the same whatever the order of its sections.**
   `[pin]` or `[clock]` above `[device]` was checked against the default
@@ -41,24 +48,46 @@ new row.
   printed a stack trace. It exits 130 now. `--timeout nan` never expired
   and `--timeout -1` never waited; both are refused.
 
-- **Three tracebacks a user could reach are handled.** A profile marker
-  that is not UTF-8 raised past the OSError guard on every start; a
-  backend the socket cannot reach raised out of `run_session`; both are
-  a warning and a failed start now. A route name with a quote broke the
-  generated PipeWire conf; it is escaped.
+- **Four tracebacks a user could reach are handled.** A profile marker
+  that is not UTF-8 raised past the OSError guard on every start; it is
+  a warning now, and the start applies `routing.conf`. A backend the
+  socket cannot reach raised out of the start, the background verifier
+  and the SIGHUP reconcile. The start fails with exit 1 and stops its
+  backend. The verifier and the reconcile log the reason and stand down.
+  `systemctl status` then shows `running; verifier failed at ...` or
+  `running; reconcile skipped at ...`.
 
-- **`--pipewire-sinks --pipewire-target X` says when X does not exist**,
-  instead of printing a 7.1 layout for a sink nobody checked.
+- **A route name with a quote no longer breaks the generated PipeWire
+  conf**; the description is escaped.
 
-- **The launcher polls the active profile's port.** A profile that states
-  its own `[osc] port` runs the backend there; the launcher read
+- **`--pipewire-sinks --pipewire-target X` warns when it cannot vouch for
+  X.** The 7.1 layout it prints for a target it did not find is still
+  printed, with a warning that says so -- and that tells "no sink named
+  X" from "pw-dump could not be read".
+
+- **The launcher polls the port the backend runs on.** A profile that
+  states its own `[osc] port` runs the backend there; the launcher read
   `routing.conf` only, warned that the backend was unreachable, and
-  started the GUI against nothing.
+  notified a failure that had not happened. It polls the active
+  profile's port, then `routing.conf`'s, which is where the backend runs
+  if that profile no longer loads. It finds its config by the backend's
+  rule too: a missing `OSCMIX_CONFIG` is not a reason to read another
+  file.
+
+- **A relative `XDG_CONFIG_HOME` is ignored**, as the XDG specification
+  says, by the session, the launcher, the installer and the uninstaller
+  alike. Each resolved it against its own working directory: the
+  installer wrote `relative-config/oscmix/routing.conf` into whatever
+  directory it was run from, and a session started elsewhere never found
+  it.
 
 - **The installer survives a start that fails**, and prints its advice
   instead of dying under `set -e`; the uninstaller survives a missing user
-  bus. The test suite can no longer reach the real udev rule, resume hook
-  or tmpfiles entry when run as root.
+  bus. Run as root, the test suite reached the real system: the udev
+  rule, the resume hook and the tmpfiles.d entry through their paths,
+  and `/run/oscmix-desk` through `systemd-tmpfiles --create`. All four
+  point into the test's scratch directory now, and a test fails if a
+  command either script runs through `sudo` escapes that.
 
 ### Changed
 
@@ -67,9 +96,12 @@ new row.
   unplug. An enabled unit is wanted by `default.target` and never
   unneeded; what ends the service is the backend exiting with its device.
   The directive stays, the story is corrected.
-- **Ten decision records carry an amendment** where a later release
-  changed what they describe: the lock's location and ownership, the
-  exit codes, the dump timing, the resolver.
+- **Ten decision records carry an amendment** where a later release, or
+  this one, changed what they describe: the removed `route_messages`
+  (0001), the recorded dump time (0002, 0007), the exit codes (0011), the
+  unplug story (0013), the lock's location, ownership and fallback
+  (0018, 0022, 0023), the reload rule (0019) and what counts as a stale
+  backend (0021).
 - **The public surface names the resolver.** `find_seq_client` and
   `wait_for_seq_client`, superseded in 0.6.9 and called by nothing, are
   gone; `resolve_device`, `wait_for_device`, `select_seq_client`,
@@ -81,7 +113,16 @@ new row.
   the hardening the unit declares and the unit's own comment contradicted
   it; the README counted seventeen decision records of twenty-four; the
   release checklist gains the cleared mutant tree, the `audio` group and
-  the check with the interface switched off.
+  the check with the interface switched off. Exit code 2 is described
+  everywhere as the refusal it has become -- an ambiguous interface, a
+  session already running -- not only as a `routing.conf` error.
+- **The upstream record states what the pin carries.** All five issues
+  this project filed are fixed at the pinned revision, and have been
+  since 0.6.0; `docs/upstream-issues.md` still listed output phase as
+  filed and the Analog 5-8 gain fix as newer than the pin.
+- **The tests no longer read the developer's desk.** The action-pair
+  tests resolved `~/.config/oscmix/routing.conf` and its marker; every
+  test now starts from an empty config home and no system config.
 
 ## 0.6.9 (2026-09-16)
 

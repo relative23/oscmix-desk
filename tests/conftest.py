@@ -233,27 +233,54 @@ def _no_real_systemctl(monkeypatch):
 
     process._systemctl and process._systemctl_output are the two places
     the package runs systemctl outside the launcher (whose tests stub
-    their own). Every call answers "not active" or "no output" here; a
-    test of the real functions patches subprocess.
+    their own). Every call answers "not active" or "no output" here; the
+    tests of the real functions (`real_systemctl`,
+    `real_systemctl_output`) patch subprocess.
     The integration suite once started the developer's oscmix.service
     for real (0.6.1); an in-process test must not be able to either.
     """
     from oscmix_desk import process
 
-    global _REAL_SYSTEMCTL
-    if _REAL_SYSTEMCTL is None:
-        _REAL_SYSTEMCTL = process._systemctl
+    _REAL.setdefault("_systemctl", process._systemctl)
+    _REAL.setdefault("_systemctl_output", process._systemctl_output)
     monkeypatch.setattr(process, "_systemctl", lambda *verb: 1)
     monkeypatch.setattr(process, "_systemctl_output", lambda *verb: None)
 
 
-_REAL_SYSTEMCTL = None
+#: The functions the autouse stubs replace, as imported before any stub.
+_REAL = {}
 
 
 @pytest.fixture
 def real_systemctl():
     """The unstubbed function, for the one test that checks it."""
-    return _REAL_SYSTEMCTL
+    return _REAL["_systemctl"]
+
+
+@pytest.fixture
+def real_systemctl_output():
+    """The unstubbed function, for the one test that checks it."""
+    return _REAL["_systemctl_output"]
+
+
+@pytest.fixture(autouse=True)
+def _no_real_config(tmp_path_factory, monkeypatch):
+    """No test reads the developer's routing.conf, profiles or marker.
+
+    `cli.main` without `--config` resolves the desk from OSCMIX_CONFIG,
+    XDG_CONFIG_HOME, HOME and /etc; the action-pair tests reached the
+    real ~/.config/oscmix/routing.conf that way (0.6.10). An empty,
+    absolute XDG_CONFIG_HOME ends the search before HOME, and the system
+    location points nowhere. A test that wants a desk sets its own.
+    """
+    from oscmix_desk import config, launcher
+
+    empty = tmp_path_factory.mktemp("xdg-config")
+    monkeypatch.delenv("OSCMIX_CONFIG", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(empty))
+    nowhere = empty / "etc-oscmix-routing.conf"
+    monkeypatch.setattr(config, "SYSTEM_CONFIG", nowhere)
+    monkeypatch.setattr(launcher, "SYSTEM_CONFIG", nowhere)
 
 
 @pytest.fixture(scope="session")

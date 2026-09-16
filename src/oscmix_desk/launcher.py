@@ -28,36 +28,63 @@ SERVICE = SERVICE_UNIT
 log = logging.getLogger("oscmix-launch")
 
 
-def load_settings() -> "tuple[str, int]":
-    """Read usb-id and OSC port from routing.conf; fall back to defaults.
+#: The last place a desk is looked for; config.SYSTEM_CONFIG, kept in
+#: step by a test like the rest of the search order below.
+SYSTEM_CONFIG = Path("/etc/oscmix/routing.conf")
+
+
+def config_file() -> Optional[Path]:
+    """The routing.conf a start would read: config.discover_config_path's
+    rule, repeated here because the launcher imports no config module.
+
+    OSCMIX_CONFIG alone when it is set, existing or not -- the backend
+    refuses a missing one rather than looking further. Then an absolute
+    XDG_CONFIG_HOME (a relative one is ignored, as the specification
+    says), else ~/.config, then /etc. Until 0.6.10 the launcher looked
+    past a missing OSCMIX_CONFIG and took a relative XDG_CONFIG_HOME,
+    so it could read another file than the backend it was starting.
+    """
+    named = os.environ.get("OSCMIX_CONFIG")
+    if named:
+        return Path(named)
+    xdg = os.environ.get("XDG_CONFIG_HOME", "")
+    if not os.path.isabs(xdg):
+        xdg = os.path.expanduser("~/.config")
+    for candidate in (Path(xdg) / "oscmix" / "routing.conf", SYSTEM_CONFIG):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def load_settings() -> "tuple[str, tuple[int, ...]]":
+    """Read usb-id and the OSC ports to poll; fall back to defaults.
+
+    The ports are where the backend can be, most likely first: the
+    active profile's when it states one, then routing.conf's -- which is
+    where the backend runs when that profile no longer loads, a warning
+    the launcher cannot see without the config module (ADR 0018).
 
     The launcher must never fail because of a config problem -- the
     backend reports those properly -- so parse errors only log a warning.
     """
     usb_id, port = DEFAULT_USB_ID, DEFAULT_OSC_PORT
-    xdg = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-    candidates = [Path(xdg) / "oscmix" / "routing.conf",
-                  Path("/etc/oscmix/routing.conf")]
-    env = os.environ.get("OSCMIX_CONFIG")
-    if env:
-        candidates.insert(0, Path(env))
-    for path in candidates:
-        if not path.is_file():
-            continue
-        parser = configparser.ConfigParser(
-            interpolation=None, inline_comment_prefixes=("#", ";")
-        )
-        try:
-            parser.read(path, encoding="utf-8")
-            raw_id = parser.get("device", "usb-id", fallback=usb_id).strip()
-            if re.fullmatch(r"[0-9a-fA-F]{4}:[0-9a-fA-F]{4}", raw_id):
-                usb_id = raw_id.lower()
-            port = parser.getint("osc", "port", fallback=port)
-            port = _active_profile_port(path, port)
-        except (configparser.Error, ValueError) as exc:
-            log.warning("ignoring unreadable config %s: %s", path, exc)
-        break
-    return usb_id, port
+    path = config_file()
+    if path is None or not path.is_file():
+        return usb_id, (port,)
+    parser = configparser.ConfigParser(
+        interpolation=None, inline_comment_prefixes=("#", ";")
+    )
+    try:
+        parser.read(path, encoding="utf-8")
+        raw_id = parser.get("device", "usb-id", fallback=usb_id).strip()
+        if re.fullmatch(r"[0-9a-fA-F]{4}:[0-9a-fA-F]{4}", raw_id):
+            usb_id = raw_id.lower()
+        port = parser.getint("osc", "port", fallback=port)
+    except (configparser.Error, ValueError) as exc:
+        log.warning("ignoring unreadable config %s: %s", path, exc)
+        return usb_id, (port,)
+    profile_port = _active_profile_port(path, port)
+    return usb_id, tuple(dict.fromkeys((profile_port, port)))
 
 
 def _active_profile_port(config_path: Path, port: int) -> int:
@@ -112,8 +139,9 @@ def systemctl_user(*verb: str) -> int:
         return 1
 
 
-def ensure_backend(port: int, proc_root: Path) -> bool:
-    """Start the backend service if needed; True if it accepts OSC."""
+def ensure_backend(ports: "tuple[int, ...]", proc_root: Path) -> bool:
+    """Start the backend service if needed; True if it accepts OSC on
+    any of ``ports``."""
     if systemctl_user("is-active", "--quiet", SERVICE) != 0:
         log.info("starting %s", SERVICE)
         systemctl_user("reset-failed", SERVICE)
@@ -123,10 +151,10 @@ def ensure_backend(port: int, proc_root: Path) -> bool:
         systemctl_user("start", "--no-block", SERVICE)
     deadline = time.monotonic() + BACKEND_WAIT
     while time.monotonic() < deadline:
-        if udp_port_listening(port, proc_root):
+        if any(udp_port_listening(port, proc_root) for port in ports):
             return True
         time.sleep(0.25)
-    return udp_port_listening(port, proc_root)
+    return any(udp_port_listening(port, proc_root) for port in ports)
 
 
 def resolve_gtk_binary() -> Optional[str]:
@@ -147,7 +175,7 @@ def main() -> int:
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
 
-    usb_id, port = load_settings()
+    usb_id, ports = load_settings()
 
     if not usb_device_present(usb_id, sysfs_usb):
         log.error("RME Fireface (%s) is not connected", usb_id)
@@ -156,9 +184,10 @@ def main() -> int:
                urgency="critical")
         return 1
 
-    if not ensure_backend(port, proc_root):
-        log.warning("backend not reachable on UDP %d; starting mixer anyway "
-                    "(check: journalctl --user -u %s)", port, SERVICE)
+    if not ensure_backend(ports, proc_root):
+        log.warning("backend not reachable on UDP %s; starting mixer anyway "
+                    "(check: journalctl --user -u %s)",
+                    " or ".join(str(port) for port in ports), SERVICE)
         notify("RME Fireface Mixer",
                "The mixer backend did not start. "
                "Check 'journalctl --user -u %s'." % SERVICE)

@@ -101,10 +101,13 @@ Environment=OSCMIX_LINK_SYNC_DELAY=30
 
 `systemctl --user status oscmix.service` also shows a `Status:` line
 since 0.6.3: `applying routing`, `verifying routing`, `reconciling
-(SIGHUP)`, `running; verifier finished at HH:MM:SS`, or `running;
-reconcile skipped at HH:MM:SS`. The last one means the reconcile stood
-down rather than wrote: the receive port was held, or another writer
-had the device lock. It says what the unit is doing; it is not what
+(SIGHUP)`, `running; verifier finished at HH:MM:SS`, `running;
+verifier failed at HH:MM:SS`, `running; reconciled at HH:MM:SS`, or
+`running; reconcile skipped at HH:MM:SS`. "Skipped" means the reconcile
+stood down rather than wrote: the receive port was held, another writer
+had the device lock, or the backend could not be reached. "Verifier
+failed" (since 0.6.10) means the background verification could not
+reach the backend; the journal has the reason. It says what the unit is doing; it is not what
 keeps two writers apart. Since 0.6.5 the unit takes the same lock a
 switch takes (ADR 0019), and since 0.6.7 that lock is named after the
 interface (ADR 0022). Since 0.6.8 it lives in `/run/oscmix-desk/`,
@@ -117,7 +120,7 @@ desk *inside* that lock (ADR 0020), so whichever of them gets it first,
 the other applies what was committed rather than what it read earlier.
 
 Since 0.6.9 a start that cannot take the lock fails instead of reporting
-ready, and systemd tries again after a few seconds (ADR 0024). Three
+ready, and systemd tries again after a few seconds (ADR 0024). Four
 refusals name their cause in the journal and on the command line:
 
 ```
@@ -159,7 +162,7 @@ UDP port 7222 is held by the backend (pid 4712) of a running
 ```
 
 Two sessions were started for one port: the unit and `oscmix-session`
-by hand, or the unit twice. Since 0.6.10 the newcomer exits 2 and the
+by hand, or two by hand. Since 0.6.10 the newcomer exits 2 and the
 running one keeps its desk (until then each terminated the other's
 backend in turn). If the newcomer was the unit, `RestartPreventExitStatus`
 keeps it down until the next plug-in event or `systemctl --user start

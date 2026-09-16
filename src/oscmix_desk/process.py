@@ -328,8 +328,9 @@ def supervise(child: "subprocess.Popen[bytes]",
 def _systemctl(*verb: str) -> int:
     """``systemctl --user <verb...>``: its exit status, or 1 without systemctl.
 
-    The one place this package runs systemctl outside the launcher, so
-    a single autouse fixture in the tests can stub the whole of it. The
+    One of the two places this package runs systemctl outside the
+    launcher (``_systemctl_output`` is the other), so a single autouse
+    fixture in the tests can stub both. The
     integration suite once started the developer's own oscmix.service
     through a launcher that reached the real binary (0.6.1); nothing
     in-process may be able to do the same.

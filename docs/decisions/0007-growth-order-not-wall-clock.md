@@ -52,5 +52,7 @@ feature request to upstream, tracked in the roadmap, not a number.
 ## Amended in 0.6.10
 
 The "15-20 s" dump was an unrecorded observation; the recorded one is
-1.9 s for 2002 registers on a warm device, and the cold replug timeline
-is in `tests/data/cold-plug-timeline.json` (ADR 0010, OSC-PROTOCOL.md).
+1.9 s for the 2252 registers a dump reports on a warm device (2322 with
+the 70 streamed meters, `tests/data/refresh-dump.json` at the pin), and
+the cold replug timeline is in `tests/data/cold-plug-timeline.json`
+(ADR 0010, OSC-PROTOCOL.md).

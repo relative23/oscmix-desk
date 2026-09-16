@@ -64,8 +64,8 @@ since.
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work
-  ([documented](docs/upstream-issues.md)); four are fixed at the pinned
-  revision and one, the output phase write, is filed.
+  ([documented](docs/upstream-issues.md)); all five are fixed at the
+  pinned revision.
 
 ## Why you want this
 
@@ -312,8 +312,9 @@ from "this is where I left it".
 systemctl --user reload oscmix.service
 ```
 
-That re-reads `routing.conf`, reads the device back, re-applies what is
-pinned and leaves what is remembered exactly where you put it. Use
+That re-reads the desk in effect -- the active profile, else
+`routing.conf` -- reads the device back, re-applies what is pinned and
+leaves what is remembered exactly where you put it. Use
 `reload`, not `kill --signal=SIGHUP`: the latter signals every process in
 the unit, and the backend does not handle SIGHUP, so it dies.
 

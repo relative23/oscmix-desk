@@ -24,6 +24,17 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+#: Every command the scripts run through $SUDO that does not take one of
+#: the overridable paths below: as root $SUDO is empty, and these would
+#: run for real. systemd-tmpfiles did until 0.6.10 -- on a copy of the
+#: conf whose lines still name /run/oscmix-desk.
+STUBBED_TOOLS = ("systemctl", "udevadm", "sudo", "systemd-tmpfiles")
+
+#: What $SUDO install and $SUDO rm may write or remove: only the targets
+#: make_fake_home points into the scratch directory.
+OVERRIDDEN_TARGETS = ('"$UDEV_RULE"', '"$SLEEP_HOOK"', '"$TMPFILES_CONF"')
+
+
 def make_fake_home(tmp_path):
     home = tmp_path / "home"
     bin_dir = home / ".local" / "bin"
@@ -36,7 +47,7 @@ def make_fake_home(tmp_path):
     stub_bin = tmp_path / "stub-bin"
     stub_bin.mkdir()
     log = tmp_path / "calls.log"
-    for tool in ("systemctl", "udevadm", "sudo"):
+    for tool in STUBBED_TOOLS:
         stub = stub_bin / tool
         # The sudo stub must never execute its arguments -- uninstall.sh
         # would otherwise touch the real /etc/udev rule on dev machines.
@@ -97,6 +108,26 @@ def test_install_no_build_installs_everything(tmp_path):
     assert "systemctl --user daemon-reload" in calls
     assert "systemctl --user enable --quiet oscmix.service" in calls
     assert "udevadm" not in calls  # --no-udev
+
+
+def test_relative_xdg_base_directories_are_ignored_both_ways(tmp_path):
+    """The session and the launcher ignore a relative XDG_CONFIG_HOME
+    (0.6.10); the installer has to put routing.conf where they look, and
+    the uninstaller has to remove the unit from there."""
+    home, env, _ = make_fake_home(tmp_path)
+    env.update({"XDG_CONFIG_HOME": "relative-config",
+                "XDG_DATA_HOME": "relative-data"})
+    result = run("install.sh", ["--no-build", "--no-udev"], env)
+    assert result.returncode == 0, result.stderr + result.stdout
+    unit = home / ".config" / "systemd" / "user" / "oscmix.service"
+    assert (home / ".config" / "oscmix" / "routing.conf").is_file()
+    assert unit.is_file()
+    assert (home / ".local" / "share" / "applications"
+            / "oscmix-gtk.desktop").is_file()
+    assert not (PROJECT_ROOT / "relative-config").exists()
+    assert not (PROJECT_ROOT / "relative-data").exists()
+    assert run("uninstall.sh", [], env).returncode == 0
+    assert not unit.exists()
 
 
 def test_install_is_idempotent_and_keeps_user_config(tmp_path):
@@ -408,3 +439,25 @@ def test_a_start_that_fails_does_not_end_the_installer(tmp_path):
     result = run("install.sh", ["--no-build", "--no-udev"], env)
     assert result.returncode == 0, result.stderr
     assert "backend did not start" in result.stderr
+
+
+def test_nothing_the_scripts_run_as_root_escapes_the_stubs():
+    """Run as root, $SUDO is empty: every root command is either stubbed on
+    PATH or confined to a path the suite overrides. The tmpfiles step
+    was neither, and a root test run created and re-grouped the real
+    /run/oscmix-desk (0.6.10)."""
+    import re
+
+    for script in ("install.sh", "uninstall.sh"):
+        text = "\n".join(line for line in repo_file(script).read_text().splitlines()
+                         if not line.lstrip().startswith("#"))
+        # One logical command per match: continuation lines joined.
+        text = re.sub(r"\\\n\s*", " ", text)
+        commands = re.findall(r"\$SUDO\s+(\S+)([^;&|\n]*)", text)
+        assert commands, script
+        for tool, rest in commands:
+            if tool in STUBBED_TOOLS:
+                continue
+            assert tool in ("install", "rm"), (script, tool)
+            target = rest.split()[-1]
+            assert target in OVERRIDDEN_TARGETS, (script, tool, rest)

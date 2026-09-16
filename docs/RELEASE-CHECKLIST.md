@@ -134,12 +134,14 @@ one that found all three defects in 0.1.3.
       applications share them.
 
       **Run this without sudo available.** `uninstall.sh` removes the
-      udev rule and the resume hook, and those live in `/etc` and
-      `/usr/lib` -- a scratch `HOME` does not move them. A scratch-home
-      uninstall with a live sudo ticket therefore deletes the *real*
-      system's hotplug rule. It failed safely here only because sudo had
-      no terminal. Check `sudo -n true` fails before running it, and
-      check the two files are still there afterwards.
+      udev rule, the resume hook and the tmpfiles.d entry, and those
+      live in `/etc` and `/usr/lib` -- a scratch `HOME` does not move
+      them. A scratch-home uninstall with a live sudo ticket once
+      deleted the *real* system's hotplug rule; since 0.6.8 the script
+      leaves the three files alone whenever systemd's session serves
+      another home, and says so. Check `sudo -n true` fails before
+      running it anyway, and check the three files are still there
+      afterwards.
 
       **`systemctl --user` does not follow `HOME` either**, and that was
       the same trap one level down: the user instance is per login
@@ -151,9 +153,10 @@ one that found all three defects in 0.1.3.
       installed or removed; only arming and stopping it is withheld,
       with a message saying how to do it from the right session.
 
-      So this step is now safe to run, and its two guards are what to
-      check: `sudo -n true` must fail, and the real service must still
-      be `active`/`enabled` afterwards.
+      So this step is now safe to run, and its guards are what to
+      check: `sudo -n true` must fail, the three system files must
+      still be there, and the real service must still be
+      `active`/`enabled` afterwards.
 
 ## 6. The tag
 

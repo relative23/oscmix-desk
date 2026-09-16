@@ -16,7 +16,9 @@ can actually help:
      exited cleanly
   1  runtime failure (systemd restarts via Restart=on-failure)
   2  configuration error, an ambiguous interface, or a session already
-     running on the port (no restart; see RestartPreventExitStatus)
+     running on the port (no restart; see RestartPreventExitStatus);
+     from the command line also a usage error, or a switch or restore
+     that was refused and wrote nothing
   3  --diff: the device differs from the config
   4  a switch was applied but its marker could not be written
   5  a switch was applied but the unit refused the reload

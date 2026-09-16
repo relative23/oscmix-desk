@@ -56,6 +56,24 @@ def _parse_positions(raw: object) -> Optional[List[str]]:
     return None
 
 
+def pw_dump_text() -> Optional[str]:
+    """``pw-dump``'s output, or None when it is missing or fails.
+
+    Apart from pw_sink_info so a caller can tell "PipeWire could not be
+    asked" from "PipeWire has no such sink" (0.6.10).
+    """
+    pw_dump = shutil.which("pw-dump")
+    if not pw_dump:
+        return None
+    try:
+        return subprocess.run(
+            [pw_dump], capture_output=True, text=True, timeout=10,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
 def pw_sink_info(device_name: str, target: Optional[str] = None,
                  dump_text: Optional[str] = None
                  ) -> Optional[Tuple[str, Optional[List[str]]]]:
@@ -65,15 +83,8 @@ def pw_sink_info(device_name: str, target: Optional[str] = None,
     matching the configured device name (or "fireface").
     """
     if dump_text is None:
-        pw_dump = shutil.which("pw-dump")
-        if not pw_dump:
-            return None
-        try:
-            dump_text = subprocess.run(
-                [pw_dump], capture_output=True, text=True, timeout=10,
-                check=True,
-            ).stdout
-        except (OSError, subprocess.SubprocessError):
+        dump_text = pw_dump_text()
+        if dump_text is None:
             return None
     try:
         objects = json.loads(dump_text)

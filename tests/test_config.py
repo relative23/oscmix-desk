@@ -270,13 +270,17 @@ def test_config_discovery_resolves_in_the_environment_it_is_given(
     monkeypatch.delenv("OSCMIX_CONFIG")
     assert session_mod.discover_config_path() == expected
     # A uid without a passwd entry has no home; `~` would stay `~`.
-    # /etc is still searched, and nothing raises (every start and every
-    # SIGHUP reconcile passes through here).
+    # Nothing raises (every start and every SIGHUP reconcile passes
+    # through here), and the system location is still searched.
     def no_entry(uid):
         raise KeyError(uid)
     monkeypatch.setattr(config_mod.pwd, "getpwuid", no_entry)
-    monkeypatch.setattr(config_mod.Path, "is_file", lambda self: False)
     assert session_mod.discover_config_path({}) is None
+    system = tmp_path / "etc" / "routing.conf"
+    system.parent.mkdir()
+    system.write_text("")
+    monkeypatch.setattr(config_mod, "SYSTEM_CONFIG", system)
+    assert session_mod.discover_config_path({}) == system
 
 
 def test_config_discovery_returns_none_when_there_is_nothing(session_mod,

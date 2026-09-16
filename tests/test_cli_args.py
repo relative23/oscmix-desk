@@ -28,12 +28,14 @@ STEREO = "[route:monitors]\nplayback = 1/2\noutput = 1/2\n"
 PRO_LAYOUT = ["AUX%d" % n for n in range(20)]
 
 
-def _run(tmp_path, capsys, monkeypatch, text, info, *extra):
+def _run(tmp_path, capsys, monkeypatch, text, info, *extra, dump="[]"):
     from oscmix_desk import cli
 
     path = tmp_path / "routing.conf"
     path.write_text(text)
-    monkeypatch.setattr(cli, "pw_sink_info", lambda name, target=None: info)
+    monkeypatch.setattr(cli, "pw_dump_text", lambda: dump)
+    monkeypatch.setattr(cli, "pw_sink_info",
+                        lambda name, target=None, dump_text=None: info)
     code = cli.main(["--config", str(path), "--pipewire-sinks", *extra])
     return code, capsys.readouterr().out
 
@@ -68,6 +70,23 @@ def test_pipewire_sinks_keeps_an_explicit_target_when_nothing_is_detected(
     assert 'target.object = "my.sink"' in out
     assert "could not auto-detect" not in caplog.text, \
         "a named target is not a detection failure"
+    # Named and not in pw-dump: the positions below are the surround
+    # table, and the output says so rather than looking right (0.6.10).
+    assert "no sink named 'my.sink' in pw-dump" in caplog.text
+    assert "7.1 surround layout" in caplog.text
+
+
+def test_pipewire_sinks_does_not_call_a_target_missing_it_could_not_look_up(
+        tmp_path, capsys, monkeypatch, caplog, session_mod):
+    """pw-dump missing or failing is not "no such sink"."""
+    with caplog.at_level("WARNING"):
+        code, out = _run(tmp_path, capsys, monkeypatch, STEREO, None,
+                         "--pipewire-target", "my.sink", dump=None)
+    assert code == session_mod.EXIT_OK
+    assert 'target.object = "my.sink"' in out
+    assert "pw-dump could not be read, so sink 'my.sink' was not checked" \
+        in caplog.text
+    assert "no sink named" not in caplog.text
 
 
 def test_pipewire_sinks_with_no_stereo_route_is_a_config_error(
@@ -105,6 +124,31 @@ def test_two_actions_in_one_command_are_refused_before_anything_runs(
     assert raised.value.code == 2
     assert touched == []
     assert "cannot be combined" in capsys.readouterr().err
+
+
+def test_a_pair_is_refused_before_the_config_is_read(monkeypatch, capsys,
+                                                     tmp_path):
+    """It ran after the load until 0.6.10: a broken routing.conf answered
+    `--diff --snapshot` with "configuration error", naming neither."""
+    from oscmix_desk import cli
+
+    broken = tmp_path / "routing.conf"
+    broken.write_text("[route:x]\noutput = 99\n")
+
+    def unread(*_a, **_k):
+        raise AssertionError("the config was read before the refusal")
+
+    monkeypatch.setattr(cli, "discover_config_path", unread)
+    monkeypatch.setattr(cli, "effective_config", unread)
+    for argv in (["--diff", "--snapshot"],
+                 ["--config", str(broken), "--diff", "--snapshot"],
+                 ["--timeout", "nan"]):
+        with pytest.raises(SystemExit) as raised:
+            cli.main(argv)
+        assert raised.value.code == 2, argv
+    err = capsys.readouterr().err
+    assert "--diff and --snapshot cannot be combined" in err
+    assert "--timeout must be a finite" in err
 
 
 @pytest.mark.parametrize("flag", ["--diff", "--snapshot", "--dump-config",

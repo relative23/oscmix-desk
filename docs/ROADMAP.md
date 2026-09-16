@@ -91,19 +91,25 @@ it" -- which is the same answer TotalMix gives, minus the snapshot.
 ## Where we are (0.6.10)
 
 **0.6.10 (unreleased)** is what a full check of the released 0.6.9
-found -- gates, the live desk, and two independent reviews of the whole
+found -- gates, the live desk, and independent reviews of the whole
 tree rather than of a diff. Two behaviours were wrong: a session started
-by hand terminated the running unit's backend, and a switch made with
-`--config` for another file asked the unit to reconcile its own desk
-over it. Behind those, a layer of smaller defects that had never been
-exercised: only three of twenty-one action pairs were refused, a config
-read differently depending on the order of its sections, Ctrl-C before
-the backend ran was a traceback, a profile marker that was not UTF-8
-raised on every start, and the launcher polled the wrong port while a
-profile with its own `[osc]` was active. The rest is documentation
-that described an earlier release -- the lock's location and ownership
-in the unit and the installer, a `StopWhenUnneeded` that never fires
-on an enabled unit, ten decision records now carrying an amendment for
+by hand terminated the running unit's backend, and a switch of another
+desk -- named by `--config`, or by the shell's own environment -- asked
+the unit to reconcile its own desk over it; the unit's desk is now
+worked out the way the unit worked it out, from its own command line
+and environment. Behind those, a layer of smaller defects that had never
+been exercised: only three of twenty-one action pairs were refused, a
+config read differently depending on the order of its sections, Ctrl-C
+before the backend ran was a traceback, a profile marker that was not
+UTF-8 raised on every start, the launcher polled the wrong port while a
+profile with its own `[osc]` was active, a relative `XDG_CONFIG_HOME`
+sent the installer's config into the working directory, and the test
+suite read the developer's own desk and, run as root, reached the
+machine's lock directory. The rest is documentation that described an
+earlier release -- the lock's location and ownership in the unit and
+the installer, a `StopWhenUnneeded` that never fires on an enabled
+unit, an upstream record that still called a fix the pin has carried
+since 0.6.0 open, ten decision records now carrying an amendment for
 what later releases changed. Nothing in the routing moved.
 
 **0.6.9 (2026-09-16)** is what a review of the 0.6.8 lock found, in the

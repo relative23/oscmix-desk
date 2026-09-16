@@ -29,9 +29,20 @@ LIB_DIR="$HOME/.local/lib/oscmix-desk"
 # stale one there is a version nobody chose. Removed by both scripts.
 LEGACY_LIB_DIR="$HOME/.local/lib/oscmix-autostart"
 
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/oscmix"
-DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
-UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+# A base directory that is not absolute is invalid and ignored: the XDG
+# specification's rule, and the session's and the launcher's since
+# 0.6.10, which would otherwise read another routing.conf than the one
+# installed here.
+xdg_base() {
+    case "$1" in
+        /*) printf '%s\n' "$1" ;;
+        *)  printf '%s\n' "$2" ;;
+    esac
+}
+CONFIG_HOME="$(xdg_base "${XDG_CONFIG_HOME:-}" "$HOME/.config")"
+CONFIG_DIR="$CONFIG_HOME/oscmix"
+DATA_DIR="$(xdg_base "${XDG_DATA_HOME:-}" "$HOME/.local/share")"
+UNIT_DIR="$CONFIG_HOME/systemd/user"
 # Overridable for the test suite only, which must never reach the real
 # files -- as root, $SUDO is empty and the install would be real.
 UDEV_RULE="${OSCMIX_UDEV_RULE:-/etc/udev/rules.d/90-rme-fireface.rules}"
@@ -55,7 +66,7 @@ options:
 
 environment:
   OSCMIX_REPO  oscmix git repository (default: upstream on GitHub)
-  OSCMIX_REF   git ref to build (default: the pinned commit below)
+  OSCMIX_REF   git ref to build (default: the commit this release pins)
 EOF
 }
 
@@ -285,7 +296,8 @@ if command -v gtk-update-icon-cache >/dev/null 2>&1; then
 fi
 
 # --------------------------------------------------------------------------
-# The steps that need root: the udev rule, and the resume hook
+# The steps that need root: the udev rule, the resume hook, and the
+# shared lock directory
 # --------------------------------------------------------------------------
 
 if [ "$DO_UDEV" = 1 ]; then
@@ -351,7 +363,8 @@ if [ "$DO_UDEV" = 1 ]; then
     fi
 else
     info "skipping the root steps (--no-udev): no hotplug autostart, no"
-    info "reconcile after resume"
+    info "reconcile after resume, and the device lock falls back to the"
+    info "per-user runtime directory (ADR 0023)"
 fi
 
 # --------------------------------------------------------------------------

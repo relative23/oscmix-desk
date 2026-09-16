@@ -26,7 +26,7 @@ glue between them:
 │    asks the user's systemd instance to start oscmix.service  │
 │    (SYSTEMD_USER_WANTS). On removal the backend exits with   │
 │    its device and the session exits 0; the tagged remove     │
-│    event keeps the device unit in step for the next add.     │
+│    event lets the user manager retire its device unit.       │
 ├──────────────────────────────────────────────────────────────┤
 │ 3  backend (systemd/oscmix.service → bin/oscmix-session)     │
 │    Discovers the ALSA sequencer client, runs                 │
@@ -161,10 +161,11 @@ channel map and no registers, because oscmix cannot drive it.
 |---|---|---|
 | 0 | device absent, clean shutdown, or clean backend exit | none |
 | 1 | runtime failure | restart after 3 s (max 5 per 2 min) |
-| 2 | routing.conf error | **no** restart (`RestartPreventExitStatus=2`) |
+| 2 | a configuration the unit cannot run: a routing.conf error, two interfaces and no `[device] serial`, a session already running on the port; from the command line also a usage error or a refused switch | **no** restart (`RestartPreventExitStatus=2`) |
 | 3 | `--diff` only: the device and the config disagree | never seen; the service runs no flag |
 | 4 | a switch reached the device but could not be recorded | never seen; flags only |
 | 5 | the unit is running and refused the reload | never seen; flags only |
+| 130 | interrupted (Ctrl-C) before the backend ran | never seen; systemd stops with SIGTERM |
 
 `diff(1)` returns 1 for "differing" and that is not available here,
 because 1 already means a failure. A caller has to be able to tell *the
@@ -197,17 +198,21 @@ monitoring check report healthy silence while the backend is down.
 
 - **udev remove matches `ENV{PRODUCT}`.** At remove time the sysfs
   attributes are already gone, so an `ATTR{idVendor}` match never fires.
-  This is easy to get wrong and results in a service that keeps running
-  after unplug.
+  What ends the service on unplug is not this rule but the backend
+  exiting with its device (ADR 0013); the remove match is what lets the
+  user manager retire the device unit it tagged on add.
 
 - **Stale cleanup signals the holder, not the namesake.** If the OSC
   port is already taken at startup, the socket inode in `/proc/net/udp`
   is resolved to the process that holds it through `/proc/<pid>/fd`, and
   that process is terminated only when it is also an `oscmix` of this
-  user. Anything else keeps the port and the start fails on the port
-  wait. Until 0.6.6 every `oscmix` of the user was terminated as soon as
-  *anything* held the port, which could stop a second interface's
-  backend and leave the actual holder running (ADR 0021).
+  user whose parent is not a live `oscmix-session`. A backend a running
+  session supervises is somebody's desk: the start exits 2 at once and
+  names that session (0.6.10). Anything else keeps the port and the start
+  fails on the port wait. Until 0.6.6 every `oscmix` of the user was
+  terminated as soon as *anything* held the port, which could stop a
+  second interface's backend and leave the actual holder running
+  (ADR 0021).
 
 - **One interface, resolved once.** `discovery.resolve_device` answers
   which interface a desk is for -- serial, sequencer client and lock key

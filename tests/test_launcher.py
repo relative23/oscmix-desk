@@ -17,11 +17,14 @@ import pytest
 
 
 @pytest.fixture
-def clean_env(monkeypatch):
-    """No inherited OSCMIX_* or XDG_CONFIG_HOME leaking into a test."""
+def clean_env(monkeypatch, tmp_path_factory):
+    """No inherited OSCMIX_* or XDG_CONFIG_HOME leaking into a test, and a
+    HOME with nothing in it: without XDG_CONFIG_HOME the launcher reads
+    ~/.config, which must not be the developer's."""
     for name in ("OSCMIX_CONFIG", "OSCMIX_NO_NOTIFY", "OSCMIX_BIN_GTK",
                  "XDG_CONFIG_HOME"):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path_factory.mktemp("home")))
     return monkeypatch
 
 
@@ -37,9 +40,9 @@ def write_conf(path, body):
 def test_settings_fall_back_to_the_compiled_in_defaults(launch_mod, clean_env,
                                                         tmp_path):
     clean_env.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    usb_id, port = launch_mod.load_settings()
+    usb_id, ports = launch_mod.load_settings()
     assert usb_id == launch_mod.DEFAULT_USB_ID
-    assert port == launch_mod.DEFAULT_OSC_PORT
+    assert ports == (launch_mod.DEFAULT_OSC_PORT,)
 
 
 def test_settings_are_read_from_the_configured_file(launch_mod, clean_env,
@@ -47,7 +50,7 @@ def test_settings_are_read_from_the_configured_file(launch_mod, clean_env,
     conf = write_conf(tmp_path / "routing.conf",
                       "[device]\nusb-id = 2A39:3FD9\n\n[osc]\nport = 9001\n")
     clean_env.setenv("OSCMIX_CONFIG", str(conf))
-    assert launch_mod.load_settings() == ("2a39:3fd9", 9001)
+    assert launch_mod.load_settings() == ("2a39:3fd9", (9001,))
 
 
 def test_an_unparseable_usb_id_is_ignored_rather_than_fatal(launch_mod,
@@ -58,9 +61,9 @@ def test_an_unparseable_usb_id_is_ignored_rather_than_fatal(launch_mod,
     conf = write_conf(tmp_path / "routing.conf",
                       "[device]\nusb-id = not-a-usb-id\n")
     clean_env.setenv("OSCMIX_CONFIG", str(conf))
-    usb_id, port = launch_mod.load_settings()
+    usb_id, ports = launch_mod.load_settings()
     assert usb_id == launch_mod.DEFAULT_USB_ID
-    assert port == launch_mod.DEFAULT_OSC_PORT
+    assert ports == (launch_mod.DEFAULT_OSC_PORT,)
 
 
 def test_a_broken_config_warns_and_keeps_the_defaults(launch_mod, clean_env,
@@ -70,14 +73,14 @@ def test_a_broken_config_warns_and_keeps_the_defaults(launch_mod, clean_env,
     clean_env.setenv("OSCMIX_CONFIG", str(conf))
     with caplog.at_level("WARNING"):
         assert launch_mod.load_settings() == (launch_mod.DEFAULT_USB_ID,
-                                              launch_mod.DEFAULT_OSC_PORT)
+                                              (launch_mod.DEFAULT_OSC_PORT,))
     assert "ignoring unreadable config" in caplog.text
 
 
 def test_only_the_first_existing_config_is_read(launch_mod, clean_env,
                                                 tmp_path):
-    # OSCMIX_CONFIG is inserted ahead of the XDG path; a second file must
-    # not be able to override what the first one said (or did not say).
+    # OSCMIX_CONFIG comes before the XDG path; a second file must not be
+    # able to override what the first one said (or did not say).
     first = write_conf(tmp_path / "explicit.conf", "[osc]\nport = 9002\n")
     xdg = tmp_path / "xdg"
     (xdg / "oscmix").mkdir(parents=True)
@@ -85,7 +88,12 @@ def test_only_the_first_existing_config_is_read(launch_mod, clean_env,
                "[device]\nusb-id = 1111:2222\n[osc]\nport = 9003\n")
     clean_env.setenv("OSCMIX_CONFIG", str(first))
     clean_env.setenv("XDG_CONFIG_HOME", str(xdg))
-    assert launch_mod.load_settings() == (launch_mod.DEFAULT_USB_ID, 9002)
+    assert launch_mod.load_settings() == (launch_mod.DEFAULT_USB_ID, (9002,))
+    # A missing OSCMIX_CONFIG is not a reason to look further: the backend
+    # refuses to start on it, and the XDG file is not what it would run.
+    clean_env.setenv("OSCMIX_CONFIG", str(tmp_path / "missing.conf"))
+    assert launch_mod.load_settings() == (launch_mod.DEFAULT_USB_ID,
+                                          (launch_mod.DEFAULT_OSC_PORT,))
 
 
 def test_the_xdg_config_is_used_when_no_override_is_set(launch_mod, clean_env,
@@ -93,7 +101,49 @@ def test_the_xdg_config_is_used_when_no_override_is_set(launch_mod, clean_env,
     (tmp_path / "oscmix").mkdir()
     write_conf(tmp_path / "oscmix" / "routing.conf", "[osc]\nport = 9004\n")
     clean_env.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    assert launch_mod.load_settings()[1] == 9004
+    assert launch_mod.load_settings()[1] == (9004,)
+
+
+def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
+                                                       tmp_path):
+    """config.discover_config_path's rule, repeated in a module that may
+    not import config -- held equal here across the environments that
+    decide it. A relative XDG_CONFIG_HOME is ignored by both (0.6.10)."""
+    from oscmix_desk import config
+
+    home = tmp_path / "home"
+    xdg = tmp_path / "xdg"
+    system = tmp_path / "etc" / "routing.conf"
+    for path in (home / ".config" / "oscmix" / "routing.conf",
+                 xdg / "oscmix" / "routing.conf", system):
+        path.parent.mkdir(parents=True)
+        write_conf(path, "[osc]\nport = 9005\n")
+    clean_env.setattr(config, "SYSTEM_CONFIG", system)
+    clean_env.setattr(launch_mod, "SYSTEM_CONFIG", system)
+    clean_env.chdir(tmp_path)
+    (tmp_path / "rel" / "oscmix").mkdir(parents=True)
+    write_conf(tmp_path / "rel" / "oscmix" / "routing.conf", "")
+    cases = [
+        {},
+        {"OSCMIX_CONFIG": str(tmp_path / "named.conf")},
+        {"XDG_CONFIG_HOME": str(xdg)},
+        {"XDG_CONFIG_HOME": "rel"},
+        {"XDG_CONFIG_HOME": str(tmp_path / "empty")},
+        {"HOME": str(tmp_path / "nohome")},
+    ]
+    seen = set()
+    for case in cases:
+        clean_env.setenv("HOME", str(home))
+        for name in ("OSCMIX_CONFIG", "XDG_CONFIG_HOME"):
+            clean_env.delenv(name, raising=False)
+        for name, value in case.items():
+            clean_env.setenv(name, value)
+        found = launch_mod.config_file()
+        assert found == config.discover_config_path(), case
+        seen.add(found)
+    assert seen == {home / ".config" / "oscmix" / "routing.conf",
+                    tmp_path / "named.conf", xdg / "oscmix" / "routing.conf",
+                    system}
 
 
 # --------------------------------------------------------------------------
@@ -159,7 +209,7 @@ def test_a_running_backend_is_not_started_again(launch_mod, clean_env,
     clean_env.setattr(launch_mod, "systemctl_user",
                       lambda *v: verbs.append(v) or 0)
     clean_env.setattr(launch_mod, "udp_port_listening", lambda *_a: True)
-    assert launch_mod.ensure_backend(7222, tmp_path) is True
+    assert launch_mod.ensure_backend((7222,), tmp_path) is True
     assert verbs == [("is-active", "--quiet", launch_mod.SERVICE)]
 
 
@@ -173,7 +223,7 @@ def test_an_inactive_backend_is_started_without_blocking(launch_mod,
 
     clean_env.setattr(launch_mod, "systemctl_user", systemctl)
     clean_env.setattr(launch_mod, "udp_port_listening", lambda *_a: True)
-    assert launch_mod.ensure_backend(7222, tmp_path) is True
+    assert launch_mod.ensure_backend((7222,), tmp_path) is True
     # --no-block: the unit is Type=notify and a plain start would block
     # until READY, which is what the port poll is for.
     assert ("start", "--no-block", launch_mod.SERVICE) in verbs
@@ -187,7 +237,7 @@ def test_a_backend_that_never_listens_gives_up_after_the_wait(launch_mod,
     clean_env.setattr(launch_mod, "udp_port_listening", lambda *_a: False)
     clean_env.setattr(launch_mod, "BACKEND_WAIT", 0.05)
     clean_env.setattr(launch_mod.time, "sleep", lambda _s: None)
-    assert launch_mod.ensure_backend(7222, tmp_path) is False
+    assert launch_mod.ensure_backend((7222,), tmp_path) is False
 
 
 def test_a_backend_that_appears_late_is_still_found(launch_mod, clean_env,
@@ -198,7 +248,20 @@ def test_a_backend_that_appears_late_is_still_found(launch_mod, clean_env,
                       lambda *_a: next(states, True))
     clean_env.setattr(launch_mod, "BACKEND_WAIT", 5.0)
     clean_env.setattr(launch_mod.time, "sleep", lambda _s: None)
-    assert launch_mod.ensure_backend(7222, tmp_path) is True
+    assert launch_mod.ensure_backend((7222,), tmp_path) is True
+
+
+def test_a_backend_on_any_of_the_ports_is_found(launch_mod, clean_env,
+                                                tmp_path):
+    """The active profile's port first, then routing.conf's: a profile that
+    no longer loads leaves the backend on the second (ADR 0018)."""
+    polled = []
+    clean_env.setattr(launch_mod, "systemctl_user", lambda *_v: 0)
+    clean_env.setattr(launch_mod, "udp_port_listening",
+                      lambda port, _root: polled.append(port) or port == 9001)
+    clean_env.setattr(launch_mod.time, "sleep", lambda _s: None)
+    assert launch_mod.ensure_backend((9100, 9001), tmp_path) is True
+    assert polled[:2] == [9100, 9001]
 
 
 # --------------------------------------------------------------------------
@@ -287,7 +350,7 @@ def launcher_world(launch_mod, clean_env, tmp_path):
     notifications = []
     execs = []
     clean_env.setattr(launch_mod, "load_settings",
-                      lambda: (launch_mod.DEFAULT_USB_ID, 7222))
+                      lambda: (launch_mod.DEFAULT_USB_ID, (7222,)))
     clean_env.setattr(launch_mod, "notify",
                       lambda s, b, urgency="normal":
                       notifications.append((s, b, urgency)))
@@ -360,7 +423,7 @@ def test_the_device_and_proc_roots_are_overridable(launcher_world):
     monkey.setattr(mod, "usb_device_present",
                    lambda usb_id, root: seen.setdefault("sysfs", root) or True)
     monkey.setattr(mod, "ensure_backend",
-                   lambda port, root: seen.setdefault("proc", root) or True)
+                   lambda ports, root: seen.setdefault("proc", root) or True)
     monkey.setenv("OSCMIX_SYSFS_USB", "/fake/sys")
     monkey.setenv("OSCMIX_PROC_ROOT", "/fake/proc")
     mod.main()
@@ -373,7 +436,7 @@ def test_the_launcher_logs_to_stderr_not_stdout(launch_mod, capsys, clean_env):
     # by accident, and a mixer that prints to stdout confuses anything
     # piping it.
     clean_env.setattr(launch_mod, "load_settings",
-                      lambda: (launch_mod.DEFAULT_USB_ID, 7222))
+                      lambda: (launch_mod.DEFAULT_USB_ID, (7222,)))
     clean_env.setattr(launch_mod, "usb_device_present", lambda *_a: False)
     clean_env.setattr(launch_mod, "notify", lambda *_a, **_kw: None)
     assert launch_mod.main() == 1
@@ -398,8 +461,10 @@ def test_the_port_of_the_active_profile_wins(launch_mod, clean_env, tmp_path):
     write_conf(tmp_path / "profiles" / "quiet.conf", "[route:x]\noutput = 1/2\nplayback = 1/2\n")
     clean_env.setenv("OSCMIX_CONFIG", str(conf))
     (tmp_path / "active-profile").write_text("live\n")
-    assert launch_mod.load_settings()[1] == 9100
+    # The profile's port first, routing.conf's after it: where the
+    # backend runs if that profile no longer loads.
+    assert launch_mod.load_settings()[1] == (9100, 9001)
     (tmp_path / "active-profile").write_text("quiet\n")      # inherits
-    assert launch_mod.load_settings()[1] == 9001
+    assert launch_mod.load_settings()[1] == (9001,)
     (tmp_path / "active-profile").write_text("../evil\n")   # never a path
-    assert launch_mod.load_settings()[1] == 9001
+    assert launch_mod.load_settings()[1] == (9001,)

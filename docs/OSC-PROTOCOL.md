@@ -60,7 +60,8 @@ Two properties make this awkward to wait out, both measured on a UCX II:
   values only from a `/refresh` dump, which streams over MIDI. This said
   "~15-20 s" from an unrecorded observation; the recorded one
   (`tests/data/refresh-dump.json`, pinned revision, backend restarted on
-  an already-enumerated UCX II) is **1.9 s for 2002 registers**.
+  an already-enumerated UCX II) is **1.9 s for the 2252 registers a dump
+  reports** (2322 with the 70 meters that stream on their own).
   The cold device after a replug -- the condition that was still
   unmeasured when this paragraph was written -- has since been recorded
   too (`tests/data/cold-plug-timeline.json`): the link registers come

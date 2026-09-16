@@ -21,9 +21,10 @@ ExecStart=%h/.local/bin/oscmix-session
 # ran its root steps. A lock the unit cannot take is a start it refuses.
 RuntimeDirectory=oscmix-desk
 RuntimeDirectoryPreserve=yes
-# Reconcile without restarting: re-read routing.conf, read the device
-# back, and re-apply what the config pins -- leaving alone what it
-# remembers (ADR 0012, ADR 0013).
+# Reconcile without restarting: re-read the desk in effect (the active
+# profile, else routing.conf), read the device back, and re-apply what
+# the config pins -- leaving alone what it remembers (ADR 0012, ADR 0013,
+# ADR 0018).
 #
 # $MAINPID and not `systemctl kill`. That was measured the hard way:
 # `systemctl --user kill --signal=SIGHUP oscmix.service` signals *every*
@@ -34,7 +35,9 @@ ExecReload=/bin/kill -HUP $MAINPID
 
 Restart=on-failure
 RestartSec=3
-# Exit code 2 means a routing.conf error -- restarting cannot fix that.
+# Exit code 2 means a configuration the unit cannot run: a routing.conf
+# error, two interfaces and no [device] serial to choose, or a session
+# already running on the port. Restarting cannot fix any of them.
 RestartPreventExitStatus=2
 # The worst case to READY=1 is constants.startup_budget(): the device
 # wait, the stale-backend settle, the port wait, the link barrier and,

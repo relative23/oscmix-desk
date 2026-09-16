@@ -11,11 +11,13 @@ report is worse than no issue.
 
 All observations below were made against
 `2411b12d8a13b82829caf3b0b628078980c3d3a4` on a Fireface UCX II
-(serial 24216011), Linux 7.0. **Both are fixed upstream, and the pin now
-sits on `55802a6ab865e551540ee9ad5081b8ae3276f8ca`**, which carries both
-fixes -- measured on the same device: the dump goes from 2002 registers
-to 2322, Room EQ from 320 to its real 640, and `/controlroom/mainout`
-now arrives as `('is', (-1, 'None'))` instead of unnamed.
+(serial 24216011), Linux 7.0. **Both are fixed upstream.** The pin moved
+to `55802a6ab865e551540ee9ad5081b8ae3276f8ca` to carry them -- measured
+on the same device: the dump goes from 2002 registers to 2322, Room EQ
+from 320 to its real 640, and `/controlroom/mainout` now arrives as
+`('is', (-1, 'None'))` instead of unnamed -- and in 0.6.0 on to
+`f2fdd5ec78338848754aad32cc07f3440de63395`, which also carries the
+fixes for entries 3, 4 and 5.
 
 ---
 
@@ -258,10 +260,12 @@ until it moves.
 
 [33]: https://github.com/michaelforney/oscmix/issues/33
 
-## 4. Filed: `/output/N/phase` writes never leave oscmix
+## 4. Fixed upstream: `/output/N/phase` writes never leave oscmix
 
-**Status:** filed as [michaelforney/oscmix#34][34] on 2026-08-24; a fix
-is proposed as [oscmix#36][36pr] on 2026-08-27 (entry 8).
+**Status:** filed as [michaelforney/oscmix#34][34] on 2026-08-24. Fixed
+by this project's [oscmix#36][36pr], merged on 2026-08-27 as `9dba36f`
+(entry 8); the pin carries it since 0.6.0, and output phase is settable
+here since then.
 
 `ctltoreg` gates `OUTPUT_PHASE` on `INPUT_HAS_REFLEVEL` (bit 2 of the
 input flags), but an output only ever carries `OUTPUT_HAS_REFLEVEL`
@@ -276,7 +280,7 @@ since early 2025; the filed issue named the `ctltoreg` gate, which is
 the real cause, and this entry now matches it.)
 
 Declared **reported and not settable** here, same as Room EQ, until the
-fix lands upstream and the pin moves to carry it (ADR 0008).
+fix landed upstream and the pin moved to carry it (ADR 0008).
 
 [34]: https://github.com/michaelforney/oscmix/issues/34
 [36pr]: https://github.com/michaelforney/oscmix/pull/36
@@ -289,8 +293,8 @@ maintainer with `fdc47f7`: Analog 5-8 do have a gain stage ("Pre Gain",
 0.0 to 24.0 dB in the device UI), so the row gains `gain={0, 240}`.
 Confirmed on this device the same evening -- built at `fdc47f7`,
 `/input/5/gain` takes 12.0 dB and reads it back -- and said so in a
-comment on the issue. The pin predates the fix, so the register class
-here changes when the pin next moves (ADR 0008).
+comment on the issue. The pin moved to `f2fdd5e`, which carries the
+fix, in 0.6.0, and the row became settable with it (ADR 0008).
 
 [35]: https://github.com/michaelforney/oscmix/issues/35
 

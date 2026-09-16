@@ -36,7 +36,7 @@ from .constants import (
 from .discovery import device_firmware, resolve_device
 from .errors import ConfigError, DeviceAmbiguous
 from .log import log
-from .pipewire import generate_pipewire_conf, pw_sink_info
+from .pipewire import generate_pipewire_conf, pw_dump_text, pw_sink_info
 from .process import (
     RELOAD_DONE,
     RELOAD_NOT_RUNNING,
@@ -164,6 +164,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 def _main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+    # A usage error before any file is read: it ran after the config
+    # load until 0.6.10, so a broken routing.conf answered a conflicting
+    # pair with "configuration error" and the pair went unnamed.
+    _refuse_conflicting_actions(parser, args)
     logging.basicConfig(
         stream=sys.stderr,
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -199,8 +203,6 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
             return EXIT_CONFIG
         config.osc_port = args.osc_port
 
-    _refuse_conflicting_actions(parser, args)
-
     if args.dry_run and (args.profile is not None or args.no_profile):
         return _dry_run_desk(args, config, config_path)
 
@@ -233,7 +235,9 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
 def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
     """Print one named PipeWire sink per stereo route of the desk in effect."""
     target, positions = args.pipewire_target, None
-    info = pw_sink_info(config.device_name, target=target)
+    dump = pw_dump_text()
+    info = None if dump is None else pw_sink_info(config.device_name,
+                                                  target=target, dump_text=dump)
     if info:
         target, positions = info
         log.info("target sink %s (%s channel layout)", target,
@@ -247,9 +251,12 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
         # surround table, which is wrong for a Direct/pro-audio sink --
         # the failure TROUBLESHOOTING section 9 describes. Say so rather
         # than print a config that looks right.
-        log.warning("no sink named %r in pw-dump; the channel positions "
-                    "below assume the 7.1 surround layout, check them "
-                    "against 'pw-dump' before loading this", target)
+        log.warning("%s; the channel positions below assume the 7.1 "
+                    "surround layout, check them against 'pw-dump' before "
+                    "loading this",
+                    "pw-dump could not be read, so sink %r was not checked"
+                    % target if dump is None
+                    else "no sink named %r in pw-dump" % target)
     try:
         sys.stdout.write(generate_pipewire_conf(config, target, positions))
     except ConfigError as exc:

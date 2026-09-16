@@ -373,6 +373,41 @@ def test_systemctl_returns_the_exit_status_and_one_without_the_binary(
     assert real_systemctl("is-active", "x.service") == 1
 
 
+def test_systemctl_output_is_stdout_on_success_and_none_otherwise(
+        monkeypatch, real_systemctl_output):
+    """The body behind the second stub. As text: unit_process compares
+    the MainPID it returns with str.isdigit and joins it onto a path."""
+    from oscmix_desk import process
+
+    seen = []
+
+    def answer(code, out):
+        class Done:
+            returncode = code
+            stdout = out
+        return Done()
+
+    def run(argv, **kw):
+        assert kw["check"] is False
+        assert kw["capture_output"] is True
+        assert kw["text"] is True
+        seen.append(argv)
+        return answer(0, "4242\n")
+
+    monkeypatch.setattr(process.subprocess, "run", run)
+    assert real_systemctl_output("show", "-p", "MainPID") == "4242\n"
+    assert seen == [["systemctl", "--user", "show", "-p", "MainPID"]]
+    monkeypatch.setattr(process.subprocess, "run",
+                        lambda argv, **kw: answer(1, "partial"))
+    assert real_systemctl_output("show") is None
+
+    def missing(argv, **kw):
+        raise OSError("no systemctl")
+
+    monkeypatch.setattr(process.subprocess, "run", missing)
+    assert real_systemctl_output("show") is None
+
+
 # --------------------------------------------------------------------------
 # Resolving the holder of the port (ADR 0021).
 # --------------------------------------------------------------------------

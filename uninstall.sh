@@ -11,9 +11,20 @@ LIB_DIR="$HOME/.local/lib/oscmix-desk"
 # stale one there is a version nobody chose. Removed by both scripts.
 LEGACY_LIB_DIR="$HOME/.local/lib/oscmix-autostart"
 
-CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/oscmix"
-DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
-UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+# A base directory that is not absolute is invalid and ignored: the XDG
+# specification's rule, and the session's and the launcher's since
+# 0.6.10, which would otherwise read another routing.conf than the one
+# installed here.
+xdg_base() {
+    case "$1" in
+        /*) printf '%s\n' "$1" ;;
+        *)  printf '%s\n' "$2" ;;
+    esac
+}
+CONFIG_HOME="$(xdg_base "${XDG_CONFIG_HOME:-}" "$HOME/.config")"
+CONFIG_DIR="$CONFIG_HOME/oscmix"
+DATA_DIR="$(xdg_base "${XDG_DATA_HOME:-}" "$HOME/.local/share")"
+UNIT_DIR="$CONFIG_HOME/systemd/user"
 # Overridable for the test suite only, which must never reach the real
 # files on a developer machine.
 UDEV_RULE="${OSCMIX_UDEV_RULE:-/etc/udev/rules.d/90-rme-fireface.rules}"
