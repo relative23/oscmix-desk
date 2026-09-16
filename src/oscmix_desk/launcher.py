@@ -73,7 +73,8 @@ def _active_profile_port(config_path: Path, port: int) -> int:
         name = marker.read_text(encoding="utf-8").strip()
     except (OSError, UnicodeDecodeError):
         return port
-    if not name or "/" in name or name.startswith("."):
+    # The same rule as config.profile_path, kept in step by a test.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name):
         return port
     profile = config_path.with_name("profiles") / ("%s.conf" % name)
     if not profile.is_file():

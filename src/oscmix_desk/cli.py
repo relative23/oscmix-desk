@@ -35,7 +35,13 @@ from .discovery import device_firmware, resolve_device
 from .errors import ConfigError, DeviceAmbiguous
 from .log import log
 from .pipewire import generate_pipewire_conf, pw_sink_info
-from .process import RELOAD_DONE, RELOAD_NOT_RUNNING, port_holder, reload_service
+from .process import (
+    RELOAD_DONE,
+    RELOAD_NOT_RUNNING,
+    port_holder,
+    reload_service,
+    unit_environment,
+)
 from .profiles import (
     REFUSED,
     Outcome,
@@ -193,7 +199,7 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
 
     _refuse_conflicting_actions(parser, args)
 
-    if args.dry_run and (args.profile or args.no_profile):
+    if args.dry_run and (args.profile is not None or args.no_profile):
         return _dry_run_desk(args, config, config_path)
 
     if args.list_profiles:
@@ -201,11 +207,11 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
             sys.stdout.write(line + "\n")
         return EXIT_OK
 
-    if args.profile:
-        return _switch_profile(args.profile, config_path, args.config)
+    if args.profile is not None:
+        return _switch_profile(args.profile, config_path)
 
     if args.no_profile:
-        return _report_outcome(restore_main(config_path), args.config)
+        return _report_outcome(restore_main(config_path), config_path)
 
     if args.snapshot:
         return _snapshot(config)
@@ -272,7 +278,8 @@ def _refuse_conflicting_actions(parser: ArgumentParser,
     Every pair is refused now, and `--dry-run` goes only with a switch, a
     restore, or a plain start.
     """
-    asked = [flag for flag, attr in _ACTIONS if getattr(args, attr)]
+    asked = [flag for flag, attr in _ACTIONS
+             if getattr(args, attr) not in (None, False)]
     if len(asked) > 1:
         parser.error("%s cannot be combined" % " and ".join(asked))
     if args.dry_run and asked and asked[0] not in ("--profile", "--no-profile"):
@@ -292,7 +299,7 @@ def _dry_run_desk(args: "argparse.Namespace", config: Config,
     for the same reason: it is the desk that command would restore.
     """
     try:
-        desk = (load_profile(args.profile, config_path) if args.profile
+        desk = (load_profile(args.profile, config_path) if args.profile is not None
                 else load_config(config_path))
     except ConfigError as exc:
         log.error("configuration error: %s", exc)
@@ -305,8 +312,7 @@ def _dry_run_desk(args: "argparse.Namespace", config: Config,
     return run_session(args, desk)
 
 
-def _switch_profile(name: str, config_path: Optional[Path],
-                    explicit: Optional[Path]) -> int:
+def _switch_profile(name: str, config_path: Optional[Path]) -> int:
     """Apply a profile and turn its outcome into an exit code.
 
     Three states, three codes, and the distinction the caller needs is
@@ -319,11 +325,11 @@ def _switch_profile(name: str, config_path: Optional[Path],
     and nothing was written.
     """
     return _report_outcome(switch_profile(name, config_path=config_path),
-                           explicit)
+                           config_path)
 
 
 def _report_outcome(outcome: "Outcome",
-                    explicit: Optional[Path] = None) -> int:
+                    config_path: Optional[Path] = None) -> int:
     """One line on stdout and the exit code the outcome maps to.
 
     Shared by the switch and by `--no-profile`, which is the same
@@ -345,13 +351,16 @@ def _report_outcome(outcome: "Outcome",
         return EXIT_NOT_PERSISTED
     # The unit's own state has to follow, or its start-up verifier may
     # still be re-applying the desk it started with (process.reload_service).
-    # Only when it is the unit's desk that changed: the unit reads the
-    # discovered config, and a reload after a switch of some other file
-    # made it re-apply its own routing.conf over that switch (0.6.9).
-    if explicit is not None and not _same_file(explicit, discover_config_path()):
+    # Only when it is the unit's desk that changed: a reload after a
+    # switch of some other file -- named by --config, or by OSCMIX_CONFIG
+    # in this shell -- made the unit re-apply its own routing.conf over
+    # that switch (0.6.9). The unit's desk is what its own environment
+    # resolves to, not what this process's does.
+    unit_desk = _unit_desk()
+    if config_path is not None and unit_desk is not None \
+            and not _same_file(config_path, unit_desk):
         log.info("%s not reloaded: it runs %s, and this switch was for %s",
-                 SERVICE_UNIT, discover_config_path() or "no config",
-                 explicit)
+                 SERVICE_UNIT, unit_desk, config_path)
         return EXIT_OK
     reloaded = reload_service()
     if reloaded == RELOAD_DONE:
@@ -365,6 +374,14 @@ def _report_outcome(outcome: "Outcome",
               "acting on the previous desk; send it again with "
               "systemctl --user reload %s", SERVICE_UNIT, SERVICE_UNIT)
     return EXIT_RELOAD_FAILED
+
+
+def _unit_desk() -> Optional[Path]:
+    """The config the running unit resolves, or None when that cannot be told."""
+    environment = unit_environment()
+    if environment is None:
+        return None
+    return discover_config_path(environment.get("OSCMIX_CONFIG", ""))
 
 
 def _same_file(one: Path, other: Optional[Path]) -> bool:

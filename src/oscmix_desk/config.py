@@ -137,9 +137,14 @@ class Config:
     policies: Dict[Tuple[str, str], str] = field(default_factory=dict)
 
 
-def discover_config_path() -> Optional[Path]:
-    """Return the first existing config file in the search order."""
-    env = os.environ.get("OSCMIX_CONFIG")
+def discover_config_path(env_override: Optional[str] = None) -> Optional[Path]:
+    """Return the first existing config file in the search order.
+
+    ``env_override`` stands in for this process's OSCMIX_CONFIG: the CLI
+    passes the unit's value (or "") to work out which desk the *unit*
+    runs, which is not always the one the CLI's own environment names.
+    """
+    env = os.environ.get("OSCMIX_CONFIG") if env_override is None else env_override
     if env:
         return Path(env)
     xdg = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")

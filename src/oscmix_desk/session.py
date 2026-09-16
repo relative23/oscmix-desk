@@ -257,6 +257,14 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
             verify_and_repair(config, should_stop)
             sd_notify("STATUS=running; verifier finished at %s"
                       % time.strftime("%H:%M:%S"))
+        except OSError as exc:
+            # The socket, not the desk: a thread traceback said nothing a
+            # person could act on, and the lock's release was all that
+            # happened (0.6.10).
+            log.error("verifier could not reach the backend on UDP %d (%s)",
+                      config.osc_port, exc)
+            sd_notify("STATUS=running; verifier failed at %s"
+                      % time.strftime("%H:%M:%S"))
         finally:
             lock.release()
 
@@ -534,36 +542,19 @@ def _reconcile(args: argparse.Namespace, config: Config,
                     "skipped -- send the reload again")
         return
     try:
-        fresh = config
-        if path is not None:
-            try:
-                # The active profile if one is remembered, routing.conf
-                # otherwise -- the same answer the start gives (ADR 0018),
-                # which is what makes the resume hook's reload re-apply the
-                # desk that was chosen rather than the default one.
-                fresh, active = effective_config(path)
-            except ConfigError as exc:
-                log.error("SIGHUP: %s is not usable (%s); keeping the running "
-                          "configuration", path, exc)
-                return
-            # Name what was actually reloaded. On the first live run this
-            # line said routing.conf while the profile above it was in
-            # effect -- true of the file read, misleading about the desk.
-            log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
-                     profile_path(active, path) if active else path,
-                     len(fresh.routes), len(fresh.channels))
-            # The backend is already bound and already talking to a device.
-            # A reload reconciles the *desk*; the ports and the device name
-            # belong to the process that is running, and changing them here
-            # would mean writing to a port nobody is listening on -- with no
-            # error, because OSC over UDP has no delivery guarantee.
-            fresh.osc_port = config.osc_port
-            fresh.osc_recv_port = config.osc_recv_port
-            fresh.device_name = config.device_name
-            fresh.usb_id = config.usb_id
-            fresh.serial = config.serial
+        fresh = _reloaded_desk(config, path)
+        if fresh is None:
+            return
         sd_notify("STATUS=reconciling (SIGHUP)")
-        wrote = reconcile_now(fresh, "SIGHUP", lambda: stop_requested["stop"])
+        try:
+            wrote = reconcile_now(fresh, "SIGHUP",
+                                  lambda: stop_requested["stop"])
+        except OSError as exc:
+            # Out of `supervise` and `run_session` as a traceback until
+            # 0.6.10, with the backend left to systemd.
+            log.error("SIGHUP: cannot reach the backend on UDP %d (%s); "
+                      "reconcile skipped", config.osc_port, exc)
+            wrote = False
     finally:
         lock.release()
     # What it did, not what it was asked to do: a reconcile that stood
@@ -572,6 +563,42 @@ def _reconcile(args: argparse.Namespace, config: Config,
     sd_notify("STATUS=running; %s at %s"
               % ("reconciled" if wrote else "reconcile skipped",
                  time.strftime("%H:%M:%S")))
+
+
+def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
+    """The desk a SIGHUP re-reads, or None when the file is not usable.
+
+    The active profile if one is remembered, routing.conf otherwise --
+    the same answer the start gives (ADR 0018), which is what makes the
+    resume hook's reload re-apply the desk that was chosen rather than
+    the default one. A config that no longer parses keeps the running
+    configuration, which is the state somebody is listening to.
+    """
+    if path is None:
+        return running
+    try:
+        fresh, active = effective_config(path)
+    except ConfigError as exc:
+        log.error("SIGHUP: %s is not usable (%s); keeping the running "
+                  "configuration", path, exc)
+        return None
+    # Name what was actually reloaded. On the first live run this line
+    # said routing.conf while the profile above it was in effect -- true
+    # of the file read, misleading about the desk.
+    log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
+             profile_path(active, path) if active else path,
+             len(fresh.routes), len(fresh.channels))
+    # The backend is already bound and already talking to a device. A
+    # reload reconciles the *desk*; the ports, the device name and the
+    # interface belong to the process that is running, and changing them
+    # here would mean writing to a port nobody is listening on -- with no
+    # error, because OSC over UDP has no delivery guarantee (ADR 0024).
+    fresh.osc_port = running.osc_port
+    fresh.osc_recv_port = running.osc_recv_port
+    fresh.device_name = running.device_name
+    fresh.usb_id = running.usb_id
+    fresh.serial = running.serial
+    return fresh
 
 
 def _config_path(args: argparse.Namespace) -> Optional[Path]:

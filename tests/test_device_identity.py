@@ -1120,10 +1120,132 @@ def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch
     unit_desk = tmp_path / "unit" / "routing.conf"
     unit_desk.parent.mkdir()
     unit_desk.write_text(DESK)
-    monkeypatch.setattr(cli, "discover_config_path", lambda: unit_desk)
+    monkeypatch.setattr(cli, "unit_environment", dict)
+    monkeypatch.setattr(cli, "discover_config_path", lambda *a: unit_desk)
     assert cli._report_outcome(outcome, tmp_path / "other.conf") == cli.EXIT_OK
     assert reloads == []
     assert cli._report_outcome(outcome, unit_desk) == cli.EXIT_OK
     assert cli._report_outcome(outcome, None) == cli.EXIT_OK
     assert reloads == [1, 1]
     capsys.readouterr()
+
+
+# --------------------------------------------------------------------------
+# 0.6.10, second round: the unit's desk is what the unit's environment
+# resolves; an empty profile name is a switch; socket errors in the
+# verifier and the reconcile are log lines.
+# --------------------------------------------------------------------------
+
+def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
+        tmp_path, monkeypatch, capsys):
+    from oscmix_desk import cli, profiles
+
+    unit_desk = tmp_path / "unit" / "routing.conf"
+    other = tmp_path / "other" / "routing.conf"
+    for path in (unit_desk, other):
+        path.parent.mkdir()
+        path.write_text(DESK)
+    reloads = []
+    monkeypatch.setattr(cli, "reload_service",
+                        lambda: reloads.append(1) or cli.RELOAD_DONE)
+    outcome = profiles.Outcome(state=profiles.APPLIED_UNVERIFIED, name="x",
+                               reason=profiles.NOT_CHECKED, persisted=True)
+    # The unit names its desk in its own Environment=.
+    monkeypatch.setattr(cli, "unit_environment",
+                        lambda: {"OSCMIX_CONFIG": str(unit_desk)})
+    # The shell's OSCMIX_CONFIG names another file: no --config, and the
+    # switch was still for the other desk (the 0.6.9 bug via the env).
+    monkeypatch.setenv("OSCMIX_CONFIG", str(other))
+    assert cli._report_outcome(outcome, other) == cli.EXIT_OK
+    assert reloads == []
+    # A --config naming the unit's own file is the unit's desk.
+    assert cli._report_outcome(outcome, unit_desk) == cli.EXIT_OK
+    assert reloads == [1]
+    # No unit environment to read: reload as before.
+    monkeypatch.setattr(cli, "unit_environment", lambda: None)
+    assert cli._report_outcome(outcome, other) == cli.EXIT_OK
+    assert reloads == [1, 1]
+    capsys.readouterr()
+
+
+def test_the_unit_s_desk_without_an_environment_is_the_xdg_one(tmp_path,
+                                                                monkeypatch):
+    from oscmix_desk import cli
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    (tmp_path / "oscmix").mkdir()
+    (tmp_path / "oscmix" / "routing.conf").write_text(DESK)
+    monkeypatch.setenv("OSCMIX_CONFIG", str(tmp_path / "elsewhere.conf"))
+    monkeypatch.setattr(cli, "unit_environment", dict)
+    assert cli._unit_desk() == tmp_path / "oscmix" / "routing.conf"
+
+
+def test_an_empty_profile_name_is_a_refused_switch_not_a_start(
+        tmp_path, monkeypatch, capsys):
+    """`--profile ''` was falsy, fell through every action, and started
+    the service; with --list-profiles it listed (0.6.9)."""
+    from oscmix_desk import cli
+
+    started = []
+    monkeypatch.setattr(cli, "run_session", lambda *a: started.append(1) or 0)
+    path = write_config(tmp_path / "routing.conf", DESK)
+    assert cli.main(["--config", str(path), "--profile", ""]) == cli.EXIT_CONFIG
+    assert started == []
+    assert "is not a profile name" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        cli.main(["--config", str(path), "--profile", "", "--list-profiles"])
+
+
+def test_a_verifier_that_cannot_reach_the_backend_ends_quietly(
+        tmp_path, monkeypatch, caplog):
+    from oscmix_desk import Config
+
+    def unreachable(*_a, **_k):
+        raise OSError(101, "Network is unreachable")
+
+    monkeypatch.setattr(session_module, "verify_and_repair", unreachable)
+    monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
+    statuses = []
+    monkeypatch.setattr(session_module, "sd_notify", statuses.append)
+    _lock_dir(tmp_path, monkeypatch)
+    lock = profiles.take_device_lock(None, KEY_B)
+    with caplog.at_level("ERROR"):
+        thread = session_module._verify_in_background(_Child(), Config(),
+                                                      {"stop": False}, lock)
+        thread.join(5)
+    assert not thread.is_alive()
+    assert "verifier could not reach the backend" in caplog.text
+    assert any("verifier failed" in s for s in statuses)
+    assert profiles.take_device_lock(None, KEY_B, wait=0.2) is not None, \
+        "the lock was released"
+
+
+def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
+        tmp_path, monkeypatch, caplog):
+    import argparse
+
+    from oscmix_desk import Config
+
+    def unreachable(*_a, **_k):
+        raise OSError(101, "Network is unreachable")
+
+    monkeypatch.setattr(session_module, "reconcile_now", unreachable)
+    statuses = []
+    monkeypatch.setattr(session_module, "sd_notify", statuses.append)
+    _lock_dir(tmp_path, monkeypatch)
+    path = write_config(tmp_path / "routing.conf", DESK)
+    with caplog.at_level("ERROR"):
+        session_module._reconcile(argparse.Namespace(config=path), Config(),
+                                  {"stop": False})
+    assert "reconcile skipped" in caplog.text
+    assert statuses[-1].startswith("STATUS=running; reconcile skipped")
+
+
+def test_the_launcher_and_the_session_agree_on_what_a_profile_name_is():
+    import inspect
+
+    from oscmix_desk import config, launcher
+
+    rule = 'r"[A-Za-z0-9][A-Za-z0-9._-]*"'
+    assert rule in inspect.getsource(config.profile_path)
+    assert rule in inspect.getsource(launcher._active_profile_port)

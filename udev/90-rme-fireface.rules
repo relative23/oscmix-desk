@@ -10,10 +10,10 @@ ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x1b21", ATTR{device}=="0x2426",
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2a39", ATTR{idProduct}=="3fd9", ATTR{power/control}="on", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="oscmix.service"
 
 # On unplug: sysfs attributes are gone, so match via ENV{PRODUCT}. Tagging
-# the remove event keeps the device unit in the user manager in step, so
-# the next add pulls the service in cleanly. What ends the service on
-# unplug is the backend: it exits when its device goes, and the session
-# exits 0 with it. StopWhenUnneeded=yes in the unit would stop a service
-# that only the pull-in started; the installer enables it, so it is the
-# exit that does the work (0.6.10 measured this, ADR 0013).
+# the remove event lets the user manager retire its device unit. What
+# ends the service on unplug is the backend: it exits when its device
+# goes, and the session exits 0 with it. StopWhenUnneeded=yes in the
+# unit would stop a service that only the pull-in started; the
+# installer enables it, and an enabled unit is wanted by default.target
+# and so never unneeded (ADR 0013, amended).
 ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="2a39/3fd9/*", TAG+="systemd"

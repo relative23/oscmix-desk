@@ -342,6 +342,36 @@ def _systemctl(*verb: str) -> int:
         return 1
 
 
+def unit_environment() -> Optional[Dict[str, str]]:
+    """The Environment= of the running unit, or None when it cannot be read.
+
+    A switch reloads the unit only when it changed the unit's own desk,
+    and the unit's desk is what `discover_config_path` finds in the
+    *unit's* environment -- OSCMIX_CONFIG there, not in the shell that
+    runs the switch (0.6.10).
+    """
+    shown = _systemctl_output("show", "-p", "Environment", "--value",
+                              SERVICE_UNIT)
+    if shown is None:
+        return None
+    pairs = (token.split("=", 1) for token in shown.split())
+    return dict(pair for pair in pairs if len(pair) == 2)
+
+
+def _systemctl_output(*verb: str) -> Optional[str]:
+    """``systemctl --user <verb...>``'s stdout, or None on any failure.
+
+    The second of the two places this package runs systemctl (see
+    ``_systemctl``), stubbed by the same test fixture.
+    """
+    try:
+        result = subprocess.run(["systemctl", "--user", *verb], check=False,
+                                capture_output=True, text=True)
+    except OSError:
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
 #: What a reload attempt did. "not running" is not a failure: there is
 #: no verifier that could revert the switch. A refused reload is one,
 #: because the unit is running on a desk it has not re-read (0.6.6).

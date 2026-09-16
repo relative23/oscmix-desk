@@ -250,6 +250,8 @@ logged rather than swallowed. The trigger list above does not change.
 `StopWhenUnneeded=yes` does not stop the service on `remove`: the unit is
 enabled, `default.target` wants it, and a wanted unit is never unneeded.
 What ends it is the backend exiting with its device, after which the
-session exits 0 (measured). The replug is still a full restart with a
+session exits 0 -- observed on the desk as the unit going inactive with
+exit 0 on every unplug, while its device unit had long been inactive
+with the service active. The replug is still a full restart with a
 full apply, through the `add` pull-in, so nothing here changes; the
 mechanism was described wrongly.

@@ -153,6 +153,18 @@ A switch found a process on the OSC port that is not the backend for
 this desk's interface, and wrote nothing. `ss -ulnp | grep 7222` shows
 who it is; two desks for two interfaces need two ports.
 
+```
+UDP port 7222 is held by the backend (pid 4712) of a running
+  oscmix-session (pid 4711); stop that session first
+```
+
+Two sessions were started for one port: the unit and `oscmix-session`
+by hand, or the unit twice. Since 0.6.10 the newcomer exits 2 and the
+running one keeps its desk (until then each terminated the other's
+backend in turn). If the newcomer was the unit, `RestartPreventExitStatus`
+keeps it down until the next plug-in event or `systemctl --user start
+oscmix.service`; stop the manual session first.
+
 ## 4. Does the backend accept OSC?
 
 ```sh

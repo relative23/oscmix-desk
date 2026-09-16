@@ -231,9 +231,10 @@ def _no_stray_proc_reads(tmp_path_factory, monkeypatch):
 def _no_real_systemctl(monkeypatch):
     """No test reaches the machine's own user manager.
 
-    process._systemctl is the one place the package runs systemctl
-    outside the launcher (whose tests stub their own). Every call answers
-    "not active" here; a test of the real function patches subprocess.
+    process._systemctl and process._systemctl_output are the two places
+    the package runs systemctl outside the launcher (whose tests stub
+    their own). Every call answers "not active" or "no output" here; a
+    test of the real functions patches subprocess.
     The integration suite once started the developer's oscmix.service
     for real (0.6.1); an in-process test must not be able to either.
     """
@@ -243,6 +244,7 @@ def _no_real_systemctl(monkeypatch):
     if _REAL_SYSTEMCTL is None:
         _REAL_SYSTEMCTL = process._systemctl
     monkeypatch.setattr(process, "_systemctl", lambda *verb: 1)
+    monkeypatch.setattr(process, "_systemctl_output", lambda *verb: None)
 
 
 _REAL_SYSTEMCTL = None
