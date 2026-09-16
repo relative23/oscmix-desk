@@ -31,6 +31,7 @@ from .discovery import (
     lock_key,
     resolve_binary,
     udp_port_listening,
+    usb_device_authorized,
     usb_device_present,
     wait_for_device,
 )
@@ -385,6 +386,12 @@ def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
                  " with serial %s" % config.serial if config.serial else "")
         sd_notify("READY=1")  # Type=notify: a clean no-op start
         return EXIT_OK
+    if not usb_device_authorized(config.usb_id, sysfs_usb):
+        log.error("USB device %s is connected but the kernel has not "
+                  "authorized it (authorized=0 in sysfs -- USBGuard, a "
+                  "policy?); no driver binds until it is, and the unit "
+                  "retries", config.usb_id)
+        return EXIT_FAILURE
     log.error(
         "USB device %s is connected but no ALSA sequencer client named %r%s "
         "appeared within %.0fs -- is snd-usb-audio loaded?",

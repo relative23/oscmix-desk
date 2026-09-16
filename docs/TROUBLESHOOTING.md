@@ -57,6 +57,10 @@ Common findings in the journal:
   until you fix it and run `systemctl --user restart oscmix.service`.
 - `USB device ... connected but no ALSA sequencer client` -- kernel/driver
   problem, see step 2.
+- `USB device ... connected but the kernel has not authorized it` -- the
+  interface is plugged in and `authorized` reads 0 in sysfs: USBGuard or
+  another policy holds it back. The unit retries every half minute and
+  comes up by itself once the device is allowed.
 - `device 2a39:3fd9 not connected; nothing to do` -- normal when the unit
   is off; the udev rule starts the service again on plug-in.
 - `routing verified against device state` -- the read-back confirmed the

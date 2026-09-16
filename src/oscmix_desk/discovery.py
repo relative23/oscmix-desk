@@ -150,6 +150,27 @@ def usb_device_present(usb_id: str, sysfs_usb: Path) -> bool:
     return _usb_device_dir(usb_id, sysfs_usb) is not None
 
 
+def usb_device_authorized(usb_id: str, sysfs_usb: Path) -> bool:
+    """False only for a listed device whose ``authorized`` reads 0.
+
+    Such a device -- deauthorized by hand, or held back by a policy such
+    as USBGuard -- keeps its sysfs entry with no driver bound: no ALSA
+    card, no sequencer client (measured, ADR 0023). It is still
+    *present*: the start retries it, as it retries a driver that has not
+    loaded, and that retry is what brings the desk up once it is allowed
+    -- authorizing it adds interfaces, not the device, so udev starts
+    nothing. What was wrong was the reason the start gave (0.6.10). A
+    missing or unreadable attribute is authorized, the kernel's default.
+    """
+    entry = _usb_device_dir(usb_id, sysfs_usb)
+    if entry is None:
+        return True
+    try:
+        return (entry / "authorized").read_text().strip() != "0"
+    except OSError:
+        return True
+
+
 def usb_revision(usb_id: str, sysfs_usb: Path) -> Optional[str]:
     """The device release number USB reports, e.g. ``3.01``.
 

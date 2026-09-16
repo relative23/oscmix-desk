@@ -64,6 +64,14 @@ new row.
   status` went on showing the previous line -- often `verifier finished`,
   which reads as all well.
 
+- **A start names an interface the kernel has not authorized.** With
+  `authorized=0` -- USBGuard, a policy, a hand -- the device keeps its
+  sysfs entry and no driver binds, and every start said "is
+  snd-usb-audio loaded?". It says what it is now. The unit still retries
+  every half minute, which is what brings the desk up by itself once the
+  device is allowed: authorizing adds interfaces, not the device, so udev
+  starts nothing (measured on the desk).
+
 - **A route name with a quote no longer breaks the generated PipeWire
   conf**; the description is escaped.
 

@@ -964,6 +964,30 @@ def test_a_start_with_no_client_reads_the_real_usb_presence(tmp_path,
         (None, session_module.EXIT_FAILURE)
 
 
+def test_a_start_names_an_interface_the_kernel_has_not_authorized(
+        tmp_path, monkeypatch, caplog):
+    """Measured with `authorized=0`: every start said "is snd-usb-audio
+    loaded?" about a box USBGuard or a hand had held back. Still a
+    failure -- the retry is what brings the desk up once it is allowed."""
+    import argparse
+
+    from oscmix_desk import Config
+
+    monkeypatch.setattr(session_module, "wait_for_device", lambda *a: None)
+    proc = fake_proc(tmp_path / "proc")
+    present = tmp_path / "usb"
+    (present / "5-2").mkdir(parents=True)
+    (present / "5-2" / "idVendor").write_text("2a39\n")
+    (present / "5-2" / "idProduct").write_text("3fd9\n")
+    (present / "5-2" / "authorized").write_text("0\n")
+    with caplog.at_level("ERROR"):
+        assert session_module._find_client(
+            argparse.Namespace(timeout=0.1), Config(), proc, present) == \
+            (None, session_module.EXIT_FAILURE)
+    assert "the kernel has not authorized it" in caplog.text
+    assert "snd-usb-audio" not in caplog.text
+
+
 def test_a_restore_also_checks_again_after_the_lock_wait(
         tmp_path, monkeypatch, recording_backend):
     port = free_udp_port()

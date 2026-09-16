@@ -17,6 +17,26 @@ def test_missing_sysfs_dir(session_mod, tmp_path):
     assert session_mod.usb_device_present("2a39:3fd9", tmp_path / "nope") is False
 
 
+def test_a_device_the_kernel_has_not_authorized_is_present_and_named(
+        fake_sysfs, empty_sysfs):
+    """`authorized=0` keeps the entry and unbinds every driver. Still
+    present -- the start retries it, which is what brings the desk up once
+    it is allowed -- but the reason it gives has to say so (0.6.10)."""
+    from oscmix_desk import discovery
+
+    device = fake_sysfs / "5-2"
+    assert discovery.usb_device_authorized("2a39:3fd9", fake_sysfs) is True
+    (device / "authorized").write_text("0\n")
+    assert discovery.usb_device_present("2a39:3fd9", fake_sysfs) is True
+    assert discovery.usb_device_authorized("2a39:3fd9", fake_sysfs) is False
+    (device / "authorized").write_text("1\n")
+    assert discovery.usb_device_authorized("2a39:3fd9", fake_sysfs) is True
+    (device / "authorized").unlink()
+    (device / "authorized").mkdir()        # unreadable as a file
+    assert discovery.usb_device_authorized("2a39:3fd9", fake_sysfs) is True
+    assert discovery.usb_device_authorized("2a39:3fd9", empty_sysfs) is True
+
+
 def test_launcher_uses_same_detection(launch_mod, fake_sysfs, empty_sysfs):
     assert launch_mod.usb_device_present("2a39:3fd9", fake_sysfs) is True
     assert launch_mod.usb_device_present("2a39:3fd9", empty_sysfs) is False
