@@ -255,3 +255,7 @@ exit 0 on every unplug, while its device unit had long been inactive
 with the service active. The replug is still a full restart with a
 full apply, through the `add` pull-in, so nothing here changes; the
 mechanism was described wrongly.
+
+A reload re-reads the desk in effect since 0.6.3 -- the active profile,
+else `routing.conf` (ADR 0018) -- not `routing.conf` alone as the
+SIGHUP section above says.

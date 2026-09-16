@@ -531,8 +531,25 @@ def _reconcile(args: argparse.Namespace, config: Config,
     ``verifier`` is the start-up thread, when it exists: the reconcile
     is serialised behind it (``_verifier_finished``).
     """
-    if not _verifier_finished(verifier, stop_requested):
+    wrote = _reconcile_once(args, config, stop_requested, verifier)
+    if stop_requested["stop"]:
         return
+    # What it did, not what it was asked to do: a reconcile that stood
+    # down because the receive port is held used to report success
+    # (0.6.6). Every other way of standing down -- the lock held
+    # elsewhere, a verifier that outlived the wait, a config that no
+    # longer parses -- left the previous line standing until 0.6.10.
+    sd_notify("STATUS=running; %s at %s"
+              % ("reconciled" if wrote else "reconcile skipped",
+                 time.strftime("%H:%M:%S")))
+
+
+def _reconcile_once(args: argparse.Namespace, config: Config,
+                    stop_requested: Dict[str, bool],
+                    verifier: Optional[threading.Thread]) -> bool:
+    """The reconcile itself; True when it wrote the device."""
+    if not _verifier_finished(verifier, stop_requested):
+        return False
     path = _config_path(args)
     # The same lock a switch takes: a reconcile that started while one
     # was writing used to interleave with it (ADR 0019).
@@ -540,29 +557,23 @@ def _reconcile(args: argparse.Namespace, config: Config,
     if lock is None:
         log.warning("SIGHUP: the device lock is not available; reconcile "
                     "skipped -- send the reload again")
-        return
+        return False
     try:
         fresh = _reloaded_desk(config, path)
         if fresh is None:
-            return
+            return False
         sd_notify("STATUS=reconciling (SIGHUP)")
         try:
-            wrote = reconcile_now(fresh, "SIGHUP",
-                                  lambda: stop_requested["stop"])
+            return bool(reconcile_now(fresh, "SIGHUP",
+                                      lambda: stop_requested["stop"]))
         except OSError as exc:
             # Out of `supervise` and `run_session` as a traceback until
             # 0.6.10, with the backend left to systemd.
             log.error("SIGHUP: cannot reach the backend on UDP %d (%s); "
                       "reconcile skipped", config.osc_port, exc)
-            wrote = False
+            return False
     finally:
         lock.release()
-    # What it did, not what it was asked to do: a reconcile that stood
-    # down because the receive port is held used to report success
-    # (0.6.6).
-    sd_notify("STATUS=running; %s at %s"
-              % ("reconciled" if wrote else "reconcile skipped",
-                 time.strftime("%H:%M:%S")))
 
 
 def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:

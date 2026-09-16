@@ -33,9 +33,9 @@ def _run(tmp_path, capsys, monkeypatch, text, info, *extra, dump="[]"):
 
     path = tmp_path / "routing.conf"
     path.write_text(text)
-    monkeypatch.setattr(cli, "pw_dump_text", lambda: dump)
-    monkeypatch.setattr(cli, "pw_sink_info",
-                        lambda name, target=None, dump_text=None: info)
+    monkeypatch.setattr(cli, "pw_dump_objects",
+                        lambda: None if dump is None else [])
+    monkeypatch.setattr(cli, "find_sink", lambda objects, name, target: info)
     code = cli.main(["--config", str(path), "--pipewire-sinks", *extra])
     return code, capsys.readouterr().out
 

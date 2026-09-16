@@ -36,7 +36,7 @@ from .constants import (
 from .discovery import device_firmware, resolve_device
 from .errors import ConfigError, DeviceAmbiguous
 from .log import log
-from .pipewire import generate_pipewire_conf, pw_dump_text, pw_sink_info
+from .pipewire import find_sink, generate_pipewire_conf, pw_dump_objects
 from .process import (
     RELOAD_DONE,
     RELOAD_NOT_RUNNING,
@@ -235,9 +235,9 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
 def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
     """Print one named PipeWire sink per stereo route of the desk in effect."""
     target, positions = args.pipewire_target, None
-    dump = pw_dump_text()
-    info = None if dump is None else pw_sink_info(config.device_name,
-                                                  target=target, dump_text=dump)
+    objects = pw_dump_objects()
+    info = None if objects is None else find_sink(objects, config.device_name,
+                                                  target)
     if info:
         target, positions = info
         log.info("target sink %s (%s channel layout)", target,
@@ -255,7 +255,7 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
                     "surround layout, check them against 'pw-dump' before "
                     "loading this",
                     "pw-dump could not be read, so sink %r was not checked"
-                    % target if dump is None
+                    % target if objects is None
                     else "no sink named %r in pw-dump" % target)
     try:
         sys.stdout.write(generate_pipewire_conf(config, target, positions))

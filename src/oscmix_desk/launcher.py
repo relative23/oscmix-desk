@@ -12,6 +12,7 @@ from __future__ import annotations
 import configparser
 import logging
 import os
+import pwd
 import re
 import subprocess
 import sys
@@ -29,7 +30,8 @@ log = logging.getLogger("oscmix-launch")
 
 
 #: The last place a desk is looked for; config.SYSTEM_CONFIG, kept in
-#: step by a test like the rest of the search order below.
+#: step by a test like the rest of the search order below, and
+#: overridable the same way.
 SYSTEM_CONFIG = Path("/etc/oscmix/routing.conf")
 
 
@@ -40,20 +42,37 @@ def config_file() -> Optional[Path]:
     OSCMIX_CONFIG alone when it is set, existing or not -- the backend
     refuses a missing one rather than looking further. Then an absolute
     XDG_CONFIG_HOME (a relative one is ignored, as the specification
-    says), else ~/.config, then /etc. Until 0.6.10 the launcher looked
-    past a missing OSCMIX_CONFIG and took a relative XDG_CONFIG_HOME,
-    so it could read another file than the backend it was starting.
+    says), else HOME's .config -- HOME from the password database when
+    it is empty or unset, no user directory at all without an entry --
+    then /etc. Until 0.6.10 the launcher looked past a missing
+    OSCMIX_CONFIG and took a relative XDG_CONFIG_HOME, so it could read
+    another file than the backend it was starting.
+
+    In the launcher's own environment, which is the desktop session's;
+    the unit runs in the user manager's, which a desktop session exports
+    to it, and a unit that is not running yet has no other to read.
     """
     named = os.environ.get("OSCMIX_CONFIG")
     if named:
         return Path(named)
-    xdg = os.environ.get("XDG_CONFIG_HOME", "")
-    if not os.path.isabs(xdg):
-        xdg = os.path.expanduser("~/.config")
-    for candidate in (Path(xdg) / "oscmix" / "routing.conf", SYSTEM_CONFIG):
+    xdg: Optional[str] = os.environ.get("XDG_CONFIG_HOME", "")
+    if not xdg or not os.path.isabs(xdg):
+        home = os.environ.get("HOME") or _passwd_home()
+        xdg = home and os.path.join(home, ".config")
+    candidates = [Path(xdg) / "oscmix" / "routing.conf"] if xdg else []
+    candidates.append(Path(os.environ.get("OSCMIX_SYSTEM_CONFIG")
+                           or SYSTEM_CONFIG))
+    for candidate in candidates:
         if candidate.is_file():
             return candidate
     return None
+
+
+def _passwd_home() -> Optional[str]:
+    try:
+        return pwd.getpwuid(os.getuid()).pw_dir
+    except KeyError:
+        return None
 
 
 def load_settings() -> "tuple[str, tuple[int, ...]]":

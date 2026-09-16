@@ -279,7 +279,7 @@ def test_config_discovery_resolves_in_the_environment_it_is_given(
     system = tmp_path / "etc" / "routing.conf"
     system.parent.mkdir()
     system.write_text("")
-    monkeypatch.setattr(config_mod, "SYSTEM_CONFIG", system)
+    monkeypatch.setenv("OSCMIX_SYSTEM_CONFIG", str(system))
     assert session_mod.discover_config_path({}) == system
 
 

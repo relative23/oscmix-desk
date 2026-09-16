@@ -441,6 +441,18 @@ def test_a_start_that_fails_does_not_end_the_installer(tmp_path):
     assert "backend did not start" in result.stderr
 
 
+@pytest.mark.parametrize("script", ["install.sh", "uninstall.sh"])
+def test_an_empty_home_is_refused_before_anything_is_written(tmp_path, script):
+    """`set -u` does not catch an empty HOME, and every path hangs off it."""
+    _home, env, log = make_fake_home(tmp_path)
+    env["HOME"] = ""
+    result = run(script, ["--no-build", "--no-udev"] if script == "install.sh"
+                 else [], env)
+    assert result.returncode == 2
+    assert "HOME is not set" in result.stderr
+    assert not log.exists()
+
+
 def test_nothing_the_scripts_run_as_root_escapes_the_stubs():
     """Run as root, $SUDO is empty: every root command is either stubbed on
     PATH or confined to a path the suite overrides. The tmpfiles step
@@ -453,11 +465,19 @@ def test_nothing_the_scripts_run_as_root_escapes_the_stubs():
                          if not line.lstrip().startswith("#"))
         # One logical command per match: continuation lines joined.
         text = re.sub(r"\\\n\s*", " ", text)
-        commands = re.findall(r"\$SUDO\s+(\S+)([^;&|\n]*)", text)
+        # $SUDO, ${SUDO} and "$SUDO" alike.
+        commands = re.findall(r'"?\$\{?SUDO\}?"?\s+(\S+)([^;&|\n]*)', text)
         assert commands, script
         for tool, rest in commands:
             if tool in STUBBED_TOOLS:
                 continue
+            operands = [word for word in rest.split()
+                        if not word.startswith("-")]
+            if tool == "install":
+                # install -m MODE SOURCE TARGET: the mode's value is not
+                # an option word, the target is the last operand.
+                operands = operands[-1:]
             assert tool in ("install", "rm"), (script, tool)
-            target = rest.split()[-1]
-            assert target in OVERRIDDEN_TARGETS, (script, tool, rest)
+            assert operands, (script, tool, rest)
+            for target in operands:
+                assert target in OVERRIDDEN_TARGETS, (script, tool, rest)

@@ -3,6 +3,13 @@
 # The routing config is kept unless --purge is given.
 set -euo pipefail
 
+# Every path below hangs off HOME. An empty one would install into /.local
+# and /.config, and `set -u` does not catch empty.
+if [ -z "${HOME:-}" ]; then
+    echo "uninstall.sh: HOME is not set" >&2
+    exit 2
+fi
+
 BIN_DIR="$HOME/.local/bin"
 LIB_DIR="$HOME/.local/lib/oscmix-desk"
 # Where this project installed itself before it was renamed. An upgrade

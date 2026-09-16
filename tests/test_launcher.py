@@ -12,8 +12,15 @@ thing that decides which notification is this module.
 
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
+
+from oscmix_desk import config as _config
+from oscmix_desk import launcher as _launcher
+
+#: Read at collection, before any fixture patches them.
+_IMPORTED_SYSTEM_CONFIGS = (_config.SYSTEM_CONFIG, _launcher.SYSTEM_CONFIG)
 
 
 @pytest.fixture
@@ -108,42 +115,74 @@ def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
                                                        tmp_path):
     """config.discover_config_path's rule, repeated in a module that may
     not import config -- held equal here across the environments that
-    decide it. A relative XDG_CONFIG_HOME is ignored by both (0.6.10)."""
+    decide it. A relative XDG_CONFIG_HOME is ignored by both (0.6.10),
+    an empty HOME is looked up, and a uid without a passwd entry has no
+    user directory: `~/.config` is not read relative to the cwd."""
+    import pwd
+
     from oscmix_desk import config
 
     home = tmp_path / "home"
     xdg = tmp_path / "xdg"
     system = tmp_path / "etc" / "routing.conf"
     for path in (home / ".config" / "oscmix" / "routing.conf",
-                 xdg / "oscmix" / "routing.conf", system):
+                 xdg / "oscmix" / "routing.conf", system,
+                 tmp_path / "rel" / "oscmix" / "routing.conf",
+                 tmp_path / "~" / ".config" / "oscmix" / "routing.conf"):
         path.parent.mkdir(parents=True)
         write_conf(path, "[osc]\nport = 9005\n")
-    clean_env.setattr(config, "SYSTEM_CONFIG", system)
-    clean_env.setattr(launch_mod, "SYSTEM_CONFIG", system)
+    clean_env.setenv("OSCMIX_SYSTEM_CONFIG", str(system))
     clean_env.chdir(tmp_path)
-    (tmp_path / "rel" / "oscmix").mkdir(parents=True)
-    write_conf(tmp_path / "rel" / "oscmix" / "routing.conf", "")
+    passwd_home = type("pw", (), {"pw_dir": str(home)})()
+
+    def no_entry(uid):
+        raise KeyError(uid)
+
     cases = [
-        {},
-        {"OSCMIX_CONFIG": str(tmp_path / "named.conf")},
-        {"XDG_CONFIG_HOME": str(xdg)},
-        {"XDG_CONFIG_HOME": "rel"},
-        {"XDG_CONFIG_HOME": str(tmp_path / "empty")},
-        {"HOME": str(tmp_path / "nohome")},
+        ({}, passwd_home),
+        ({"OSCMIX_CONFIG": str(tmp_path / "named.conf")}, passwd_home),
+        ({"XDG_CONFIG_HOME": str(xdg)}, passwd_home),
+        ({"XDG_CONFIG_HOME": "rel"}, passwd_home),
+        ({"XDG_CONFIG_HOME": str(tmp_path / "empty")}, passwd_home),
+        ({"HOME": str(tmp_path / "nohome")}, passwd_home),
+        ({"HOME": ""}, passwd_home),
+        ({"HOME": None}, passwd_home),
+        ({"HOME": None}, no_entry),
     ]
     seen = set()
-    for case in cases:
+    for case, passwd in cases:
         clean_env.setenv("HOME", str(home))
+        clean_env.setattr(pwd, "getpwuid",
+                          passwd if callable(passwd) else lambda uid, p=passwd: p)
         for name in ("OSCMIX_CONFIG", "XDG_CONFIG_HOME"):
             clean_env.delenv(name, raising=False)
         for name, value in case.items():
-            clean_env.setenv(name, value)
+            if value is None:
+                clean_env.delenv(name, raising=False)
+            else:
+                clean_env.setenv(name, value)
         found = launch_mod.config_file()
         assert found == config.discover_config_path(), case
         seen.add(found)
     assert seen == {home / ".config" / "oscmix" / "routing.conf",
                     tmp_path / "named.conf", xdg / "oscmix" / "routing.conf",
                     system}
+
+
+def test_both_modules_default_to_the_same_system_config(launch_mod,
+                                                        clean_env, tmp_path):
+    """The two literals, as imported -- the suite patches both, so only
+    the values read before any fixture can show them drifting apart."""
+    from oscmix_desk import config
+
+    in_config, in_launcher = _IMPORTED_SYSTEM_CONFIGS
+    assert in_config == Path("/etc/oscmix/routing.conf")
+    assert in_launcher == in_config
+    clean_env.delenv("OSCMIX_SYSTEM_CONFIG")
+    clean_env.setattr(config, "SYSTEM_CONFIG", tmp_path / "a")
+    assert config.system_config() == tmp_path / "a"
+    clean_env.setenv("OSCMIX_SYSTEM_CONFIG", str(tmp_path / "b"))
+    assert config.system_config() == tmp_path / "b"
 
 
 # --------------------------------------------------------------------------

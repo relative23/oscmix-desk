@@ -57,6 +57,13 @@ new row.
   `systemctl status` then shows `running; verifier failed at ...` or
   `running; reconcile skipped at ...`.
 
+- **Every reconcile that stands down says so.** Only a held receive port
+  changed the status line to `reconcile skipped`; the device lock held
+  elsewhere, a start-up verifier still running after the wait and a
+  config that no longer parses returned before it, and `systemctl
+  status` went on showing the previous line -- often `verifier finished`,
+  which reads as all well.
+
 - **A route name with a quote no longer breaks the generated PipeWire
   conf**; the description is escaped.
 
@@ -72,22 +79,25 @@ new row.
   profile's port, then `routing.conf`'s, which is where the backend runs
   if that profile no longer loads. It finds its config by the backend's
   rule too: a missing `OSCMIX_CONFIG` is not a reason to read another
-  file.
+  file, and an empty `HOME` is looked up rather than read as `/`.
 
 - **A relative `XDG_CONFIG_HOME` is ignored**, as the XDG specification
   says, by the session, the launcher, the installer and the uninstaller
   alike. Each resolved it against its own working directory: the
   installer wrote `relative-config/oscmix/routing.conf` into whatever
   directory it was run from, and a session started elsewhere never found
-  it.
+  it. Both scripts refuse an empty `HOME`, which `set -u` lets through
+  and which would have installed into `/.local`.
 
 - **The installer survives a start that fails**, and prints its advice
   instead of dying under `set -e`; the uninstaller survives a missing user
   bus. Run as root, the test suite reached the real system: the udev
   rule, the resume hook and the tmpfiles.d entry through their paths,
-  and `/run/oscmix-desk` through `systemd-tmpfiles --create`. All four
-  point into the test's scratch directory now, and a test fails if a
-  command either script runs through `sudo` escapes that.
+  and `/run/oscmix-desk` through `systemd-tmpfiles --create`. The three
+  paths point into the test's scratch directory now and
+  `systemd-tmpfiles` is stubbed, and a test fails if a command either
+  script runs through `$SUDO` is neither stubbed nor confined to those
+  paths.
 
 ### Changed
 
@@ -122,7 +132,9 @@ new row.
   filed and the Analog 5-8 gain fix as newer than the pin.
 - **The tests no longer read the developer's desk.** The action-pair
   tests resolved `~/.config/oscmix/routing.conf` and its marker; every
-  test now starts from an empty config home and no system config.
+  test now starts from an empty config home and no system config, the
+  sessions and launchers the suite starts as subprocesses included
+  (`OSCMIX_SYSTEM_CONFIG`, a test seam like `OSCMIX_LOCK_DIR`).
 
 ## 0.6.9 (2026-09-16)
 

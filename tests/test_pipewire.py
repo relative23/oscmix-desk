@@ -129,6 +129,14 @@ def test_sink_info_returns_none_without_match(session_mod):
     assert session_mod.pw_sink_info(
         "Babyface", dump_text=json.dumps([])) is None
     assert session_mod.pw_sink_info("X", dump_text="not json") is None
+    # Not a list of objects is "could not be asked", not "no such sink":
+    # the CLI words the two differently (0.6.10).
+    from oscmix_desk import pipewire
+
+    for unreadable in ("", "not json", "{}", "null", "3"):
+        assert pipewire.pw_dump_objects(unreadable) is None, unreadable
+    assert pipewire.pw_dump_objects("[]") == []
+    assert pipewire.pw_dump_objects('[1, {"id": 2}]') == [{"id": 2}]
     assert session_mod.pw_sink_info("X", target="missing-node",
                                     dump_text=PW_DUMP) is None
 

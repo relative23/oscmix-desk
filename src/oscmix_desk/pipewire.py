@@ -6,7 +6,7 @@ import json
 import re
 import shutil
 import subprocess
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .config import Config, Route
 from .errors import ConfigError
@@ -56,22 +56,33 @@ def _parse_positions(raw: object) -> Optional[List[str]]:
     return None
 
 
-def pw_dump_text() -> Optional[str]:
-    """``pw-dump``'s output, or None when it is missing or fails.
+def pw_dump_objects(dump_text: Optional[str] = None
+                    ) -> Optional[List[Dict[str, Any]]]:
+    """``pw-dump``'s objects, or None when they cannot be had.
 
-    Apart from pw_sink_info so a caller can tell "PipeWire could not be
-    asked" from "PipeWire has no such sink" (0.6.10).
+    None covers pw-dump missing, failing, and printing something that is
+    not a JSON list -- everything that is "PipeWire could not be asked"
+    rather than "PipeWire has no such sink", which a caller has to tell
+    apart (0.6.10). ``dump_text`` stands in for running it.
     """
-    pw_dump = shutil.which("pw-dump")
-    if not pw_dump:
-        return None
+    if dump_text is None:
+        pw_dump = shutil.which("pw-dump")
+        if not pw_dump:
+            return None
+        try:
+            dump_text = subprocess.run(
+                [pw_dump], capture_output=True, text=True, timeout=10,
+                check=True,
+            ).stdout
+        except (OSError, subprocess.SubprocessError):
+            return None
     try:
-        return subprocess.run(
-            [pw_dump], capture_output=True, text=True, timeout=10,
-            check=True,
-        ).stdout
-    except (OSError, subprocess.SubprocessError):
+        objects = json.loads(dump_text)
+    except ValueError:
         return None
+    if not isinstance(objects, list):
+        return None
+    return [obj for obj in objects if isinstance(obj, dict)]
 
 
 def pw_sink_info(device_name: str, target: Optional[str] = None,
@@ -82,14 +93,15 @@ def pw_sink_info(device_name: str, target: Optional[str] = None,
     With ``target`` given, look that node up; otherwise search for a sink
     matching the configured device name (or "fireface").
     """
-    if dump_text is None:
-        dump_text = pw_dump_text()
-        if dump_text is None:
-            return None
-    try:
-        objects = json.loads(dump_text)
-    except ValueError:
-        return None
+    objects = pw_dump_objects(dump_text)
+    return None if objects is None else find_sink(objects, device_name,
+                                                  target)
+
+
+def find_sink(objects: List[Dict[str, Any]], device_name: str,
+              target: Optional[str] = None
+              ) -> Optional[Tuple[str, Optional[List[str]]]]:
+    """pw_sink_info over objects already read."""
     needle = device_name.lower()
     for obj in objects:
         props = obj.get("info", {}).get("props") or {}

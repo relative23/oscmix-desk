@@ -271,7 +271,10 @@ def _no_real_config(tmp_path_factory, monkeypatch):
     XDG_CONFIG_HOME, HOME and /etc; the action-pair tests reached the
     real ~/.config/oscmix/routing.conf that way (0.6.10). An empty,
     absolute XDG_CONFIG_HOME ends the search before HOME, and the system
-    location points nowhere. A test that wants a desk sets its own.
+    location points nowhere -- through the variable, which a session or
+    launcher started as a subprocess inherits, and through the module
+    defaults, which a mutant renaming the variable falls back to.
+    A test that wants a desk sets its own.
     """
     from oscmix_desk import config, launcher
 
@@ -279,6 +282,7 @@ def _no_real_config(tmp_path_factory, monkeypatch):
     monkeypatch.delenv("OSCMIX_CONFIG", raising=False)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(empty))
     nowhere = empty / "etc-oscmix-routing.conf"
+    monkeypatch.setenv("OSCMIX_SYSTEM_CONFIG", str(nowhere))
     monkeypatch.setattr(config, "SYSTEM_CONFIG", nowhere)
     monkeypatch.setattr(launcher, "SYSTEM_CONFIG", nowhere)
 

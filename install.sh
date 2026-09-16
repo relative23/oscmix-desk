@@ -8,6 +8,13 @@
 # touched.
 set -euo pipefail
 
+# Every path below hangs off HOME. An empty one would install into /.local
+# and /.config, and `set -u` does not catch empty.
+if [ -z "${HOME:-}" ]; then
+    echo "install.sh: HOME is not set" >&2
+    exit 2
+fi
+
 OSCMIX_REPO="${OSCMIX_REPO:-https://github.com/michaelforney/oscmix}"
 # Pinned to a commit, not a branch. oscmix is the component that actually
 # talks to the hardware, and every measurement this project publishes was

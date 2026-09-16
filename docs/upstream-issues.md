@@ -9,15 +9,16 @@ also means those items are held to the same standard as everything else
 here: an issue that wastes a maintainer's time on an unreproducible
 report is worse than no issue.
 
-All observations below were made against
+Entries 1 and 2 were observed against
 `2411b12d8a13b82829caf3b0b628078980c3d3a4` on a Fireface UCX II
 (serial 24216011), Linux 7.0. **Both are fixed upstream.** The pin moved
 to `55802a6ab865e551540ee9ad5081b8ae3276f8ca` to carry them -- measured
 on the same device: the dump goes from 2002 registers to 2322, Room EQ
 from 320 to its real 640, and `/controlroom/mainout` now arrives as
-`('is', (-1, 'None'))` instead of unnamed -- and in 0.6.0 on to
-`f2fdd5ec78338848754aad32cc07f3440de63395`, which also carries the
-fixes for entries 3, 4 and 5.
+`('is', (-1, 'None'))` instead of unnamed. Entries 3 to 5 were observed
+against that pin, which 0.4.0 and 0.5.0 carried; in 0.6.0 it moved on
+to `f2fdd5ec78338848754aad32cc07f3440de63395`, which carries their
+fixes as well.
 
 ---
 
@@ -255,8 +256,8 @@ Distinct from #32, which was about *reading* the block: with the fold
 fixed and all 640 Room EQ registers readable, writing any of them is
 accepted by oscmix, put on the wire, and ignored by the device -- the
 value reads back unchanged. Found while measuring for the 0.4.0
-release. This project declares the family **reported and not settable**
-until it moves.
+release. This project declared the family **reported and not settable**
+until it moved, and it has been settable since 0.6.0.
 
 [33]: https://github.com/michaelforney/oscmix/issues/33
 
@@ -452,7 +453,7 @@ no fake typos as a disguise; that is a watermark too.
 [tropes]: https://gist.github.com/ossa-ma/f3baa9d25154c33095e22272c631f5a1
 
 
-## 8. Fix proposed: output phase, measured on every output
+## 8. Fix merged: output phase, measured on every output
 
 **Status:** [oscmix#36][36pr] opened 2026-08-27, **merged the same day
 as `9dba36f`** after one review round. Fixes the defect in entry 4.
