@@ -220,22 +220,31 @@ def test_one_box_gives_the_unit_and_a_switch_the_same_key(
 
 def test_a_stranger_s_socket_on_the_port_is_refused_and_receives_nothing(
         tmp_path, monkeypatch):
+    """A real socket, a real /proc for who holds it, a simulated interface.
+
+    The interface is simulated so the test does not depend on a Fireface
+    being switched on: it passed for days on a desk with the UCX II up and
+    failed the first time the box was off -- which is every CI runner.
+    The port and its owner are the machine's own, which is the point.
+    """
     stranger = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     stranger.bind(("127.0.0.1", 0))
     stranger.setblocking(False)
     port = stranger.getsockname()[1]
     try:
         monkeypatch.setenv("OSCMIX_PROC_ROOT", "/proc")
+        box = fake_proc(tmp_path / "box", boxes=[A])
+        resolve = profiles.resolve_device
+        monkeypatch.setattr(
+            profiles, "resolve_device",
+            lambda usb, name, serial, _proc: resolve(usb, name, serial, box))
         _lock_dir(tmp_path, monkeypatch)
         path = _desk(tmp_path, port)
-        try:
-            outcome = profiles.switch_profile("b", config_path=path,
-                                              verify=False)
-        except DeviceAmbiguous:          # a machine with two real boxes
-            pytest.skip("this machine has more than one interface")
+        outcome = profiles.switch_profile("b", config_path=path, verify=False)
         assert outcome.state == profiles.REFUSED, outcome.reason
-        assert "not by an oscmix backend of this user" in outcome.reason
-        assert "pid %d" % os.getpid() in outcome.reason
+        assert outcome.reason == (
+            "UDP %d is held by pid %d, not by an oscmix backend of this user"
+            % (port, os.getpid()))
         with pytest.raises(BlockingIOError):
             stranger.recv(65535)
         assert not profiles.active_profile_path(path).exists()
