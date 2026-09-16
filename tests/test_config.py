@@ -241,6 +241,28 @@ def test_config_discovery_finds_the_xdg_location(session_mod, tmp_path,
     assert session_mod.discover_config_path() == expected
 
 
+def test_config_discovery_resolves_in_the_environment_it_is_given(
+        session_mod, tmp_path, monkeypatch):
+    """The unit's environment, not this process's (0.6.10); with no
+    HOME in it, the password database, which is what `~` expands to."""
+    from oscmix_desk import config as config_mod
+
+    home = tmp_path / "home"
+    (home / ".config" / "oscmix").mkdir(parents=True)
+    expected = home / ".config" / "oscmix" / "routing.conf"
+    expected.write_text("[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    monkeypatch.setenv("OSCMIX_CONFIG", str(tmp_path / "shell.conf"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "shell-xdg"))
+    monkeypatch.setenv("HOME", str(tmp_path / "shell-home"))
+    assert session_mod.discover_config_path({"HOME": str(home)}) == expected
+    monkeypatch.setattr(config_mod.pwd, "getpwuid",
+                        lambda uid: type("pw", (), {"pw_dir": str(home)})())
+    assert session_mod.discover_config_path({}) == expected
+    assert session_mod.discover_config_path(
+        {"OSCMIX_CONFIG": str(tmp_path / "named.conf")}) \
+        == tmp_path / "named.conf"
+
+
 def test_config_discovery_returns_none_when_there_is_nothing(session_mod,
                                                              tmp_path,
                                                              monkeypatch):

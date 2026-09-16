@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import configparser
 import os
+import pwd
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .constants import (
     CHANNEL_MAX,
@@ -137,22 +138,30 @@ class Config:
     policies: Dict[Tuple[str, str], str] = field(default_factory=dict)
 
 
-def discover_config_path(env_override: Optional[str] = None) -> Optional[Path]:
+def discover_config_path(
+        environ: Optional[Mapping[str, str]] = None) -> Optional[Path]:
     """Return the first existing config file in the search order.
 
-    ``env_override`` stands in for this process's OSCMIX_CONFIG: the CLI
-    passes the unit's value (or "") to work out which desk the *unit*
-    runs, which is not always the one the CLI's own environment names.
+    ``environ`` is the environment to resolve in, this process's by
+    default. The CLI passes the *unit's* environment to work out which
+    desk the unit runs: OSCMIX_CONFIG, XDG_CONFIG_HOME and HOME there
+    are not always this process's (0.6.10).
     """
-    env = os.environ.get("OSCMIX_CONFIG") if env_override is None else env_override
-    if env:
-        return Path(env)
-    xdg = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+    env = os.environ if environ is None else environ
+    named = env.get("OSCMIX_CONFIG")
+    if named:
+        return Path(named)
+    xdg = env.get("XDG_CONFIG_HOME") or os.path.join(_home(env), ".config")
     for candidate in (Path(xdg) / "oscmix" / "routing.conf",
                       Path("/etc/oscmix/routing.conf")):
         if candidate.is_file():
             return candidate
     return None
+
+
+def _home(env: Mapping[str, str]) -> str:
+    """HOME from ``env``, else the password database: what ``~`` expands to."""
+    return env.get("HOME") or pwd.getpwuid(os.getuid()).pw_dir
 
 
 def _parse_channels(raw: str, section: str, option: str) -> Tuple[int, ...]:

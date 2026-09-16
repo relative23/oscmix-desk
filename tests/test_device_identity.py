@@ -1120,7 +1120,7 @@ def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch
     unit_desk = tmp_path / "unit" / "routing.conf"
     unit_desk.parent.mkdir()
     unit_desk.write_text(DESK)
-    monkeypatch.setattr(cli, "unit_environment", dict)
+    monkeypatch.setattr(cli, "unit_environment", lambda *a: {})
     monkeypatch.setattr(cli, "discover_config_path", lambda *a: unit_desk)
     assert cli._report_outcome(outcome, tmp_path / "other.conf") == cli.EXIT_OK
     assert reloads == []
@@ -1152,7 +1152,7 @@ def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
                                reason=profiles.NOT_CHECKED, persisted=True)
     # The unit names its desk in its own Environment=.
     monkeypatch.setattr(cli, "unit_environment",
-                        lambda: {"OSCMIX_CONFIG": str(unit_desk)})
+                        lambda *a: {"OSCMIX_CONFIG": str(unit_desk)})
     # The shell's OSCMIX_CONFIG names another file: no --config, and the
     # switch was still for the other desk (the 0.6.9 bug via the env).
     monkeypatch.setenv("OSCMIX_CONFIG", str(other))
@@ -1162,22 +1162,69 @@ def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
     assert cli._report_outcome(outcome, unit_desk) == cli.EXIT_OK
     assert reloads == [1]
     # No unit environment to read: reload as before.
-    monkeypatch.setattr(cli, "unit_environment", lambda: None)
+    monkeypatch.setattr(cli, "unit_environment", lambda *a: None)
     assert cli._report_outcome(outcome, other) == cli.EXIT_OK
     assert reloads == [1, 1]
     capsys.readouterr()
 
 
-def test_the_unit_s_desk_without_an_environment_is_the_xdg_one(tmp_path,
+def test_the_unit_s_desk_is_resolved_in_the_unit_s_environment(tmp_path,
                                                                 monkeypatch):
+    """XDG_CONFIG_HOME and HOME of the unit, not of this shell.
+
+    The first cut resolved only OSCMIX_CONFIG from the unit and took
+    the XDG fallback from the shell, so `XDG_CONFIG_HOME=/x
+    oscmix-session --profile Y` reloaded a unit that runs ~/.config.
+    """
     from oscmix_desk import cli
 
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    (tmp_path / "oscmix").mkdir()
-    (tmp_path / "oscmix" / "routing.conf").write_text(DESK)
+    def desk(root):
+        (root / "oscmix").mkdir(parents=True)
+        (root / "oscmix" / "routing.conf").write_text(DESK)
+        return root / "oscmix" / "routing.conf"
+
+    shell = desk(tmp_path / "shell")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(shell.parent.parent))
     monkeypatch.setenv("OSCMIX_CONFIG", str(tmp_path / "elsewhere.conf"))
-    monkeypatch.setattr(cli, "unit_environment", dict)
-    assert cli._unit_desk() == tmp_path / "oscmix" / "routing.conf"
+    by_xdg = desk(tmp_path / "unit-xdg")
+    monkeypatch.setattr(cli, "unit_environment", lambda *a: {
+        "XDG_CONFIG_HOME": str(by_xdg.parent.parent)})
+    assert cli._unit_desk() == by_xdg
+    by_home = desk(tmp_path / "unit-home" / ".config")
+    monkeypatch.setattr(cli, "unit_environment", lambda *a: {
+        "HOME": str(tmp_path / "unit-home")})
+    assert cli._unit_desk() == by_home
+    # OSCMIX_CONFIG in the unit wins over both, existing or not.
+    monkeypatch.setattr(cli, "unit_environment", lambda *a: {
+        "OSCMIX_CONFIG": str(tmp_path / "named.conf"), "HOME": str(tmp_path)})
+    assert cli._unit_desk() == tmp_path / "named.conf"
+
+
+def test_the_unit_s_environment_is_its_main_process_s(tmp_path, monkeypatch):
+    """Read from /proc/<MainPID>/environ: no quoting to undo, and the
+    manager's XDG_CONFIG_HOME and HOME are in it, which `systemctl show
+    -p Environment` never lists."""
+    from oscmix_desk import process
+
+    (tmp_path / "4242").mkdir()
+    (tmp_path / "4242" / "environ").write_bytes(
+        b"HOME=/home/x\0OSCMIX_CONFIG=/home/x/my desk/routing.conf\0"
+        b"NOEQUALS\0\0EMPTY=\0")
+    answers = {"MainPID": "4242\n"}
+    monkeypatch.setattr(process, "_systemctl_output",
+                        lambda *verb: answers.get(verb[2]))
+    assert process.unit_environment(tmp_path) == {
+        "HOME": "/home/x", "OSCMIX_CONFIG": "/home/x/my desk/routing.conf",
+        "EMPTY": ""}
+    # Not running: MainPID is 0. Unreadable or absent: None as well.
+    answers["MainPID"] = "0\n"
+    assert process.unit_environment(tmp_path) is None
+    answers["MainPID"] = "4243\n"
+    assert process.unit_environment(tmp_path) is None
+    answers["MainPID"] = "garbage"
+    assert process.unit_environment(tmp_path) is None
+    answers.clear()
+    assert process.unit_environment(tmp_path) is None
 
 
 def test_an_empty_profile_name_is_a_refused_switch_not_a_start(

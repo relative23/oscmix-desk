@@ -315,7 +315,7 @@ def _dry_run_desk(args: "argparse.Namespace", config: Config,
 def _switch_profile(name: str, config_path: Optional[Path]) -> int:
     """Apply a profile and turn its outcome into an exit code.
 
-    Three states, three codes, and the distinction the caller needs is
+    Four states, four codes, and the distinction the caller needs is
     between "nothing happened" and "something happened that I could not
     check" -- a script that treats those the same will re-run a switch
     that already took effect.
@@ -378,10 +378,11 @@ def _report_outcome(outcome: "Outcome",
 
 def _unit_desk() -> Optional[Path]:
     """The config the running unit resolves, or None when that cannot be told."""
-    environment = unit_environment()
+    environment = unit_environment(
+        Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
     if environment is None:
         return None
-    return discover_config_path(environment.get("OSCMIX_CONFIG", ""))
+    return discover_config_path(environment)
 
 
 def _same_file(one: Path, other: Optional[Path]) -> bool:

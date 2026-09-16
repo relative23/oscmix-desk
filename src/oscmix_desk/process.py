@@ -342,20 +342,29 @@ def _systemctl(*verb: str) -> int:
         return 1
 
 
-def unit_environment() -> Optional[Dict[str, str]]:
-    """The Environment= of the running unit, or None when it cannot be read.
+def unit_environment(proc_root: Path) -> Optional[Dict[str, str]]:
+    """The environment the unit's main process runs in, or None.
 
     A switch reloads the unit only when it changed the unit's own desk,
     and the unit's desk is what `discover_config_path` finds in the
-    *unit's* environment -- OSCMIX_CONFIG there, not in the shell that
-    runs the switch (0.6.10).
+    *unit's* environment -- not in the shell that runs the switch
+    (0.6.10). Read from ``/proc/<MainPID>/environ``, which is exactly
+    what the unit resolved its desk in: ``systemctl show -p Environment``
+    lists only the unit file's own lines, not the manager's
+    XDG_CONFIG_HOME or HOME, and quotes values with spaces.
+    None when the unit is not running or the read fails.
     """
-    shown = _systemctl_output("show", "-p", "Environment", "--value",
-                              SERVICE_UNIT)
-    if shown is None:
+    shown = _systemctl_output("show", "-p", "MainPID", "--value", SERVICE_UNIT)
+    pid = shown.strip() if shown is not None else ""
+    if not pid.isdigit() or pid == "0":
         return None
-    pairs = (token.split("=", 1) for token in shown.split())
-    return dict(pair for pair in pairs if len(pair) == 2)
+    try:
+        raw = (proc_root / pid / "environ").read_bytes()
+    except OSError:
+        return None
+    pairs = (item.split(b"=", 1) for item in raw.split(b"\0") if item)
+    return {os.fsdecode(name): os.fsdecode(value)
+            for name, value in (pair for pair in pairs if len(pair) == 2)}
 
 
 def _systemctl_output(*verb: str) -> Optional[str]:
