@@ -261,6 +261,14 @@ def test_config_discovery_resolves_in_the_environment_it_is_given(
     assert session_mod.discover_config_path(
         {"OSCMIX_CONFIG": str(tmp_path / "named.conf")}) \
         == tmp_path / "named.conf"
+    # A relative XDG_CONFIG_HOME is invalid and ignored (the spec), so the
+    # answer does not depend on the asking process's cwd.
+    assert session_mod.discover_config_path(
+        {"HOME": str(home), "XDG_CONFIG_HOME": "rel/xdg"}) == expected
+    monkeypatch.setenv("XDG_CONFIG_HOME", "rel/xdg")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("OSCMIX_CONFIG")
+    assert session_mod.discover_config_path() == expected
     # A uid without a passwd entry has no home; `~` would stay `~`.
     # /etc is still searched, and nothing raises (every start and every
     # SIGHUP reconcile passes through here).

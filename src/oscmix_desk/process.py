@@ -379,8 +379,10 @@ def unit_process(proc_root: Path) -> Optional[UnitProcess]:
     if not argv or not environ:
         return None
     pairs = (item.split(b"=", 1) for item in environ.split(b"\0") if item)
+    # Each argument ends in NUL, so only the last one is a terminator: an
+    # empty final argument (`--device ''`) is the byte before it.
     return UnitProcess(
-        argv=tuple(os.fsdecode(arg) for arg in argv.rstrip(b"\0").split(b"\0")),
+        argv=tuple(os.fsdecode(arg) for arg in argv.split(b"\0")[:-1]),
         environ={os.fsdecode(name): os.fsdecode(value)
                  for name, value in (pair for pair in pairs if len(pair) == 2)},
         cwd=Path(cwd))

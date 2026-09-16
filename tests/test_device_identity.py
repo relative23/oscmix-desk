@@ -1232,11 +1232,19 @@ def test_the_unit_s_desk_is_its_config_argument_before_its_environment(
     monkeypatch.setattr(cli, "unit_process",
                         _unit({"OSCMIX_CONFIG": "desk/r.conf"}, cwd="/unit"))
     assert cli._unit_desk() == Path("/unit/desk/r.conf")
-    # A command line this parser cannot read: cannot be told.
+    # A command line this parser cannot read: cannot be told, and the
+    # parser's usage text is the unit's, not this switch's stderr.
     monkeypatch.setattr(cli, "unit_process",
                         _unit(environ, ("oscmix-session", "--config"), "/unit"))
     monkeypatch.setattr(cli.sys, "stderr", io.StringIO())
     assert cli._unit_desk() is None
+    assert cli.sys.stderr.getvalue() == ""
+    # An empty final argument is an argument, not a terminator: a unit
+    # started with `--device ''` runs its --config, not "cannot be told".
+    monkeypatch.setattr(cli, "unit_process", _unit(
+        environ, ("oscmix-session", "--config", "/x/r.conf", "--device", ""),
+        "/unit"))
+    assert cli._unit_desk() == Path("/x/r.conf")
     # No desk anywhere: None, and the switch reloads as before.
     monkeypatch.setattr(cli, "unit_process", _unit({"HOME": str(tmp_path)}))
     assert cli._unit_desk() is None
@@ -1250,7 +1258,8 @@ def test_the_unit_s_process_is_read_from_proc(tmp_path, monkeypatch):
 
     entry = tmp_path / "4242"
     entry.mkdir()
-    (entry / "cmdline").write_bytes(b"python3\0oscmix-session\0--config\0/my desk/r.conf\0")
+    (entry / "cmdline").write_bytes(
+        b"python3\0oscmix-session\0--config\0/my desk/r.conf\0--device\0\0")
     (entry / "environ").write_bytes(
         b"HOME=/home/x\0OSCMIX_CONFIG=/home/x/my desk/routing.conf\0"
         b"NOEQUALS\0\0EMPTY=\0")
@@ -1260,7 +1269,8 @@ def test_the_unit_s_process_is_read_from_proc(tmp_path, monkeypatch):
                         lambda *verb: answers.get(verb[2]))
     unit = process.unit_process(tmp_path)
     assert unit == process.UnitProcess(
-        argv=("python3", "oscmix-session", "--config", "/my desk/r.conf"),
+        argv=("python3", "oscmix-session", "--config", "/my desk/r.conf",
+              "--device", ""),
         environ={"HOME": "/home/x", "EMPTY": "",
                  "OSCMIX_CONFIG": "/home/x/my desk/routing.conf"},
         cwd=tmp_path)

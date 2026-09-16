@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import logging
 import math
 import os
@@ -354,8 +356,9 @@ def _report_outcome(outcome: "Outcome",
     # Only when it is the unit's desk that changed: a reload after a
     # switch of some other file -- named by --config, or by OSCMIX_CONFIG
     # in this shell -- made the unit re-apply its own routing.conf over
-    # that switch (0.6.9). The unit's desk is what its own environment
-    # resolves to, not what this process's does.
+    # that switch (0.6.9). The unit's desk is what the unit resolved --
+    # its own --config, else its own environment -- not what this
+    # process would.
     unit_desk = _unit_desk()
     if config_path is not None and unit_desk is not None \
             and not _same_file(config_path, unit_desk):
@@ -388,8 +391,11 @@ def _unit_desk() -> Optional[Path]:
     unit = unit_process(Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
     if unit is None:
         return None
+    # A line this parser cannot read is "cannot be told", and its usage
+    # text belongs to the unit, not on this switch's stderr.
     try:
-        args, _ = build_arg_parser().parse_known_args(list(unit.argv[1:]))
+        with contextlib.redirect_stderr(io.StringIO()):
+            args, _ = build_arg_parser().parse_known_args(list(unit.argv[1:]))
     except SystemExit:
         return None
     named = args.config or discover_config_path(unit.environ)

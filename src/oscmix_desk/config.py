@@ -151,8 +151,12 @@ def discover_config_path(
     named = env.get("OSCMIX_CONFIG")
     if named:
         return Path(named)
-    home = _home(env)
-    xdg = env.get("XDG_CONFIG_HOME") or (home and os.path.join(home, ".config"))
+    # A relative XDG_CONFIG_HOME is invalid and ignored (the spec's
+    # words), which also keeps the answer independent of who asks.
+    xdg: Optional[str] = env.get("XDG_CONFIG_HOME", "")
+    if not xdg or not os.path.isabs(xdg):
+        home = _home(env)
+        xdg = home and os.path.join(home, ".config")
     candidates = [Path("/etc/oscmix/routing.conf")]
     if xdg:
         candidates.insert(0, Path(xdg) / "oscmix" / "routing.conf")

@@ -113,10 +113,11 @@ the line says so.
 The reload after an applied switch went to the unit whatever config the
 switch was for, and the unit's reconcile then re-applied its own
 `routing.conf` over a switch made with `--config` for another file. The
-reload is sent only when the switch is for the config the unit runs, the
-one `discover_config_path` finds.
-
-## Amended in 0.6.10
+reload is sent only when the switch is for the config the unit runs,
+worked out as the unit worked it out: `--config` on its command line,
+else what `discover_config_path` finds in *its* environment, read from
+`/proc/<MainPID>/`; the shell that runs the switch may name another
+file in its own `OSCMIX_CONFIG`, `XDG_CONFIG_HOME` or `HOME`.
 
 The installer no longer creates a lock file: the lock lives in
 `/run/oscmix-desk`, created by tmpfiles.d, or in the unit's runtime
