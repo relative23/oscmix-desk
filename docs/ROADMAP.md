@@ -59,7 +59,7 @@ GUI expose it at all?
 | Submix per output, playback sources | `/mix/<out>/playback/*` **absent** | today (re-established, never verified) |
 | Submix per output, input sources | `/mix/<out>/input/*` (100) | 0.3.0 |
 | Input strip: gain, `48v`, hi-z, reflevel, mute, phase, stereo | all seven reported | 0.3.0; gain on Analog 5-8 since 0.6.0 |
-| Output strip: volume, pan, mute, phase, reflevel, stereo | all six reported | today: volume, stereo. 0.3.0: the rest, phase settable since 0.6.0 |
+| Output strip: volume, pan, mute, phase, reflevel, stereo | all six reported | today: volume, stereo. 0.3.0: mute, phase, reflevel -- phase not settable in 0.5.x, again since 0.6.0. `pan` is not declared |
 | EQ (3 band) and low cut, in and out | `eq/band1..3{freq,gain,q}`, `type` on bands 1 and 3 only, `lowcut/{freq,slope}` | 0.4.0 |
 | Dynamics, auto level | `dynamics/{attack,release,comp*,exp*,gain}`, `autolevel/{headroom,maxgain,risetime}` | 0.4.0 |
 | Room EQ (outputs) | `roomeq/band1..9{freq,gain,q}`, `type` on bands 1, 8 and 9, `delay` -- 640 since the pin moved, 320 before it | 0.4.0: modelled and reported; settable since 0.6.0, when the pin moved to the upstream fix for the ignored writes (#33) |
@@ -237,8 +237,8 @@ All eleven register families were declared and measured at the device.
 Room EQ was declared **reported and not settable**, because the writes
 were ignored (upstream #33 -- **fixed upstream 2026-08-27** in
 `f2fdd5e`, a split write range at `0x3400`, confirmed here at the
-device), and `/output/{ch}/phase` the same, because the writes never
-left oscmix (upstream #34 -- **fixed by our PR #36, merged 2026-08-27**
+device), and from 0.5.0 on `/output/{ch}/phase` the same, because the
+writes never left oscmix (upstream #34 -- **fixed by our PR #36, merged 2026-08-27**
 as `9dba36f`). The write sweep added
 `/input/5..8/gain` to that class: upstream's channel table gave those
 inputs a gain flag and no range, so every write was clamped to zero --

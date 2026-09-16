@@ -163,7 +163,7 @@ def test_no_timer_anywhere_triggers_a_reconcile():
 
     A timer would make this a background process that fights the user on
     a schedule -- and, given that the device does not report a change,
-    each tick would cost a full 2002-register dump. The roadmap ruled it
+    each tick would cost a full 2252-register dump. The roadmap ruled it
     out and this keeps it ruled out.
     """
     for path in repo_file("systemd").rglob("*"):

@@ -7,7 +7,7 @@ changes -- `/output/{ch}/stereo`, which the device echoes over MIDI.
 all change silently; only a `/refresh` shows them.
 
 That kills the strong reading of "pin". Nothing can snap back on a GUI
-change, because nothing reports one, and polling means a 2002-register
+change, because nothing reports one, and polling means a 2252-register
 dump against a device already streaming ~880 meter datagrams a second.
 What pin can honestly mean is: the config wins for as long as this
 session is still looking.

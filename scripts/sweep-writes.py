@@ -188,9 +188,10 @@ def verdict(path: str, current: object,
     running. `clamped` is the device disagreeing with a bound *this
     model* declares -- a defect in the table rather than in the stack.
     `ignored` is a write that goes nowhere, which is what Room EQ and
-    output phase both look like from here, for entirely different reasons
-    and in different components. This tool does not attribute it; a
-    trace does. It says only that the promise is not kept.
+    output phase both looked like from here until the pin moved in 0.6.0,
+    for entirely different reasons and in different components. This
+    tool does not attribute it; a trace does. It says only that the
+    promise is not kept.
     """
     finding: Dict[str, object] = {"path": path, "current": current,
                                   "attempts": len(attempts)}
