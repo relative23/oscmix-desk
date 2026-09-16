@@ -115,3 +115,11 @@ switch was for, and the unit's reconcile then re-applied its own
 `routing.conf` over a switch made with `--config` for another file. The
 reload is sent only when the switch is for the config the unit runs, the
 one `discover_config_path` finds.
+
+## Amended in 0.6.10
+
+The installer no longer creates a lock file: the lock lives in
+`/run/oscmix-desk`, created by tmpfiles.d, or in the unit's runtime
+directory (ADR 0023). A lock that cannot be taken is a refusal for every
+writer, never an unlocked write (ADR 0022); the runtime directory that
+this record rejected became the fallback location.

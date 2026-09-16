@@ -269,36 +269,31 @@ def test_verification_is_off_the_startup_path_structurally(unit):
         "the blind delay and the verify window are now on the path to "
         "READY=1 and startup_budget must account for them")
 
-    # ... and READY=1 follows the apply in the same block. Scoped to the
-    # block on purpose: run_session also signals READY on the
-    # device-absent path, which returns before ever reaching the apply,
-    # so a whole-function ordering check would compare two branches that
-    # never run together. (ast.walk is breadth-first, not source order,
-    # which makes any index comparison over it meaningless anyway.)
-    def called(statement):
-        # Expr *and* Assign: the apply's return value is bound to a name
-        # now (the verifier thread, which run_session has to join), and a
-        # check that only understood bare calls would silently find
-        # nothing and pass on `ordered is None`.
-        if not isinstance(statement, (ast.Expr, ast.Assign)):
-            return ""
-        value = statement.value
-        if not isinstance(value, ast.Call):
-            return ""
-        return getattr(value.func, "id", getattr(value.func, "attr", ""))
+    # ... and READY=1 follows the apply, and only a successful one. Since
+    # 0.6.10 the apply sits in _apply_or_fail: the try body calls
+    # _apply_and_verify, the `else` sends READY, and no except branch may.
+    # (ast.walk is breadth-first, not source order, which makes any index
+    # comparison over it meaningless anyway.)
+    def calls(statements, name):
+        for statement in statements:
+            for node in ast.walk(statement):
+                if isinstance(node, ast.Call) and \
+                        getattr(node.func, "id", getattr(node.func, "attr", "")) == name:
+                    return True
+        return False
 
-    ordered = None
-    for node in ast.walk(ast.parse(inspect.getsource(session.run_session))):
-        block = getattr(node, "body", None)
-        if not isinstance(block, list):
-            continue
-        names = [called(statement) for statement in block]
-        if "_apply_and_verify" in names and "sd_notify" in names:
-            ordered = names.index("_apply_and_verify") < names.index("sd_notify")
-    assert ordered is True, (
-        "READY=1 and the routing apply are no longer adjacent in one "
-        "block, or READY is signalled first -- Type=notify would then "
-        "report the service started before any routing was written")
+    tree = ast.parse(inspect.getsource(session._apply_or_fail))
+    tries = [node for node in ast.walk(tree) if isinstance(node, ast.Try)]
+    assert len(tries) == 1, "the apply is guarded by exactly one try"
+    guard = tries[0]
+    assert calls(guard.body, "_apply_and_verify")
+    assert calls(guard.orelse, "sd_notify"), (
+        "READY=1 must follow the apply in the try's else branch")
+    for handler in guard.handlers:
+        assert not calls(handler.body, "sd_notify"), (
+            "READY=1 in an except branch reports a desk that was not written")
+    run = ast.parse(inspect.getsource(session.run_session))
+    assert calls(run.body, "_apply_or_fail"), "run_session applies through it"
 
 
 def test_systemd_analyze_accepts_the_unit():

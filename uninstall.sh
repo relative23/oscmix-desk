@@ -73,7 +73,7 @@ rm -f "$UNIT_DIR/oscmix.service" \
 if [ -d "$DATA_DIR/glib-2.0/schemas" ]; then
     glib-compile-schemas "$DATA_DIR/glib-2.0/schemas" 2>/dev/null || true
 fi
-systemctl --user daemon-reload
+systemctl --user daemon-reload 2>/dev/null || true   # no user bus over ssh without linger
 
 if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$TMPFILES_CONF" ]; then
   if ! manages_this_home; then

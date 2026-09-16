@@ -32,9 +32,11 @@ LEGACY_LIB_DIR="$HOME/.local/lib/oscmix-autostart"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/oscmix"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
-UDEV_RULE="/etc/udev/rules.d/90-rme-fireface.rules"
-SLEEP_HOOK="/usr/lib/systemd/system-sleep/oscmix"
-TMPFILES_CONF="/usr/lib/tmpfiles.d/oscmix-desk.conf"
+# Overridable for the test suite only, which must never reach the real
+# files -- as root, $SUDO is empty and the install would be real.
+UDEV_RULE="${OSCMIX_UDEV_RULE:-/etc/udev/rules.d/90-rme-fireface.rules}"
+SLEEP_HOOK="${OSCMIX_SLEEP_HOOK:-/usr/lib/systemd/system-sleep/oscmix}"
+TMPFILES_CONF="${OSCMIX_TMPFILES_CONF:-/usr/lib/tmpfiles.d/oscmix-desk.conf}"
 
 DO_BUILD=1
 DO_UDEV=1
@@ -358,7 +360,7 @@ fi
 
 device_present() {
     local dev
-    for dev in /sys/bus/usb/devices/*; do
+    for dev in "${OSCMIX_SYSFS_USB:-/sys/bus/usb/devices}"/*; do
         [ -f "$dev/idVendor" ] || continue
         [ "$(cat "$dev/idVendor")" = "$USB_VENDOR" ] \
             && [ "$(cat "$dev/idProduct")" = "$USB_PRODUCT" ] && return 0
@@ -371,7 +373,9 @@ if device_present && ! manages_this_home; then
     info "instance serves a different home than $HOME"
 elif device_present; then
     info "Fireface detected; (re)starting backend"
-    systemctl --user restart oscmix.service
+    # Under set -e a failed start job would end the installer here, before
+    # the lines that say what to do about it.
+    systemctl --user restart oscmix.service || true
     sleep 2
     if systemctl --user is-active --quiet oscmix.service; then
         info "backend is running"

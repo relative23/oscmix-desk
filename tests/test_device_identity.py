@@ -1083,7 +1083,7 @@ def test_a_backend_of_a_live_session_is_not_stale(tmp_path, monkeypatch):
 
     port, proc, _holder, cleanup = _backend_with_parent(
         tmp_path, ["python3", "/home/u/.local/bin/oscmix-session"])
-    monkeypatch.setattr(process.os, "getuid", lambda: 1000)
+    monkeypatch.setattr(process.os, "getuid", os.getuid)
     killed = []
     monkeypatch.setattr(process, "_terminate", killed.append)
     assert cleanup(port, proc) == 39000
@@ -1094,7 +1094,7 @@ def test_a_backend_whose_session_is_gone_is_stale(tmp_path, monkeypatch):
     from oscmix_desk import process
 
     port, proc, holder, cleanup = _backend_with_parent(tmp_path, ["bash"])
-    monkeypatch.setattr(process.os, "getuid", lambda: 1000)
+    monkeypatch.setattr(process.os, "getuid", os.getuid)
     monkeypatch.setattr(process, "STALE_BACKEND_SETTLE", 0.0)
     killed = []
     monkeypatch.setattr(process, "_terminate", killed.append)

@@ -17,10 +17,6 @@ DEFAULT_OSC_RECV_PORT = 8222
 DEFAULT_DEVICE_TIMEOUT = 30.0
 PORT_READY_TIMEOUT = 10.0
 CHILD_STOP_GRACE = float(os.environ.get("OSCMIX_STOP_GRACE", "5"))
-# The full /refresh dump is several thousand MIDI-SysEx-backed messages
-# and takes a few seconds on a 20-channel interface; the loop exits early
-# once every expected register is confirmed, so a generous window only
-# costs time in the mismatch case.
 # Bind the receive port, then wait this long before asking for a dump.
 #
 # Upstream writes to a *connected* UDP socket, and `writeosc` in main.c
@@ -167,7 +163,7 @@ SWITCH_LOCK_WAIT = 30.0
 def startup_budget(device_timeout: float = DEFAULT_DEVICE_TIMEOUT) -> float:
     """Worst-case seconds from process start to ``READY=1``.
 
-    Eight waits govern this path and two systemd deadlines have to
+    Five waits govern this path and two systemd deadlines have to
     contain it. The relationship used to live in a comment in the unit
     file, where nothing checked it and `--timeout` -- a command-line
     argument in `ExecStart` -- could push the start past

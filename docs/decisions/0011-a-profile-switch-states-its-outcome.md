@@ -93,3 +93,9 @@ it proves nothing about the second half.
 burst of writes with the same failure modes, applied to a state nobody
 observed. A torn mix that at least matches a config the user wrote is
 better than one matching neither.
+
+## Amended in 0.6.10
+
+The outcome maps to more than two codes since 0.6.6: 4 when the switch
+was applied but its marker could not be written, 5 when the unit refused
+the reload; a `--diff` that differs exits 3 (ADR 0019).

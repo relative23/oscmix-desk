@@ -22,8 +22,51 @@ new row.
   own `routing.conf` over the switch. The reload is sent only when the
   switch is for the config the unit runs.
 
+- **Every pair of actions is refused, not three.** `--no-profile --diff`
+  restored the desk and never diffed; `--profile X --snapshot` switched
+  and printed nothing; `--list-profiles --profile X` listed and did not
+  switch. One action per invocation now, and `--dry-run` only with a
+  start, a switch or a restore.
+
+- **A config reads the same whatever the order of its sections.**
+  `[pin]` or `[clock]` above `[device]` was checked against the default
+  model: accepted or refused for the wrong reason. `[device]` is read
+  first wherever it stands.
+
+- **Ctrl-C is an exit code, not a traceback.** Before the backend runs --
+  the device wait, a lock wait, a read of the device -- an interrupt
+  printed a stack trace. It exits 130 now. `--timeout nan` never expired
+  and `--timeout -1` never waited; both are refused.
+
+- **Three tracebacks a user could reach are handled.** A profile marker
+  that is not UTF-8 raised past the OSError guard on every start; a
+  backend the socket cannot reach raised out of `run_session`; both are
+  a warning and a failed start now. A route name with a quote broke the
+  generated PipeWire conf; it is escaped.
+
+- **`--pipewire-sinks --pipewire-target X` says when X does not exist**,
+  instead of printing a 7.1 layout for a sink nobody checked.
+
+- **The launcher polls the active profile's port.** A profile that states
+  its own `[osc] port` runs the backend there; the launcher read
+  `routing.conf` only, warned that the backend was unreachable, and
+  started the GUI against nothing.
+
+- **The installer survives a start that fails**, and prints its advice
+  instead of dying under `set -e`; the uninstaller survives a missing user
+  bus. The test suite can no longer reach the real udev rule, resume hook
+  or tmpfiles entry when run as root.
+
 ### Changed
 
+- **`StopWhenUnneeded` is described as what it is.** The udev rule, the
+  unit, the architecture page and ADR 0013 said it stops the service on
+  unplug. An enabled unit is wanted by `default.target` and never
+  unneeded; what ends the service is the backend exiting with its device.
+  The directive stays, the story is corrected.
+- **Ten decision records carry an amendment** where a later release
+  changed what they describe: the lock's location and ownership, the
+  exit codes, the dump timing, the resolver.
 - **The public surface names the resolver.** `find_seq_client` and
   `wait_for_seq_client`, superseded in 0.6.9 and called by nothing, are
   gone; `resolve_device`, `wait_for_device`, `select_seq_client`,

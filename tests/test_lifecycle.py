@@ -76,7 +76,8 @@ def lifecycle(session_module, monkeypatch):
     def run(*, seq_client=42, usb_present=True, binaries=True,
             returncode=0, stop_requested=False, routes=(), port_ready=True,
             alive=False, config_fields=None, lock_unavailable=False,
-            ambiguous=False, session_running=False, **args):
+            ambiguous=False, session_running=False, backend_unreachable=False,
+            **args):
         config_fields = config_fields or {}
         monkeypatch.setattr(session_module, "sd_notify", notifications.append)
         def wait(usb_id, device_name, serial, timeout, proc_root):
@@ -109,6 +110,8 @@ def lifecycle(session_module, monkeypatch):
             if lock_unavailable:
                 from oscmix_desk.errors import DeviceLockUnavailable
                 raise DeviceLockUnavailable("2a39:3fd9")
+            if backend_unreachable:
+                raise OSError(101, "Network is unreachable")
 
         monkeypatch.setattr(session_module, "_apply_and_verify", apply)
         def spawn(*a, **k):
@@ -921,3 +924,12 @@ def test_a_start_beside_a_running_session_refuses_with_a_config_error(
     assert code == session_mod.EXIT_CONFIG
     assert lifecycle.children == [], "no backend is started into that port"
     assert "READY=1" not in lifecycle.notifications
+
+
+def test_a_backend_that_cannot_be_written_to_fails_the_start_cleanly(
+        session_mod, lifecycle):
+    """An OSError from the socket was a traceback out of run_session."""
+    code = lifecycle(alive=True, backend_unreachable=True)
+    assert code == session_mod.EXIT_FAILURE
+    assert ready_count(lifecycle.notifications) == 0
+    assert lifecycle.children[-1].terminated

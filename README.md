@@ -64,8 +64,8 @@ since.
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work
-  ([documented](docs/upstream-issues.md)); all five are fixed at the
-  pinned revision.
+  ([documented](docs/upstream-issues.md)); four are fixed at the pinned
+  revision and one, the output phase write, is filed.
 
 ## Why you want this
 

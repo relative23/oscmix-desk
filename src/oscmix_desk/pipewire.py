@@ -173,7 +173,9 @@ def generate_pipewire_conf(config: Config, target: Optional[str],
     parts.append("context.modules = [")
     for route in pair_routes:
         parts.append(_LOOPBACK_TEMPLATE.format(
-            description=route.name,
+            # The description is a quoted string in the conf; a quote in
+            # the route name -- which routing.conf accepts -- broke it.
+            description=route.name.replace("\\", "\\\\").replace('"', '\\"'),
             node=re.sub(r"[^\w.-]", "_", route.name),
             device_positions=" ".join(
                 pipewire_positions(route.output, sink_positions)),

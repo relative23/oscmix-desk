@@ -371,7 +371,12 @@ def _dispatch(parser: "configparser.ConfigParser", config: "Config",
     Channel and nested sections are only *collected* here: both need the
     device, and `[device]` may appear anywhere in the file.
     """
-    for section in parser.sections():
+    # [device] first, wherever it stands in the file: which model a
+    # `[clock]` or a `[pin]` line is checked against depends on it, and
+    # until 0.6.10 a section above `[device]` was checked against the
+    # default model -- accepted or refused for the wrong reason.
+    ordered = sorted(parser.sections(), key=lambda s: s != "device")
+    for section in ordered:
         if section == "device":
             _check_options(section, "device", parser.options(section))
             config.device_name = parser.get(section, "name",

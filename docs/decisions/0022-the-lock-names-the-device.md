@@ -77,3 +77,10 @@ reconcile stands down, and the start fails so systemd can try again.
   argument, and it is real: a desk with no routing is audible. But the
   timeout is 30 s, systemd restarts the unit, and a write that raced
   another writer can leave a mix nobody asked for. Consistency wins here.
+
+## Amended in 0.6.10
+
+`$XDG_RUNTIME_DIR/oscmix-desk/` is the fallback since 0.6.8; the first
+location is `/run/oscmix-desk`, the same for every user (ADR 0023). The
+serial is read by `discovery.resolve_device`, which replaced
+`device_serial` in 0.6.9 (ADR 0024).

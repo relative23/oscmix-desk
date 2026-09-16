@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import math
 import os
 import sys
 import time
@@ -139,6 +140,20 @@ def _snapshot_serial(config: Config) -> str:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    """The entry point: `_main`, with Ctrl-C turned into an exit code.
+
+    A SIGINT handler exists once the backend runs; before that -- the
+    device wait, a lock wait, a read of the device -- an interrupt was a
+    traceback. 130 is the shell's convention for it.
+    """
+    try:
+        return _main(argv)
+    except KeyboardInterrupt:
+        log.info("interrupted")
+        return 130
+
+
+def _main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
     logging.basicConfig(
@@ -219,6 +234,14 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
         log.warning("could not auto-detect the Fireface sink via pw-dump; "
                     "replace the FIXME target in the output "
                     "('wpctl status' shows the sink name)")
+    else:
+        # Named and not found: the channel layout below is then the
+        # surround table, which is wrong for a Direct/pro-audio sink --
+        # the failure TROUBLESHOOTING section 9 describes. Say so rather
+        # than print a config that looks right.
+        log.warning("no sink named %r in pw-dump; the channel positions "
+                    "below assume the 7.1 surround layout, check them "
+                    "against 'pw-dump' before loading this", target)
     try:
         sys.stdout.write(generate_pipewire_conf(config, target, positions))
     except ConfigError as exc:
@@ -227,19 +250,36 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
     return EXIT_OK
 
 
+#: The things one invocation can be asked to do. Two of them at once is
+#: a config error, refused before anything is written (ADR 0011).
+_ACTIONS = (("--profile", "profile"), ("--no-profile", "no_profile"),
+            ("--diff", "diff"), ("--dump-config", "dump_config"),
+            ("--snapshot", "snapshot"), ("--pipewire-sinks", "pipewire_sinks"),
+            ("--list-profiles", "list_profiles"))
+
+
 def _refuse_conflicting_actions(parser: ArgumentParser,
                                 args: "argparse.Namespace") -> None:
-    """Two desks asked for in one command is a config error.
+    """Two actions asked for in one command is a config error.
 
     Refusing before anything is written is the promise a bad profile
     already gets: it costs a message, never a fader (ADR 0011). Until
-    0.6.6 the first branch in the dispatch simply won, so
-    `--profile X --no-profile` switched and `--profile X --diff` wrote
-    the device and then compared it against something else.
+    0.6.6 the first branch in the dispatch simply won, so `--profile X
+    --no-profile` switched and `--profile X --diff` wrote the device and
+    then compared it against something else. Until 0.6.10 only those
+    three pairs were refused: `--no-profile --diff` restored the desk and
+    never diffed, `--profile X --snapshot` switched and printed nothing.
+    Every pair is refused now, and `--dry-run` goes only with a switch, a
+    restore, or a plain start.
     """
-    if args.profile and (args.no_profile or args.diff or args.dump_config):
-        parser.error("--profile cannot be combined with --no-profile, "
-                     "--diff or --dump-config")
+    asked = [flag for flag, attr in _ACTIONS if getattr(args, attr)]
+    if len(asked) > 1:
+        parser.error("%s cannot be combined" % " and ".join(asked))
+    if args.dry_run and asked and asked[0] not in ("--profile", "--no-profile"):
+        parser.error("--dry-run cannot be combined with %s" % asked[0])
+    if not (math.isfinite(args.timeout) and args.timeout >= 0):
+        parser.error("--timeout must be a finite number of seconds, not %r"
+                     % args.timeout)
 
 
 def _dry_run_desk(args: "argparse.Namespace", config: Config,

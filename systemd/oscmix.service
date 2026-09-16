@@ -2,8 +2,10 @@
 Description=oscmix backend for RME Fireface interfaces
 Documentation=https://github.com/michaelforney/oscmix
 After=sound.target
-# Started on hotplug via the udev rule (SYSTEMD_USER_WANTS); stops again
-# when the pull-in from the device disappears.
+# Started on hotplug via the udev rule (SYSTEMD_USER_WANTS). On unplug
+# the backend exits with its device and the session exits 0; this
+# directive would also stop a service that only the pull-in started, but
+# an enabled unit is wanted by default.target and never unneeded.
 StopWhenUnneeded=yes
 StartLimitIntervalSec=120
 StartLimitBurst=5

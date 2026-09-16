@@ -132,3 +132,11 @@ directory now that the shared path does not.
 - **Let a switch to an absent device keep reporting success.** It is
   the availability argument again, and here it has no case at all:
   nothing arrives, so there is nothing to be available.
+
+## Amended in 0.6.10
+
+The directory is 3770 root:audio, not 1777, and lock files are 0660 with
+the directory's group. With two identical interfaces and no
+`[device] serial` there is no shared `ambiguous` key any more: every
+writer refuses, because a lock that serialises two desks says nothing
+about which box gets the desk (ADR 0024).

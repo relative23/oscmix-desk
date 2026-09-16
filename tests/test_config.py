@@ -668,3 +668,29 @@ def test_invalid_utf8_is_a_configuration_error(session_mod, tmp_path):
     path.write_bytes(b"[route:monit\xf6rs]\nplayback=1/2\noutput=1/2\n")
     with pytest.raises(session_mod.ConfigError, match="cannot read"):
         session_mod.load_config(path)
+
+
+def test_the_device_section_is_read_first_wherever_it_stands(session_mod, tmp_path):
+    """A section above `[device]` was checked against the default model.
+
+    `[pin] output.volume = pin` before `[device] name = Fireface 802`
+    was accepted and after it refused; `[clock]` was refused with the
+    wrong reason. The outcome of a config must not depend on the order
+    of its sections (0.6.10).
+    """
+    from oscmix_desk.errors import ConfigError
+
+    below = tmp_path / "below.conf"
+    below.write_text("[device]\nname = Fireface 802\n[pin]\noutput.volume = pin\n"
+                     "[route:a]\nplayback = 1/2\noutput = 1/2\n")
+    above = tmp_path / "above.conf"
+    above.write_text("[pin]\noutput.volume = pin\n[device]\nname = Fireface 802\n"
+                     "[route:a]\nplayback = 1/2\noutput = 1/2\n")
+    outcomes = []
+    for path in (below, above):
+        try:
+            session_mod.load_config(path)
+            outcomes.append("accepted")
+        except ConfigError as exc:
+            outcomes.append("refused: " + str(exc).split(":")[0])
+    assert outcomes[0] == outcomes[1], outcomes

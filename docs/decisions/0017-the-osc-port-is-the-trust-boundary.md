@@ -1,6 +1,6 @@
 # 0017 -- The OSC port is the trust boundary, and it has none
 
-**Status:** accepted (0.4.x)
+**Status:** accepted (0.5.0)
 
 ## Decision
 

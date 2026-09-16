@@ -53,10 +53,38 @@ def load_settings() -> "tuple[str, int]":
             if re.fullmatch(r"[0-9a-fA-F]{4}:[0-9a-fA-F]{4}", raw_id):
                 usb_id = raw_id.lower()
             port = parser.getint("osc", "port", fallback=port)
+            port = _active_profile_port(path, port)
         except (configparser.Error, ValueError) as exc:
             log.warning("ignoring unreadable config %s: %s", path, exc)
         break
     return usb_id, port
+
+
+def _active_profile_port(config_path: Path, port: int) -> int:
+    """The port the active profile states, if it states one.
+
+    A profile inherits `[osc]` from routing.conf unless it says otherwise
+    (ADR 0018), and the backend runs on the profile's port while one is
+    active. The launcher polled routing.conf's port only, and warned
+    about a backend that was reachable all along (0.6.10).
+    """
+    marker = config_path.with_name("active-profile")
+    try:
+        name = marker.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return port
+    if not name or "/" in name or name.startswith("."):
+        return port
+    profile = config_path.with_name("profiles") / ("%s.conf" % name)
+    if not profile.is_file():
+        return port
+    parser = configparser.ConfigParser(interpolation=None,
+                                       inline_comment_prefixes=("#", ";"))
+    try:
+        parser.read(profile, encoding="utf-8")
+        return parser.getint("osc", "port", fallback=port)
+    except (configparser.Error, ValueError, UnicodeDecodeError):
+        return port
 
 
 def notify(summary: str, body: str, urgency: str = "normal") -> None:

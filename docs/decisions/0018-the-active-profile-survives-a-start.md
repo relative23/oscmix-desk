@@ -152,3 +152,12 @@ file removed.
 - **Documenting the trap and stopping there.** 0.6.2 did. A trap that
   the resume hook springs on every wake is not one a README paragraph
   closes.
+
+## Amended in 0.6.10
+
+The lock a switch takes is no longer `active-profile.lock` beside the
+marker but the interface's lock in `/run/oscmix-desk` (ADR 0023, 0024);
+the name beside the marker is the last fallback. The unit takes the same
+lock for its apply, verifier and reconcile (ADR 0019), and a switch does
+not poll the unit's STATUS line -- it reloads the unit and the unit's
+reconcile is serialised behind its verifier (ADR 0019, 0013).

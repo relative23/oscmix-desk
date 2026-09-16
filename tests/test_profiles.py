@@ -1445,3 +1445,13 @@ def test_reachability_reads_the_real_sysfs_and_proc_by_default(monkeypatch):
         "nothing is listening on UDP 7222, so the backend is not running")
     present[0] = False
     assert profiles._unreachable(config, box) == "2a39:3fd9 is not connected"
+
+
+def test_a_marker_that_is_not_utf8_is_ignored_with_a_warning(tmp_path, caplog):
+    """It raised UnicodeDecodeError past `except OSError` -- on every start."""
+    path = _desk(tmp_path, tracking=TRACKING)
+    (tmp_path / "active-profile").write_bytes(b"\xff\xfe\n")
+    with caplog.at_level("WARNING"):
+        _config, active = profiles.effective_config(path)
+    assert active is None
+    assert "ignoring" in caplog.text

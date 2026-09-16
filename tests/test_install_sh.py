@@ -50,7 +50,13 @@ def make_fake_home(tmp_path):
         "XDG_CONFIG_HOME": str(home / ".config"),
         "XDG_DATA_HOME": str(home / ".local" / "share"),
         "PATH": "%s:%s" % (stub_bin, env["PATH"]),
+        # Never the real system files, even when the suite runs as root
+        # and install.sh's $SUDO is empty.
+        "OSCMIX_UDEV_RULE": str(tmp_path / "system" / "udev.rules"),
+        "OSCMIX_SLEEP_HOOK": str(tmp_path / "system" / "sleep-hook"),
+        "OSCMIX_TMPFILES_CONF": str(tmp_path / "system" / "tmpfiles.conf"),
     })
+    (tmp_path / "system").mkdir(exist_ok=True)
     return home, env, log
 
 
@@ -384,3 +390,21 @@ def test_install_warns_a_user_who_is_not_in_audio(tmp_path):
     assert result.returncode == 0, result.stderr
     assert "is not in the group audio" in result.stderr
     assert "usermod -aG audio tester" in result.stderr
+
+
+def test_a_start_that_fails_does_not_end_the_installer(tmp_path):
+    """Under set -e a failed restart job ended install.sh before its own
+    advice printed (0.6.9)."""
+    home, env, _log = make_fake_home(tmp_path)
+    session_home_stub(tmp_path, str(home))
+    stub = tmp_path / "stub-bin" / "systemctl"
+    stub.write_text(stub.read_text().replace(
+        "exit 0", 'case "$*" in *restart*) exit 1 ;; *is-active*) exit 3 ;; esac\nexit 0'))
+    sysfs = tmp_path / "sysfs" / "5-2"
+    sysfs.mkdir(parents=True)
+    (sysfs / "idVendor").write_text("2a39\n")
+    (sysfs / "idProduct").write_text("3fd9\n")
+    env["OSCMIX_SYSFS_USB"] = str(sysfs.parent)
+    result = run("install.sh", ["--no-build", "--no-udev"], env)
+    assert result.returncode == 0, result.stderr
+    assert "backend did not start" in result.stderr

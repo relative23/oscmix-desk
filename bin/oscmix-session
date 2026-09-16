@@ -15,7 +15,12 @@ can actually help:
   0  nothing to do (device not connected), clean shutdown, or backend
      exited cleanly
   1  runtime failure (systemd restarts via Restart=on-failure)
-  2  configuration error (no restart; see RestartPreventExitStatus)
+  2  configuration error, an ambiguous interface, or a session already
+     running on the port (no restart; see RestartPreventExitStatus)
+  3  --diff: the device differs from the config
+  4  a switch was applied but its marker could not be written
+  5  a switch was applied but the unit refused the reload
+  130 interrupted
 
 The logic lives in the ``oscmix_desk`` package next to this file;
 this is only the entry point. Only the Python standard library is used,

@@ -110,8 +110,8 @@ switch takes (ADR 0019), and since 0.6.7 that lock is named after the
 interface (ADR 0022). Since 0.6.8 it lives in `/run/oscmix-desk/`,
 which does not depend on the environment, the user or the config
 directory the way `$XDG_RUNTIME_DIR` did (ADR 0023), so a
-profile switch right after a replug waits for the start-up verifier --
-up to twenty seconds -- and says so. Past `SWITCH_LOCK_WAIT` it refuses
+profile switch right after a replug waits for the start-up verifier's
+lock and says so. Past `SWITCH_LOCK_WAIT` (30 s) it refuses
 and writes nothing. Since 0.6.6 both the unit and a switch read the
 desk *inside* that lock (ADR 0020), so whichever of them gets it first,
 the other applies what was committed rather than what it read earlier.

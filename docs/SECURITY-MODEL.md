@@ -18,8 +18,8 @@ can do:
 
 - today: routing and output faders. A hostile local process can silence
   your monitors, or make them very loud.
-- from 0.3.0, when `[input:N]` sections land: **phantom power**. `48v`
-  is a register like any other. Sending 48 V into a ribbon microphone
+- since 0.3.0, with `[input:N]` sections: **phantom power**. `48v` is a
+  register like any other. Sending 48 V into a ribbon microphone
   damages it.
 
 If that matters for your setup, the port is the boundary to defend --

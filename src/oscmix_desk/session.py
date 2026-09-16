@@ -387,6 +387,33 @@ def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
     return EXIT_FAILURE
 
 
+def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
+                   stop_requested: Dict[str, bool], config_path: Optional[Path]
+                   ) -> Tuple[Optional[threading.Thread], Optional[int]]:
+    """Apply the desk and signal READY, or stop the backend and say why.
+
+    The service is "started" when the backend is up and the routing is
+    applied -- and only then. READY=1 used to follow a lock refusal too,
+    telling systemd the desk was set while nothing had been written
+    (0.6.7, 0.6.8). Returns the verifier thread, or the exit code of a
+    start that failed: a held lock is a wait, not a desk, and systemd
+    retries after RestartSec (ADR 0022, ADR 0024); a socket the backend
+    cannot be reached through was a traceback until 0.6.10.
+    """
+    try:
+        verifier = _apply_and_verify(child, config, stop_requested, config_path)
+    except DeviceLockUnavailable:
+        log.error("failing the start so systemd tries again")
+    except OSError as exc:
+        log.error("cannot write to the backend on UDP %d (%s); failing the "
+                  "start", config.osc_port, exc)
+    else:
+        sd_notify("READY=1")
+        return verifier, None
+    _stop_child(child)
+    return None, EXIT_FAILURE
+
+
 def run_session(args: argparse.Namespace, config: Config) -> int:
     """Discover the device, run the backend, and supervise it."""
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
@@ -431,20 +458,10 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
 
     verifier = None
     if child.poll() is None:
-        try:
-            verifier = _apply_and_verify(child, config, stop_requested,
-                                         _config_path(args))
-            # The service is "started": backend up, routing applied --
-            # and only then. READY=1 used to follow a lock refusal too,
-            # telling systemd the desk was set while nothing had been
-            # written (0.6.7, 0.6.8).
-            sd_notify("READY=1")
-        except DeviceLockUnavailable:
-            # A failed start is retried after RestartSec; a held lock is
-            # a wait, not a desk (ADR 0022, ADR 0024).
-            log.error("failing the start so systemd tries again")
-            _stop_child(child)
-            return EXIT_FAILURE
+        verifier, failed = _apply_or_fail(child, config, stop_requested,
+                                          _config_path(args))
+        if failed is not None:
+            return failed
 
     returncode = supervise(child, stop_requested,
                            on_reload=lambda: _reconcile(args, config,

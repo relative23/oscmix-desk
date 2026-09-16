@@ -24,9 +24,9 @@ glue between them:
 │ 2  udev (udev/90-rme-fireface.rules)                         │
 │    On hotplug: disables USB autosuspend for the device and   │
 │    asks the user's systemd instance to start oscmix.service  │
-│    (SYSTEMD_USER_WANTS). On removal it tags the event so     │
-│    systemd drops the pull-in and StopWhenUnneeded stops the  │
-│    service.                                                  │
+│    (SYSTEMD_USER_WANTS). On removal the backend exits with   │
+│    its device and the session exits 0; the tagged remove     │
+│    event keeps the device unit in step for the next add.     │
 ├──────────────────────────────────────────────────────────────┤
 │ 3  backend (systemd/oscmix.service → bin/oscmix-session)     │
 │    Discovers the ALSA sequencer client, runs                 │

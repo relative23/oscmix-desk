@@ -13,7 +13,9 @@ SOAK_CYCLES ?= 50
 
 all: check
 
-# Everything CI enforces, in the order that fails fastest.
+# The fast gates, in the order that fails fastest. CI adds `coverage`
+# (with its ratchet), `flake`, the unit-file verification and the build
+# of the pinned oscmix; the release checklist runs those by hand.
 check: lint typecheck deadcode test
 
 test:

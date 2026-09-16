@@ -1,5 +1,7 @@
 """Command-line overrides are bounded like the file they override."""
 
+import pytest
+
 
 def test_an_out_of_range_osc_port_on_the_command_line_is_a_config_error(
         session_mod, tmp_path):
@@ -72,3 +74,67 @@ def test_pipewire_sinks_with_no_stereo_route_is_a_config_error(
                      "[route:mono]\nplayback = 1\noutput = 1\n", None)
     assert code == session_mod.EXIT_CONFIG
     assert out == ""
+
+
+# --------------------------------------------------------------------------
+# 0.6.10: one action per invocation, and arguments that cannot be waited on.
+# --------------------------------------------------------------------------
+
+_ACTION_FLAGS = ["--profile x", "--no-profile", "--diff", "--dump-config",
+                 "--snapshot", "--pipewire-sinks", "--list-profiles"]
+
+
+@pytest.mark.parametrize("first", _ACTION_FLAGS)
+@pytest.mark.parametrize("second", _ACTION_FLAGS)
+def test_two_actions_in_one_command_are_refused_before_anything_runs(
+        first, second, monkeypatch, capsys):
+    """`--no-profile --diff` restored the desk and never diffed (0.6.9)."""
+    if first == second:
+        pytest.skip("the same flag twice is one action")
+    from oscmix_desk import cli
+
+    touched = []
+    def record(name):
+        return lambda *a, **k: touched.append(name) or 0
+
+    for name in ("run_session", "restore_main", "switch_profile", "_snapshot",
+                 "_diff", "_dump_config", "_pipewire_sinks"):
+        if hasattr(cli, name):
+            monkeypatch.setattr(cli, name, record(name))
+    with pytest.raises(SystemExit) as raised:
+        cli.main([*first.split(), *second.split()])
+    assert raised.value.code == 2
+    assert touched == []
+    assert "cannot be combined" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("flag", ["--diff", "--snapshot", "--dump-config",
+                                  "--pipewire-sinks", "--list-profiles"])
+def test_dry_run_goes_only_with_a_start_a_switch_or_a_restore(flag, capsys):
+    from oscmix_desk import cli
+
+    with pytest.raises(SystemExit) as raised:
+        cli.main(["--dry-run", flag])
+    assert raised.value.code == 2
+    assert "--dry-run cannot be combined" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("value", ["nan", "inf", "-1"])
+def test_a_timeout_that_cannot_expire_is_refused(value, capsys):
+    """`--timeout nan` never timed out: the deadline compare is always false."""
+    from oscmix_desk import cli
+
+    with pytest.raises(SystemExit) as raised:
+        cli.main(["--timeout", value, "--dry-run"])
+    assert raised.value.code == 2
+    assert "--timeout must be a finite" in capsys.readouterr().err
+
+
+def test_an_interrupt_is_an_exit_code_not_a_traceback(monkeypatch):
+    from oscmix_desk import cli
+
+    def interrupted(*_a, **_k):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "_main", interrupted)
+    assert cli.main([]) == 130

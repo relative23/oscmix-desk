@@ -5,8 +5,8 @@ them needed building.
 
 **Hotplug was already covered**, and building a second path for it would
 have been the mistake this release keeps finding. `udev/90-rme-fireface.rules`
-pulls `oscmix.service` in on `add` and `StopWhenUnneeded=yes` drops it on
-`remove`, so a replug is a full process restart with a full apply --
+pulls `oscmix.service` in on `add`, and on `remove` the backend exits
+with its device, so a replug is a full process restart with a full apply --
 recorded in `tests/data/cold-plug-timeline.json`, whose condition line
 reads "cold USB replug -- device unplugged 14.4 s, udev restarted the
 unit".
@@ -141,11 +141,13 @@ def test_the_resume_hook_survives_a_missing_service():
 def test_hotplug_is_handled_by_udev_and_not_by_a_second_mechanism():
     """The trigger that needed no code.
 
-    If this ever stops being true -- the rule loses its `add` pull-in, or
-    the unit loses `StopWhenUnneeded` -- then hotplug silently stops
-    re-applying anything, and the session has no path of its own to fall
-    back on. So both halves are asserted here rather than assumed from a
-    comment.
+    If this ever stops being true -- the rule loses its `add` pull-in --
+    then hotplug silently stops re-applying anything, and the session has
+    no path of its own to fall back on. The `remove` half is asserted too,
+    though what ends the service on unplug is the backend exiting with
+    its device, not `StopWhenUnneeded` (an enabled unit is never unneeded;
+    ADR 0013, amended). So all of it is asserted here rather than assumed
+    from a comment.
     """
     rules = repo_file("udev", "90-rme-fireface.rules").read_text()
     assert 'ACTION=="add"' in rules

@@ -7,7 +7,7 @@ serial 24216011, against the pinned upstream revision.
 
 ## Context
 
-[ADR 0003](0003-a-route-rewrites-only-what-it-declares.md) settled that a
+[ADR 0003](0003-declared-registers-only.md) settled that a
 routing touches only the registers a config names. That left one question
 open, and the roadmap has carried it since: *of the registers it does
 name, who wins after the initial write?*

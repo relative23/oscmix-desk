@@ -32,3 +32,8 @@ register set, but `apply_routing()` must use `link_messages()` and
 
 `/output/<n>/level` read off the wire with a left-only and a right-only
 test tone, before and after. See the 0.1.2 entry in CHANGELOG.md.
+
+## Amended in 0.6.10
+
+`route_messages()` is gone; the dry run and the expected register set
+use `link_messages()` and `mix_messages()` like the apply does.

@@ -387,3 +387,19 @@ def test_the_backend_wait_is_configurable_from_the_environment(launch_mod):
     assert isinstance(launch_mod.BACKEND_WAIT, float)
     assert launch_mod.BACKEND_WAIT >= 1.0
     assert os.environ.get("OSCMIX_BACKEND_WAIT") is None
+
+
+def test_the_port_of_the_active_profile_wins(launch_mod, clean_env, tmp_path):
+    """The backend runs on the active profile's port; the launcher polled
+    routing.conf's (0.6.9), warned, and started the GUI against nothing."""
+    conf = write_conf(tmp_path / "routing.conf", "[osc]\nport = 9001\n")
+    (tmp_path / "profiles").mkdir()
+    write_conf(tmp_path / "profiles" / "live.conf", "[osc]\nport = 9100\n")
+    write_conf(tmp_path / "profiles" / "quiet.conf", "[route:x]\noutput = 1/2\nplayback = 1/2\n")
+    clean_env.setenv("OSCMIX_CONFIG", str(conf))
+    (tmp_path / "active-profile").write_text("live\n")
+    assert launch_mod.load_settings()[1] == 9100
+    (tmp_path / "active-profile").write_text("quiet\n")      # inherits
+    assert launch_mod.load_settings()[1] == 9001
+    (tmp_path / "active-profile").write_text("../evil\n")   # never a path
+    assert launch_mod.load_settings()[1] == 9001

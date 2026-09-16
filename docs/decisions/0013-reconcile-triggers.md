@@ -244,3 +244,12 @@ bounded by `RECONCILE_WAIT_FOR_VERIFIER` (30 s, derived from the
 verifier's longest path) so a wedged thread cannot hold the supervise
 loop; a stop request ends the wait, and a reload that times out is
 logged rather than swallowed. The trigger list above does not change.
+
+## Amended in 0.6.10
+
+`StopWhenUnneeded=yes` does not stop the service on `remove`: the unit is
+enabled, `default.target` wants it, and a wanted unit is never unneeded.
+What ends it is the backend exiting with its device, after which the
+session exits 0 (measured). The replug is still a full restart with a
+full apply, through the `add` pull-in, so nothing here changes; the
+mechanism was described wrongly.

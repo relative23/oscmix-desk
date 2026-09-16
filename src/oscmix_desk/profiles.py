@@ -197,7 +197,8 @@ MACHINE_SETTINGS = (
 
 def _inherit_transport(profile: Config, main: Config, path: Path) -> None:
     """Fill the machine-level settings a profile did not state itself."""
-    text = path.read_text()
+    # Parsed already by load_profile, so it is UTF-8; read the same way.
+    text = path.read_text(encoding="utf-8", errors="replace")
     for section, option, attr in MACHINE_SETTINGS:
         if not _states(text, section, option):
             setattr(profile, attr, getattr(main, attr))
@@ -248,8 +249,8 @@ def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
     if path is None or not path.is_file():
         return None
     try:
-        name = path.read_text().strip()
-    except OSError as exc:
+        name = path.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError) as exc:
         log.warning("ignoring %s: %s", path, exc)
         return None
     if not name:
@@ -331,8 +332,9 @@ def _fsync_directory(directory: Path) -> bool:
 #: switch, `--no-profile`, and the unit's own apply, verifier and
 #: reconcile (ADR 0019). Two writers at once would interleave their link
 #: phases and mix writes on the wire -- the ordering ADR 0001 exists to
-#: guarantee. One file per config directory, so two desks selected by
-#: `--config` do not contend.
+#: guarantee. This name is the last fallback, beside the marker, for a
+#: session with neither the shared lock directory nor a runtime
+#: directory; every other writer keys on the interface (ADR 0023).
 SWITCH_LOCK = "active-profile.lock"
 
 #: The one path that is the same for every writer on the machine,

@@ -175,3 +175,13 @@ def test_colliding_route_names_are_reported_not_silent(session_mod):
     assert conf.count("libpipewire-module-loopback") == 1
     assert "'studio' also targets outputs 5/6" in conf
     assert "named after route 'monitors'" in conf
+
+
+def test_a_quote_in_a_route_name_does_not_break_the_conf(session_mod):
+    """routing.conf accepts the name; the conf quoted it raw (0.6.9)."""
+    routes = [session_mod.Route(name='the "big" room', playback=(1, 2),
+                                output=(1, 2))]
+    conf = session_mod.generate_pipewire_conf(
+        make_config(session_mod, routes), target="alsa_output.fireface")
+    assert 'node.description = "the \\"big\\" room"' in conf
+    assert 'node.name = "oscmix.the__big__room"' in conf
