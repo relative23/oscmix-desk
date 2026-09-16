@@ -72,7 +72,7 @@ VERIFY_CLASSES = (VERIFIABLE, WRITE_ONLY, REESTABLISHED)
 # silently; only a `/refresh` reveals them.
 #
 # So "pin" cannot mean "snaps back when the mixer GUI changes it". There
-# is nothing to react to short of polling a 2002-register dump, against
+# is nothing to react to short of polling a 2252-register dump, against
 # a device already streaming ~880 meter datagrams a second. What pin can
 # honestly mean is: **the config wins for as long as this session is
 # still looking** -- through the read-back window, and through any

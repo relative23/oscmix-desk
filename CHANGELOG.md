@@ -86,8 +86,9 @@ new row.
   alike. Each resolved it against its own working directory: the
   installer wrote `relative-config/oscmix/routing.conf` into whatever
   directory it was run from, and a session started elsewhere never found
-  it. Both scripts refuse an empty `HOME`, which `set -u` lets through
-  and which would have installed into `/.local`.
+  it. Both scripts refuse a `HOME` that is empty or relative, which
+  `set -u` lets through and which would have put every file under `/` or
+  the working directory.
 
 - **The installer survives a start that fails**, and prints its advice
   instead of dying under `set -e`; the uninstaller survives a missing user

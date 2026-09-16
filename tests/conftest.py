@@ -12,6 +12,7 @@ which run them as real subprocesses.
 import collections
 import importlib.machinery
 import importlib.util
+import os
 import socket
 import struct
 import sys
@@ -179,6 +180,9 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
     search falls through to the runtime directory below unless a test
     sets it itself.
     """
+    from oscmix_desk import profiles
+
+    machine = (os.environ.get("XDG_RUNTIME_DIR"), profiles.SHARED_LOCK_DIR)
     monkeypatch.setenv("XDG_RUNTIME_DIR",
                        str(tmp_path_factory.mktemp("runtime")))
     absent = str(tmp_path_factory.mktemp("nolockdir") / "absent")
@@ -187,8 +191,21 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
     # that renames the variable falls back to /run/oscmix-desk, and the
     # 0.6.9 mutation run left lock files there -- tests that could have
     # held the running desk's lock while they ran.
-    from oscmix_desk import profiles
     monkeypatch.setattr(profiles, "SHARED_LOCK_DIR", absent)
+    yield
+    # Checked before monkeypatch restores anything, since this fixture
+    # asked for it. A test may point either location somewhere of its
+    # own; it may not end with the machine's back in effect, which is
+    # what `monkeypatch.undo()` in a test body does to every autouse
+    # fixture at once. A 0.6.10 test did, and took a real lock file in
+    # /run/oscmix-desk for the rest of its run.
+    undone = ("a test put the machine's lock directories back in effect "
+              "(monkeypatch.undo()?)")
+    runtime, shared = machine
+    assert shared != os.environ.get("OSCMIX_LOCK_DIR",
+                                    profiles.SHARED_LOCK_DIR), undone
+    assert runtime is None or runtime != os.environ.get("XDG_RUNTIME_DIR"), \
+        undone
 
 
 @pytest.fixture(autouse=True)

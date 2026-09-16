@@ -442,15 +442,21 @@ def test_a_start_that_fails_does_not_end_the_installer(tmp_path):
 
 
 @pytest.mark.parametrize("script", ["install.sh", "uninstall.sh"])
-def test_an_empty_home_is_refused_before_anything_is_written(tmp_path, script):
-    """`set -u` does not catch an empty HOME, and every path hangs off it."""
+@pytest.mark.parametrize("home", ["", "relative-home"])
+def test_a_home_that_is_not_absolute_is_refused_before_anything_is_written(
+        tmp_path, script, home):
+    """`set -u` catches neither an empty nor a relative HOME, and every
+    path hangs off it: /.local, or the working directory's."""
     _home, env, log = make_fake_home(tmp_path)
-    env["HOME"] = ""
-    result = run(script, ["--no-build", "--no-udev"] if script == "install.sh"
-                 else [], env)
+    env["HOME"] = home
+    result = subprocess.run(
+        ["bash", str(PROJECT_ROOT / script)]
+        + (["--no-build", "--no-udev"] if script == "install.sh" else []),
+        env=env, capture_output=True, text=True, timeout=60, cwd=str(tmp_path))
     assert result.returncode == 2
-    assert "HOME is not set" in result.stderr
+    assert "HOME must be an absolute path" in result.stderr
     assert not log.exists()
+    assert not (tmp_path / "relative-home").exists()
 
 
 def test_nothing_the_scripts_run_as_root_escapes_the_stubs():

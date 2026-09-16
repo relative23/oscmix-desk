@@ -21,6 +21,7 @@ no user-level sleep.target to hang a unit on.
 
 import re
 
+import pytest
 from conftest import repo_file
 
 
@@ -959,13 +960,14 @@ def test_a_reconcile_that_wrote_nothing_does_not_report_success(
                         r"\d\d:\d\d:\d\d", notices[-1]), notices[-1]
 
 
-def test_every_reconcile_that_stands_down_says_so(tmp_path, monkeypatch,
+@pytest.mark.parametrize("cause", ["lock held", "config broken",
+                                   "verifier still running"])
+def test_every_reconcile_that_stands_down_says_so(cause, tmp_path, monkeypatch,
                                                  session_mod):
     """Not only a held receive port. The lock held elsewhere, a verifier
     that outlived the wait and a config that no longer parses returned
     before the status line and left the previous one standing -- often
-    "verifier finished", which reads as all well (0.6.10). A reconcile
-    cut short by a stop says nothing: the unit is going down."""
+    "verifier finished", which reads as all well (0.6.10)."""
     import argparse
     import re
     import threading
@@ -973,43 +975,48 @@ def test_every_reconcile_that_stands_down_says_so(tmp_path, monkeypatch,
     from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
-    args = argparse.Namespace(config=path)
     notices = []
     written = []
     monkeypatch.setattr(session_module, "sd_notify", notices.append)
     monkeypatch.setattr(session_module, "reconcile_now",
                         lambda *a: written.append(1) or True)
-    skipped = r"STATUS=running; reconcile skipped at \d\d:\d\d:\d\d"
-
-    monkeypatch.setattr(session_module, "take_device_lock", lambda *a: None)
-    session_module._reconcile(args, session_mod.Config(), {"stop": False})
-    assert re.fullmatch(skipped, notices[-1]), notices
-    monkeypatch.undo()
-
-    monkeypatch.setattr(session_module, "sd_notify", notices.append)
-    monkeypatch.setattr(session_module, "reconcile_now",
-                        lambda *a: written.append(1) or True)
-    notices.clear()
-    path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
-    session_module._reconcile(args, session_mod.Config(), {"stop": False})
-    assert re.fullmatch(skipped, notices[-1]), notices
-
-    notices.clear()
-    monkeypatch.setattr(session_module, "RECONCILE_WAIT_FOR_VERIFIER", 0.2)
+    verifier = None
     release = threading.Event()
-    verifier = threading.Thread(target=release.wait, daemon=True)
-    verifier.start()
+    if cause == "lock held":
+        monkeypatch.setattr(session_module, "take_device_lock",
+                            lambda *a: None)
+    elif cause == "config broken":
+        path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
+    else:
+        monkeypatch.setattr(session_module, "RECONCILE_WAIT_FOR_VERIFIER", 0.2)
+        verifier = threading.Thread(target=release.wait, daemon=True)
+        verifier.start()
     try:
-        session_module._reconcile(args, session_mod.Config(), {"stop": False},
+        session_module._reconcile(argparse.Namespace(config=path),
+                                  session_mod.Config(), {"stop": False},
                                   verifier)
     finally:
         release.set()
-    assert re.fullmatch(skipped, notices[-1]), notices
-
-    notices.clear()
-    session_module._reconcile(args, session_mod.Config(), {"stop": True})
-    assert notices == []
     assert written == []
+    assert re.fullmatch(r"STATUS=running; reconcile skipped at "
+                        r"\d\d:\d\d:\d\d", notices[-1]), notices
+
+
+def test_a_reconcile_cut_short_by_a_stop_reports_nothing(tmp_path, monkeypatch,
+                                                         session_mod):
+    """The stop handler has sent STOPPING=1 already; a "running; ..." line
+    after it would describe a unit that is going down."""
+    import argparse
+
+    from oscmix_desk import session as session_module
+
+    notices = []
+    monkeypatch.setattr(session_module, "sd_notify", notices.append)
+    monkeypatch.setattr(session_module, "reconcile_now", lambda *a: True)
+    session_module._reconcile(argparse.Namespace(config=_routes_file(tmp_path)),
+                              session_mod.Config(), {"stop": True})
+    assert not any(notice.startswith("STATUS=running") for notice in notices), \
+        notices
 
 
 def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,

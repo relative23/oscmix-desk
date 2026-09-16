@@ -107,8 +107,8 @@ verifier failed at HH:MM:SS`, `running; reconciled at HH:MM:SS`, or
 stood down rather than wrote: the receive port was held, another writer
 had the device lock, the start-up verifier was still running after the
 wait, the config no longer parses, or the backend could not be reached
--- the journal says which. Until 0.6.10 only the first and the last
-changed the line. "Verifier failed" (since 0.6.10) means the background
+-- the journal says which. Until 0.6.10 only the first changed the
+line. "Verifier failed" (since 0.6.10) means the background
 verification could not reach the backend. It says what the unit is doing; it is not what
 keeps two writers apart. Since 0.6.5 the unit takes the same lock a
 switch takes (ADR 0019), and since 0.6.7 that lock is named after the

@@ -3,12 +3,14 @@
 # The routing config is kept unless --purge is given.
 set -euo pipefail
 
-# Every path below hangs off HOME. An empty one would install into /.local
-# and /.config, and `set -u` does not catch empty.
-if [ -z "${HOME:-}" ]; then
-    echo "uninstall.sh: HOME is not set" >&2
-    exit 2
-fi
+# Every path below hangs off HOME. An empty one would remove files from /.local
+# and /.config, a relative one the working directory's, and `set -u`
+# catches neither.
+case "${HOME:-}" in
+    /*) ;;
+    *)  echo "uninstall.sh: HOME must be an absolute path, not '${HOME:-}'" >&2
+        exit 2 ;;
+esac
 
 BIN_DIR="$HOME/.local/bin"
 LIB_DIR="$HOME/.local/lib/oscmix-desk"

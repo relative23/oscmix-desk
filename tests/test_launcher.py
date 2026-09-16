@@ -180,9 +180,13 @@ def test_both_modules_default_to_the_same_system_config(launch_mod,
     assert in_launcher == in_config
     clean_env.delenv("OSCMIX_SYSTEM_CONFIG")
     clean_env.setattr(config, "SYSTEM_CONFIG", tmp_path / "a")
-    assert config.system_config() == tmp_path / "a"
-    clean_env.setenv("OSCMIX_SYSTEM_CONFIG", str(tmp_path / "b"))
-    assert config.system_config() == tmp_path / "b"
+    assert config.system_config({}) == tmp_path / "a"
+    assert config.system_config(
+        {"OSCMIX_SYSTEM_CONFIG": str(tmp_path / "b")}) == tmp_path / "b"
+    # From the environment it is given, like the rest of the search: the
+    # unit's, when the CLI resolves the unit's desk.
+    clean_env.setenv("OSCMIX_SYSTEM_CONFIG", str(tmp_path / "c"))
+    assert config.system_config({}) == tmp_path / "a"
 
 
 # --------------------------------------------------------------------------

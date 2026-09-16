@@ -58,8 +58,8 @@ GUI expose it at all?
 |---|---|---|
 | Submix per output, playback sources | `/mix/<out>/playback/*` **absent** | today (re-established, never verified) |
 | Submix per output, input sources | `/mix/<out>/input/*` (100) | 0.3.0 |
-| Input strip: gain, `48v`, hi-z, reflevel, mute, phase, stereo | all seven reported | 0.3.0 |
-| Output strip: volume, pan, mute, phase, reflevel, stereo | all six reported | today: volume, stereo. 0.3.0: the rest |
+| Input strip: gain, `48v`, hi-z, reflevel, mute, phase, stereo | all seven reported | 0.3.0; gain on Analog 5-8 since 0.6.0 |
+| Output strip: volume, pan, mute, phase, reflevel, stereo | all six reported | today: volume, stereo. 0.3.0: the rest, phase settable since 0.6.0 |
 | EQ (3 band) and low cut, in and out | `eq/band1..3{freq,gain,q}`, `type` on bands 1 and 3 only, `lowcut/{freq,slope}` | 0.4.0 |
 | Dynamics, auto level | `dynamics/{attack,release,comp*,exp*,gain}`, `autolevel/{headroom,maxgain,risetime}` | 0.4.0 |
 | Room EQ (outputs) | `roomeq/band1..9{freq,gain,q}`, `type` on bands 1, 8 and 9, `delay` -- 640 since the pin moved, 320 before it | 0.4.0: modelled and reported; settable since 0.6.0, when the pin moved to the upstream fix for the ignored writes (#33) |
@@ -233,8 +233,8 @@ skipped as dangerous, none deaf**, per-register verdicts in
 project from `oscmix-autostart` to `oscmix-desk`: the old name described
 0.1.0 exactly and named one of two halves by the end.
 
-All eleven register families are declared and measured at the device.
-Room EQ is declared **reported and not settable**, because the writes
+All eleven register families were declared and measured at the device.
+Room EQ was declared **reported and not settable**, because the writes
 were ignored (upstream #33 -- **fixed upstream 2026-08-27** in
 `f2fdd5e`, a split write range at `0x3400`, confirmed here at the
 device), and `/output/{ch}/phase` the same, because the writes never
@@ -243,9 +243,10 @@ as `9dba36f`). The write sweep added
 `/input/5..8/gain` to that class: upstream's channel table gave those
 inputs a gain flag and no range, so every write was clamped to zero --
 **fixed upstream on 2026-08-27** (`fdc47f7`, `gain={0, 240}`, measured
-here: 12.0 dB written and read back). The pin predates both fixes, so
-these classes change when the pin next moves (ADR 0008), not before
-(upstream [#35](https://github.com/michaelforney/oscmix/issues/35)).
+here: 12.0 dB written and read back). The pin predated all three fixes,
+so the classes waited for the pin to move (ADR 0008,
+upstream [#35](https://github.com/michaelforney/oscmix/issues/35)); 0.6.0
+moved it to `f2fdd5e`, and all three have been settable since.
 
 The five structural threats in [After
 0.4.0](#after-040-what-actually-threatens-this) are all addressed, and
@@ -264,8 +265,8 @@ on a local branch, unneeded until a measurement says otherwise.
 What remains upstream is only PR #31 (output stereo) and an 802 this
 project cannot test: in one day, 2026-08-27, the maintainer fixed the
 gain ranges (#35) and the Room EQ write range (#33), and merged our
-output-phase fix (#36) -- every one confirmed at this device. The
-register classes here change when the pin next moves (ADR 0008).
+output-phase fix (#36) -- every one confirmed at this device, and
+carried by the pin since 0.6.0.
 
 Working and verified: playback→output and **hardware input** routing for
 mono and stereo pairs, stereo linking with the ordering that requires,
@@ -1228,7 +1229,7 @@ So, as work items rather than complaints:
   first value it sees for a path, which is correct only as long as no
   settable register behaves this way. None does today, and that is
   measured rather than assumed.
-- **Ask for a targeted register query.** `/refresh` dumps 2002 registers
+- **Ask for a targeted register query.** `/refresh` dumps 2252 registers
   when what this project needs is a handful of `/output/<n>/stereo`.
   That is a feature request, not a benchmark -- see the reframing of
   point 7 above. **Worth less than this document assumed:** the ask was

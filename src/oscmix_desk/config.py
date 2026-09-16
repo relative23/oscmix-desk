@@ -142,14 +142,14 @@ class Config:
 SYSTEM_CONFIG = Path("/etc/oscmix/routing.conf")
 
 
-def system_config() -> Path:
-    """SYSTEM_CONFIG, or OSCMIX_SYSTEM_CONFIG for the test suite.
+def system_config(env: Mapping[str, str]) -> Path:
+    """SYSTEM_CONFIG, or OSCMIX_SYSTEM_CONFIG from ``env`` for the test suite.
 
     The variable exists for the same reason OSCMIX_LOCK_DIR does: a test
     that runs the session as a subprocess cannot patch a module, and
     /etc is the machine's, not the test's.
     """
-    return Path(os.environ.get("OSCMIX_SYSTEM_CONFIG") or SYSTEM_CONFIG)
+    return Path(env.get("OSCMIX_SYSTEM_CONFIG") or SYSTEM_CONFIG)
 
 
 def discover_config_path(
@@ -171,7 +171,7 @@ def discover_config_path(
     if not xdg or not os.path.isabs(xdg):
         home = _home(env)
         xdg = home and os.path.join(home, ".config")
-    candidates = [system_config()]
+    candidates = [system_config(env)]
     if xdg:
         candidates.insert(0, Path(xdg) / "oscmix" / "routing.conf")
     for candidate in candidates:
