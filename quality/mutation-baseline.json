@@ -1,5 +1,5 @@
 {
-  "recorded": "2026-09-14",
+  "recorded": "2026-09-17",
   "note": [
     "A ratio, not a count. Absolute survivor counts rise with every",
     "line added -- new code means new mutants, so a healthy change",
@@ -330,31 +330,55 @@
     "machine at a load of 16 to 38. The thirteenth, device_lock_path,",
     "after the suite was kept out of /run/oscmix-desk: mutants renaming",
     "the lock-directory variable had reached the real directory; the",
-    "score did not move."
+    "score did not move.",
+    "",
+    "0.6.10 (2026-09-17): 0.762 -> 0.777 on 6649 -> 7118 mutants, for what",
+    "a full check of the released 0.6.9 found: a second session that",
+    "terminated the running one's backend, a switch of another desk that",
+    "reloaded the unit, the unit's desk worked out from its own command",
+    "line and environment, every pair of actions refused before a file is",
+    "read, [device] read first, tracebacks turned into exit codes, and a",
+    "reconcile that says so whenever it stands down.",
+    "",
+    "The survivors in the new code showed missing assertions and no",
+    "defect: the READY line a start sends and the config path it hands on,",
+    "the path the reconcile locks, MainPID asked for with --value, a value",
+    "containing '=' in the unit's environment, argv[2] and pid 1 told apart",
+    "from a session, the refusal's words and its --timeout 0 boundary, the",
+    "uid handed to the password database, inline comments and an",
+    "upper-case profile name in the launcher and the proc root its poll",
+    "asks, the arguments find_sink is given, and the pw-dump call itself.",
+    "What survives there is log text and equivalent mutants: configparser",
+    "lower-cases option names, and an absent and an empty XDG_CONFIG_HOME",
+    "are one answer. The survivors of eighteen functions were re-judged by",
+    "name with mutmut-stats.json cleared, because those tests were written",
+    "after the full run had taken its copy, and two functions changed",
+    "after it were judged in full the same way. The full run took 129",
+    "minutes on a machine at a load of 5 to 6."
   ],
   "measured": {
-    "total": 6649,
-    "killed": 5059,
-    "survived": 1580,
+    "total": 7118,
+    "killed": 5517,
+    "survived": 1587,
     "not_covered": 0,
-    "timeout": 10,
-    "score": 0.762,
-    "run_minutes": 133,
-    "cache": "mutants/ removed before the full run; thirteen functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
+    "timeout": 14,
+    "score": 0.777,
+    "run_minutes": 129,
+    "cache": "mutants/ removed before the full run; the survivors of eighteen functions and two changed functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
     "scope": "register table exempt (ADR 0015)",
     "note": [
-      "The 0.6.9 release measurement."
+      "The 0.6.10 release measurement."
     ]
   },
   "previous": {
     "recorded": "2026-09-14",
-    "total": 6113,
-    "killed": 4528,
-    "survived": 1574,
+    "total": 6649,
+    "killed": 5059,
+    "survived": 1580,
     "not_covered": 0,
-    "score": 0.742,
+    "score": 0.762,
     "why_it_moved": [
-      "The 0.6.8 release measurement; min_score 0.74."
+      "The 0.6.9 release measurement; min_score 0.76."
     ]
   },
   "confirmed_by_ci": {
@@ -375,16 +399,16 @@
       "round-trip tests, the local 0.685 did not."
     ]
   },
-  "min_score": 0.76,
+  "min_score": 0.77,
   "tolerance": 0.01,
   "floor_note": [
-    "The gate is min_score - tolerance = 0.75. That is the number that",
+    "The gate is min_score - tolerance = 0.76. That is the number that",
     "matters: the score may not fall below it. min_score is set at the",
     "measured score rounded down to the hundredth, so the policy neither",
     "fails nor nags on the run it was recorded from -- a baseline that",
     "prints 'raise me' on every CI run teaches people to ignore it.",
     "",
-    "0.012 of headroom on the measured 0.762, the same order as every",
+    "0.017 of headroom on the measured 0.777, the same order as every",
     "raise before it. What eats headroom stayed the same: assertions",
     "getting better or worse, because register rows land inside the",
     "ADR 0015 exemption."

@@ -90,7 +90,7 @@ it" -- which is the same answer TotalMix gives, minus the snapshot.
 
 ## Where we are (0.6.10)
 
-**0.6.10 (unreleased)** is what a full check of the released 0.6.9
+**0.6.10 (2026-09-17)** is what a full check of the released 0.6.9
 found -- gates, the live desk, and independent reviews of the whole
 tree rather than of a diff. Two behaviours were wrong: a session started
 by hand terminated the running unit's backend, and a switch of another

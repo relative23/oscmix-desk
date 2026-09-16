@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.10 (2026-09-17)
 
 What a full check of the released 0.6.9 found -- gates, the live desk,
 and independent reviews of the whole tree rather than of a diff. Two
@@ -139,6 +139,19 @@ new row.
   this project filed are fixed at the pinned revision, and have been
   since 0.6.0; `docs/upstream-issues.md` still listed output phase as
   filed and the Analog 5-8 gain fix as newer than the pin.
+- **The mutation run's survivors were read.** They showed missing
+  assertions and no defect, among them the READY line a start sends, the
+  path the reconcile locks, MainPID asked for with `--value`, argv[2] and
+  pid 1 told apart from a session, the refusal's `--timeout 0` boundary,
+  and the pw-dump call itself. Score 0.777 on 7118 mutants, the
+  not-covered bucket still empty, `min_score` 0.76 -> 0.77. The full run
+  used a mutant tree removed beforehand; the survivors of eighteen
+  functions and two functions changed after it were re-judged by name.
+- **A test can no longer put the machine's lock directories back in
+  effect.** A stand-down test added in this release called
+  `monkeypatch.undo()`, which reverts every autouse fixture, and took a
+  real lock file in `/run/oscmix-desk` on each run; the suite now fails
+  any test that ends that way.
 - **The tests no longer read the developer's desk.** The action-pair
   tests resolved `~/.config/oscmix/routing.conf` and its marker; every
   test now starts from an empty config home and no system config, the
