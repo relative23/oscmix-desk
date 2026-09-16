@@ -59,3 +59,12 @@ anyway.
 - **`ss -lunp` instead of parsing `/proc`.** An external binary, and
   `/proc` is already how this project finds the ALSA client, the USB
   device and the port itself. Rejected.
+
+## Amended in 0.6.10
+
+The cleanup terminated every `oscmix` of this user that held the port,
+which included the backend of a *running* `oscmix-session`: a second
+session started by hand killed the unit's backend, the unit restarted and
+killed the manual one (measured). Stale now means the backend's parent is
+not a live `oscmix-session`; a backend that has one is somebody's desk,
+and the newcomer exits 2 naming that session.

@@ -13,10 +13,10 @@ StartLimitBurst=5
 # has been applied; verification then runs in the background.
 Type=notify
 ExecStart=%h/.local/bin/oscmix-session
-# The device lock lives here since 0.6.7, keyed by the interface rather
-# than by a config directory (ADR 0022). systemd creates it under
-# $XDG_RUNTIME_DIR for this user; the unit cannot create it under its
-# own read-only home, and a lock it cannot take is a start it refuses.
+# The fallback location of the device lock: /run/oscmix-desk, created
+# by tmpfiles.d for the group audio, comes first (ADR 0023, 0024), and
+# this per-user runtime directory serves a machine whose installer never
+# ran its root steps. A lock the unit cannot take is a start it refuses.
 RuntimeDirectory=oscmix-desk
 RuntimeDirectoryPreserve=yes
 # Reconcile without restarting: re-read routing.conf, read the device
@@ -42,11 +42,13 @@ TimeoutStartSec=100
 TimeoutStopSec=10
 
 # Sandboxing, restricted to what a *user* unit can actually enforce.
-# Anything that drops capabilities (ProtectKernelTunables, ProtectClock,
-# RestrictSUIDSGID, ...) or needs a cgroup controller (DeviceAllow,
-# IPAddress*) fails here with 218/CAPABILITIES: the user manager is
-# unprivileged and cannot apply them. Verified by starting the unit, not
-# by reading the manual.
+# Directives that need a cgroup controller (DeviceAllow, IPAddress*)
+# fail here with 218/CAPABILITIES. Every directive below was verified by
+# starting the unit, not by reading the manual -- tests/test_unit_file.py
+# keeps the measured list. Whether the mount-namespace ones
+# (ProtectSystem, ProtectHome, PrivateTmp) are *applied* depends on the
+# distribution: Ubuntu's AppArmor policy makes the user manager skip
+# them silently (docs/SECURITY-MODEL.md says how to check).
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict

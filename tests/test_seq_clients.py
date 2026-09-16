@@ -36,24 +36,24 @@ def test_parses_all_clients(session_mod):
 
 
 def test_finds_fireface_client_number(session_mod):
-    assert session_mod.find_seq_client(REAL_OUTPUT, "Fireface UCX II") == 24
+    assert session_mod.select_seq_client(REAL_OUTPUT, "Fireface UCX II") == 24
 
 
 def test_port_lines_do_not_shadow_client_line(session_mod):
     # The device name appears in "Port 0/1" lines too; only the Client
     # line may match (the old grep -B1 approach picked "Midi Through").
-    result = session_mod.find_seq_client(REAL_OUTPUT, "Fireface UCX II")
+    result = session_mod.select_seq_client(REAL_OUTPUT, "Fireface UCX II")
     assert result == 24
     assert result != 14
 
 
 def test_absent_device_returns_none(session_mod):
-    assert session_mod.find_seq_client(REAL_OUTPUT, "Babyface Pro") is None
+    assert session_mod.select_seq_client(REAL_OUTPUT, "Babyface Pro") is None
 
 
 def test_empty_input(session_mod):
     assert session_mod.parse_seq_clients("") == []
-    assert session_mod.find_seq_client("", "Fireface UCX II") is None
+    assert session_mod.select_seq_client("", "Fireface UCX II") is None
 
 
 def test_device_serials_read_the_product_string(tmp_path):

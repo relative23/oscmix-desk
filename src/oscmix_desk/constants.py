@@ -176,7 +176,7 @@ def startup_budget(device_timeout: float = DEFAULT_DEVICE_TIMEOUT) -> float:
 
     The terms, in the order `run_session` reaches them:
 
-    * ``device_timeout``    -- ``wait_for_seq_client``
+    * ``device_timeout``    -- ``wait_for_device``
     * ``STALE_BACKEND_SETTLE`` -- ``_cleanup_stale_backend``
     * ``PORT_READY_TIMEOUT``   -- ``_await_backend_port``
     * ``SWITCH_LOCK_WAIT``  -- ``take_device_lock`` in

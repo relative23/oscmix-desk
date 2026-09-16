@@ -187,10 +187,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return EXIT_OK
 
     if args.profile:
-        return _switch_profile(args.profile, config_path)
+        return _switch_profile(args.profile, config_path, args.config)
 
     if args.no_profile:
-        return _report_outcome(restore_main(config_path))
+        return _report_outcome(restore_main(config_path), args.config)
 
     if args.snapshot:
         return _snapshot(config)
@@ -265,7 +265,8 @@ def _dry_run_desk(args: "argparse.Namespace", config: Config,
     return run_session(args, desk)
 
 
-def _switch_profile(name: str, config_path: Optional[Path]) -> int:
+def _switch_profile(name: str, config_path: Optional[Path],
+                    explicit: Optional[Path]) -> int:
     """Apply a profile and turn its outcome into an exit code.
 
     Three states, three codes, and the distinction the caller needs is
@@ -277,10 +278,12 @@ def _switch_profile(name: str, config_path: Optional[Path]) -> int:
     at startup, because it is the same failure: the config did not parse
     and nothing was written.
     """
-    return _report_outcome(switch_profile(name, config_path=config_path))
+    return _report_outcome(switch_profile(name, config_path=config_path),
+                           explicit)
 
 
-def _report_outcome(outcome: "Outcome") -> int:
+def _report_outcome(outcome: "Outcome",
+                    explicit: Optional[Path] = None) -> int:
     """One line on stdout and the exit code the outcome maps to.
 
     Shared by the switch and by `--no-profile`, which is the same
@@ -302,6 +305,14 @@ def _report_outcome(outcome: "Outcome") -> int:
         return EXIT_NOT_PERSISTED
     # The unit's own state has to follow, or its start-up verifier may
     # still be re-applying the desk it started with (process.reload_service).
+    # Only when it is the unit's desk that changed: the unit reads the
+    # discovered config, and a reload after a switch of some other file
+    # made it re-apply its own routing.conf over that switch (0.6.9).
+    if explicit is not None and not _same_file(explicit, discover_config_path()):
+        log.info("%s not reloaded: it runs %s, and this switch was for %s",
+                 SERVICE_UNIT, discover_config_path() or "no config",
+                 explicit)
+        return EXIT_OK
     reloaded = reload_service()
     if reloaded == RELOAD_DONE:
         log.info("%s reloaded, so its own reconcile follows the new desk",
@@ -314,6 +325,15 @@ def _report_outcome(outcome: "Outcome") -> int:
               "acting on the previous desk; send it again with "
               "systemctl --user reload %s", SERVICE_UNIT, SERVICE_UNIT)
     return EXIT_RELOAD_FAILED
+
+
+def _same_file(one: Path, other: Optional[Path]) -> bool:
+    if other is None:
+        return False
+    try:
+        return one.resolve() == other.resolve()
+    except OSError:
+        return False
 
 
 #: Phase numbers as the diff prints them. The apply writes in this

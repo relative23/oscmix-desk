@@ -200,31 +200,64 @@ def _client_serial(client: Optional[int], proc_root: Path) -> Optional[str]:
     return serial_in(name) if name is not None else None
 
 
-def _cleanup_stale_backend(port: int, proc_root: Path) -> None:
+def _cleanup_stale_backend(port: int, proc_root: Path) -> Optional[int]:
     """A stale oscmix (e.g. from a manual run) would hold the OSC port.
 
     Only the process that demonstrably holds the port is terminated,
-    and only when it is an oscmix of this user. Anything else keeps the
-    port and the start fails on the port wait, which is the honest
-    outcome: this project does not get to kill a stranger's process to
-    make room for itself.
+    and only when it is an oscmix of this user *whose session is gone*.
+    A backend whose parent is a live oscmix-session is not stale, it is
+    someone's running desk: until 0.6.10 a second session started by hand
+    terminated the unit's backend, the unit restarted and terminated the
+    manual one in turn (measured). The pid of that live session is
+    returned instead, and the caller refuses to start. Anything else
+    keeps the port and the start fails on the port wait, which is the
+    honest outcome: this project does not get to kill a stranger's
+    process to make room for itself.
     """
     if not udp_port_listening(port, proc_root):
-        return
+        return None
     owner = socket_owner(port, proc_root)
     if owner is None:
         log.warning("UDP port %d is in use and its owner cannot be "
                     "identified; leaving every process alone", port)
-        return
+        return None
     if owner not in find_stale_backends(proc_root):
         log.warning("UDP port %d is held by pid %d, which is not an oscmix "
                     "of this user; leaving it alone", port, owner)
-        return
+        return None
+    session = _supervising_session(proc_root / str(owner), proc_root)
+    if session is not None:
+        log.error("UDP port %d is held by the backend (pid %d) of a running "
+                  "oscmix-session (pid %d); stop that session first -- "
+                  "systemctl --user stop oscmix.service if it is the unit",
+                  port, owner, session)
+        return session
     log.warning("UDP port %d already in use; terminating the stale oscmix "
                 "that holds it (pid %d)", port, owner)
     _terminate(owner)
     # Part of the startup budget; see constants.startup_budget.
     time.sleep(STALE_BACKEND_SETTLE)
+    return None
+
+
+def _supervising_session(entry: Path, proc_root: Path) -> Optional[int]:
+    """The pid of the live oscmix-session that spawned ``entry``, or None.
+
+    The session runs ``alsaseqio <client>:1 oscmix``; alsaseqio forks
+    and execs oscmix in the original process, so the backend's parent is
+    the session itself. A parent that is gone -- the backend reparented
+    to init or a subreaper -- or that is not an oscmix-session leaves
+    the backend stale.
+    """
+    parent = _ppid(entry)
+    if parent is None or parent == "1":
+        return None
+    try:
+        argv = (proc_root / parent / "cmdline").read_bytes().split(b"\0")
+    except OSError:
+        return None
+    names = [os.path.basename(arg.decode(errors="replace")) for arg in argv[:2]]
+    return int(parent) if "oscmix-session" in names else None
 
 
 def _terminate(pid: int) -> None:

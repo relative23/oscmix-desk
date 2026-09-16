@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+What a full check of the released 0.6.9 found -- gates, the live desk,
+and two independent reviews of the whole tree rather than of a diff. Two
+behaviours were wrong; the rest is documentation that described an
+earlier release. The pin does not move and the register table has no
+new row.
+
+### Fixed
+
+- **A second session no longer kills the running one's backend.** The
+  stale-backend cleanup treated every `oscmix` of this user on the port
+  as stale. Measured: `oscmix-session` started by hand terminated the
+  unit's backend, the unit restarted and terminated the manual one. A
+  backend whose parent is a live `oscmix-session` is somebody's desk; the
+  newcomer exits 2 and says whose.
+
+- **A switch of another desk does not reload the unit.** `--config X
+  --profile Y` asked the unit to reconcile, and the unit re-applied its
+  own `routing.conf` over the switch. The reload is sent only when the
+  switch is for the config the unit runs.
+
+### Changed
+
+- **The public surface names the resolver.** `find_seq_client` and
+  `wait_for_seq_client`, superseded in 0.6.9 and called by nothing, are
+  gone; `resolve_device`, `wait_for_device`, `select_seq_client`,
+  `Device`, `lock_key`, `take_device_lock`, `port_holder`,
+  `DeviceAmbiguous` and `DeviceLockUnavailable` are exported.
+- **Documentation catches up with 0.6.9.** The unit file, the installer
+  and the architecture page described the lock, the root steps and the
+  installed files of earlier releases; the security model listed half of
+  the hardening the unit declares and the unit's own comment contradicted
+  it; the README counted seventeen decision records of twenty-four; the
+  release checklist gains the cleared mutant tree, the `audio` group and
+  the check with the interface switched off.
+
 ## 0.6.9 (2026-09-16)
 
 What a review of the 0.6.8 device lock found, in the order a second

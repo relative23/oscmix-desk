@@ -46,20 +46,23 @@ from .constants import (
                         __version__,
 )
 from .discovery import (
-                        find_seq_client,
+                        Device,
+                        lock_key,
                         parse_seq_clients,
                         resolve_binary,
+                        resolve_device,
+                        select_seq_client,
                         udp_port_listening,
                         usb_device_present,
-                        wait_for_seq_client,
+                        wait_for_device,
 )
-from .errors import ConfigError
+from .errors import ConfigError, DeviceAmbiguous, DeviceLockUnavailable
 from .launcher import main as launch_mixer
 from .log import log
 from .notify import sd_notify
 from .osc import decode_osc, encode_osc, iter_osc_messages
 from .pipewire import generate_pipewire_conf, pipewire_positions, pw_sink_info
-from .process import find_stale_backends, supervise
+from .process import find_stale_backends, port_holder, supervise
 from .profiles import (
                         APPLIED_UNVERIFIED,
                         APPLIED_VERIFIED,
@@ -71,6 +74,7 @@ from .profiles import (
                         load_profile,
                         restore_main,
                         switch_profile,
+                        take_device_lock,
 )
 from .reconcile import link_messages, mix_messages, policy_for
 from .registers import PIN, REMEMBER
@@ -112,6 +116,9 @@ __all__ = [
                         "ChannelSetting",
                         "Config",
                         "ConfigError",
+                        "Device",
+                        "DeviceAmbiguous",
+                        "DeviceLockUnavailable",
                         "Outcome",
                         "Route",
                         "VerifyResult",
@@ -126,7 +133,6 @@ __all__ = [
                         "effective_config",
                         "encode_osc",
                         "expected_registers",
-                        "find_seq_client",
                         "find_stale_backends",
                         "generate_pipewire_conf",
                         "iter_osc_messages",
@@ -135,25 +141,30 @@ __all__ = [
                         "list_profiles",
                         "load_config",
                         "load_profile",
+                        "lock_key",
                         "log",
                         "mix_messages",
                         "output_link_state",
                         "parse_seq_clients",
                         "pipewire_positions",
                         "policy_for",
+                        "port_holder",
                         "profile_path",
                         "pw_sink_info",
                         "register_promptly_reported",
                         "resolve_binary",
+                        "resolve_device",
                         "restore_main",
                         "run_session",
                         "sd_notify",
+                        "select_seq_client",
                         "send_mix",
                         "supervise",
                         "switch_profile",
+                        "take_device_lock",
                         "udp_port_listening",
                         "usb_device_present",
                         "verify_and_repair",
                         "verify_routing",
-                        "wait_for_seq_client",
+                        "wait_for_device",
 ]

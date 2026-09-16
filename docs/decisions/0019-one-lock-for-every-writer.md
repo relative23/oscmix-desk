@@ -107,3 +107,11 @@ the line says so.
   reload, does nothing for the start-up verifier, and puts the
   guarantee in systemd's hands rather than in one file both sides can
   see. Kept as a possible addition, not as the mechanism.
+
+## Amended in 0.6.10
+
+The reload after an applied switch went to the unit whatever config the
+switch was for, and the unit's reconcile then re-applied its own
+`routing.conf` over a switch made with `--config` for another file. The
+reload is sent only when the switch is for the config the unit runs, the
+one `discover_config_path` finds.

@@ -60,7 +60,7 @@ since.
   invisible in it.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
-- Seventeen [decision records](docs/decisions/) carry the reasoning and the
+- Twenty-four [decision records](docs/decisions/) carry the reasoning and the
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work
@@ -107,10 +107,12 @@ cd oscmix-desk
 ```
 
 The installer builds oscmix from upstream, installs everything into
-`~/.local` / `~/.config`, and asks for sudo once -- only for the udev rule
-in `/etc/udev/rules.d/`. Run `./install.sh --no-udev` for a fully rootless
-install (you lose hotplug autostart; the launcher still starts the backend
-on demand). Existing files are backed up, an existing `routing.conf` is
+`~/.local` / `~/.config`, and asks for sudo once -- for the udev rule in
+`/etc/udev/rules.d/`, the resume hook and the tmpfiles.d entry that
+creates the lock directory `/run/oscmix-desk` for the group `audio`. Run
+`./install.sh --no-udev` for a rootless install (you lose hotplug
+autostart, the reconcile after suspend and the machine-wide lock; the
+launcher still starts the backend on demand). Existing files are backed up, an existing `routing.conf` is
 never overwritten.
 
 Then plug in the Fireface (or reboot) and open **RME Fireface Mixer** from

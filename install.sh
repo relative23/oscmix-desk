@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # oscmix-desk installer.
 #
-# Everything is installed per-user (~/.local, ~/.config); root is only
-# needed for the udev hotplug rule. Existing files are backed up before
-# being replaced, an existing routing.conf is never touched.
+# Everything is installed per-user (~/.local, ~/.config); root is needed
+# for three files: the udev hotplug rule, the resume hook, and the
+# tmpfiles.d entry that creates the shared lock directory. Existing files
+# are backed up before being replaced, an existing routing.conf is never
+# touched.
 set -euo pipefail
 
 OSCMIX_REPO="${OSCMIX_REPO:-https://github.com/michaelforney/oscmix}"
@@ -43,13 +45,15 @@ usage: ./install.sh [options]
 
 options:
   --no-build   skip building oscmix (use already installed binaries)
-  --no-udev    skip the root steps: the udev rule (no hotplug autostart)
-               and the resume hook (no reconcile after suspend)
+  --no-udev    skip the root steps: the udev rule (no hotplug autostart),
+               the resume hook (no reconcile after suspend) and the
+               shared lock directory (the lock falls back to the
+               per-user runtime directory, ADR 0023)
   -h, --help   show this help
 
 environment:
   OSCMIX_REPO  oscmix git repository (default: upstream on GitHub)
-  OSCMIX_REF   git ref to build (default: master)
+  OSCMIX_REF   git ref to build (default: the pinned commit below)
 EOF
 }
 
@@ -228,10 +232,10 @@ fi
 install -D -m 644 "$PROJECT_DIR/config/routing.conf.example" \
     "$CONFIG_DIR/routing.conf.example"
 
-# No lock file to create since 0.6.7: it lives in $XDG_RUNTIME_DIR,
-# keyed by the interface, and the unit creates it through
-# RuntimeDirectory= (ADR 0022). A leftover from an older install is
-# harmless and is left where it is.
+# No lock file to create: the lock lives in /run/oscmix-desk, which the
+# root step below creates through tmpfiles.d (ADR 0023, 0024), or in the
+# per-user runtime directory the unit creates itself. A lock file left by
+# an older install beside the config is harmless and stays.
 
 
 # systemd's user instance belongs to the login session, not to $HOME. It

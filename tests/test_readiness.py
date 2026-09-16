@@ -87,32 +87,33 @@ def test_find_stale_backends_skips_unreadable_entries(session_mod, tmp_path):
         process.Path.stat = real_stat
 
 
-def test_wait_for_seq_client_returns_the_client_number(session_mod, tmp_path):
-    proc = tmp_path / "proc"
-    (proc / "asound" / "seq").mkdir(parents=True)
-    (proc / "asound" / "seq" / "clients").write_text(
-        'Client info\n\nClient  24 : "Fireface UCX II (0)" [Kernel]\n')
-    assert session_mod.wait_for_seq_client("Fireface UCX II", 1.0, proc) == 24
+def test_wait_for_device_returns_the_resolved_interface(session_mod, tmp_path):
+    from conftest import fake_proc
+
+    proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
+    found = session_mod.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
+                                        1.0, proc)
+    assert (found.client, found.serial) == (24, "24216011")
 
 
-def test_wait_for_seq_client_gives_up_and_says_so(session_mod, tmp_path):
+def test_wait_for_device_gives_up_and_says_so(session_mod, tmp_path):
     # The timeout is the difference between "device is off" (exit 0) and
     # "driver problem" (exit 1), so it has to actually expire.
     import time
 
-    proc = tmp_path / "proc"
-    (proc / "asound" / "seq").mkdir(parents=True)
-    (proc / "asound" / "seq" / "clients").write_text("Client info\n")
+    from conftest import fake_proc
+
+    proc = fake_proc(tmp_path / "proc")
     started = time.monotonic()
-    assert session_mod.wait_for_seq_client("Fireface UCX II", 0.5, proc) is None
+    assert session_mod.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
+                                       0.5, proc) is None
     assert time.monotonic() - started >= 0.4
 
 
-def test_wait_for_seq_client_tolerates_a_missing_proc_file(session_mod,
-                                                           tmp_path):
+def test_wait_for_device_tolerates_a_missing_proc_file(session_mod, tmp_path):
     # snd_seq not loaded yet: the file simply is not there.
-    assert session_mod.wait_for_seq_client("Fireface UCX II", 0.3,
-                                           tmp_path / "nothing") is None
+    assert session_mod.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
+                                       0.3, tmp_path / "nothing") is None
 
 
 # --------------------------------------------------------------------------

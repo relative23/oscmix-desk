@@ -226,6 +226,10 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     # Measured: a switch sent right after a restart was reverted by the
     # unit's start-up verifier fifteen seconds later. The reload makes
     # the unit re-read the desk in effect (ADR 0018).
+    # The unit reads the discovered config; since 0.6.10 a switch of some
+    # other file does not reload it (it would re-apply its own desk).
+    monkeypatch.setattr(cli, "discover_config_path",
+                        lambda: tmp_path / "routing.conf")
     _quick_wire(monkeypatch)
     reloads = []
     monkeypatch.setattr(cli, "reload_service",

@@ -180,14 +180,16 @@ monitoring check report healthy silence while the backend is down.
   beyond what the shell version already needed.
 
 - **Per-user installation.** Everything lives in `~/.local` and
-  `~/.config`; only the udev rule needs root. `--no-udev` allows a fully
-  rootless install (launcher-triggered start still works).
+  `~/.config`; root is needed for three files: the udev rule, the resume
+  hook and the tmpfiles.d entry for the shared lock directory. `--no-udev`
+  gives a rootless install that loses hotplug autostart, the reconcile
+  after suspend, and the machine-wide lock (it falls back to the per-user
+  runtime directory, ADR 0023).
 
-- **`oscmix-session` and `oscmix-launch` are self-contained.** They share
-  ~25 lines of sysfs/procfs helpers by copy instead of a shared module.
-  Deliberate: it keeps installation a plain file copy with no Python
-  packaging, and the launcher must never break because of a backend
-  refactor.
+- **`oscmix-launch` depends on almost nothing.** It imports only
+  `constants` and `discovery` from the package, so a backend refactor
+  cannot break the desktop entry. The package itself is installed as a
+  plain file copy under `~/.local/lib/oscmix-desk`, no Python packaging.
 
 - **Routing lives in the config, not in code.** The backend re-applies it
   on every start, so the device state is reproducible regardless of what
@@ -231,10 +233,13 @@ monitoring check report healthy silence while the backend is down.
 ~/.local/bin/alsaseqio               ALSA sequencer bridge (built from upstream)
 ~/.local/bin/oscmix-session          backend supervisor (this project)
 ~/.local/bin/oscmix-launch           desktop launcher (this project)
+~/.local/lib/oscmix-desk/            the package (this project)
 ~/.config/oscmix/routing.conf        your routing (never overwritten)
 ~/.config/systemd/user/oscmix.service
 ~/.local/share/applications/oscmix-gtk.desktop
 ~/.local/share/icons/hicolor/scalable/apps/oscmix.svg
 ~/.local/share/glib-2.0/schemas/oscmix.gschema.xml   (needed by oscmix-gtk)
-/etc/udev/rules.d/90-rme-fireface.rules              (only root-owned file)
+/etc/udev/rules.d/90-rme-fireface.rules              (root)
+/usr/lib/systemd/system-sleep/oscmix                 (root; reconcile after resume)
+/usr/lib/tmpfiles.d/oscmix-desk.conf                 (root; /run/oscmix-desk, group audio)
 ```

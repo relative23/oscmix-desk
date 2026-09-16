@@ -22,9 +22,10 @@ particular binary (ADR 0008).
       to be created.
 - [ ] `CHANGELOG.md` has a section for this version with a date, and no
       `## Unreleased` heading above it.
-- [ ] The roadmap's *Still open* section contains nothing this release
-      claims to have done. A release that ships an open item as done is
-      the failure mode 0.2.0 spent an entire section fixing.
+- [ ] The roadmap's *Where we are* paragraph for this version exists and
+      claims nothing the release does not do. A release that ships an
+      open item as done is the failure mode 0.2.0 spent an entire
+      section fixing.
 
 ## 2. The automated gates, on this exact revision
 
@@ -35,9 +36,19 @@ particular binary (ADR 0008).
       Seven points of unnoticed erosion is how item C happened.
 - [ ] `make flake` -- five repeats. Timing bugs are this project's
       characteristic defect.
-- [ ] `make mutation` -- and `quality/mutation-baseline.json` updated
-      with the measured counts, whether the score moved or not. A
-      baseline that predates the suite is not a baseline (item K).
+- [ ] `make mutation` **after `rm -rf mutants`** -- and
+      `quality/mutation-baseline.json` updated with the measured counts,
+      whether the score moved or not. A baseline that predates the suite
+      is not a baseline (item K). Deleting only `mutmut-stats.json` is
+      not clearing the cache: mutmut re-uses the verdicts of every module
+      whose source did not change, and a changed test suite changes those
+      verdicts (0.6.8 measured a "full" run in 11 minutes that way).
+      Functions whose tests were written after the run took its copy are
+      re-judged by name with the stats file cleared.
+- [ ] `make check` once with the interface **switched off**. A test that
+      resolves the interface from the machine's own `/proc` passes only
+      while the box is on, and CI has none (0.6.9 caught one at release
+      time).
 - [ ] The scheduled soak has run green on this revision, or run it by
       hand: `make soak SOAK_CYCLES=200`.
 - [ ] CI is green on `main` at this commit, including the
@@ -110,7 +121,11 @@ one that found all three defects in 0.1.3.
       runtime from `lib/` to `src/` and rewrote that path in three
       places; nothing ran the installer end to end at the time.
 - [ ] `systemctl --user daemon-reload && systemctl --user start
-      oscmix.service` reaches `READY=1`.
+      oscmix.service` reaches `READY=1`, and the user running it is in the
+      group `audio`: since 0.6.9 the lock directory `/run/oscmix-desk` is
+      3770 root:audio, and a user outside the group is refused every
+      start and switch (ADR 0024). The installer warns; the checklist
+      checks.
 - [ ] `./uninstall.sh` leaves nothing behind. Two empty caches remain --
       `mimeinfo.cache` and `icon-theme.cache`, created by
       `update-desktop-database` and `gtk-update-icon-cache` in an

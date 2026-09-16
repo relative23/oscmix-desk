@@ -76,7 +76,7 @@ def lifecycle(session_module, monkeypatch):
     def run(*, seq_client=42, usb_present=True, binaries=True,
             returncode=0, stop_requested=False, routes=(), port_ready=True,
             alive=False, config_fields=None, lock_unavailable=False,
-            ambiguous=False, **args):
+            ambiguous=False, session_running=False, **args):
         config_fields = config_fields or {}
         monkeypatch.setattr(session_module, "sd_notify", notifications.append)
         def wait(usb_id, device_name, serial, timeout, proc_root):
@@ -98,7 +98,7 @@ def lifecycle(session_module, monkeypatch):
         monkeypatch.setattr(session_module, "resolve_binary",
                             lambda *a, **k: "/bin/true" if binaries else None)
         monkeypatch.setattr(session_module, "_cleanup_stale_backend",
-                            lambda *a, **k: None)
+                            lambda *a, **k: 39000 if session_running else None)
         monkeypatch.setattr(session_module, "_install_stop_handlers",
                             lambda *a, **k: None)
         # True: the port came up. False is the backend that lives but
@@ -912,3 +912,12 @@ def test_an_ambiguous_interface_is_a_config_error_before_anything_starts(
     assert code == session_mod.EXIT_CONFIG
     assert ready_count(lifecycle.notifications) == 0
     assert lifecycle.children == [], "no backend is started for a guess"
+
+
+def test_a_start_beside_a_running_session_refuses_with_a_config_error(
+        session_mod, lifecycle):
+    """Two sessions on one port took turns killing each other's backend."""
+    code = lifecycle(alive=True, session_running=True)
+    assert code == session_mod.EXIT_CONFIG
+    assert lifecycle.children == [], "no backend is started into that port"
+    assert "READY=1" not in lifecycle.notifications

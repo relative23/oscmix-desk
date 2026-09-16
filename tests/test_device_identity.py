@@ -1054,3 +1054,76 @@ def test_a_snapshot_reads_the_real_proc_by_default(monkeypatch):
                         or Device(usb, B[1], B[0]))
     assert cli._snapshot_serial(Config()) == B[1]
     assert seen == [Path("/proc"), Path("/proc")]
+
+
+# --------------------------------------------------------------------------
+# 0.6.10: two sessions on one port, and a switch of a desk the unit does
+# not run.
+# --------------------------------------------------------------------------
+
+def _backend_with_parent(tmp_path, parent_argv):
+    """A /proc where an oscmix holds a port and its parent is ``parent_argv``."""
+    from oscmix_desk.process import _cleanup_stale_backend
+
+    port = free_udp_port()
+    proc = fake_proc(tmp_path, bound=[(port, "oscmix", None)])
+    holder = next(p for p in proc.iterdir() if p.name.isdigit())
+    parent = proc / "39000"
+    (parent / "fd").mkdir(parents=True)
+    (parent / "comm").write_text("python3\n")
+    (parent / "stat").write_text("39000 (python3) S 1 0 0\n")
+    (parent / "cmdline").write_bytes(b"\0".join(a.encode() for a in parent_argv) + b"\0")
+    (holder / "stat").write_text("%s (oscmix) S 39000 0 0\n" % holder.name)
+    return port, proc, holder, _cleanup_stale_backend
+
+
+def test_a_backend_of_a_live_session_is_not_stale(tmp_path, monkeypatch):
+    """A second session by hand terminated the unit's backend (measured)."""
+    from oscmix_desk import process
+
+    port, proc, _holder, cleanup = _backend_with_parent(
+        tmp_path, ["python3", "/home/u/.local/bin/oscmix-session"])
+    monkeypatch.setattr(process.os, "getuid", lambda: 1000)
+    killed = []
+    monkeypatch.setattr(process, "_terminate", killed.append)
+    assert cleanup(port, proc) == 39000
+    assert killed == []
+
+
+def test_a_backend_whose_session_is_gone_is_stale(tmp_path, monkeypatch):
+    from oscmix_desk import process
+
+    port, proc, holder, cleanup = _backend_with_parent(tmp_path, ["bash"])
+    monkeypatch.setattr(process.os, "getuid", lambda: 1000)
+    monkeypatch.setattr(process, "STALE_BACKEND_SETTLE", 0.0)
+    killed = []
+    monkeypatch.setattr(process, "_terminate", killed.append)
+    assert cleanup(port, proc) is None
+    assert killed == [int(holder.name)]
+    # Reparented to init after its session died: stale as well.
+    (holder / "stat").write_text("%s (oscmix) S 1 0 0\n" % holder.name)
+    killed.clear()
+    assert cleanup(port, proc) is None
+    assert killed == [int(holder.name)]
+
+
+def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch,
+                                                            capsys):
+    """The unit re-applied its own routing.conf over the switch (0.6.9)."""
+    from oscmix_desk import cli, profiles
+
+    reloads = []
+    monkeypatch.setattr(cli, "reload_service",
+                        lambda: reloads.append(1) or cli.RELOAD_DONE)
+    outcome = profiles.Outcome(state=profiles.APPLIED_UNVERIFIED, name="x",
+                               reason=profiles.NOT_CHECKED, persisted=True)
+    unit_desk = tmp_path / "unit" / "routing.conf"
+    unit_desk.parent.mkdir()
+    unit_desk.write_text(DESK)
+    monkeypatch.setattr(cli, "discover_config_path", lambda: unit_desk)
+    assert cli._report_outcome(outcome, tmp_path / "other.conf") == cli.EXIT_OK
+    assert reloads == []
+    assert cli._report_outcome(outcome, unit_desk) == cli.EXIT_OK
+    assert cli._report_outcome(outcome, None) == cli.EXIT_OK
+    assert reloads == [1, 1]
+    capsys.readouterr()

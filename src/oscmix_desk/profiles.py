@@ -336,7 +336,7 @@ def _fsync_directory(directory: Path) -> bool:
 SWITCH_LOCK = "active-profile.lock"
 
 #: The one path that is the same for every writer on the machine,
-#: created 1777 by tmpfiles.d. Overridable for tests through
+#: created 3770 root:audio by tmpfiles.d. Overridable for tests through
 #: OSCMIX_LOCK_DIR; a directory that is absent means the root steps of
 #: the installer never ran, and the search falls through to the ones
 #: that depend on the caller (ADR 0023).

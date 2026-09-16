@@ -37,8 +37,12 @@ audio rather than securing it.
 
 Declared: `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only`,
 `PrivateTmp`, `LockPersonality`, `MemoryDenyWriteExecute`,
-`SystemCallArchitectures=native`, `SystemCallFilter=@system-service`, and
-`RestrictAddressFamilies` limited to UNIX and IP sockets.
+`SystemCallArchitectures=native`, `SystemCallFilter=@system-service`,
+`RestrictAddressFamilies` limited to UNIX and IP sockets, `UMask=0077`,
+`KeyringMode=private`, `RestrictNamespaces`, `RestrictSUIDSGID`,
+`RestrictRealtime`, `ProtectKernelTunables` and `ProtectControlGroups`.
+The unit file is the list of record; `tests/test_unit_file.py` holds it
+against what a user manager was measured to accept.
 
 ### Declared is not the same as applied
 

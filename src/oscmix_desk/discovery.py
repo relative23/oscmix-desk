@@ -23,13 +23,6 @@ def parse_seq_clients(text: str) -> List[Tuple[int, str]]:
     return [(int(num), name) for num, name in _CLIENT_RE.findall(text)]
 
 
-def find_seq_client(text: str, device_name: str) -> Optional[int]:
-    for number, name in parse_seq_clients(text):
-        if device_name in name:
-            return number
-    return None
-
-
 #: RME puts the number printed on the box in brackets at the end of the
 #: product string, in the sequencer client name and in the card list.
 _SERIAL_RE = re.compile(r"\((\d{4,})\)")
@@ -132,23 +125,6 @@ def _trigger_snd_seq_load() -> None:
         os.close(os.open(device, os.O_RDONLY | os.O_NONBLOCK))
     except OSError:
         pass
-
-
-def wait_for_seq_client(device_name: str, timeout: float,
-                        proc_root: Path, serial: str = "") -> Optional[int]:
-    clients_file = proc_root / "asound" / "seq" / "clients"
-    deadline = time.monotonic() + timeout
-    while True:
-        if clients_file.is_file():
-            client = select_seq_client(
-                clients_file.read_text(errors="replace"), device_name, serial)
-            if client is not None:
-                return client
-        else:
-            _trigger_snd_seq_load()
-        if time.monotonic() >= deadline:
-            return None
-        time.sleep(1.0)
 
 
 def _usb_device_dir(usb_id: str, sysfs_usb: Path) -> Optional[Path]:

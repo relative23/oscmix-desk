@@ -400,7 +400,13 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
         _print_dry_run(client, config)
         return EXIT_OK
 
-    _cleanup_stale_backend(config.osc_port, proc_root)
+    if _cleanup_stale_backend(config.osc_port, proc_root) is not None:
+        # Two sessions on one port would take turns killing each other's
+        # backend (0.6.9, measured). The one that is already running keeps
+        # the desk; this one says why it stops. Exit 2 rather than 1: a
+        # restart cannot fix it, and RestartPreventExitStatus keeps a
+        # unit started beside a manual session from looping on it.
+        return EXIT_CONFIG
     child = _start_backend(client, config)
     if child is None:
         return EXIT_FAILURE
