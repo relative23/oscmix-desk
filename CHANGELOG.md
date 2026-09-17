@@ -157,6 +157,16 @@ new row.
   test now starts from an empty config home and no system config, the
   sessions and launchers the suite starts as subprocesses included
   (`OSCMIX_SYSTEM_CONFIG`, a test seam like `OSCMIX_LOCK_DIR`).
+- **CI finishes again.** The installer tests inherited the suite's fake
+  interface once `install.sh` honoured `OSCMIX_SYSFS_USB`, took the
+  restart path and its 2 s sleep on every install, and pushed the
+  flakiness gate past its 15-minute timeout on the 0.6.10 push; they get
+  an empty sysfs unless a test plugs one in. Two restore tests waited out
+  the full 10 s read-back window against a double that never answers.
+  The suite takes 112 s instead of 160 locally. The nightly mutation
+  job had hit its 90-minute timeout every night since 2026-09-12 without
+  turning anything red; the workflow's timings are re-measured, the
+  flakiness gate gets 25 minutes and the mutation job 180.
 
 ## 0.6.9 (2026-09-16)
 

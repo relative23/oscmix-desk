@@ -38,11 +38,18 @@ jobs:
     # a runner once and burned all six hours before being killed, on a
     # job whose measured maximum is 6.7 minutes.
     #
-    # The numbers come from ten runs on main (min/max, minutes):
+    # The numbers come from the green runs on main between 2026-09-11 and
+    # 2026-09-16 -- 29 of each job, 15 of the mutation job (min/max,
+    # minutes):
     #
-    #   Lint, Types & Dead Code  0.2 / 0.4     Coverage        1.4 / 2.1
-    #   Tests (per version)      1.2 / 2.1     Build upstream  0.4 / 6.7
-    #   Flakiness Gate           5.4 / 8.3     Mutation       37.9 / 46.5
+    #   Lint, Types & Dead Code  0.2 / 0.5     Coverage        2.0 / 3.3
+    #   Tests (per version)      1.8 / 3.6     Build upstream  0.4 / 1.3
+    #   Flakiness Gate           8.0 / 13.0    Mutation       77.6 / 80.9
+    #
+    # An earlier table said 8.3 for the flakiness gate under a timeout of
+    # 15, and nobody re-measured while the suite grew: the 0.6.10 push ran
+    # into that timeout mid-way through its fifth run. The mutation job
+    # hit its 90 every night from 2026-09-12 on and reported nothing.
     #
     # Each timeout is set well above its measured maximum -- these are
     # for a hang, not for a slow day. tests/test_ci_workflow.py asserts
@@ -128,7 +135,7 @@ jobs:
   flake:
     name: Flakiness Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -195,10 +202,18 @@ jobs:
     #
     # The release checklist requires a run of its own, which is where it
     # has to be current rather than recent.
+    #
+    # 90 held until the mutant count passed 6600 (0.6.9): every nightly
+    # run from 2026-09-12 to 2026-09-16 was cancelled at 90, so the score
+    # this job exists to report was not reported for five nights, and
+    # the run is `continue-on-error`, so nothing turned red. 7118 mutants
+    # took 129 minutes locally on four children in 0.6.10; 180 is twice
+    # the last run that finished here (80.9) and is re-measured from the
+    # nights that follow.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     continue-on-error: true
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6

@@ -540,17 +540,20 @@ def test_a_broken_routing_conf_still_refuses_the_start(tmp_path):
 
 
 def test_restore_main_applies_routing_conf_and_forgets(tmp_path,
-                                                       recording_backend):
+                                                       confirming_backend):
+    # A device that answers: with one that only echoes the link flags the
+    # read-back waited out its whole 10 s window, twice per run of the
+    # suite and once per covering mutant (0.6.10).
     path = _desk(tmp_path, tracking=TRACKING)
     (tmp_path / "active-profile").write_text("tracking\n")
-    outcome = profiles.restore_main(path, backend=recording_backend)
+    outcome = profiles.restore_main(path, backend=confirming_backend)
     assert outcome.applied
     assert outcome.name == "routing.conf"
     assert outcome.reason != profiles.NOT_CHECKED, "a restore checks by default"
-    assert recording_backend.dumps == 1, \
+    assert confirming_backend.dumps == 1, \
         "the read-back asks the backend it was given, not a socket of its own"
     assert not (tmp_path / "active-profile").exists()
-    written = {p for p, _t, _a in recording_backend.sent}
+    written = {p for p, _t, _a in confirming_backend.sent}
     assert "/output/1/stereo" in written
     assert "/output/5/stereo" not in written
 
@@ -940,12 +943,12 @@ def test_a_switch_that_cannot_remember_says_so_in_the_outcome(
 
 
 def test_a_restore_that_cannot_forget_says_so_in_the_outcome(
-        tmp_path, recording_backend):
+        tmp_path, confirming_backend):
     path = _desk(tmp_path, tracking=TRACKING)
     marker = tmp_path / "active-profile"
     marker.mkdir()
     (marker / "child").write_text("")
-    outcome = profiles.restore_main(path, backend=recording_backend)
+    outcome = profiles.restore_main(path, backend=confirming_backend)
     assert outcome.applied
     assert outcome.persisted is False
 

@@ -55,15 +55,16 @@ def test_every_ci_job_has_a_timeout():
 def test_no_timeout_is_anywhere_near_the_default():
     """A timeout of 300 would be a default with extra steps.
 
-    Each one is meant to catch a hang, so it belongs just above the
-    job's measured maximum -- the numbers are recorded in the workflow
-    next to them. 90 for the mutation job is the largest, against a
-    measured 46.5.
+    Each one is meant to catch a hang, so it belongs well above the
+    job's measured maximum and far below the default -- the numbers are
+    recorded in the workflow next to them. 180 for the mutation job is
+    the largest: 90 against a measured 80.9 was hit every night once the
+    mutant count grew, and the job reported nothing for five nights.
     """
     too_generous = {}
     for job, block in _jobs().items():
         found = re.search(r"timeout-minutes:\s*(\d+)", block)
-        if found and int(found.group(1)) > 120:
+        if found and int(found.group(1)) > 180:
             too_generous[job] = int(found.group(1))
     assert too_generous == {}, (
         "these are long enough to hide a hang: %s" % too_generous)

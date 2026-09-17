@@ -66,9 +66,24 @@ def make_fake_home(tmp_path):
         "OSCMIX_UDEV_RULE": str(tmp_path / "system" / "udev.rules"),
         "OSCMIX_SLEEP_HOOK": str(tmp_path / "system" / "sleep-hook"),
         "OSCMIX_TMPFILES_CONF": str(tmp_path / "system" / "tmpfiles.conf"),
+        # No interface, unless a test plugs one in: install.sh reads this
+        # since 0.6.10, and inherited from the suite's own fixture it put
+        # every install on the restart path and its 2 s sleep -- 30 s a
+        # run on CI, which pushed the flakiness gate past its timeout.
+        "OSCMIX_SYSFS_USB": str(tmp_path / "no-usb"),
     })
     (tmp_path / "system").mkdir(exist_ok=True)
+    (tmp_path / "no-usb").mkdir(exist_ok=True)
     return home, env, log
+
+
+def plug_in(tmp_path, env):
+    """A sysfs where the interface is connected, for the test that asks."""
+    device = tmp_path / "usb" / "5-2"
+    device.mkdir(parents=True)
+    (device / "idVendor").write_text("2a39\n")
+    (device / "idProduct").write_text("3fd9\n")
+    env["OSCMIX_SYSFS_USB"] = str(device.parent)
 
 
 def run(script, args, env):
@@ -330,6 +345,7 @@ def test_install_does_not_arm_another_session_service(tmp_path):
     and then report "backend is running" about it."""
     home, env, log = make_fake_home(tmp_path)
     session_home_stub(tmp_path, "/home/somebodyelse")
+    plug_in(tmp_path, env)      # or "no restart" would be true for free
 
     result = run("install.sh", ["--no-build"], env)
 
@@ -338,6 +354,7 @@ def test_install_does_not_arm_another_session_service(tmp_path):
     assert "enable" not in calls
     assert "restart oscmix.service" not in calls
     assert "not enabled" in result.stderr
+    assert "not restarting the backend" in result.stdout
     # The unit is still installed; only arming it is withheld.
     assert (home / ".config" / "systemd" / "user" / "oscmix.service").is_file()
 
@@ -431,11 +448,7 @@ def test_a_start_that_fails_does_not_end_the_installer(tmp_path):
     stub = tmp_path / "stub-bin" / "systemctl"
     stub.write_text(stub.read_text().replace(
         "exit 0", 'case "$*" in *restart*) exit 1 ;; *is-active*) exit 3 ;; esac\nexit 0'))
-    sysfs = tmp_path / "sysfs" / "5-2"
-    sysfs.mkdir(parents=True)
-    (sysfs / "idVendor").write_text("2a39\n")
-    (sysfs / "idProduct").write_text("3fd9\n")
-    env["OSCMIX_SYSFS_USB"] = str(sysfs.parent)
+    plug_in(tmp_path, env)
     result = run("install.sh", ["--no-build", "--no-udev"], env)
     assert result.returncode == 0, result.stderr
     assert "backend did not start" in result.stderr
