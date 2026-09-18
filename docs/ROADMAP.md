@@ -104,7 +104,13 @@ what a re-read desk may not change. Reviewing that warning found the
 release's second defect, older than the review: a profile was validated
 against the default device rather than the desk's, so on a desk for
 another interface its channel sections reached hardware the main config
-is not allowed to touch. The review's larger half -- enums
+is not allowed to touch. Two more rounds of the same review stayed on
+that seam -- a desk is validated for the device its file names, and
+`--device` or a reload under a running session can replace the name
+afterwards. Both say so now, a switch refuses the overrides it never
+honoured, and a dry run shows the desk as the switch loads it;
+validating *for* the replacement is what the frozen `Config` of 0.7.0
+is for. The review's larger half -- enums
 for phases and write reasons, a result type for the barrier, a frozen
 `Config`, a decision about strict handling of unmodelled devices --
 changes public names and is 0.7.0. Its packaging proposal is declined

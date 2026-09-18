@@ -298,10 +298,78 @@ def test_a_device_override_that_bypasses_the_validation_is_named(
     with caplog.at_level("WARNING"):
         cli.main(["--config", str(path), "--device", "Some Box",
                   "--list-profiles"])
-    assert ("--device 'Some Box' is not the interface this config was "
-            "checked for ('Fireface UCX II')") in caplog.text
+    assert ("--device replaces [device] name after validation: this config "
+            "was checked for 'Fireface UCX II' and is used for 'Some Box'"
+            ) in caplog.text
     caplog.clear()
     with caplog.at_level("WARNING"):
         cli.main(["--config", str(path), "--device", "fireface ucx ii",
                   "--list-profiles"])
     assert "--device" not in caplog.text, "the same model, spelled differently"
+
+
+@pytest.mark.parametrize("action", [["--profile", "one"], ["--no-profile"]])
+@pytest.mark.parametrize("override", [["--device", "Some Box"],
+                                      ["--osc-port", "9000"]])
+@pytest.mark.parametrize("dry", [[], ["--dry-run"]])
+def test_an_override_a_switch_never_saw_is_refused(tmp_path, capsys, action,
+                                                   override, dry):
+    """A switch takes its interface and ports from the config. `--device`
+    and `--osc-port` were dropped on that path without a word, while the
+    dry run of the same switch honoured them -- and so showed something
+    the switch would not do (0.6.11)."""
+    from oscmix_desk import cli
+
+    path = _unmodelled_desk(tmp_path)
+    with pytest.raises(SystemExit) as refused:
+        cli.main(["--config", str(path), *action, *override, *dry])
+    assert refused.value.code == 2
+    assert ("%s cannot be combined with %s: a switch takes its interface "
+            "and ports from routing.conf and the profile"
+            % (override[0], action[0])) in capsys.readouterr().err
+
+
+def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
+                                                             monkeypatch):
+    from oscmix_desk import cli
+
+    seen = []
+    monkeypatch.setattr(cli, "run_session",
+                        lambda args, config: seen.append(
+                            (config.device_name, config.osc_port)) or 0)
+    path = tmp_path / "routing.conf"
+    path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    assert cli.main(["--config", str(path), "--device", "fireface ucx ii",
+                     "--osc-port", "9000"]) == 0
+    assert seen == [("fireface ucx ii", 9000)]
+
+
+def test_a_dry_run_shows_the_profile_for_the_interface_the_profile_names(
+        tmp_path, caplog, monkeypatch):
+    """The desk in effect's ports and device name were written over the
+    profile before it was shown: a profile naming its own interface was
+    shown, and warned about, as another one's (0.6.11)."""
+    from oscmix_desk import cli
+
+    shown = []
+    monkeypatch.setattr(cli, "run_session",
+                        lambda args, desk: shown.append(desk) or 0)
+    path = tmp_path / "routing.conf"
+    path.write_text("[osc]\nport = 9001\n\n"
+                    "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    (tmp_path / "profiles").mkdir()
+    (tmp_path / "profiles" / "far.conf").write_text(
+        "[device]\nname = Some Box\n\n[osc]\nport = 9100\n\n"
+        "[route:far]\nplayback = 1/2\noutput = 41/42\n")
+    (tmp_path / "profiles" / "near.conf").write_text(
+        "[route:near]\nplayback = 1/2\noutput = 3/4\n")
+    (tmp_path / "active-profile").write_text("far\n")
+    assert cli.main(["--config", str(path), "--dry-run",
+                     "--profile", "near"]) == 0
+    assert cli.main(["--config", str(path), "--dry-run", "--no-profile"]) == 0
+    assert cli.main(["--config", str(path), "--dry-run",
+                     "--profile", "far"]) == 0
+    assert [(d.device_name, d.osc_port) for d in shown] == [
+        ("Fireface UCX II", 9001),      # near inherits routing.conf, not far
+        ("Fireface UCX II", 9001),
+        ("Some Box", 9100)]

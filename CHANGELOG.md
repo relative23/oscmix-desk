@@ -65,17 +65,34 @@ register table has no new row.
   that load a desk to write or show it -- a start and the dry runs, a
   switch, a restore, a SIGHUP reload -- about that desk. A listing or a
   read warns about nothing.
-- **`--device` says when it bypasses the validation.** The override
-  arrives after the file was checked, so naming another model (or none)
-  left the routes checked for one interface and written to another,
-  silently. It warns now; checking for the override itself needs the
-  parser to know it, which is part of 0.7.0.
+- **A desk checked for one interface and used for another says so.** A
+  config is validated for the device its file names, and two things
+  replace that name afterwards: `--device`, and a re-read under a
+  running session, which keeps the interface it is bound to. Measured by
+  review: `routing.conf` edited to name another box with `output =
+  41/42`, reloaded under a session bound to a UCX II, sent
+  `/output/41/stereo` to an interface with twenty outputs in silence.
+  Both warn now. Validating *for* the replacement needs the parser to
+  know it, which is part of 0.7.0.
+- **`--device` and `--osc-port` are refused with `--profile` and
+  `--no-profile`.** A switch takes its interface and ports from the
+  config; the overrides were dropped on that path without a word, while
+  the dry run of the same switch honoured them and so showed something
+  the switch would not do. Exit 2, naming the pair.
+- **A dry run shows the desk as the switch would load it.** The ports
+  and the device name of the desk *in effect* were written over it
+  first: a profile naming its own interface was shown as another one's,
+  and one inheriting `routing.conf`'s port was shown on the active
+  profile's.
 - **One rule for what a re-read desk may not change.** The start's
   re-read under the lock and the SIGHUP's each assigned the five machine
   settings by hand; both go through `profiles.keep_machine_settings`, which walks
   the table a test already holds against `Config`.
 - **`ReceivePortError` is part of the public surface**, since
   `await_link_echo`, `verify_routing` and `verify_and_repair` raise it.
+- **No test opens the machine's `/dev/snd/seq`.** The device wait opens
+  it to make the kernel load `snd-seq`; read-only and harmless, and
+  still the machine's. The suite points `OSCMIX_SEQ_DEV` at nothing.
 - **CI uploads artifacts on Node 24.** `actions/upload-artifact` moves
   from the v5 pin, which targets the deprecated Node 20, to v7.0.1.
 

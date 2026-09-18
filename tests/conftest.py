@@ -242,6 +242,10 @@ def _no_stray_proc_reads(tmp_path_factory, monkeypatch):
         "  sl  local_address rem_address   st tx_queue rx_queue tr"
         " tm->when retrnsmt   uid  timeout inode ref pointer drops\n")
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    # With no sequencer clients file, the device wait opens /dev/snd/seq to
+    # make the kernel load snd-seq. Read-only and harmless, and still the
+    # machine's: a test that reaches the wait gets a path that is not there.
+    monkeypatch.setenv("OSCMIX_SEQ_DEV", str(proc / "no-seq-device"))
 
 
 @pytest.fixture(autouse=True)

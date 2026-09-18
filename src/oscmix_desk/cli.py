@@ -19,6 +19,7 @@ from .config import (
     Config,
     discover_config_path,
     load_config,
+    log_device_replaced,
     profile_path,
 )
 from .constants import (
@@ -165,18 +166,15 @@ def _override_device(config: Config, name: str) -> None:
     """``--device``: the ALSA client to wait for, and the model from here on.
 
     It arrives after the file was validated, so the channels and sections
-    were checked for the device the *file* names. When that is another
-    model -- or none -- the check said nothing about the interface the
-    routes now go to, and saying so is all that can be done here: the
-    parser would have to know the override to do better, which is the
-    frozen-config work of 0.7.0.
+    were checked for the device the *file* names; see
+    ``config.log_device_replaced``. Refused together with a switch or a
+    restore, which take their interface from the config and never saw
+    the override (``_refuse_conflicting_actions``).
     """
     checked_for = config.device_name
     config.device_name = name
-    if device_for_name(name) is not device_for_name(checked_for):
-        log.warning("--device %r is not the interface this config was "
-                    "checked for (%r): its channels and sections were "
-                    "validated against the latter", name, checked_for)
+    log_device_replaced(checked_for, name,
+                        "--device replaces [device] name after validation")
 
 
 def _desk_in_effect(config_path: Optional[Path]) -> Optional[Config]:
@@ -232,7 +230,7 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
         config.osc_port = args.osc_port
 
     if args.dry_run and (args.profile is not None or args.no_profile):
-        return _dry_run_desk(args, config, config_path)
+        return _dry_run_desk(args, config_path)
 
     if args.list_profiles:
         for line in describe_profiles(config_path):
@@ -321,12 +319,23 @@ def _refuse_conflicting_actions(parser: ArgumentParser,
         parser.error("%s cannot be combined" % " and ".join(asked))
     if args.dry_run and asked and asked[0] not in ("--profile", "--no-profile"):
         parser.error("--dry-run cannot be combined with %s" % asked[0])
+    overrides = [flag for flag, given in (("--device", args.device),
+                                          ("--osc-port", args.osc_port))
+                 if given is not None]
+    if overrides and asked and asked[0] in ("--profile", "--no-profile"):
+        # A switch resolves its interface and its ports from the config
+        # (profiles._target). The overrides never reached it: they were
+        # dropped without a word, while the dry run of the same switch
+        # honoured them and so showed something the switch would not do.
+        parser.error("%s cannot be combined with %s: a switch takes its "
+                     "interface and ports from routing.conf and the profile"
+                     % (" and ".join(overrides), asked[0]))
     if not (math.isfinite(args.timeout) and args.timeout >= 0):
         parser.error("--timeout must be a finite number of seconds, not %r"
                      % args.timeout)
 
 
-def _dry_run_desk(args: "argparse.Namespace", config: Config,
+def _dry_run_desk(args: "argparse.Namespace",
                   config_path: Optional[Path]) -> int:
     """Show the desk a switch would apply, without switching to it.
 
@@ -341,11 +350,11 @@ def _dry_run_desk(args: "argparse.Namespace", config: Config,
     except ConfigError as exc:
         log.error("configuration error: %s", exc)
         return EXIT_CONFIG
-    # The ports and the device name belong to this invocation rather
-    # than to the file being shown, so --osc-port and --device win.
-    desk.osc_port = config.osc_port
-    desk.osc_recv_port = config.osc_recv_port
-    desk.device_name = config.device_name
+    # The desk exactly as the switch would load it, machine settings
+    # included. Until 0.6.11 the ports and the device name of the desk
+    # *in effect* were written over it -- so a profile naming its own
+    # interface was shown for another one, and a profile inheriting
+    # routing.conf's port was shown on the active profile's.
     return run_session(args, desk)
 
 

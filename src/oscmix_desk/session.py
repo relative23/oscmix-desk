@@ -18,6 +18,7 @@ from typing import Dict, Optional, Tuple
 from .config import (
     Config,
     discover_config_path,
+    log_device_replaced,
     log_unchecked_routes,
     profile_path,
 )
@@ -322,7 +323,18 @@ def _desk_under_the_lock(config_path: Optional[Path],
     # taken and the backend bound for this process's usb id and pinned
     # serial, and a profile naming another box does not move either of
     # them (ADR 0024).
-    return keep_machine_settings(fresh, running)
+    return _kept_for_this_process(fresh, running)
+
+
+def _kept_for_this_process(fresh: Config, running: Config) -> Config:
+    """``fresh`` with this process's machine settings, saying so when that
+    puts a desk checked for one interface onto another."""
+    named = fresh.device_name
+    fresh = keep_machine_settings(fresh, running)
+    log_device_replaced(named, fresh.device_name,
+                        "a running session keeps its interface until it is "
+                        "restarted")
+    return fresh
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -635,7 +647,7 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
     # interface belong to the process that is running, and changing them
     # here would mean writing to a port nobody is listening on -- with no
     # error, because OSC over UDP has no delivery guarantee (ADR 0024).
-    fresh = keep_machine_settings(fresh, running)
+    fresh = _kept_for_this_process(fresh, running)
     log_unchecked_routes(fresh)
     return fresh
 

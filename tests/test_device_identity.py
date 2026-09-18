@@ -1503,3 +1503,34 @@ output = 3/4
     for _section, _option, attr in profiles.MACHINE_SETTINGS:
         assert getattr(fresh, attr) == getattr(running, attr), attr
     assert fresh.osc_port != 9001
+
+
+@pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
+def test_a_re_read_that_lands_on_another_interface_says_so(tmp_path, caplog,
+                                                           reread):
+    """Measured by review: routing.conf edited to name 'Some Box' with
+    output 41/42, reloaded under a session bound to a UCX II. The file
+    was checked for a box with no model, the name was pinned back, and
+    `/output/41/stereo` went to an interface with twenty outputs -- in
+    silence. Validating for the running interface needs the parser to
+    know it (0.7.0); until then the reload says what happened."""
+    from oscmix_desk import Config
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[device]\nname = Some Box\n\n"
+                        "[route:main]\nplayback = 1/2\noutput = 41/42\n")
+    running = Config()
+    args = (running, path) if reread == "_reloaded_desk" else (path, running)
+    with caplog.at_level("WARNING"):
+        fresh = getattr(session_module, reread)(*args)
+    assert fresh.device_name == "Fireface UCX II"
+    assert ("a running session keeps its interface until it is restarted: "
+            "this config was checked for 'Some Box' and is used for "
+            "'Fireface UCX II'") in caplog.text
+    # The same model under the same name: nothing to say.
+    caplog.clear()
+    path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    with caplog.at_level("WARNING"):
+        getattr(session_module, reread)(*args)
+    assert "checked for" not in caplog.text
+

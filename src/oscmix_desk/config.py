@@ -501,6 +501,25 @@ def log_unchecked_routes(config: "Config") -> None:
         log.warning("%s", message)
 
 
+def log_device_replaced(checked_for: str, used: str, why: str) -> None:
+    """Say so when a desk checked for one interface is used for another.
+
+    A config is validated for the device its file names. Two things
+    replace that name afterwards: ``--device``, and a re-read under a
+    running process, which keeps the interface it is bound to. When the
+    two names are different models -- or one is no model at all -- the
+    channel and section checks said nothing about the interface the
+    routes go to: measured, outputs 41/42 reached a UCX II, which has
+    twenty, in silence (0.6.11). Checking for the replacement itself
+    needs the parser to know it, which is the frozen-config work of
+    0.7.0; until then this is the notice.
+    """
+    if device_for_name(used) is not device_for_name(checked_for):
+        log.warning("%s: this config was checked for %r and is used for %r, "
+                    "so its channels and sections were validated against "
+                    "the wrong interface", why, checked_for, used)
+
+
 def _has_register_model(config: "Config") -> bool:
     """Whether the configured device comes with a register table.
 

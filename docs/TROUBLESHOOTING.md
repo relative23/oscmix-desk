@@ -78,10 +78,13 @@ Common findings in the journal:
   checked against the hardware. Expected on an interface this project
   has never seen (the 802 is checked against upstream's channel map and
   does not warn); a typo in the name looks the same.
-- `--device '<name>' is not the interface this config was checked for`
-  -- the override names another model than `[device] name`, and it is
-  applied after the file was validated. Put the name in `routing.conf`
-  instead, so the channels are checked for the interface they go to.
+- `...: this config was checked for '<A>' and is used for '<B>'` -- the
+  file's `[device] name` is one model and the routes go to another, so
+  the channel check was made for the wrong interface. Two causes, named
+  at the start of the line: `--device` (put the name in `routing.conf`
+  instead), or `routing.conf` was edited to name another interface while
+  the session is running -- a reload keeps the interface the backend is
+  bound to; `systemctl --user restart oscmix.service` moves it.
 - `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
   GUI was listening on the state port, so the read-back was not possible.
 - `unconfirmed after retry: ...` -- the device never reported the listed
