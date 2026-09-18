@@ -291,3 +291,58 @@ def test_a_real_listener_still_binds_and_releases():
         with pytest.raises(OSError, match="in use"):
             probe.bind(("127.0.0.1", port))
         probe.close()
+
+
+# --------------------------------------------------------------------------
+# The two scripts that bind the port themselves and skip for a held one.
+# --------------------------------------------------------------------------
+
+def _script(name):
+    import importlib.util
+
+    from conftest import repo_file
+
+    spec = importlib.util.spec_from_file_location(
+        name.replace("-", "_"), repo_file("scripts", name + ".py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_record_dump_skips_for_a_held_port_and_fails_for_any_other_cause(
+        monkeypatch, capsys):
+    """Exit 77 tells `make` and CI "nothing to measure here". A port that
+    cannot be bound for another reason is not that."""
+    record = _script("record-dump")
+    held = _Socket(OSError(errno.EADDRINUSE, "Address already in use"))
+    monkeypatch.setattr(record.socket, "socket", lambda *_a: held)
+    with pytest.raises(SystemExit) as skipped:
+        record.bind_or_skip(8222)
+    assert skipped.value.code == record.EXIT_SKIP
+    assert held.closed
+    assert "close the mixer GUI" in capsys.readouterr().err
+
+    denied = _Socket(OSError(errno.EACCES, "Permission denied"))
+    monkeypatch.setattr(record.socket, "socket", lambda *_a: denied)
+    with pytest.raises(SystemExit) as failed:
+        record.bind_or_skip(80)
+    assert failed.value.code == 1
+    assert denied.closed
+    err = capsys.readouterr().err
+    assert "cannot bind the receive port UDP 80: Permission denied" in err
+    assert "mixer GUI" not in err
+
+
+def test_the_evidence_tool_tells_a_held_port_from_an_unbindable_one():
+    """`verify-hardware.py` builds its reader deep inside main(), behind a
+    device and a sink, so the rule is held structurally: the skip is
+    guarded by EADDRINUSE and the other branch returns 1."""
+    from conftest import repo_file
+
+    source = repo_file("scripts", "verify-hardware.py").read_text()
+    guard = source.index("reader = LevelReader(config.osc_recv_port)")
+    block = source[guard:source.index("sinks = playback_sinks()", guard)]
+    assert "exc.errno != errno.EADDRINUSE" in block
+    assert block.index("return 1") < block.index("return EXIT_SKIP")
+    assert "cannot bind the receive port UDP" in block
+

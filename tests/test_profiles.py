@@ -459,6 +459,7 @@ def test_not_checking_reads_differently_from_checking_and_missing(
     assert outcome.state == profiles.APPLIED_UNVERIFIED
     assert "not checked" in outcome.describe()
     assert "unconfirmed" not in outcome.describe()
+    assert outcome.read_back is False, "nobody looked, so the field says so"
 
 
 # --------------------------------------------------------------------------
@@ -848,9 +849,56 @@ def test_an_empty_marker_means_no_profile(tmp_path):
     assert profiles.active_profile(path) is None
 
 
-def test_a_setting_is_not_stated_by_text_the_parser_rejects():
-    assert profiles._states("[global\nosc_port = 1", "global", "osc_port") \
-        is False
+def test_a_profile_is_validated_for_the_desk_s_device_not_the_default(
+        tmp_path, caplog):
+    """Measured before the fix, on a desk for an interface nobody modelled:
+    a profile routing to output 25/26 was refused because "channel 25 does
+    not exist on a Fireface UCX II", and a profile's `[output:1] volume`
+    was accepted through the UCX II's table and would have been written
+    -- while the same section in routing.conf has been ignored with a
+    warning since 0.6.2. The profile was parsed while it still named the
+    default device, and given the desk's name afterwards (0.6.11)."""
+    path = write_config(tmp_path / "routing.conf",
+                        "[device]\nname = Some Box\n\n"
+                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    write_config(tmp_path / "profiles" / "far.conf",
+                 "[route:far]\nplayback = 1/2\noutput = 25/26\n")
+    write_config(tmp_path / "profiles" / "vol.conf",
+                 "[route:main]\nplayback = 1/2\noutput = 1/2\n\n"
+                 "[output:1]\nvolume = -10.0\n")
+    far = profiles.load_profile("far", path)
+    assert far.device_name == "Some Box"
+    assert [route.output for route in far.routes] == [(25, 26)]
+    with caplog.at_level("WARNING"):
+        vol = profiles.load_profile("vol", path)
+    assert vol.channels == [], "nothing of it may reach a device nobody modelled"
+    assert "ignoring [output:1]: no register model for 'Some Box'" in caplog.text
+
+
+def test_a_profile_on_an_802_desk_is_held_to_the_802_s_channels(tmp_path):
+    path = write_config(tmp_path / "routing.conf",
+                        "[device]\nname = Fireface 802\n\n"
+                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    write_config(tmp_path / "profiles" / "far.conf",
+                 "[route:far]\nplayback = 1/2\noutput = 29/30\n")
+    write_config(tmp_path / "profiles" / "gone.conf",
+                 "[route:gone]\nplayback = 1/2\noutput = 31/32\n")
+    assert profiles.load_profile("far", path).routes[0].output == (29, 30)
+    with pytest.raises(profiles.ConfigError, match="Fireface 802"):
+        profiles.load_profile("gone", path)
+
+
+def test_a_profile_that_names_its_own_device_is_held_to_that_one(tmp_path):
+    """A profile may state a machine setting, and then it wins -- for the
+    validation too, which is the half the old order got right by luck."""
+    path = write_config(tmp_path / "routing.conf",
+                        "[device]\nname = Some Box\n\n"
+                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    write_config(tmp_path / "profiles" / "ucx.conf",
+                 "[device]\nname = Fireface UCX II\n\n"
+                 "[route:far]\nplayback = 1/2\noutput = 25/26\n")
+    with pytest.raises(profiles.ConfigError, match="Fireface UCX II"):
+        profiles.load_profile("ucx", path)
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root writes anywhere")

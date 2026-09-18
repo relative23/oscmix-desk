@@ -20,6 +20,7 @@ from .config import (
     discover_config_path,
     load_config,
     profile_path,
+    unchecked_routes_warning,
 )
 from .constants import (
     DEFAULT_DEVICE_TIMEOUT,
@@ -161,6 +162,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 130
 
 
+def _desk_in_effect(config_path: Optional[Path]) -> Optional[Config]:
+    """The desk this invocation is about, named in the log; None if refused.
+
+    The active profile if one is remembered, else routing.conf (ADR
+    0018); only routing.conf itself can refuse.
+    """
+    try:
+        config, active = effective_config(config_path)
+    except ConfigError as exc:
+        log.error("configuration error: %s", exc)
+        return None
+    if config_path is None:
+        log.info("no routing.conf found; using defaults without routing")
+    else:
+        source = (profile_path(active, config_path) if active
+                  else config_path)
+        log.info("configuration: %s (%d route(s), %d channel setting(s), "
+                 "%d global setting(s))", source, len(config.routes),
+                 len(config.channels), len(config.globals))
+    return config
+
+
 def _main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
@@ -175,24 +198,17 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     config_path = args.config or discover_config_path()
-    try:
-        # The active profile if one is remembered, else routing.conf
-        # (ADR 0018); only routing.conf itself can refuse the start.
-        config, active = effective_config(config_path)
-    except ConfigError as exc:
-        log.error("configuration error: %s", exc)
+    config = _desk_in_effect(config_path)
+    if config is None:
         return EXIT_CONFIG
-    if config_path is None:
-        log.info("no routing.conf found; using defaults without routing")
-    else:
-        source = (profile_path(active, config_path) if active
-                  else config_path)
-        log.info("configuration: %s (%d route(s), %d channel setting(s), "
-                 "%d global setting(s))", source, len(config.routes),
-                 len(config.channels), len(config.globals))
 
     if args.device:
         config.device_name = args.device
+    unchecked = unchecked_routes_warning(config)
+    if unchecked:
+        # Once per invocation, about the desk in effect, and after
+        # --device: that is the interface the routes will be written to.
+        log.warning("%s", unchecked)
     if args.osc_port is not None:
         # Bounded like `[osc] port` in the file. A port outside the range
         # used to pass straight through: nothing bound it, and the first

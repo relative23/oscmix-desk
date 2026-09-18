@@ -74,9 +74,10 @@ Common findings in the journal:
   reported as "in use", which sent the reader to a GUI that was closed.
 - `no register model for '<name>': its N route(s) are written as given`
   -- `[device] name` is not an interface this project has a register
-  table for, so the routes' channel numbers are not checked against the
-  hardware. Expected on anything but a UCX II; a typo in the name looks
-  the same.
+  table or channel map for, so the routes' channel numbers are not
+  checked against the hardware. Expected on an interface this project
+  has never seen (the 802 is checked against upstream's channel map and
+  does not warn); a typo in the name looks the same.
 - `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
   GUI was listening on the state port, so the read-back was not possible.
 - `unconfirmed after retry: ...` -- the device never reported the listed
@@ -124,7 +125,9 @@ had the device lock, the start-up verifier was still running after the
 wait, the config no longer parses, or the backend could not be reached
 -- the journal says which. Until 0.6.10 only the first changed the
 line. "Verifier failed" (since 0.6.10) means the background
-verification could not reach the backend. It says what the unit is doing; it is not what
+verification could not reach the backend, or (since 0.6.11) could not
+bind its receive port for a reason other than the mixer GUI holding it;
+the routing is applied either way. It says what the unit is doing; it is not what
 keeps two writers apart. Since 0.6.5 the unit takes the same lock a
 switch takes (ADR 0019), and since 0.6.7 that lock is named after the
 interface (ADR 0022). Since 0.6.8 it lives in `/run/oscmix-desk/`,

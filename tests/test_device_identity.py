@@ -1475,8 +1475,8 @@ def test_the_unit_desk_reads_the_real_proc_and_compares_files_safely(
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
 def test_a_re_read_desk_keeps_every_machine_setting_of_the_process(
         tmp_path, reread):
-    """The verifier's re-read and the SIGHUP's each spelled the five
-    assignments out by hand; `profiles.MACHINE_SETTINGS` is the list, and
+    """The start's re-read under the lock and the SIGHUP's each spelled the
+    five assignments out by hand; `profiles.MACHINE_SETTINGS` is the list, and
     a setting added to it is kept by both without anybody remembering."""
     from oscmix_desk import Config
 

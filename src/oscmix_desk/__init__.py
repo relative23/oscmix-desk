@@ -56,7 +56,12 @@ from .discovery import (
                         usb_device_present,
                         wait_for_device,
 )
-from .errors import ConfigError, DeviceAmbiguous, DeviceLockUnavailable
+from .errors import (
+    ConfigError,
+    DeviceAmbiguous,
+    DeviceLockUnavailable,
+    ReceivePortError,
+)
 from .launcher import main as launch_mixer
 from .log import log
 from .notify import sd_notify
@@ -120,6 +125,7 @@ __all__ = [
                         "DeviceAmbiguous",
                         "DeviceLockUnavailable",
                         "Outcome",
+                        "ReceivePortError",
                         "Route",
                         "VerifyResult",
                         "__version__",

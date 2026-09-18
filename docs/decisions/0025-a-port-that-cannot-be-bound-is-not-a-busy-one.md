@@ -50,7 +50,7 @@ Every caller says what it does with it, and none lets it tear a write:
 | a SIGHUP reconcile | stands down, as it does for a held port, naming the cause; status `reconcile skipped` |
 | a profile switch or restore | applied, `applied-unverified`, and the outcome's reason is the cause |
 | `--diff`, `--snapshot`, `--dump-config` | exit 1 with the cause, not "close the mixer GUI" |
-| `sweep-writes.py`, `verify-hardware.py` | exit 1 with the cause; the evidence tool *skips* (77) only for a held port |
+| `sweep-writes.py`, `verify-hardware.py`, `record-dump.py` | exit 1 with the cause; the two that *skip* (77) do so only for a held port |
 
 The start does not fail. The desk is applied and audible, which is what
 a start promises (ADR 0021); what cannot happen is verification, and

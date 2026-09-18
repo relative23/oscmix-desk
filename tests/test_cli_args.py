@@ -209,3 +209,35 @@ def test_the_refusal_words_and_its_boundaries(capsys):
             cli._refuse_conflicting_actions(parser, parser.parse_args(argv))
         assert capsys.readouterr().err.splitlines()[-1] == \
             "oscmix-session: error: " + words
+
+
+
+def test_unchecked_routes_are_warned_about_once_and_for_the_desk_in_effect(
+        tmp_path, caplog):
+    """From the parser it fired on every load -- N+1 times for a listing of
+    N profiles -- and counted routing.conf's routes while a profile was
+    the desk being written (0.6.11)."""
+    from oscmix_desk import cli
+
+    path = tmp_path / "routing.conf"
+    path.write_text("[device]\nname = Some Box\n\n"
+                    "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    (tmp_path / "profiles").mkdir()
+    for name in ("one", "two", "three"):
+        (tmp_path / "profiles" / ("%s.conf" % name)).write_text(
+            "[route:a]\nplayback = 1/2\noutput = 1/2\n"
+            "[route:b]\nplayback = 3/4\noutput = 3/4\n")
+    (tmp_path / "active-profile").write_text("two\n")
+    with caplog.at_level("WARNING"):
+        assert cli.main(["--config", str(path), "--list-profiles"]) == 0
+    warned = [r.getMessage() for r in caplog.records
+              if "no register model" in r.getMessage()]
+    assert len(warned) == 1
+    assert "'Some Box': its 2 route(s)" in warned[0], \
+        "the active profile's routes, which are the ones written"
+    # --device names the interface the routes go to, so it decides.
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        assert cli.main(["--config", str(path), "--device", "Fireface UCX II",
+                         "--list-profiles"]) == 0
+    assert "no register model" not in caplog.text

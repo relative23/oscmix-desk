@@ -35,6 +35,7 @@ call on a machine with no device.
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import socket
@@ -105,8 +106,13 @@ def bind_or_skip(recv_port: int) -> socket.socket:
         sock.bind(("127.0.0.1", recv_port))
     except OSError as exc:
         sock.close()
-        print("record-dump: cannot bind UDP %d (%s) -- close the mixer GUI, "
-              "it holds that port" % (recv_port, exc), file=sys.stderr)
+        if exc.errno != errno.EADDRINUSE:
+            # Not the GUI, and not a reason to skip (ADR 0025).
+            print("record-dump: cannot bind the receive port UDP %d: %s"
+                  % (recv_port, exc.strerror or exc), file=sys.stderr)
+            raise SystemExit(1) from None
+        print("record-dump: UDP %d is in use -- close the mixer GUI, it "
+              "holds that port" % recv_port, file=sys.stderr)
         raise SystemExit(EXIT_SKIP) from None
     sock.settimeout(0.5)
     return sock

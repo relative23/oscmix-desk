@@ -81,7 +81,7 @@ acyclic graph.
 | Module | What it owns |
 |---|---|
 | `constants` | every timing constant and exit code, each with the measurement that produced it |
-| `errors` | `ConfigError`, the one exception a user ever sees, and the two refusals that are not config text: an ambiguous interface and an unavailable device lock |
+| `errors` | `ConfigError`, the one exception a user ever sees; the two refusals that are not config text, an ambiguous interface and an unavailable device lock; and `ReceivePortError`, a receive port that cannot be bound for a reason other than a holder (ADR 0025) |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
 | `registers` | the register model as data: paths, tags, bounds, verification class, policy, per-device channel maps |

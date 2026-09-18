@@ -100,7 +100,11 @@ between its phases; the barrier waits blind instead and the verifier
 fails out loud once the mix is safe (ADR 0025). With it: an outcome
 nobody could read back is worded as one, routes on an unmodelled device
 warn, the sink search survives `"info": null`, and one table decides
-what a re-read desk may not change. The review's larger half -- enums
+what a re-read desk may not change. Reviewing that warning found the
+release's second defect, older than the review: a profile was validated
+against the default device rather than the desk's, so on a desk for
+another interface its channel sections reached hardware the main config
+is not allowed to touch. The review's larger half -- enums
 for phases and write reasons, a result type for the barrier, a frozen
 `Config`, a decision about strict handling of unmodelled devices --
 changes public names and is 0.7.0. Its packaging proposal is declined

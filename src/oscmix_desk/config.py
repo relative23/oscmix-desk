@@ -364,9 +364,17 @@ def _parse_osc(parser: configparser.ConfigParser, section: str,
         setattr(config, attr, port)
 
 
-def load_config(path: Optional[Path]) -> Config:
-    """Load routing.conf. ``path=None`` returns built-in defaults."""
-    config = Config()
+def load_config(path: Optional[Path],
+                base: Optional[Config] = None) -> Config:
+    """Load routing.conf. ``path=None`` returns built-in defaults.
+
+    ``base`` is what the file is read onto, a fresh ``Config`` by
+    default. A profile is read onto the machine settings of its main
+    config, so that ``[device] name`` is known *while* the profile is
+    validated: read onto the defaults and patched afterwards, a profile
+    was checked against the UCX II whatever the desk was for (0.6.11).
+    """
+    config = Config() if base is None else base
     if path is None:
         return config
     if not path.is_file():
@@ -460,6 +468,23 @@ def _modelled_names() -> str:
     return ", ".join(d.name for d in DEVICES if d.registers)
 
 
+def unchecked_routes_warning(config: "Config") -> Optional[str]:
+    """What to say about routes on a device nobody modelled, or None.
+
+    Still no opinion (ADR 0006), and no longer a silent one: a channel
+    section on such a device has warned since 0.6.2, while its routes
+    went to the hardware without a channel check and without a word. For
+    the caller to log once about the desk in effect -- from the parser it
+    fired on every load, and named routing.conf's routes while a profile
+    was the desk being written (0.6.11).
+    """
+    if not config.routes or device_for_name(config.device_name) is not None:
+        return None
+    return ("no register model for %r: its %d route(s) are written as given, "
+            "with no check that the device has those channels (modelled: %s)"
+            % (config.device_name, len(config.routes), _modelled_names()))
+
+
 def _has_register_model(config: "Config") -> bool:
     """Whether the configured device comes with a register table.
 
@@ -524,15 +549,6 @@ def _check_device_channels(config: Config) -> None:
     """
     device = device_for_name(config.device_name)
     if device is None:
-        if config.routes:
-            # Still no opinion, and no longer a silent one: a channel
-            # section on such a device has warned since 0.6.2 while its
-            # routes went to the device unchecked without a word (0.6.11).
-            log.warning(
-                "no register model for %r: its %d route(s) are written as "
-                "given, with no check that the device has those channels "
-                "(modelled: %s)", config.device_name, len(config.routes),
-                _modelled_names())
         return
     for route in config.routes:
         kind, source = route.source

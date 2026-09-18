@@ -526,6 +526,10 @@ def verify_and_repair(config: Config,
     ``should_stop`` is asked between every phase and before each of the
     three writes below, and the session waits for this thread before
     exiting: docs/decisions/0009-verifier-stop-contract.md.
+
+    Raises ``ReceivePortError`` when the receive port cannot be bound for
+    a reason other than a holder -- after the mix has been re-established
+    blind, so the desk is whole when it does (ADR 0025).
     """
     device = device_for_name(config.device_name)
     registers = expected_registers(config)

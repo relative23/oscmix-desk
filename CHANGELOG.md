@@ -18,7 +18,7 @@ register table has no new row.
   unverified for good under `UDP 80 in use (mixer GUI running?)`. `None`
   is `EADDRINUSE` alone now; anything else is a `ReceivePortError` with
   the real cause, and the status line reads `verifier failed` rather
-  than nothing. The review's own remedy -- re-raise -- would have ended
+  than `verifier finished`. The review's own remedy -- re-raise -- would have ended
   an apply between its phases, pairs linked and no mix, because the
   barrier binds the port after the links are on the wire: the barrier
   waits blind instead, the verifier re-establishes the mix before it
@@ -34,9 +34,21 @@ register table has no new row.
   prints `"info": null` for an object that went away, and the sink
   search raised `AttributeError` on it.
 
-- **`verify-hardware.py` skips only for a held port.** Any failure to
-  bind was a skip (exit 77) with "close the mixer GUI"; another cause is
-  an error now.
+- **A profile is validated for the desk's device, not the default one.**
+  A profile inherits `[device]` from `routing.conf`, but it was parsed
+  first and given the name afterwards -- so it was checked against the
+  UCX II whatever the desk was for. Measured on a desk naming another
+  interface: a profile routing to output 25/26 was refused because
+  "channel 25 does not exist on a Fireface UCX II", and a profile's
+  `[output:1] volume` was accepted through the UCX II's table and would
+  have been written, while the same section in `routing.conf` has been
+  ignored with a warning since 0.6.2. The profile is read onto the main
+  config's machine settings now; the second parser that decided what a
+  profile "states" is gone with the patching it served.
+
+- **`verify-hardware.py` and `record-dump.py` skip only for a held
+  port.** Any failure to bind was a skip (exit 77) with "close the mixer
+  GUI"; another cause is an error now.
 
 ### Changed
 
@@ -44,11 +56,15 @@ register table has no new row.
   channel section on such a device has warned since 0.6.2, while its
   routes went to the hardware without a channel check and without a
   word. Still no opinion (ADR 0006); the warning names the device, the
-  number of routes and what is modelled.
-- **One rule for what a re-read desk may not change.** The verifier's
-  re-read and the SIGHUP's each assigned the five machine settings by
-  hand; both go through `profiles.keep_machine_settings`, which walks
+  number of routes and what is modelled, once per invocation and for the
+  desk in effect -- the active profile's routes, and the interface
+  `--device` names.
+- **One rule for what a re-read desk may not change.** The start's
+  re-read under the lock and the SIGHUP's each assigned the five machine
+  settings by hand; both go through `profiles.keep_machine_settings`, which walks
   the table a test already holds against `Config`.
+- **`ReceivePortError` is part of the public surface**, since
+  `await_link_echo`, `verify_routing` and `verify_and_repair` raise it.
 - **CI uploads artifacts on Node 24.** `actions/upload-artifact` moves
   from the v5 pin, which targets the deprecated Node 20, to v7.0.1.
 

@@ -34,7 +34,6 @@ traceback" is the state this module exists to make unrepresentable.
 
 from __future__ import annotations
 
-import configparser
 import contextlib
 import errno
 import fcntl
@@ -109,11 +108,14 @@ class Outcome:
     #: could not remove it: the desk holds only until the next reload or
     #: start, and the caller must not send that reload itself (ADR 0019).
     persisted: bool = True
-    #: Whether a read-back ran at all. False when the receive port was
-    #: held or could not be bound: ``unverified`` then means "unknown",
-    #: as it does for NOT_CHECKED, and ``reason`` says why nobody looked.
-    #: Until 0.6.11 that case was worded "N register(s) unconfirmed",
-    #: which is what a read-back that ran and came up short says.
+    #: Whether a read-back ran, for an applied outcome (a refusal wrote
+    #: nothing, so there was nothing to read). False when the caller
+    #: asked for none, or the receive port was held or could not be
+    #: bound: ``unverified`` then means "unknown" rather than "looked for
+    #: and absent", and ``reason`` says why nobody looked. Not derivable
+    #: from ``reason``, which is free text for an unbindable port. Until
+    #: 0.6.11 a held port was worded "N register(s) unconfirmed", which
+    #: is what a read-back that ran and came up short says.
     read_back: bool = True
 
     @property
@@ -180,10 +182,18 @@ def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
     path = profile_path(name, config_path)
     if not path.is_file():
         raise ConfigError("no profile %r (looked in %s)" % (name, path.parent))
-    profile = load_config(path)
+    # Read *onto* the machine settings rather than patched with them
+    # afterwards. Patched, the profile was validated while it still named
+    # the default device: on a desk for another interface its channels
+    # were checked against the UCX II's twenty, and a channel section the
+    # main config has ignored with a warning since 0.6.2 was accepted
+    # through the UCX II's table and written (0.6.11). The parser takes
+    # every machine setting with the value it finds as the fallback, so a
+    # profile that states one still wins.
+    base = None
     if config_path is not None and Path(config_path).is_file():
-        _inherit_transport(profile, load_config(config_path), path)
-    return profile
+        base = keep_machine_settings(Config(), load_config(config_path))
+    return load_config(path, base)
 
 
 #: Everything in a config that describes the *machine* rather than the
@@ -209,42 +219,14 @@ def keep_machine_settings(desk: Config, running: Config) -> Config:
     """``desk``, with the machine-level settings of the process that runs.
 
     The backend is bound and talking to one interface; a desk re-read
-    under it -- for the verifier, for a SIGHUP -- changes the routing and
-    nothing in ``MACHINE_SETTINGS``. The session spelled the five
+    under it -- by the start once it holds the lock, by a SIGHUP -- changes
+    the routing and nothing in ``MACHINE_SETTINGS``. The session spelled the five
     assignments out twice until 0.6.11, which is the way one gets
     forgotten: the table is what a test holds against ``Config``.
     """
     for _section, _option, attr in MACHINE_SETTINGS:
         setattr(desk, attr, getattr(running, attr))
     return desk
-
-
-def _inherit_transport(profile: Config, main: Config, path: Path) -> None:
-    """Fill the machine-level settings a profile did not state itself."""
-    # Parsed already by load_profile, so it is UTF-8; read the same way.
-    text = path.read_text(encoding="utf-8", errors="replace")
-    for section, option, attr in MACHINE_SETTINGS:
-        if not _states(text, section, option):
-            setattr(profile, attr, getattr(main, attr))
-
-
-def _states(text: str, section: str, option: str) -> bool:
-    """Whether the profile file actually names this option.
-
-    Reads the file rather than comparing against the default, because a
-    profile that deliberately sets the default is stating it, and
-    "equals the default" cannot tell those apart.
-    """
-    # Same parser settings as load_config. A second parser with
-    # different rules reading the same file is the shape of three
-    # separate defects in 0.3.0; matching them costs one line.
-    parser = configparser.ConfigParser(
-        interpolation=None, inline_comment_prefixes=("#", ";"))
-    try:
-        parser.read_string(text)
-    except configparser.Error:
-        return False
-    return parser.has_option(section, option)
 
 
 #: Where the active profile's name is kept: one line, beside
@@ -831,7 +813,8 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
             # same either way. Everything expected goes in the list.
             return Outcome(state=APPLIED_UNVERIFIED, name=name,
                            reason=NOT_CHECKED, persisted=remembered,
-                           unverified=sorted(expected_registers(config)))
+                           unverified=sorted(expected_registers(config)),
+                           read_back=False)
         return replace(_check(name, config, device), persisted=remembered)
 
 
@@ -869,7 +852,8 @@ def restore_main(config_path: Optional[Path] = None,
         if not verify:
             return Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
                            reason=NOT_CHECKED, persisted=forgotten,
-                           unverified=sorted(expected_registers(config)))
+                           unverified=sorted(expected_registers(config)),
+                           read_back=False)
         return replace(_check("routing.conf", config, device),
                        persisted=forgotten)
 
