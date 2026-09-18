@@ -1654,8 +1654,8 @@ def test_the_advice_fits_the_cause(tmp_path, caplog):
     (tmp_path / "active-profile").write_text("far\n")
     with caplog.at_level("ERROR"):
         assert _reread("_reloaded_desk", running, path) is None
-    assert ("take [osc] and [device] out of profile 'far' and send the reload "
-            "again, or --no-profile") in caplog.text
+    assert ("take [osc] and [device] out of profile 'far', then reload the "
+            "session, or --no-profile") in caplog.text
     assert "restart" not in caplog.text
     # routing.conf moved, with or without a profile active: an ordinary
     # profile states nothing, so neither of its remedies could work, and
@@ -1716,8 +1716,8 @@ def test_no_profile_is_named_only_where_it_can_work(tmp_path, caplog):
     with caplog.at_level("ERROR"):
         assert _reread("_reloaded_desk", under_an_override, path) is None
     assert caplog.text.rstrip().endswith(
-        "so it was not applied; take [osc] and [device] out of profile 'p' "
-        "and send the reload again")
+        "so it was not applied; take [osc] and [device] out of profile 'p', "
+        "then reload the session")
 
     # Started under a profile that named port 9000, which now names 9001:
     # routing.conf never moved, and is still not where this session runs,
@@ -1760,6 +1760,30 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
     assert caplog.text.count("checked for") == (reread == "_reloaded_desk")
 
 
+def test_another_desk_under_the_lock_is_spoken_about_even_in_the_same_words(
+        tmp_path, caplog):
+    """The notice about a profile for another machine does not name the
+    profile. Compared by their text, a switch from one such profile to
+    another during the start left the second unannounced; it is the desk
+    that is compared (found by review)."""
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    for name, output in (("far", "3/4"), ("far2", "5/6")):
+        write_config(tmp_path / "profiles" / ("%s.conf" % name),
+                     "[osc]\nrecv-port = 8333\n"
+                     "[route:x]\nplayback = 1/2\noutput = %s\n" % output)
+    (tmp_path / "active-profile").write_text("far\n")
+    started, _active = profiles.effective_config(path)
+    with caplog.at_level("WARNING"):
+        assert session_module._desk_under_the_lock(path, started) == started
+    assert caplog.text == "", "the same desk, spoken about at the top"
+    (tmp_path / "active-profile").write_text("far2\n")
+    with caplog.at_level("WARNING"):
+        applied = session_module._desk_under_the_lock(path, started)
+    assert [route.output for route in applied.routes] == [(5, 6)]
+    assert caplog.text.count("this profile names another backend") == 1
+
+
 def test_a_start_that_finds_no_interface_has_said_why_it_looked_elsewhere(
         tmp_path, caplog, monkeypatch):
     """A profile that names another machine is what sends a start looking
@@ -1786,11 +1810,10 @@ def test_a_start_that_finds_no_interface_has_said_why_it_looked_elsewhere(
 def test_a_start_gives_its_notices_about_the_desk_it_applies(
         tmp_path, caplog, monkeypatch):
     """The top of a start speaks about the file as read before the wait for
-    the device and the lock -- hours, on a machine booted with the
-    interface off. A file with nothing in it to check, given routes in
-    that time, reached the `--device` interface unannounced; what is new
-    about the desk re-read under the lock is said there, and what was
-    said already is not repeated (found by review)."""
+    the device and the lock. A file with nothing in it to check, given
+    routes in that time, reached the `--device` interface unannounced:
+    another desk under the lock is spoken about there, and the same one
+    is not spoken about twice (found by review)."""
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Fireface 802\n")
     started = profiles.load_config(path)

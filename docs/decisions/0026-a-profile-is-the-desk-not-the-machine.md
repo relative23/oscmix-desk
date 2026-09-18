@@ -70,17 +70,21 @@ In 0.6.11, without changing what an accepted file means (ADR 0006):
   restart would apply here, and refuses what a restart would take
   somewhere else. Comparing the bare file refused a session its own desk
   under `--osc-port`, with advice to restart that a restart would not
-  have followed. One difference is left on purpose: the session does not
-  count the boxes again, so with a second one plugged in since, a desk
-  naming no serial is still written to the pinned box, where a restart
-  would ask for the serial.
+  have followed. Two differences are left. The session does not count
+  the boxes again, so with a second one plugged in since, a desk naming
+  no serial is still written to the pinned box, where a restart would
+  ask for the serial. And a device name is compared as written, where a
+  start looks for it as a substring: another spelling that finds the
+  same client is refused until a restart, which the error advises. What
+  identifies an interface should be the resolved one, not the string --
+  part of the 0.7.0 work.
 * The advice fits the cause, not the presence of a profile. The profile
   is the cause when `routing.conf` alone says something else about
   where. A restart would follow such a profile -- off this interface,
   which nothing would then manage, or into exit 2 beside the session
   that already holds that port -- so it is sent to the profile: take the
-  sections out and send the reload again. `--no-profile` is named as the
-  other way out only where
+  sections out, then reload. `--no-profile` is named as the other way
+  out only where
   it can work, which is where the bare `routing.conf` is this session's
   machine: it writes where the file says, never saw `--device` or
   `--osc-port`, and is refused for a port nobody listens on. Where
@@ -93,10 +97,10 @@ In 0.6.11, without changing what an accepted file means (ADR 0006):
   `--device` one -- are given where that desk is written or shown, by
   one function. A start gives them before it looks for the interface,
   because a profile for another machine is why that search may end
-  elsewhere or nowhere; under the device lock it says what is new about
-  the desk it re-read there, since a file with nothing to check, given
-  routes during the wait, reached the `--device` interface unannounced.
-  So did one re-read by a reload.
+  elsewhere or nowhere; under the device lock it gives them again when
+  the desk it re-read there is another one, since a file with nothing to
+  check, given routes during the wait, reached the `--device` interface
+  unannounced. So did one re-read by a reload.
 * The switch still reloads the unit and leaves the decision to it. A
   first cut decided in the CLI by comparing the profile with
   `routing.conf`; but the unit may itself have been started under such a

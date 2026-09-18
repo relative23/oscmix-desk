@@ -292,9 +292,11 @@ def _no_real_backend(monkeypatch):
     the developer's oscmix listens: a test that ran `--dump-config`
     unstubbed read the UCX II through it on every run, and on a machine
     without one waited out the read instead (0.6.11, found by review).
-    In-process only; what runs as a subprocess is given free ports. The
-    refusal is raised *and* held against the test at teardown, since the
-    code under test is entitled to catch what it could not send.
+    In-process only: the guard cannot see a subprocess, and those tests
+    stay offline by what they run -- a dry run, a desk that declares
+    nothing, a stub for a backend. The refusal is raised *and* held
+    against the test at teardown, since the code under test is entitled
+    to catch what it could not send.
     """
     from oscmix_desk.constants import DEFAULT_OSC_PORT, DEFAULT_OSC_RECV_PORT
 

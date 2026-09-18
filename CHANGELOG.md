@@ -80,26 +80,27 @@ register table has no new row.
   port is refused now: `reconcile skipped`, and an error naming what
   differs and what to do -- a restart for a `routing.conf` that moved;
   for a profile that itself names another machine, taking the sections
-  out and reloading, because a restart would move the unit off its
+  out and then reloading, because a restart would move the unit off its
   interface, with `--no-profile` named only where it can work. The
   re-read file is resolved the way a restart would resolve it: a
   `Config` records what its file said (`Config.loaded`) and what the
   command line replaced (`Config.overrides`), so a file under `--device`
   or `--osc-port`, or one that names the box the start pinned, is the
-  session's own. One difference from a restart is left: the session
+  session's own. Two differences from a restart are left. The session
   does not count the boxes again, so with a second one plugged in
   since, a desk naming no serial still goes to the pinned box, where a
-  restart would ask which. The switch still reloads the unit and leaves
-  the decision to it, and says so.
+  restart would ask which. And a device name is compared as written,
+  where a start looks for it as a substring, so another spelling that
+  finds the same client is refused until a restart. The switch still
+  reloads the unit and leaves the decision to it, and says so.
 - **`--device` over a file for another model says so**, with the other
   notices about a desk: at a start, a reload, a dry run, `--diff` and
   `--pipewire-sinks`. The override arrives after the file was
   validated, so the channels were checked for one interface and written
   to another in silence. A start says it before it looks for the
-  interface, and under the device lock says what is new about the desk
-  it re-read there -- the wait in between can be hours on a machine
-  booted with the interface off. Validating *for* the override needs
-  the parser to know it, which is part of 0.7.0.
+  interface, and again under the device lock when the desk it re-read
+  there is another one by then. Validating *for* the override needs the
+  parser to know it, which is part of 0.7.0.
 - **The marker's temporary file has a name of its own.** Two switches
   holding different device locks shared `active-profile.tmp`, and one
   could rename the file the other was still writing.

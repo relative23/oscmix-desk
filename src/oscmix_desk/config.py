@@ -157,7 +157,9 @@ class Machine(NamedTuple):
         running session takes to be the box its start pinned: it does not
         count the boxes again, so with a second one plugged in since, a
         restart asks for the serial where a reload goes on writing to
-        the pinned box. The first cuts compared the bare file and refused
+        the pinned box. And a name is compared as written, where a start
+        looks for it as a substring: another spelling that finds the
+        same client is refused until a restart. The first cuts compared the bare file and refused
         the session's own desk: the pinned box once routing.conf named
         it, then a file under ``--osc-port`` (found by review, 0.6.11).
         """
@@ -569,15 +571,7 @@ def unchecked_routes_warning(config: "Config") -> Optional[str]:
             % (config.device_name, len(config.routes), _modelled_names()))
 
 
-def desk_notices(config: "Config") -> List[str]:
-    """What there is to say about a desk before it is written or shown."""
-    return [message for message in (unchecked_routes_warning(config),
-                                    other_machine_warning(config),
-                                    replaced_device_warning(config))
-            if message]
-
-
-def log_desk_notices(config: "Config", said: Sequence[str] = ()) -> None:
+def log_desk_notices(config: "Config") -> None:
     """Warn, once, where a desk is about to be written or shown.
 
     A start, a dry run, a diff and the PipeWire sinks ask about the desk
@@ -585,11 +579,13 @@ def log_desk_notices(config: "Config", said: Sequence[str] = ()) -> None:
     theirs. The first placement asked once in the CLI about the desk *in
     effect*, which for ``--profile`` and ``--no-profile`` is not the one
     being written, and a reload never passed it at all (found by review,
-    0.6.11). ``said`` is what was said already: a start asks again under
-    the device lock, about the desk it re-read there, and repeats nothing.
+    0.6.11). A start asks again under the device lock when the desk it
+    re-read there is another one (``session._desk_under_the_lock``).
     """
-    for message in desk_notices(config):
-        if message not in said:
+    for message in (unchecked_routes_warning(config),
+                    other_machine_warning(config),
+                    replaced_device_warning(config)):
+        if message:
             log.warning("%s", message)
 
 

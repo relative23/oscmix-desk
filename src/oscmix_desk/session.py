@@ -18,7 +18,6 @@ from typing import Dict, Optional, Tuple
 from .config import (
     Config,
     Machine,
-    desk_notices,
     discover_config_path,
     log_desk_notices,
     profile_path,
@@ -324,10 +323,12 @@ def _desk_under_the_lock(config_path: Optional[Path],
     kept = _kept_for_this_process(fresh, running, active)
     if kept is None:
         return running
-    # The start spoke about the file as it read it, before the wait for
-    # the device and the lock -- hours, on a machine booted with the
-    # interface off. What is new about the desk applied is said here.
-    log_desk_notices(kept, said=desk_notices(running))
+    # The start spoke about the desk as it read it, before the wait for
+    # the device and the lock. Another desk by now -- a file edited, a
+    # profile switched in between -- is spoken about here; the same one
+    # is not spoken about twice.
+    if kept != running:
+        log_desk_notices(kept)
     return kept
 
 
@@ -387,11 +388,11 @@ def _advice(profile: Optional[str], follow: bool, restorable: bool) -> str:
         + SERVICE_UNIT + ")"
     if profile is None:
         return restart % "it"
-    edit = "take [osc] and [device] out of profile %r" % profile
+    edit = "take [osc] and [device] out of profile %r, then " % profile
     if follow:
-        return "%s, then %s" % (edit, restart % "routing.conf")
-    return "%s and send the reload again%s" % (
-        edit, ", or --no-profile" if restorable else "")
+        return edit + restart % "routing.conf"
+    return edit + "reload the session" + (", or --no-profile" if restorable
+                                          else "")
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
