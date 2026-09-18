@@ -58,7 +58,8 @@ that is reported as a failure of the verifier on every start rather
 than as a skip.
 
 An outcome nobody could read back is worded as one. `Outcome.read_back`
-is false when the port was held or unbindable, and the line reads `not
+is false when the port was held or unbindable (and when the caller
+asked for no read-back, which keeps its own wording), and the line reads `not
 read back (<why>), so none of its N register(s) is confirmed`. It used
 to read `N register(s) unconfirmed`, which is what a read-back that ran
 and came up short says.

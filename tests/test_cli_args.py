@@ -211,33 +211,97 @@ def test_the_refusal_words_and_its_boundaries(capsys):
             "oscmix-session: error: " + words
 
 
-
-def test_unchecked_routes_are_warned_about_once_and_for_the_desk_in_effect(
-        tmp_path, caplog):
-    """From the parser it fired on every load -- N+1 times for a listing of
-    N profiles -- and counted routing.conf's routes while a profile was
-    the desk being written (0.6.11)."""
-    from oscmix_desk import cli
-
+def _unmodelled_desk(tmp_path):
+    """routing.conf with one route, profiles with three, on 'Some Box'."""
     path = tmp_path / "routing.conf"
     path.write_text("[device]\nname = Some Box\n\n"
                     "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     (tmp_path / "profiles").mkdir()
-    for name in ("one", "two", "three"):
+    for name in ("one", "two"):
         (tmp_path / "profiles" / ("%s.conf" % name)).write_text(
-            "[route:a]\nplayback = 1/2\noutput = 1/2\n"
-            "[route:b]\nplayback = 3/4\noutput = 3/4\n")
-    (tmp_path / "active-profile").write_text("two\n")
+            "".join("[route:%s]\nplayback = 1/2\noutput = %d/%d\n"
+                    % (tag, n, n + 1) for tag, n in (("a", 1), ("b", 3),
+                                                     ("c", 5))))
+    return path
+
+
+def _unchecked(caplog):
+    return [r.getMessage() for r in caplog.records
+            if "no register model" in r.getMessage()]
+
+
+def test_a_listing_writes_nothing_and_warns_about_nothing(tmp_path, caplog):
+    """From the parser the warning fired N+1 times for N profiles."""
+    from oscmix_desk import cli
+
+    path = _unmodelled_desk(tmp_path)
     with caplog.at_level("WARNING"):
         assert cli.main(["--config", str(path), "--list-profiles"]) == 0
-    warned = [r.getMessage() for r in caplog.records
-              if "no register model" in r.getMessage()]
-    assert len(warned) == 1
-    assert "'Some Box': its 2 route(s)" in warned[0], \
-        "the active profile's routes, which are the ones written"
-    # --device names the interface the routes go to, so it decides.
+    assert _unchecked(caplog) == []
+
+
+def test_a_switch_and_a_restore_warn_about_the_desk_they_write(
+        tmp_path, caplog, recording_backend):
+    """The first placement warned about the desk *in effect*: one route
+    for `--profile one`, whose three were the ones going out, and three
+    for `--no-profile`, which writes routing.conf's one (0.6.11)."""
+    from oscmix_desk import profiles
+
+    path = _unmodelled_desk(tmp_path)
+    with caplog.at_level("WARNING"):
+        profiles.switch_profile("one", config_path=path,
+                                backend=recording_backend, verify=False)
+    expected = ("no register model for 'Some Box': its 3 route(s) are "
+                "written as given, with no check that the device has those "
+                "channels (modelled: Fireface UCX II)")
+    assert _unchecked(caplog) == [expected]
     caplog.clear()
     with caplog.at_level("WARNING"):
-        assert cli.main(["--config", str(path), "--device", "Fireface UCX II",
-                         "--list-profiles"]) == 0
-    assert "no register model" not in caplog.text
+        profiles.restore_main(config_path=path, backend=recording_backend,
+                              verify=False)
+    assert len(_unchecked(caplog)) == 1
+    assert "its 1 route(s)" in _unchecked(caplog)[0]
+
+
+def test_a_dry_run_warns_about_the_desk_it_shows(tmp_path, caplog):
+    from oscmix_desk import cli
+
+    path = _unmodelled_desk(tmp_path)
+    with caplog.at_level("WARNING"):
+        cli.main(["--config", str(path), "--timeout", "0", "--dry-run",
+                  "--profile", "two"])
+    assert len(_unchecked(caplog)) == 1
+    assert "its 3 route(s)" in _unchecked(caplog)[0]
+
+
+def test_a_reload_warns_about_the_desk_it_re_read(tmp_path, caplog):
+    from oscmix_desk import Config
+    from oscmix_desk import session as session_module
+
+    path = _unmodelled_desk(tmp_path)
+    (tmp_path / "active-profile").write_text("one\n")
+    with caplog.at_level("WARNING"):
+        session_module._reloaded_desk(Config(device_name="Some Box"), path)
+    assert len(_unchecked(caplog)) == 1
+    assert "its 3 route(s)" in _unchecked(caplog)[0]
+
+
+def test_a_device_override_that_bypasses_the_validation_is_named(
+        tmp_path, caplog):
+    """`--device` arrives after the file was validated. When it names
+    another model, or none, the channel check said nothing about the
+    interface the routes now go to."""
+    from oscmix_desk import cli
+
+    path = tmp_path / "routing.conf"
+    path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    with caplog.at_level("WARNING"):
+        cli.main(["--config", str(path), "--device", "Some Box",
+                  "--list-profiles"])
+    assert ("--device 'Some Box' is not the interface this config was "
+            "checked for ('Fireface UCX II')") in caplog.text
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        cli.main(["--config", str(path), "--device", "fireface ucx ii",
+                  "--list-profiles"])
+    assert "--device" not in caplog.text, "the same model, spelled differently"

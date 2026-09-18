@@ -44,7 +44,12 @@ register table has no new row.
   have been written, while the same section in `routing.conf` has been
   ignored with a warning since 0.6.2. The profile is read onto the main
   config's machine settings now; the second parser that decided what a
-  profile "states" is gone with the patching it served.
+  profile "states" is gone with the patching it served. A third effect
+  follows the same rule `routing.conf` has always had: on a desk for the
+  802 or an unmodelled interface, a profile with a `[pin]` section is
+  refused, where it used to load against the UCX II's options -- and an
+  *active* profile that no longer loads falls back to `routing.conf`
+  with a warning at the next start (ADR 0018).
 
 - **`verify-hardware.py` and `record-dump.py` skip only for a held
   port.** Any failure to bind was a skip (exit 77) with "close the mixer
@@ -56,9 +61,15 @@ register table has no new row.
   channel section on such a device has warned since 0.6.2, while its
   routes went to the hardware without a channel check and without a
   word. Still no opinion (ADR 0006); the warning names the device, the
-  number of routes and what is modelled, once per invocation and for the
-  desk in effect -- the active profile's routes, and the interface
-  `--device` names.
+  number of routes and what is modelled, and comes from the four places
+  that load a desk to write or show it -- a start and the dry runs, a
+  switch, a restore, a SIGHUP reload -- about that desk. A listing or a
+  read warns about nothing.
+- **`--device` says when it bypasses the validation.** The override
+  arrives after the file was checked, so naming another model (or none)
+  left the routes checked for one interface and written to another,
+  silently. It warns now; checking for the override itself needs the
+  parser to know it, which is part of 0.7.0.
 - **One rule for what a re-read desk may not change.** The start's
   re-read under the lock and the SIGHUP's each assigned the five machine
   settings by hand; both go through `profiles.keep_machine_settings`, which walks

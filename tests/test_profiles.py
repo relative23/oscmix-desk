@@ -361,9 +361,41 @@ def test_a_profile_that_states_a_port_keeps_its_own(tmp_path):
                                  ).osc_port == 9500
 
 
+#: A value for each machine setting that is neither the default nor main's.
+_STATED = {"port": "9500", "recv-port": "9600", "name": "Fireface 802",
+           "usb-id": "2a39:3fb0", "serial": "11223344"}
+
+
+@pytest.mark.parametrize(("section", "option", "attr"),
+                         profiles.MACHINE_SETTINGS)
+def test_a_profile_states_one_machine_setting_and_inherits_the_other_four(
+        tmp_path, section, option, attr):
+    """Option by option, not section by section: a profile that states
+    `[device] serial` keeps the main config's `usb-id`, which sits in the
+    same section. Since 0.6.11 that rests on the parser's fallbacks
+    rather than on a second look at the file, so it is held here for
+    every row of the table, against a main config whose five values are
+    all non-default."""
+    path = write_config(tmp_path / "routing.conf",
+                        "[device]\nname = Some Box\nusb-id = 1111:2222\n"
+                        "serial = 99887766\n\n"
+                        "[osc]\nport = 9001\nrecv-port = 9002\n")
+    write_config(tmp_path / "profiles" / "one.conf",
+                 "[%s]\n%s = %s\n\n[route:x]\nplayback = 1/2\noutput = 1/2\n"
+                 % (section, option, _STATED[option]))
+    main = profiles.load_config(path)
+    profile = profiles.load_profile("one", path)
+    stated = int(_STATED[option]) if section == "osc" else _STATED[option]
+    assert getattr(profile, attr) == stated
+    for _section, _option, other in profiles.MACHINE_SETTINGS:
+        if other != attr:
+            assert getattr(profile, other) == getattr(main, other), other
+
+
 def test_stating_the_default_explicitly_still_counts_as_stating_it(tmp_path):
     # "equals the default" cannot distinguish "said 7222" from "said
-    # nothing", which is why the check reads the file.
+    # nothing". The parser can: it takes what the file says, and falls
+    # back to what it was read onto only when the file says nothing.
     from oscmix_desk.constants import DEFAULT_OSC_PORT
 
     write_config(tmp_path / "routing.conf", "[osc]\nport = 9001\n")
@@ -624,6 +656,7 @@ def test_restore_main_can_be_asked_not_to_check(tmp_path, recording_backend):
     assert outcome.state == profiles.APPLIED_UNVERIFIED
     assert outcome.name == "routing.conf"
     assert outcome.reason == profiles.NOT_CHECKED
+    assert outcome.read_back is False
     assert outcome.persisted is True, "the marker was removed either way"
     assert outcome.unverified == sorted(
         profiles.expected_registers(profiles.load_config(path)))

@@ -20,7 +20,6 @@ from .config import (
     discover_config_path,
     load_config,
     profile_path,
-    unchecked_routes_warning,
 )
 from .constants import (
     DEFAULT_DEVICE_TIMEOUT,
@@ -162,6 +161,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 130
 
 
+def _override_device(config: Config, name: str) -> None:
+    """``--device``: the ALSA client to wait for, and the model from here on.
+
+    It arrives after the file was validated, so the channels and sections
+    were checked for the device the *file* names. When that is another
+    model -- or none -- the check said nothing about the interface the
+    routes now go to, and saying so is all that can be done here: the
+    parser would have to know the override to do better, which is the
+    frozen-config work of 0.7.0.
+    """
+    checked_for = config.device_name
+    config.device_name = name
+    if device_for_name(name) is not device_for_name(checked_for):
+        log.warning("--device %r is not the interface this config was "
+                    "checked for (%r): its channels and sections were "
+                    "validated against the latter", name, checked_for)
+
+
 def _desk_in_effect(config_path: Optional[Path]) -> Optional[Config]:
     """The desk this invocation is about, named in the log; None if refused.
 
@@ -203,12 +220,7 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
         return EXIT_CONFIG
 
     if args.device:
-        config.device_name = args.device
-    unchecked = unchecked_routes_warning(config)
-    if unchecked:
-        # Once per invocation, about the desk in effect, and after
-        # --device: that is the interface the routes will be written to.
-        log.warning("%s", unchecked)
+        _override_device(config, args.device)
     if args.osc_port is not None:
         # Bounded like `[osc] port` in the file. A port outside the range
         # used to pass straight through: nothing bound it, and the first

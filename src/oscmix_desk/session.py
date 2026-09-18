@@ -15,7 +15,12 @@ import time
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from .config import Config, discover_config_path, profile_path
+from .config import (
+    Config,
+    discover_config_path,
+    log_unchecked_routes,
+    profile_path,
+)
 from .constants import (
     CHILD_STOP_GRACE,
     EXIT_CONFIG,
@@ -444,6 +449,8 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
 
 def run_session(args: argparse.Namespace, config: Config) -> int:
     """Discover the device, run the backend, and supervise it."""
+    # The desk a start applies, or a dry run shows -- after --device.
+    log_unchecked_routes(config)
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
 
@@ -628,7 +635,9 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
     # interface belong to the process that is running, and changing them
     # here would mean writing to a port nobody is listening on -- with no
     # error, because OSC over UDP has no delivery guarantee (ADR 0024).
-    return keep_machine_settings(fresh, running)
+    fresh = keep_machine_settings(fresh, running)
+    log_unchecked_routes(fresh)
+    return fresh
 
 
 def _config_path(args: argparse.Namespace) -> Optional[Path]:

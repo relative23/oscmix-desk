@@ -473,16 +473,32 @@ def unchecked_routes_warning(config: "Config") -> Optional[str]:
 
     Still no opinion (ADR 0006), and no longer a silent one: a channel
     section on such a device has warned since 0.6.2, while its routes
-    went to the hardware without a channel check and without a word. For
-    the caller to log once about the desk in effect -- from the parser it
-    fired on every load, and named routing.conf's routes while a profile
-    was the desk being written (0.6.11).
+    went to the hardware without a channel check and without a word.
+    Asked by the paths that write or show a desk, about that desk
+    (``log_unchecked_routes``) -- from the parser it fired on every load,
+    and named routing.conf's routes while a profile was the desk being
+    written (0.6.11).
     """
     if not config.routes or device_for_name(config.device_name) is not None:
         return None
     return ("no register model for %r: its %d route(s) are written as given, "
             "with no check that the device has those channels (modelled: %s)"
             % (config.device_name, len(config.routes), _modelled_names()))
+
+
+def log_unchecked_routes(config: "Config") -> None:
+    """Warn, once, where a desk is about to be written or shown.
+
+    Four places load a desk for that: a start and the dry runs
+    (``session.run_session``), a switch, a restore, and a SIGHUP reload.
+    Each asks about the desk it has in hand. The first placement asked
+    once in the CLI about the desk *in effect*, which for ``--profile``
+    and ``--no-profile`` is not the one being written, and a reload never
+    passed it at all (found by review, 0.6.11).
+    """
+    message = unchecked_routes_warning(config)
+    if message:
+        log.warning("%s", message)
 
 
 def _has_register_model(config: "Config") -> bool:

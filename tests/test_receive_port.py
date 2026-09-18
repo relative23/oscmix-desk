@@ -345,4 +345,3 @@ def test_the_evidence_tool_tells_a_held_port_from_an_unbindable_one():
     assert "exc.errno != errno.EADDRINUSE" in block
     assert block.index("return 1") < block.index("return EXIT_SKIP")
     assert "cannot bind the receive port UDP" in block
-

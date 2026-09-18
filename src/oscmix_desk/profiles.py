@@ -46,7 +46,13 @@ from pathlib import Path
 from typing import Iterator, List, Optional, Sequence, Tuple
 
 from .backend import Backend, loopback
-from .config import Config, list_profiles, load_config, profile_path
+from .config import (
+    Config,
+    list_profiles,
+    load_config,
+    log_unchecked_routes,
+    profile_path,
+)
 from .constants import SWITCH_LOCK_WAIT, VERIFY_TIMEOUT
 from .discovery import (
     Device,
@@ -220,9 +226,13 @@ def keep_machine_settings(desk: Config, running: Config) -> Config:
 
     The backend is bound and talking to one interface; a desk re-read
     under it -- by the start once it holds the lock, by a SIGHUP -- changes
-    the routing and nothing in ``MACHINE_SETTINGS``. The session spelled the five
-    assignments out twice until 0.6.11, which is the way one gets
-    forgotten: the table is what a test holds against ``Config``.
+    the routing and nothing in ``MACHINE_SETTINGS``. The session spelled
+    the five assignments out twice until 0.6.11, which is the way one
+    gets forgotten: the table is what a test holds against ``Config``.
+
+    ``load_profile`` is the third caller, with the main config as
+    ``running`` and an empty ``Config`` as the desk: what a profile is
+    read onto.
     """
     for _section, _option, attr in MACHINE_SETTINGS:
         setattr(desk, attr, getattr(running, attr))
@@ -785,6 +795,7 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         # "channel 99 out of range" without a name is a search.
         log.error("profile %r refused, nothing written: %s", name, exc)
         return Outcome(state=REFUSED, name=name, reason=str(exc))
+    log_unchecked_routes(config)
 
     try:
         target = _target(config, reach=backend is None)
@@ -834,6 +845,7 @@ def restore_main(config_path: Optional[Path] = None,
     except ConfigError as exc:
         log.error("routing.conf refused, nothing written: %s", exc)
         return Outcome(state=REFUSED, name="routing.conf", reason=str(exc))
+    log_unchecked_routes(config)
     try:
         target = _target(config, reach=backend is None)
     except _Refused as refusal:
