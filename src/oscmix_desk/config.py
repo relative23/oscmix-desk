@@ -439,14 +439,18 @@ def _dispatch(parser: "configparser.ConfigParser", config: "Config",
             config.device_name = parser.get(section, "name",
                                             fallback=config.device_name).strip()
             if not config.device_name:
-                # The name is a substring match on the ALSA clients, and
-                # the empty string is a substring of every one of them:
-                # `name =` selected whatever client came first, or was
-                # "ambiguous" between the interface and Midi Through.
+                # The name is a substring match, and the empty string is
+                # a substring of every name. Measured on the start path:
+                # with one MIDI-capable card `name =` selected it, with
+                # two -- a USB keyboard beside the interface -- it was
+                # "2 interfaces match ''" with `serial` as the remedy, and
+                # either way the desk had no model, so nothing in it was
+                # checked. It worked by accident; it is refused (0.6.11,
+                # ADR 0006).
                 raise ConfigError(
                     "[device] name: expected the interface's name, for "
-                    "example %r; an empty name matches every ALSA client"
-                    % DEFAULT_DEVICE_NAME)
+                    "example %r; an empty name matches every card that "
+                    "has a MIDI port" % DEFAULT_DEVICE_NAME)
             usb_id = parser.get(section, "usb-id", fallback=config.usb_id).strip()
             if not re.fullmatch(r"[0-9a-fA-F]{4}:[0-9a-fA-F]{4}", usb_id):
                 raise ConfigError(

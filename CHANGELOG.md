@@ -79,9 +79,13 @@ register table has no new row.
   reload writes it. Validating *for* the replacement needs the parser to
   know it, which is part of 0.7.0.
 - **An empty `[device] name` is a configuration error.** The name is a
-  substring match on the ALSA clients, and the empty string is a
-  substring of every one: `name =` matched the interface and `Midi
-  Through` alike.
+  substring match, and the empty string is a substring of every name.
+  Measured on the start path: with one MIDI-capable card `name =`
+  selected it, with a second one -- a USB keyboard beside the interface
+  -- the start refused as "2 interfaces match ''" and pointed at
+  `serial`; and either way the desk had no model, so nothing in it was
+  checked. **A file that worked this way now exits 2**, naming the
+  option; write the interface's name. ADR 0006 is amended for it.
 - **`--device` and `--osc-port` are refused with `--profile` and
   `--no-profile`.** A switch and a restore take their interface and
   ports from the config; the overrides were dropped on that path without
@@ -103,9 +107,10 @@ register table has no new row.
   `verify_and_repair` raise it; `Outcome.read_back`;
   `Config.checked_for`; `load_config(path, base=None)`; and
   `blind_reapply_mix(config, should_stop, why=None)`. No existing
-  signature changes; the one change of behaviour behind an existing name
-  is the first entry under Fixed, where `None` used to cover every
-  failure to bind.
+  signature changes. Behaviour behind existing names changes where Fixed
+  says so: `verify_routing` and `await_link_echo` raise where `None`
+  used to cover every failure to bind, `load_config` refuses an empty
+  `[device] name`, and `load_profile` validates for the desk's device.
 - **No test opens the machine's `/dev/snd/seq`.** The device wait opens
   it to make the kernel load `snd-seq`; read-only and harmless, and
   still the machine's. The suite points `OSCMIX_SEQ_DEV` at nothing.

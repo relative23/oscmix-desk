@@ -12,15 +12,17 @@ enforces that, along with the layering the modules are arranged in:
     config                      constants, errors, log, registers
     backend                     errors, osc
     reconcile                   config, constants, registers
-    routing                     backend, reconcile, and the leaves
+    routing                     backend, config, reconcile, ...
     verify                      routing, ...
     pipewire, process, launcher leaves plus config/discovery
-    profiles                    routing, verify; the desk in effect
-    session                     composes everything below it
-    cli                         the only entry point
+    profiles                    routing, verify, process, ...
+    session                     profiles, verify, routing, process, ...
+    cli                         session, profiles, ...; oscmix-session
+    launcher                    (above) oscmix-launch, the desktop entry
 
-The exact edges are ``ALLOWED_IMPORTS`` in that test, which holds them to
-what each module really imports, no more and no less.
+This is the shape, not the list. The exact edges are ``ALLOWED_IMPORTS``
+in that test, which holds each module to what it really imports, in
+both directions.
 """
 
 from __future__ import annotations

@@ -279,7 +279,8 @@ The five structural threats in [After
 0.4.0](#after-040-what-actually-threatens-this) are all addressed, and
 the write direction is proven. **No release is planned that adds to
 what a `routing.conf` can declare**; 0.7.0, described above, tightens
-the Python types behind it and changes public names, not the file. The
+the Python types behind it and changes public names, and it may refuse
+more of what a file says -- it adds nothing a file can say. The
 ALSA-pool question that held
 this spot is answered, and the answer is no. Measured 2026-08-28: under
 a 10-dump `/refresh` flood -- idle, under full-core spin load, under

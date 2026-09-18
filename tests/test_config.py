@@ -530,18 +530,27 @@ def test_routes_on_an_unmodelled_device_have_a_warning_for_the_caller(
 
 @pytest.mark.parametrize("name", ["", "   ", "  # the box"])
 def test_an_empty_device_name_is_a_config_error(session_mod, tmp_path, name):
-    """`[device] name` is a substring match on the ALSA clients, and the
-    empty string is a substring of every one: `name =` matched the
-    interface *and* Midi Through. It also left nothing to say which
-    device the file had been checked for (found by review, 0.6.11)."""
+    """`[device] name` is a substring match, and the empty string is a
+    substring of every name. Measured on the start path: with one
+    MIDI-capable card it selected that card, with a second one -- a USB
+    keyboard beside the interface -- the start refused as ambiguous and
+    pointed at `serial`; and either way the desk had no model, so nothing
+    in it was checked. It worked by accident (0.6.11, ADR 0006)."""
     from oscmix_desk import discovery
+    from oscmix_desk.errors import DeviceAmbiguous
 
-    assert discovery._named(["Fireface UCX II (24216011)", "Midi Through"],
-                            "") == [0, 1], "what the refusal prevents"
+    clients = ('Client  24 : "Fireface UCX II (24216011)" [Kernel]\n'
+               'Client  28 : "UMC404HD 192k" [Kernel]\n')
+    alone = ["HDA Intel PCH", "Fireface UCX II (24216011)"]
+    assert discovery.select_seq_client(clients, "", "", alone) == 24
+    with pytest.raises(DeviceAmbiguous, match="2 interfaces match ''"):
+        discovery.select_seq_client(clients, "", "",
+                                    [*alone, "UMC404HD 192k"])
     path = write(tmp_path, "[device]\nname =%s\n\n"
                            "[route:x]\nplayback = 1/2\noutput = 1/2\n" % name)
     with pytest.raises(session_mod.ConfigError,
-                       match="an empty name matches every ALSA client"):
+                       match="an empty name matches every card that has a "
+                             "MIDI port"):
         session_mod.load_config(path)
 
 
@@ -561,6 +570,25 @@ def test_a_config_records_the_device_it_was_checked_for(session_mod, tmp_path):
     named.device_name = "Fireface UCX II"
     assert named.checked_for == "Fireface 802"
     config_mod.log_device_replaced(session_mod.Config(device_name="X"), "why")
+
+
+def test_a_session_started_without_a_file_still_hears_about_a_later_one(
+        session_mod, tmp_path, caplog):
+    """`since` is what the process already runs. Started with no config its
+    record is None, and what it was "checked for" is then the name it
+    runs under: a routing.conf that appears later and names another
+    model is news, one naming the same model is not."""
+    from oscmix_desk import config as config_mod
+
+    running = session_mod.Config()                 # no file: UCX II, None
+    for name, expected in (("Fireface 802", True), ("Fireface UCX II", False)):
+        fresh = session_mod.load_config(write(
+            tmp_path, "[device]\nname = %s\n" % name))
+        fresh.device_name = running.device_name    # what a re-read pins
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            config_mod.log_device_replaced(fresh, "kept", since=running)
+        assert ("checked for %r" % name in caplog.text) is expected, name
 
 
 def test_an_untested_device_constrains_only_what_upstream_declares(

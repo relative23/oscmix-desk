@@ -138,9 +138,22 @@ def imports_of(path):
             if node.level:                       # from .x import y
                 if node.module:
                     relative.add(node.module.split(".")[0])
+                else:                            # from . import x, y
+                    relative.update(alias.name for alias in node.names)
             elif node.module:
                 absolute.add(node.module.split(".")[0])
     return absolute, relative
+
+
+def test_the_scanner_sees_every_form_of_relative_import(tmp_path):
+    """`from . import x` has no module name, and was dropped: the one form
+    that could pass both directions of the layer check unseen. None
+    exists in the package; the map is only "exact" if one would count."""
+    probe = tmp_path / "probe.py"
+    probe.write_text("import os\nfrom . import osc, log\n"
+                     "from .config import Config\n"
+                     "def f():\n    from .errors import ConfigError\n")
+    assert imports_of(probe) == ({"os"}, {"osc", "log", "config", "errors"})
 
 
 def test_every_module_is_listed_in_the_layering():

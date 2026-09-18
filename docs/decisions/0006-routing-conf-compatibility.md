@@ -96,3 +96,25 @@ version can quietly downgrade a section this version applies.
 - `test_a_typo_in_a_known_section_is_still_an_error`
 - `test_the_known_surface_is_stated_rather_than_discovered` -- removing
   an option becomes a visible edit rather than a silent break.
+
+## Amended in 0.6.11
+
+The promise is about what option *names* mean. It says nothing about
+tightening the values an option accepts, and 0.6.11 does that once:
+`[device] name =`, empty, is a `ConfigError`.
+
+It is recorded here because it is the one case so far where a file that
+started a desk now refuses. The name is a substring match, and the empty
+string is a substring of every name, so an empty name selected "whatever
+card has a MIDI port": the interface, on a machine with no other such
+card; `2 interfaces match ''`, with `serial` offered as the remedy, the
+day a USB keyboard was plugged in beside it; and in both cases a desk
+with no register model, so none of its channels or sections was checked.
+That never was a meaning the option had -- it was what the matching did
+with no input.
+
+The rule this adds: a value may be refused in a later version when it
+selected hardware by accident rather than by what it said, the refusal
+names the option and the remedy, and the changelog says in so many words
+that a working file now exits 2. A value that *meant* something keeps
+meaning it.
