@@ -172,6 +172,7 @@ def _override_device(config: Config, name: str) -> None:
     the override (``_refuse_conflicting_actions``).
     """
     config.device_name = name
+    config.overrides = config.overrides._replace(device_name=name)
     log_device_replaced(config,
                         "--device replaces [device] name after validation")
 
@@ -229,6 +230,7 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
                       args.osc_port)
             return EXIT_CONFIG
         config.osc_port = args.osc_port
+        config.overrides = config.overrides._replace(osc_port=args.osc_port)
 
     if args.dry_run and (args.profile is not None or args.no_profile):
         return _dry_run_desk(args, config_path)

@@ -29,6 +29,7 @@ from __future__ import annotations
 
 from .config import (
                         ChannelSetting,
+                        CommandLine,
                         Config,
                         Machine,
                         Route,
@@ -127,6 +128,7 @@ __all__ = [
                         "REMEMBER",
                         "UNLINKED_GAIN_OFFSET",
                         "ChannelSetting",
+                        "CommandLine",
                         "Config",
                         "ConfigError",
                         "Device",

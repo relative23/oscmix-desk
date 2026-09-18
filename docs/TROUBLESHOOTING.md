@@ -81,16 +81,18 @@ Common findings in the journal:
 - `--device replaces [device] name after validation: this config was
   checked for '<A>' and is used for '<B>'` -- the file names one model
   and the override another, so the channel check was made for the wrong
-  interface. Put the name in `routing.conf` instead.
+  interface. Put the name in `routing.conf` instead. A reload that
+  applies such a desk says the same, prefixed `SIGHUP:`.
 - `the desk now in effect is for another backend or interface -- ...`
   with `Status: running; reconcile skipped` -- `routing.conf`, or the
   active profile, now resolves to another device name, usb id, serial or
-  port than the ones this session was started with or runs with; the
-  line says which, and what to do. A running session keeps its backend, so the desk was
-  **not** applied. For `routing.conf`: `systemctl --user restart
-  oscmix.service` follows it. For a profile: take `[osc]` and `[device]`
-  out of it, or `--no-profile` -- a restart would move the unit off its
-  interface.
+  port than this session runs with, and a restart with the same command
+  line would go there; the line says which, and what to do. A running
+  session keeps its backend, so the desk was **not** applied. For
+  `routing.conf`: `systemctl --user restart oscmix.service` follows it.
+  For a profile that itself names another machine: take `[osc]` and
+  `[device]` out of it, or `--no-profile` -- a restart would move the
+  unit off its interface.
 - `this profile names another backend or interface than its
   routing.conf` -- works for the switch in 0.6.x and is refused from
   0.7.0 (ADR 0026). A profile made with `--dump-config` restates the

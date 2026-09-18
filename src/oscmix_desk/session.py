@@ -20,6 +20,7 @@ from .config import (
     Machine,
     discover_config_path,
     log_desk_notices,
+    log_device_replaced,
     profile_path,
 )
 from .constants import (
@@ -336,32 +337,47 @@ def _kept_for_this_process(fresh: Config, running: Config,
     by the reload the switch sent; a `routing.conf` edited to name a box
     with 42 outputs reached a UCX II, which has twenty (ADR 0026).
 
-    ``Machine.elsewhere`` decides: a setting that equals what this
-    session's file said at the start, or what the session runs with, is
-    this session's -- so ``--device``, ``--osc-port`` and the pinned
-    serial do not read as a change, whichever side names them.
+    The re-read file is resolved the way a restart would resolve it --
+    the command line's overrides over it, as at the start -- and then held
+    against what this session runs (``Machine.elsewhere``). So a reload
+    applies what a restart would apply here, and refuses what a restart
+    would take somewhere else. The first cuts compared the bare file: they
+    refused the session's own desk under ``--osc-port``, with advice to
+    restart that a restart did not follow (found by review, 0.6.11).
     """
     live = Machine(running.device_name, running.usb_id, running.serial,
                    running.osc_port, running.osc_recv_port)
-    moved = "" if fresh.loaded is None else fresh.loaded.elsewhere(
-        running.loaded or live, live)
+    if fresh.loaded is None:
+        return keep_machine_settings(fresh, running)
+    moved = fresh.loaded.under(running.overrides).elsewhere(live)
     if not moved:
         return keep_machine_settings(fresh, running)
-    # A restart follows a routing.conf that moved. It would follow a
-    # profile too -- off this interface, which nothing would then manage
-    # -- so that case is sent to the profile instead (ADR 0026). The
-    # profile is the cause only when *it* names another machine than its
-    # routing.conf, not whenever one happens to be active.
-    by_profile = active and fresh.main is not None \
-        and fresh.loaded != fresh.main
+    home = moved if fresh.main is None else \
+        fresh.main.under(running.overrides).elsewhere(live)
     log.error("the desk now in effect is for another backend or interface "
               "-- %s -- and a running session keeps the one it was started "
               "for, so it was not applied; %s", moved,
-              "take [osc] and [device] out of profile %r, or --no-profile"
-              % active if by_profile else
-              "restart the session to follow it (systemctl --user restart "
-              "%s)" % SERVICE_UNIT)
+              _advice(active if home != moved else None, bool(home)))
     return None
+
+
+def _advice(profile: Optional[str], home_moved: bool) -> str:
+    """What to do about a desk for elsewhere, by its cause (ADR 0026).
+
+    ``profile`` is the active profile when *it* names the other machine:
+    routing.conf alone says something else about where. A restart would
+    follow such a profile off this interface, which nothing would then
+    manage, so that case is sent to the profile. ``--no-profile`` writes
+    where routing.conf says, which is here only while that has not moved
+    as well; everything else is a routing.conf that a restart follows.
+    """
+    restart = "restart the session to follow %s (systemctl --user restart " \
+        + SERVICE_UNIT + ")"
+    if profile is None:
+        return restart % "it"
+    return "take [osc] and [device] out of profile %r, %s" % (
+        profile, "then " + restart % "routing.conf" if home_moved
+        else "or --no-profile")
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -680,6 +696,11 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
              profile_path(active, path) if active else path,
              len(kept.routes), len(kept.channels))
     log_desk_notices(kept)
+    # What a restart would say as well. The start's own notice covers the
+    # desk of that moment: a file with nothing to check, given sections
+    # later, reached the `--device` interface unannounced (0.6.11).
+    log_device_replaced(kept, "SIGHUP: --device replaces [device] name "
+                              "after validation")
     return kept
 
 

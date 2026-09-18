@@ -774,6 +774,8 @@ def test_a_reload_keeps_the_ports_the_backend_is_bound_to(
     # pinned. The file says none of it and is this session's all the same.
     running = session_mod.load_config(path)
     running.osc_port, running.device_name = 9000, "Fireface UCX II (24216011)"
+    running.overrides = session_mod.CommandLine(
+        "Fireface UCX II (24216011)", 9000)
     running.serial = "24216011"
 
     fresh = _reconciled(monkeypatch, argparse.Namespace(config=path), running)

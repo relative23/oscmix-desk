@@ -61,18 +61,29 @@ In 0.6.11, without changing what an accepted file means (ADR 0006):
   written that 0.7.0 refuses it.
 * A running session does not apply a re-read desk that resolves to
   another device name, usb id, serial or port than its own: the
-  reconcile is skipped and the error names what differs. A setting is
-  the session's own when it equals what the session's file said at its
-  start *or* what the session runs with (`Machine.elsewhere`), so
-  `--device`, `--osc-port` and the serial a start pins do not read as a
-  change, whichever side names them; no serial means "the only one".
-* The advice fits the cause, not the presence of a profile. A
-  `routing.conf` that moved is followed by a restart, with or without a
-  profile active. A profile that *itself* names another machine would
-  be followed too -- off this interface, which nothing would then
-  manage, or into exit 2 beside the session that already holds that
-  port -- so it is sent to the profile: take the sections out, or
-  `--no-profile`.
+  reconcile is skipped and the error names what differs. The re-read
+  file is resolved the way a restart would resolve it -- `--device` and
+  `--osc-port` over it, which a `Config` now remembers
+  (`Config.overrides`) -- and then held against what the session runs;
+  no serial means "the only one", which is the box the start pinned
+  (`Machine.elsewhere`). So a reload applies what a restart would apply
+  here, and refuses what a restart would take somewhere else. Comparing
+  the bare file refused a session its own desk under `--osc-port`, with
+  advice to restart that a restart would not have followed.
+* The advice fits the cause, not the presence of a profile. The profile
+  is the cause when `routing.conf` alone says something else about
+  where. A restart would follow such a profile -- off this interface,
+  which nothing would then manage, or into exit 2 beside the session
+  that already holds that port -- so it is sent to the profile: take the
+  sections out, or `--no-profile`. When `routing.conf` has moved as
+  well, `--no-profile` is not offered, since it writes where
+  `routing.conf` says and nothing listens there yet: the sections out,
+  then a restart. Everything else is a `routing.conf` that moved, and a
+  restart follows it, with or without a profile active.
+* A reload names a desk that was checked for another interface than
+  the `--device` one, as the start does: the start's notice covers the
+  desk of that moment, and a file given its sections later was applied
+  unannounced.
 * The switch still reloads the unit and leaves the decision to it. A
   first cut decided in the CLI by comparing the profile with
   `routing.conf`; but the unit may itself have been started under such a

@@ -461,8 +461,10 @@ def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     # the box it runs on.
     desk = {"routes", "channels", "policies", "globals"}
     # Neither: `loaded` records the machine settings the file resolved to,
-    # and `main` what a profile's routing.conf resolved to (0.6.11).
-    record = {"loaded", "main"}
+    # `main` what a profile's routing.conf resolved to, and `overrides`
+    # what the command line replaced -- no file's to state, and carried
+    # along by `keep_machine_settings` beside the table (0.6.11).
+    record = {"loaded", "main", "overrides"}
     machine = {f.name for f in dataclasses.fields(Config)} - desk - record
     covered = {attr for _section, _option, attr in profiles.MACHINE_SETTINGS}
     assert machine == covered, (

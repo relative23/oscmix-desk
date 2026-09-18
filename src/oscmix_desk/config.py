@@ -119,6 +119,13 @@ class GlobalSetting:
         return "/%s/%s" % (self.family, self.option)
 
 
+class CommandLine(NamedTuple):
+    """What ``--device`` and ``--osc-port`` put in place of a file's settings."""
+
+    device_name: Optional[str] = None
+    osc_port: Optional[int] = None
+
+
 class Machine(NamedTuple):
     """The five settings that say *where* a desk goes, not what it is."""
 
@@ -135,25 +142,25 @@ class Machine(NamedTuple):
             for name, mine, theirs in zip(self._fields, self, other)
             if mine != theirs)
 
-    def elsewhere(self, record: "Machine", live: "Machine") -> str:
-        """Why this is not the session that ``record`` and ``live`` describe,
-        or "" when it is.
+    def under(self, said: CommandLine) -> "Machine":
+        """This machine as a start resolves it: the command line over the file."""
+        return self._replace(
+            device_name=said.device_name or self.device_name,
+            osc_port=self.osc_port if said.osc_port is None else said.osc_port)
 
-        ``record`` is what the session's file said when it started and
-        ``live`` what it runs with -- they differ by ``--device``,
-        ``--osc-port`` and the serial a start pins. A setting that equals
-        either is this session's: a file that names the port given on
-        the command line, or the very box that was pinned, has not moved
-        anywhere. Nor has one that names no serial, which means "the only
-        one". The first cuts compared one of the two and refused the
-        session's own desk (found by review, 0.6.11).
+    def elsewhere(self, live: "Machine") -> str:
+        """Why this is not the machine a session runs on, or "" when it is.
+
+        ``self`` is what a restart of that session would resolve its file
+        to, the command line included (``under``), and ``live`` what the
+        session runs with. Naming no serial means "the only one", which is
+        whichever box the start pinned. The first cuts compared the bare
+        file and refused the session's own desk: the pinned box once
+        routing.conf named it, then a file under ``--osc-port`` (found by
+        review, 0.6.11).
         """
-        return ", ".join(
-            "%s %r (not %r)" % (name.replace("_", " "), mine, running)
-            for name, mine, said, running in zip(self._fields, self, record,
-                                                 live)
-            if mine not in (said, running)
-            and not (name == "serial" and mine == ""))
+        mine = self if self.serial else self._replace(serial=live.serial)
+        return mine.differs_from(live)
 
 
 @dataclass
@@ -178,12 +185,16 @@ class Config:
     #: replaced afterwards -- by ``--device`` and ``--osc-port``, by the
     #: serial a start pins, by a running session that keeps its own -- and
     #: this is what remembers which interface the file was validated for
-    #: and which backend it names (0.6.11). None when no file was loaded.
+    #: and which backend it names (0.6.11). None only for a ``Config``
+    #: that ``load_config`` never saw; no file resolves to the defaults.
     loaded: Optional[Machine] = None
     #: For a profile: what its routing.conf resolved to, set by
     #: ``profiles.load_profile``. A profile whose own record differs names
     #: another machine than its config tree (ADR 0026).
     main: Optional[Machine] = None
+    #: What the command line put in place of the file's settings. No file
+    #: this process reads again has a say in these, exactly as at its start.
+    overrides: CommandLine = field(default_factory=CommandLine)
 
 
 #: The last place a desk is looked for, after the user's own.
@@ -424,9 +435,8 @@ def load_config(path: Optional[Path],
     """
     config = Config() if base is None else base
     if path is None:
-        # No file resolves to the defaults, and that is a record too: a
-        # session started without one is otherwise refused its own desk
-        # the day a routing.conf that names nothing appears.
+        # No file resolves to the defaults, and that is a record like any
+        # other: which interface the (empty) desk was checked for.
         config.loaded = _machine_of(config)
         return config
     if not path.is_file():

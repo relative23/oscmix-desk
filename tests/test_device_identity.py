@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 from conftest import fake_proc, free_udp_port, repo_file, write_config
 
-from oscmix_desk import profiles
+from oscmix_desk import cli, profiles
 from oscmix_desk import session as session_module
 from oscmix_desk.discovery import (
     Device,
@@ -1210,8 +1210,6 @@ def test_the_unit_s_desk_is_resolved_in_the_unit_s_environment(tmp_path,
     the XDG fallback from the shell, so `XDG_CONFIG_HOME=/x
     oscmix-session --profile Y` reloaded a unit that runs ~/.config.
     """
-    from oscmix_desk import cli
-
     def desk(root):
         (root / "oscmix").mkdir(parents=True)
         (root / "oscmix" / "routing.conf").write_text(DESK)
@@ -1239,8 +1237,6 @@ def test_the_unit_s_desk_is_its_config_argument_before_its_environment(
     """A unit started with `--config /x` runs /x whatever its environment
     says, as session._config_path reads it; a relative path is against
     the unit's working directory, not this shell's."""
-    from oscmix_desk import cli
-
     environ = {"OSCMIX_CONFIG": str(tmp_path / "env.conf")}
     (tmp_path / "shell").mkdir()
     monkeypatch.chdir(tmp_path / "shell")
@@ -1323,8 +1319,6 @@ def test_an_empty_profile_name_is_a_refused_switch_not_a_start(
         tmp_path, monkeypatch, capsys):
     """`--profile ''` was falsy, fell through every action, and started
     the service; with --list-profiles it listed (0.6.9)."""
-    from oscmix_desk import cli
-
     started = []
     monkeypatch.setattr(cli, "run_session", lambda *a: started.append(1) or 0)
     path = write_config(tmp_path / "routing.conf", DESK)
@@ -1452,8 +1446,6 @@ def test_the_unit_s_main_pid_is_asked_for_exactly(tmp_path, monkeypatch):
 
 def test_the_unit_desk_reads_the_real_proc_and_compares_files_safely(
         tmp_path, monkeypatch):
-    from oscmix_desk import cli
-
     roots = []
     monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
     monkeypatch.setattr(cli, "unit_process", lambda root: roots.append(root))
@@ -1481,11 +1473,11 @@ def test_a_re_read_desk_keeps_every_machine_setting_of_the_process(
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 3/4\n")
     running = profiles.load_config(path)
-    # Everything a start can replace, replaced -- the file says none of it.
-    for _section, _option, attr in profiles.MACHINE_SETTINGS:
-        value = getattr(running, attr)
-        setattr(running, attr, value + 1 if isinstance(value, int)
-                else "24216011" if attr == "serial" else value + " (live)")
+    # What a start replaces, replaced -- the command line's two and the
+    # serial it pins. The file says none of it.
+    cli._override_device(running, "Fireface UCX II (live)")
+    running.osc_port, running.serial = 9000, "24216011"
+    running.overrides = running.overrides._replace(osc_port=9000)
     args = (running, path) if reread == "_reloaded_desk" else (path, running)
     fresh = getattr(session_module, reread)(*args)
     assert fresh is not running
@@ -1493,6 +1485,20 @@ def test_a_re_read_desk_keeps_every_machine_setting_of_the_process(
         "the desk itself is the file's"
     for _section, _option, attr in profiles.MACHINE_SETTINGS:
         assert getattr(fresh, attr) == getattr(running, attr), attr
+    assert fresh.overrides == running.overrides, \
+        "or the next re-read compares the bare file again"
+
+
+def test_keeping_the_machine_settings_walks_the_whole_table():
+    """The two re-reads can only differ from their file in what a start
+    replaces; the table is what `keep_machine_settings` walks, all of it."""
+    from oscmix_desk import Config
+
+    running = Config(device_name="A", usb_id="1:2", serial="3", osc_port=4,
+                     osc_recv_port=5)
+    kept = profiles.keep_machine_settings(Config(), running)
+    for _section, _option, attr in profiles.MACHINE_SETTINGS:
+        assert getattr(kept, attr) == getattr(running, attr), attr
 
 
 def _reread(name, running, path):
@@ -1568,22 +1574,73 @@ def test_the_box_a_start_pinned_is_not_another_box_when_the_file_names_it(
         "against the box it is on, not against what the file once said"
 
 
-def test_a_session_started_without_a_file_compares_what_it_runs(tmp_path,
-                                                                caplog):
-    """It has no record of a file, only the settings it runs with. A
-    routing.conf that appears later and names them is applied; one for a
-    box with 42 outputs on another port is not -- it used to be, pinned to
-    this session, without a word (found by review)."""
-    from oscmix_desk import Config
+def test_a_file_that_appears_is_resolved_like_the_one_a_start_reads(
+        tmp_path, caplog):
+    """A session started without a routing.conf, with `--osc-port 9000`, was
+    refused the file that appeared later and named nothing -- the same
+    file present at its start is applied. One for a box with 42 outputs on
+    another port is not; it used to be, pinned to this session, without a
+    word (both found by review)."""
+    from oscmix_desk import CommandLine
 
+    running = profiles.load_config(None)
+    running.osc_port = 9000
+    running.overrides = CommandLine(osc_port=9000)
     path = tmp_path / "routing.conf"
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    assert _reread("_reloaded_desk", Config(), path) is not None
+    fresh = _reread("_reloaded_desk", running, path)
+    assert fresh is not None
+    assert fresh.osc_port == 9000
     path.write_text("[device]\nname = Some Box\n\n[osc]\nport = 9500\n\n"
                     "[route:far]\nplayback = 1/2\noutput = 41/42\n")
     with caplog.at_level("ERROR"):
-        assert _reread("_reloaded_desk", Config(), path) is None
+        assert _reread("_reloaded_desk", running, path) is None
     assert "device name 'Some Box' (not 'Fireface UCX II')" in caplog.text
+    assert "osc port" not in caplog.text, "--osc-port has the say in that"
+
+
+def test_a_file_under_an_override_is_not_a_desk_for_elsewhere(tmp_path,
+                                                              caplog):
+    """`--osc-port 9000` over a file that moves from 7222 to 9500: the file's
+    port was never used and is not used now. It was refused with "restart
+    the session to follow it", and a restart with the same command line
+    stays on 9000 (found by review)."""
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    assert cli.main(["--config", str(path), "--osc-port", "9000",
+                     "--list-profiles"]) == 0      # the real override path
+    running = profiles.load_config(path)
+    running.osc_port = 9000
+    running.overrides = running.overrides._replace(osc_port=9000)
+    path.write_text("[osc]\nport = 9500\n"
+                    "[route:main]\nplayback = 1/2\noutput = 3/4\n")
+    with caplog.at_level("ERROR"):
+        fresh = _reread("_reloaded_desk", running, path)
+    assert fresh is not None
+    assert fresh.osc_port == 9000
+    assert [route.output for route in fresh.routes] == [(3, 4)]
+    assert caplog.text == ""
+
+
+def test_a_reload_names_a_desk_checked_for_another_interface(tmp_path,
+                                                             caplog):
+    """The start's notice covers the desk of that moment. A file with nothing
+    in it to check, given routes later, reached the `--device` interface
+    unannounced: outputs 29/30 of an 802 desk, on a box with twenty. A
+    restart would have said so, and so does the reload (found by review)."""
+    path = write_config(tmp_path / "routing.conf",
+                        "[device]\nname = Fireface 802\n")
+    running = profiles.load_config(path)
+    with caplog.at_level("WARNING"):
+        cli._override_device(running, "Fireface UCX II")
+    assert caplog.text == "", "nothing in it was checked for a device"
+    path.write_text("[device]\nname = Fireface 802\n"
+                    "[route:x]\nplayback = 1/2\noutput = 29/30\n")
+    with caplog.at_level("WARNING"):
+        assert _reread("_reloaded_desk", running, path) is not None
+    assert ("SIGHUP: --device replaces [device] name after validation: this "
+            "config was checked for 'Fireface 802' and is used for "
+            "'Fireface UCX II'") in caplog.text
 
 
 def test_the_advice_fits_the_cause(tmp_path, caplog):
@@ -1608,7 +1665,14 @@ def test_the_advice_fits_the_cause(tmp_path, caplog):
                  "[route:p]\nplayback = 1/2\noutput = 3/4\n")
     path.write_text("[osc]\nport = 9500\n"
                     "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    for marker in ("plain\n", None):
+    # The same for a profile that states a setting which did *not* move --
+    # here the very serial the start pinned: comparing whole machines
+    # blamed it, and named two remedies that could not work.
+    running.serial = "24216011"
+    write_config(tmp_path / "profiles" / "pinned.conf",
+                 "[device]\nserial = 24216011\n"
+                 "[route:p]\nplayback = 1/2\noutput = 3/4\n")
+    for marker in ("plain\n", "pinned\n", None):
         caplog.clear()
         if marker:
             (tmp_path / "active-profile").write_text(marker)
@@ -1616,8 +1680,23 @@ def test_the_advice_fits_the_cause(tmp_path, caplog):
             (tmp_path / "active-profile").unlink()
         with caplog.at_level("ERROR"):
             assert _reread("_reloaded_desk", running, path) is None
-        assert "systemctl --user restart oscmix.service" in caplog.text
-        assert "--no-profile" not in caplog.text
+        assert ("restart the session to follow it (systemctl --user restart "
+                "oscmix.service)") in caplog.text
+        assert "profile" not in caplog.text
+    # Both at once: the profile first, and `--no-profile` is not offered --
+    # it writes where routing.conf says, and nothing listens there yet.
+    write_config(tmp_path / "profiles" / "far.conf", "[osc]\nport = 9100\n"
+                 "[route:far]\nplayback = 1/2\noutput = 3/4\n")
+    (tmp_path / "active-profile").write_text("far\n")
+    caplog.clear()
+    with caplog.at_level("ERROR"):
+        assert _reread("_reloaded_desk", running, path) is None
+    assert ("osc port 9100 (not 7222) -- and a running session keeps the one "
+            "it was started for, so it was not applied; take [osc] and "
+            "[device] out of profile 'far', then restart the session to "
+            "follow routing.conf (systemctl --user restart oscmix.service)"
+            ) in caplog.text
+    assert "--no-profile" not in caplog.text
 
 
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
@@ -1627,8 +1706,6 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
     attributes, not what the file resolved to -- and the file is what a
     re-read compares. A first cut compared models of live names and
     announced a `--device` start again at every SIGHUP."""
-    from oscmix_desk import cli
-
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     running = profiles.load_config(path)
@@ -1636,6 +1713,7 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
         cli._override_device(running, "Some Box")
     assert "--device replaces [device] name after validation" in caplog.text
     running.osc_port, running.serial = 9000, "24216011"
+    running.overrides = running.overrides._replace(osc_port=9000)
     caplog.clear()
     with caplog.at_level("WARNING"):
         fresh = _reread(reread, running, path)
@@ -1643,4 +1721,6 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
     assert (fresh.device_name, fresh.osc_port, fresh.serial) == (
         "Some Box", 9000, "24216011")
     assert "another backend" not in caplog.text
-    assert "checked for" not in caplog.text
+    # The start said "checked for" once, for the desk it read; the reload
+    # says it for the one it read, as a restart would.
+    assert caplog.text.count("checked for") == (reread == "_reloaded_desk")

@@ -18,12 +18,12 @@ register table has no new row.
   unverified for good under `UDP 80 in use (mixer GUI running?)`. `None`
   is `EADDRINUSE` alone now; anything else is a `ReceivePortError` with
   the real cause, and the status line reads `verifier failed` rather
-  than `verifier finished`. The review's own remedy -- re-raise -- would have ended
-  an apply between its phases, pairs linked and no mix, because the
-  barrier binds the port after the links are on the wire: the barrier
-  waits blind instead, the verifier re-establishes the mix before it
-  reports the failure, and the three reads exit 1 with the cause rather
-  than a traceback. ADR 0025.
+  than `verifier finished`. The review's own remedy -- re-raise --
+  would have ended an apply between its phases, pairs linked and no mix,
+  because the barrier binds the port after the links are on the wire:
+  the barrier waits blind instead, the verifier re-establishes the mix
+  before it reports the failure, and the three reads exit 1 with the
+  cause rather than a traceback. ADR 0025.
 
 - **A switch nobody could read back says so.** With the receive port
   held or unbindable the outcome line read `N register(s) unconfirmed`,
@@ -78,16 +78,19 @@ register table has no new row.
   desk whose file resolves to another device name, usb id, serial or
   port is refused now: `reconcile skipped`, and an error naming what
   differs and what to do -- a restart for a `routing.conf` that moved;
-  for a profile, taking the sections out or `--no-profile`, because a
-  restart would move the unit off its interface. A `Config` records the
-  machine settings its file resolved to, and a setting is the session's
-  own when it equals that record *or* what the session runs with: so
-  `--device`, `--osc-port` and the serial a start pins do not read as a
-  change, whichever side names them. The switch still reloads the unit
-  and leaves the decision to it, and says so.
-- **`--device` over a file for another model says so.** The override
-  arrives after the file was validated, so the channels were checked for
-  one interface and written to another in silence. Validating *for* the
+  for a profile that itself names another machine, taking the sections
+  out or `--no-profile`, because a restart would move the unit off its
+  interface. The re-read file is resolved the way a restart would
+  resolve it: a `Config` records what its file said (`Config.loaded`)
+  and what the command line replaced (`Config.overrides`), so a file
+  under `--device` or `--osc-port`, or one that names the box the start
+  pinned, is the session's own, and a reload applies what a restart
+  would apply here. The switch still reloads the unit and leaves the
+  decision to it, and says so.
+- **`--device` over a file for another model says so**, at the start
+  and at every reload that applies such a desk. The override arrives
+  after the file was validated, so the channels were checked for one
+  interface and written to another in silence. Validating *for* the
   override needs the parser to know it, which is part of 0.7.0.
 - **The marker's temporary file has a name of its own.** Two switches
   holding different device locks shared `active-profile.tmp`, and one
@@ -125,8 +128,8 @@ register table has no new row.
   was looked for, and warned about, as the active desk's.
 - **One rule for what a re-read desk may not change.** The start's
   re-read under the lock and the SIGHUP's each assigned the five machine
-  settings by hand; both go through `profiles.keep_machine_settings`, which walks
-  the table a test already holds against `Config`.
+  settings by hand; both go through `profiles.keep_machine_settings`,
+  which walks the table a test already holds against `Config`.
 - **A profile that names another machine is told that 0.7.0 refuses
   it.** It still wins for the switch in 0.6.x. A profile is the desk,
   not the machine: with profiles able to name a backend, one marker per
@@ -134,18 +137,20 @@ register table has no new row.
   hold two device locks over that one marker. ADR 0026. A profile that
   restates its `routing.conf`'s own `[osc]` and `[device]` -- every one
   made with `--dump-config`, until `routing.conf` changes them -- is not
-  meant and stays accepted. One main
-  config per directory is now a stated rule for the same reason: the
-  marker and `profiles/` belong to the directory, not to the file.
+  meant and stays accepted. One main config per directory is now a
+  stated rule for the same reason: the marker and `profiles/` belong to
+  the directory, not to the file.
 - **The public surface grows, and nothing in it changes shape.**
   `ReceivePortError`, since `await_link_echo`, `verify_routing` and
-  `verify_and_repair` raise it; `Machine`, and with it `Config.loaded`
-  and `Config.main`; `Outcome.read_back` and `Outcome.durable`;
-  `load_config(path, base=None)`; and `blind_reapply_mix(config,
-  should_stop, why=None)`. No existing signature changes. Behaviour behind existing names changes where Fixed
-  says so: `verify_routing` and `await_link_echo` raise where `None`
-  used to cover every failure to bind, `load_config` refuses an empty
-  `[device] name`, and `load_profile` validates for the desk's device.
+  `verify_and_repair` raise it; `Machine` and `CommandLine`, and with
+  them `Config.loaded`, `Config.main` and `Config.overrides`;
+  `Outcome.read_back` and `Outcome.durable`; `load_config(path,
+  base=None)`; and `blind_reapply_mix(config, should_stop, why=None)`.
+  No existing signature changes. Behaviour behind existing names
+  changes where this section and Fixed say so: `verify_routing` and
+  `await_link_echo` raise where `None` used to cover every failure to
+  bind, `load_config` refuses an empty `[device] name`, and
+  `load_profile` validates for the desk's device.
 - **No test opens the machine's `/dev/snd/seq`.** The device wait opens
   it to make the kernel load `snd-seq`; read-only and harmless, and
   still the machine's. The suite points `OSCMIX_SEQ_DEV` at nothing.

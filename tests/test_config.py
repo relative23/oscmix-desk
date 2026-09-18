@@ -578,42 +578,44 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
     config_mod.log_device_replaced(session_mod.Config(device_name="X"), "why")
 
 
-def test_a_desk_is_elsewhere_only_when_it_is_neither_said_nor_run():
-    """`record` is what the session's file said at its start, `live` what it
-    runs with; they differ by `--device`, `--osc-port` and the pinned
-    serial. Comparing one of them refused the session's own desk: first the
-    pinned box once routing.conf named it, then the port given on the
-    command line once the file named that (both found by review)."""
+def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():
+    """A re-read file is resolved as a restart would resolve it -- the
+    command line over it -- and then held against what the session runs.
+    Comparing the bare file refused the session's own desk three times
+    over: the pinned box once routing.conf named it, the port given on the
+    command line once the file named that, and any other port under
+    `--osc-port`, with advice to restart that a restart would not have
+    followed (all found by review)."""
+    from oscmix_desk import CommandLine
     from oscmix_desk.config import Machine
 
-    record = Machine("Fireface UCX II", "2a39:3fd9", "", 7222, 8222)
+    file = Machine("Fireface UCX II", "2a39:3fd9", "", 7222, 8222)
+    said = CommandLine(device_name="Some Box", osc_port=9000)
     live = Machine("Some Box", "2a39:3fd9", "24216011", 9000, 8222)
-    for same in (record, live,
-                 record._replace(serial="24216011"),       # the pinned box
-                 record._replace(osc_port=9000),           # the --osc-port
-                 live._replace(serial="")):                # "the only one"
-        assert same.elsewhere(record, live) == "", same
-    assert record._replace(serial="99887766").elsewhere(record, live) == \
+    assert file.under(CommandLine()) == file
+    assert file.under(said) == live._replace(serial="")
+    assert file.under(CommandLine(osc_port=9000)).device_name == file.device_name
+    for same in (file,
+                 file._replace(serial="24216011"),          # the pinned box
+                 file._replace(osc_port=9500),              # under --osc-port
+                 file._replace(device_name="Fireface 802")):    # under --device
+        assert same.under(said).elsewhere(live) == "", same
+    assert file._replace(serial="99887766").under(said).elsewhere(live) == \
         "serial '99887766' (not '24216011')"
-    assert record._replace(osc_port=9500, device_name="Fireface 802") \
-        .elsewhere(record, live) == ("device name 'Fireface 802' (not 'Some "
-                                     "Box'), osc port 9500 (not 9000)")
+    assert file._replace(usb_id="1234:5678", osc_recv_port=9).under(said) \
+        .elsewhere(live) == ("usb id '1234:5678' (not '2a39:3fd9'), "
+                             "osc recv port 9 (not 8222)")
+    # And with nothing on the command line, the file is all there is.
+    assert file._replace(osc_port=9500).elsewhere(
+        live._replace(osc_port=7222, device_name=file.device_name)) == \
+        "osc port 9500 (not 7222)"
 
 
-def test_no_file_resolves_to_the_defaults_and_that_is_a_record(session_mod,
-                                                              tmp_path):
-    """A session started without a routing.conf, with `--osc-port 9000`, was
-    refused the file that appeared later and named nothing: the same file
-    present at its start is applied (found by review)."""
+def test_no_file_resolves_to_the_defaults_and_that_is_a_record(session_mod):
     from oscmix_desk.config import Machine
 
-    nothing = session_mod.load_config(None)
-    assert nothing.loaded == Machine("Fireface UCX II", "2a39:3fd9", "",
-                                     7222, 8222)
-    appeared = session_mod.load_config(write(
-        tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
-    live = nothing.loaded._replace(osc_port=9000)
-    assert appeared.loaded.elsewhere(nothing.loaded, live) == ""
+    assert session_mod.load_config(None).loaded == Machine(
+        "Fireface UCX II", "2a39:3fd9", "", 7222, 8222)
 
 
 def test_an_untested_device_constrains_only_what_upstream_declares(
