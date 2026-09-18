@@ -461,8 +461,8 @@ def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     # the box it runs on.
     desk = {"routes", "channels", "policies", "globals"}
     # Neither: `loaded` records the machine settings the file resolved to,
-    # and `notices` what to say where the desk is written (0.6.11).
-    record = {"loaded", "notices"}
+    # and `main` what a profile's routing.conf resolved to (0.6.11).
+    record = {"loaded", "main"}
     machine = {f.name for f in dataclasses.fields(Config)} - desk - record
     covered = {attr for _section, _option, attr in profiles.MACHINE_SETTINGS}
     assert machine == covered, (
@@ -1572,37 +1572,45 @@ def _retargeting_desk(tmp_path):
     return path
 
 
-def test_a_profile_that_states_machine_settings_is_told_what_0_7_0_does(
+def test_a_profile_that_names_another_machine_is_told_what_0_7_0_does(
         tmp_path, caplog, recording_backend):
     """It still wins in 0.6.x (ADR 0011). ADR 0026 ends that: one persisted
     profile meant three targets, and two such profiles hold two device
-    locks over one marker. Said where the desk is written, once; a
-    profile that restates routing.conf's values is told as well, because
-    0.7.0 refuses the sections, not the difference."""
+    locks over one marker. Said where the desk is written, once.
+
+    A profile that *restates* routing.conf's values is not told anything:
+    `--dump-config > profiles/x.conf`, the documented way to make one,
+    writes `[device]` and `[osc]` into every profile. The first cut
+    warned about the sections and would have refused them all."""
+    from oscmix_desk import config as config_mod
+
     path = _retargeting_desk(tmp_path)
-    assert profiles.load_profile("here", path).notices == []
-    for name, sections in (("same", "[osc]"), ("there", "[osc] and [device]")):
-        notice, = profiles.load_profile(name, path).notices
-        assert notice.startswith("%s.conf states %s: a profile is the desk"
-                                 % (name, sections))
-        assert "from 0.7.0 this is refused" in notice
-    assert profiles.load_config(path).notices == [], "routing.conf may"
+    for name in ("here", "same"):
+        assert config_mod.other_machine_warning(
+            profiles.load_profile(name, path)) is None, name
+    assert config_mod.other_machine_warning(profiles.load_config(path)) is None
+    there = config_mod.other_machine_warning(profiles.load_profile("there", path))
+    assert there.startswith(
+        "this profile names another backend or interface than its "
+        "routing.conf -- serial '99887766' (not ''), osc port 9500 (not 9001)")
+    assert "from 0.7.0 it is refused (ADR 0026)" in there
     with caplog.at_level("WARNING"):
         profiles.switch_profile("there", config_path=path,
                                 backend=recording_backend, verify=False)
-    assert caplog.text.count("from 0.7.0 this is refused") == 1
+    assert caplog.text.count("from 0.7.0 it is refused") == 1
 
 
-def test_a_switch_says_whether_the_profile_names_another_backend(
-        tmp_path, recording_backend):
-    path = _retargeting_desk(tmp_path)
-    for name, elsewhere in (("here", False), ("same", False), ("there", True)):
-        outcome = profiles.switch_profile(name, config_path=path,
-                                          backend=recording_backend,
-                                          verify=False)
-        assert outcome.retargets is elsewhere, name
-    assert profiles.restore_main(config_path=path, backend=recording_backend,
-                                 verify=False).retargets is False
+def test_a_dumped_config_makes_a_profile_nobody_is_warned_about(tmp_path):
+    from oscmix_desk import config as config_mod
+    from oscmix_desk.reconcile import render_config
+
+    path = write_config(tmp_path / "routing.conf", GOOD)
+    dumped = render_config(profiles.load_config(path))
+    assert "[device]" in dumped, "which is why the sections cannot be the rule"
+    assert "[osc]" in dumped
+    write_config(tmp_path / "profiles" / "dumped.conf", dumped)
+    assert config_mod.other_machine_warning(
+        profiles.load_profile("dumped", path)) is None
 
 
 def test_a_marker_that_may_not_survive_a_power_cut_says_so_in_the_outcome(

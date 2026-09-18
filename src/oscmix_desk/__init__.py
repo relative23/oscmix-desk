@@ -30,6 +30,7 @@ from __future__ import annotations
 from .config import (
                         ChannelSetting,
                         Config,
+                        Machine,
                         Route,
                         discover_config_path,
                         list_profiles,
@@ -131,6 +132,7 @@ __all__ = [
                         "Device",
                         "DeviceAmbiguous",
                         "DeviceLockUnavailable",
+                        "Machine",
                         "Outcome",
                         "ReceivePortError",
                         "Route",

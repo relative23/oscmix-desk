@@ -769,22 +769,29 @@ def test_a_reload_keeps_the_ports_the_backend_is_bound_to(
     import argparse
 
     path = tmp_path / "routing.conf"
-    path.write_text("[osc]\nport = 9100\nrecv-port = 9101\n"
-                    "[device]\nname = Fireface 802\nusb-id = 1234:5678\n"
-                    "serial = 99887766\n" + CONF)
-    running = session_mod.Config(device_name="Fireface UCX II",
-                                 osc_port=7222, osc_recv_port=8222,
-                                 serial="24216011")
+    path.write_text(CONF)
+    # What the start replaced: --osc-port, --device, and the serial it
+    # pinned. The file says none of it and is this session's all the same.
+    running = session_mod.load_config(path)
+    running.osc_port, running.device_name = 9000, "Fireface UCX II (24216011)"
+    running.serial = "24216011"
 
     fresh = _reconciled(monkeypatch, argparse.Namespace(config=path), running)
     assert fresh is not running, "the file was not re-read at all"
     assert [r.name for r in fresh.routes] == ["main"]
-    assert (fresh.osc_port, fresh.osc_recv_port) == (7222, 8222)
-    assert fresh.device_name == "Fireface UCX II", (
-        "a reload cannot move to another device; that needs a restart")
-    # Nor to another box of the same model: the lock and the backend were
-    # taken for the interface this process pinned (ADR 0024).
+    assert (fresh.osc_port, fresh.osc_recv_port) == (9000, 8222)
+    assert fresh.device_name == "Fireface UCX II (24216011)"
     assert (fresh.usb_id, fresh.serial) == ("2a39:3fd9", "24216011")
+
+    # A file that names another backend and another box is not moved to,
+    # and since 0.6.11 it is not applied *here* either: it was pinned to
+    # this session's interface and written, so a desk for one box reached
+    # another (ADR 0024 kept the settings, ADR 0026 is about the desk).
+    path.write_text("[osc]\nport = 9100\nrecv-port = 9101\n"
+                    "[device]\nname = Fireface 802\nusb-id = 1234:5678\n"
+                    "serial = 99887766\n" + CONF)
+    assert _reconciled(monkeypatch, argparse.Namespace(config=path),
+                       running) is None
 
 
 # --------------------------------------------------------------------------

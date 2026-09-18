@@ -119,10 +119,6 @@ class Outcome:
     #: not be synced, so a power cut may bring the previous state back.
     #: ``persisted`` decides the reload; this is said in the line only.
     durable: bool = True
-    #: The profile names another backend or interface than routing.conf.
-    #: The unit for this config tree is then not reloaded: it would not
-    #: apply the desk anyway (``session._kept_for_this_process``).
-    retargets: bool = False
     #: Whether a read-back ran, for an applied outcome (a refusal wrote
     #: nothing, so there was nothing to read). False when the caller
     #: asked for none, or the receive port was held or could not be
@@ -193,9 +189,12 @@ def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
     the compiled-in default 7222 during development and wrote to a live
     Fireface from a unit test, because the default happened to match.
 
-    A profile may still set them, and then it wins: the machine that
-    needs a second backend on another port is exactly the machine whose
-    profiles are per-backend.
+    A profile that states them still wins in 0.6.x. The reason once given
+    here -- a machine with a second backend, whose profiles would be
+    per-backend -- is withdrawn by ADR 0026: one marker per directory
+    cannot say which backend "the active profile" is for. Such a profile
+    is told so where it is written (``config.other_machine_warning``),
+    and a running session does not apply it to its own interface.
     """
     path = profile_path(name, config_path)
     if not path.is_file():
@@ -208,10 +207,12 @@ def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
     # through the UCX II's table and written (0.6.11). The parser takes
     # every machine setting with the value it finds as the fallback, so a
     # profile that states one still wins.
-    base = None
-    if config_path is not None and Path(config_path).is_file():
-        base = keep_machine_settings(Config(), load_config(config_path))
-    return load_config(path, base)
+    if config_path is None or not Path(config_path).is_file():
+        return load_config(path)
+    main = load_config(config_path)
+    profile = load_config(path, keep_machine_settings(Config(), main))
+    profile.main = main.loaded
+    return profile
 
 
 #: Everything in a config that describes the *machine* rather than the
@@ -850,9 +851,6 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         # in the log: the caller must then not reload the unit, whose
         # reconcile would undo what just landed (ADR 0019).
         marked = remember_active_profile(name, config_path)
-        # A profile that names its own backend is not the unit's to follow
-        # at a reload (ADR 0026); the caller leaves the unit alone.
-        retargets = _names_another_backend(config, config_path)
 
         if not verify:
             # Not confirmed, because nobody looked -- which is a different
@@ -865,7 +863,7 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         else:
             outcome = _check(name, config, device)
         return replace(outcome, persisted=marked.in_effect,
-                       durable=marked.durable, retargets=retargets)
+                       durable=marked.durable)
 
 
 def restore_main(config_path: Optional[Path] = None,
@@ -909,15 +907,6 @@ def restore_main(config_path: Optional[Path] = None,
             outcome = _check("routing.conf", config, device)
         return replace(outcome, persisted=marked.in_effect,
                        durable=marked.durable)
-
-
-def _names_another_backend(profile: Config,
-                           config_path: Optional[Path]) -> bool:
-    """Whether the profile resolved to other machine settings than its
-    main config does -- another port, serial, usb id or device name."""
-    if config_path is None or not Path(config_path).is_file():
-        return False
-    return profile.loaded != load_config(config_path).loaded
 
 
 def _write(config: Config, device: Backend) -> None:

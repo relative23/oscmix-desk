@@ -408,11 +408,6 @@ def _report_outcome(outcome: "Outcome",
     # that switch (0.6.9). The unit's desk is what the unit resolved --
     # its own --config, else its own environment -- not what this
     # process would.
-    if outcome.retargets:
-        log.info("%s not reloaded: this profile names its own backend or "
-                 "interface, which a running session does not follow; a "
-                 "restart does", SERVICE_UNIT)
-        return EXIT_OK
     unit_desk = _unit_desk()
     if config_path is not None and unit_desk is not None \
             and not _same_file(config_path, unit_desk):
@@ -421,9 +416,13 @@ def _report_outcome(outcome: "Outcome",
         return EXIT_OK
     reloaded = reload_service()
     if reloaded == RELOAD_DONE:
-        log.info("%s reloaded, so its own reconcile follows the new desk",
-                 SERVICE_UNIT)
-        if config_path is not None and unit_desk is None:
+        # The unit decides what it does with the desk: it has the facts.
+        # One that names another backend is not applied there, and its
+        # journal says so (session._kept_for_this_process).
+        log.info("%s reloaded; its own reconcile follows the new desk, or "
+                 "says in its journal why it does not", SERVICE_UNIT)
+        if config_path is not None and unit_desk is None \
+                and _unit_is_unreadable():
             # Reloaded all the same: nearly every switch is for the unit's
             # own desk, and leaving the unit untold lets its verifier
             # re-apply the old one (0.6.3). But it is a guess, so say so.
@@ -462,6 +461,13 @@ def _unit_desk() -> Optional[Path]:
         return None
     named = args.config or discover_config_path(unit.environ)
     return None if named is None else unit.cwd / named
+
+
+def _unit_is_unreadable() -> bool:
+    """None from ``_unit_desk`` has two meanings, and only one is a guess:
+    a unit that was read and resolves no config has no desk to re-apply."""
+    return unit_process(Path(os.environ.get("OSCMIX_PROC_ROOT",
+                                            "/proc"))) is None
 
 
 def _same_file(one: Path, other: Optional[Path]) -> bool:

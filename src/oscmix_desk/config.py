@@ -160,9 +160,10 @@ class Config:
     #: this is what remembers which interface the file was validated for
     #: and which backend it names (0.6.11). None when no file was loaded.
     loaded: Optional[Machine] = None
-    #: Things to say where this desk is written or shown, and only there:
-    #: from the parser they were said on every load.
-    notices: List[str] = field(default_factory=list)
+    #: For a profile: what its routing.conf resolved to, set by
+    #: ``profiles.load_profile``. A profile whose own record differs names
+    #: another machine than its config tree (ADR 0026).
+    main: Optional[Machine] = None
 
 
 #: The last place a desk is looked for, after the user's own.
@@ -438,15 +439,6 @@ def load_config(path: Optional[Path],
     _check_link_agreement(config.routes)
     config.loaded = Machine(config.device_name, config.usb_id, config.serial,
                             config.osc_port, config.osc_recv_port)
-    stated = [s for s in ("osc", "device") if parser.has_section(s)]
-    if base is not None and stated:
-        # `base` is how a profile is read. It still wins in 0.6.x, as it
-        # always has (ADR 0011); ADR 0026 is why that ends.
-        config.notices.append(
-            "%s states [%s]: a profile is the desk, not the machine, and "
-            "from 0.7.0 this is refused -- put it in routing.conf, or give "
-            "a second backend a config directory of its own"
-            % (path.name, "] and [".join(stated)))
     return config
 
 
@@ -547,9 +539,27 @@ def log_desk_notices(config: "Config") -> None:
     and ``--no-profile`` is not the one being written, and a reload never
     passed it at all (found by review, 0.6.11).
     """
-    for message in (unchecked_routes_warning(config), *config.notices):
+    for message in (unchecked_routes_warning(config),
+                    other_machine_warning(config)):
         if message:
             log.warning("%s", message)
+
+
+def other_machine_warning(config: "Config") -> Optional[str]:
+    """What to say about a profile that names another machine, or None.
+
+    Restating routing.conf's own values is not that: ``--dump-config >
+    profiles/x.conf``, the documented way to make a profile, writes
+    ``[device]`` and ``[osc]`` into every one. What ADR 0026 ends is a
+    profile that resolves somewhere *else*.
+    """
+    mine, home = config.loaded, config.main
+    if mine is None or home is None or mine == home:
+        return None
+    return ("this profile names another backend or interface than its "
+            "routing.conf -- %s. It still wins in 0.6.x; from 0.7.0 it is "
+            "refused (ADR 0026): take [osc] and [device] out of the profile"
+            % mine.differs_from(home))
 
 
 def log_device_replaced(config: "Config", why: str) -> None:

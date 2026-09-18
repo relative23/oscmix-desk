@@ -85,13 +85,16 @@ Common findings in the journal:
 - `the desk now in effect is for another backend or interface -- ...`
   with `Status: running; reconcile skipped` -- `routing.conf`, or the
   active profile, now resolves to another device name, usb id, serial or
-  port than the ones this session was started with; the line says
-  which. A running session keeps its backend, so the desk was **not**
-  applied. `systemctl --user restart oscmix.service` follows it.
-- `<profile>.conf states [osc]: a profile is the desk, not the machine`
-  -- works in 0.6.x and is refused from 0.7.0 (ADR 0026). Move the
-  section to `routing.conf`; a second backend gets a config directory
-  of its own (`--config`).
+  port than the ones this session was started with; the line says which,
+  and what to do. A running session keeps its backend, so the desk was
+  **not** applied. For `routing.conf`: `systemctl --user restart
+  oscmix.service` follows it. For a profile: take `[osc]` and `[device]`
+  out of it, or `--no-profile` -- a restart would move the unit off its
+  interface.
+- `this profile names another backend or interface than its
+  routing.conf` -- works for the switch in 0.6.x and is refused from
+  0.7.0 (ADR 0026). A profile made with `--dump-config` restates the
+  main config's values and is not meant.
 - `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
   GUI was listening on the state port, so the read-back was not possible.
 - `unconfirmed after retry: ...` -- the device never reported the listed

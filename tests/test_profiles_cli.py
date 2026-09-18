@@ -245,8 +245,8 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
         assert cli.main(["--config", str(path), "--profile", "tracking"]) == EXIT_OK
     assert reloads == [1]
     assert capsys.readouterr().out.endswith("\n")
-    assert ("oscmix.service reloaded, so its own reconcile follows the new "
-            "desk") in caplog.text
+    assert ("oscmix.service reloaded; its own reconcile follows the new "
+            "desk, or says in its journal why it does not") in caplog.text
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert reloads == [1, 1]
     # A stopped unit is not an error: there is nothing whose verifier
@@ -316,25 +316,6 @@ def test_no_profile_that_cannot_forget_the_marker_does_not_reload(
     assert "oscmix.service not reloaded" in caplog.text
 
 
-def test_a_profile_for_another_backend_does_not_reload_the_unit(
-        tmp_path, monkeypatch, caplog):
-    """The reload made the unit apply the same desk to *its* interface: one
-    persisted profile, written to two boxes (0.6.11, ADR 0026)."""
-    from oscmix_desk import profiles
-
-    reloads = []
-    monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or cli.RELOAD_DONE)
-    monkeypatch.setattr(cli, "unit_process", lambda *_a: None)
-    elsewhere = profiles.Outcome(state=profiles.APPLIED_UNVERIFIED, name="x",
-                                 reason=profiles.NOT_CHECKED, retargets=True)
-    with caplog.at_level("INFO"):
-        assert cli._report_outcome(elsewhere, tmp_path / "routing.conf") \
-            == EXIT_OK
-    assert reloads == []
-    assert "names its own backend or interface" in caplog.text
-
-
 def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
         tmp_path, monkeypatch, caplog):
     """Unknown is still a reload: nearly every switch is for the unit's own
@@ -350,8 +331,19 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
         assert cli._report_outcome(applied, tmp_path / "routing.conf") \
             == EXIT_OK
     assert "could not tell which desk oscmix.service runs" in caplog.text
-    # A unit that is not running was not guessed about.
+    # A unit that was read and resolves no config has no desk to re-apply:
+    # that None is an answer, not a guess (found by review).
+    from oscmix_desk.process import UnitProcess
+
     caplog.clear()
+    monkeypatch.setattr(cli, "unit_process", lambda *_a: UnitProcess(
+        argv=("oscmix-session",), environ={"HOME": str(tmp_path / "none")},
+        cwd=tmp_path))
+    with caplog.at_level("WARNING"):
+        cli._report_outcome(applied, tmp_path / "routing.conf")
+    assert "could not tell" not in caplog.text
+    # Nor was a unit that is not running guessed about.
+    monkeypatch.setattr(cli, "unit_process", lambda *_a: None)
     monkeypatch.setattr(cli, "reload_service", lambda: cli.RELOAD_NOT_RUNNING)
     with caplog.at_level("WARNING"):
         cli._report_outcome(applied, tmp_path / "routing.conf")

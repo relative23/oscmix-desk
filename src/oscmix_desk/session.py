@@ -17,6 +17,7 @@ from typing import Dict, Optional, Tuple
 
 from .config import (
     Config,
+    Machine,
     discover_config_path,
     log_desk_notices,
     profile_path,
@@ -314,15 +315,16 @@ def _desk_under_the_lock(config_path: Optional[Path],
     if config_path is None:
         return running
     try:
-        fresh, _active = effective_config(config_path)
+        fresh, active = effective_config(config_path)
     except ConfigError as exc:
         log.error("%s is no longer usable (%s); applying the desk this "
                   "process started with", config_path, exc)
         return running
-    return _kept_for_this_process(fresh, running) or running
+    return _kept_for_this_process(fresh, running, active) or running
 
 
-def _kept_for_this_process(fresh: Config, running: Config) -> Optional[Config]:
+def _kept_for_this_process(fresh: Config, running: Config,
+                           active: Optional[str]) -> Optional[Config]:
     """``fresh`` with this process's machine settings, or None when it is a
     desk for somewhere else.
 
@@ -332,21 +334,35 @@ def _kept_for_this_process(fresh: Config, running: Config) -> Optional[Config]:
     *here* whatever it named: a profile stating another port and serial
     was written to its own interface by the switch, and then to this one
     by the reload the switch sent; a `routing.conf` edited to name a box
-    with 42 outputs reached a UCX II, which has twenty. What the file
-    resolved to (``Config.loaded``) is compared instead of the live
-    attributes, so ``--device``, ``--osc-port`` and the pinned serial do
-    not read as a change. A session started with no file has no record
-    and takes whatever appears.
+    with 42 outputs reached a UCX II, which has twenty (ADR 0026).
+
+    What the files resolved to is compared (``Config.loaded``), not the
+    live attributes, so ``--device`` and ``--osc-port`` do not read as a
+    change; a session started with no file has only the live ones. The
+    serial is the exception, because a start pins the box it found: a
+    file that names that very box, or none, has not moved.
     """
-    ours, theirs = running.loaded, fresh.loaded
-    if ours is not None and theirs is not None and theirs != ours:
-        log.error("the desk now in effect is for another backend or "
-                  "interface -- %s -- and a running session keeps the one "
-                  "it was started for, so it was not applied; restart the "
-                  "session to follow it (systemctl --user restart %s)",
-                  theirs.differs_from(ours), SERVICE_UNIT)
-        return None
-    return keep_machine_settings(fresh, running)
+    theirs = fresh.loaded
+    ours = running.loaded or Machine(
+        running.device_name, running.usb_id, running.serial,
+        running.osc_port, running.osc_recv_port)
+    if theirs is None:
+        return keep_machine_settings(fresh, running)
+    if theirs.serial in ("", running.serial):
+        theirs = theirs._replace(serial=ours.serial)
+    if theirs == ours:
+        return keep_machine_settings(fresh, running)
+    # A restart follows a routing.conf that moved. It would follow a
+    # profile too -- off this interface, which nothing would then manage
+    # -- so that case is sent to the profile instead (ADR 0026).
+    log.error("the desk now in effect is for another backend or interface "
+              "-- %s -- and a running session keeps the one it was started "
+              "for, so it was not applied; %s", theirs.differs_from(ours),
+              "take [osc] and [device] out of profile %r, or --no-profile"
+              % active if active else
+              "restart the session to follow it (systemctl --user restart "
+              "%s)" % SERVICE_UNIT)
+    return None
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -653,7 +669,7 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
     # interface belong to the process that is running, and changing them
     # here would mean writing to a port nobody is listening on -- with no
     # error, because OSC over UDP has no delivery guarantee (ADR 0024).
-    kept = _kept_for_this_process(fresh, running)
+    kept = _kept_for_this_process(fresh, running, active)
     if kept is None:
         return None
     # Name what was actually reloaded. On the first live run this line

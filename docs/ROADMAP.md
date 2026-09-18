@@ -114,10 +114,10 @@ is for. A second outside review, of 0.6.10, then named the rest of the
 seam: a profile may state its own port and serial, the switch wrote it
 to that backend, and the reload the switch sent made the unit write the
 same desk to its own -- one persisted profile, three targets, and two
-device locks over one marker. 0.6.11 stops the wrong writes (a re-read
-desk for somewhere else is not applied, and the unit is not reloaded for
-it) and decides the question: a profile is the desk, not the machine
-(ADR 0026).
+device locks over one marker. 0.6.11 stops the wrong writes -- a
+running session does not apply a re-read desk that is for somewhere
+else -- and decides the question: a profile is the desk, not the
+machine (ADR 0026).
 
 ### Planned: 0.7.0
 
@@ -125,8 +125,8 @@ Decided, and recorded so that none of it is found twice. No new surface:
 nothing is added to what a `routing.conf` can declare.
 
 1. **Modules a person can read, first and alone.** Six source modules
-   are over 600 lines (`registers` 1038, `config` 964, `profiles` 960,
-   `reconcile` 843, `cli` 689, `session` 677) and four test files over
+   are over 600 lines (`registers` 1038, `profiles` 999, `config` 990,
+   `reconcile` 843, `session` 711, `cli` 708) and four test files over
    900. Split at seams that exist -- in `profiles`: the device lock, the
    marker's persistence, the switch transaction, which are the three
    identities the second review found tangled; in `config`: the model,
@@ -137,8 +137,10 @@ nothing is added to what a `routing.conf` can declare.
    a moved function silently unhooks a patch: the isolation fixtures
    assert their targets exist before anything moves. This file and the
    changelog lose their history to `docs/history/`.
-2. **A profile is the desk** (ADR 0026): `[osc]` and `[device]` in a
-   profile are a `ConfigError`; the inheritance code goes.
+2. **A profile is the desk** (ADR 0026): a profile that resolves to
+   another machine than its `routing.conf` is a `ConfigError`. One that
+   restates the same values, as every dumped profile does, stays
+   accepted.
 3. **Tighter types** (first review): `Phase` as `IntEnum`, `WriteReason`
    and the register domains, policies and verification classes as enums
    where they steer control flow; one named result for "the receive port

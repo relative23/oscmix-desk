@@ -76,11 +76,14 @@ register table has no new row.
   switch sent -- one persisted profile meant one target for a switch,
   another for a reload, and the first again after a restart. A re-read
   desk whose file resolves to another device name, usb id, serial or
-  port is refused now: `reconcile skipped`, an error naming what
-  differs, and the advice to restart. The switch does not send that
-  reload in the first place. A `Config` records the machine settings its
-  file resolved to, so `--device`, `--osc-port` and the pinned serial do
-  not read as a change.
+  port is refused now: `reconcile skipped`, and an error naming what
+  differs and what to do -- a restart for a `routing.conf` that moved;
+  for a profile, taking the sections out or `--no-profile`, because a
+  restart would move the unit off its interface. A `Config` records the
+  machine settings its file resolved to, so `--device` and `--osc-port`
+  do not read as a change, and the serial a start pinned is the box it
+  is on: a file that names that box, or none, has not moved. The switch
+  still reloads the unit and leaves the decision to it, and says so.
 - **`--device` over a file for another model says so.** The override
   arrives after the file was validated, so the channels were checked for
   one interface and written to another in silence. Validating *for* the
@@ -96,7 +99,8 @@ register table has no new row.
 - **A reload sent without knowing the unit's desk says it guessed.**
   When the unit's `/proc` entry cannot be read the reload still goes
   out -- nearly every switch is for the unit's own desk, and an untold
-  unit lets its verifier re-apply the old one -- but with a warning.
+  unit lets its verifier re-apply the old one -- but with a warning. A
+  unit that was read and resolves no config is not a guess.
 - **An empty `[device] name` is a configuration error.** The name is a
   substring match, and the empty string is a substring of every name.
   Measured on the start path: with one MIDI-capable card `name =`
@@ -121,17 +125,19 @@ register table has no new row.
   re-read under the lock and the SIGHUP's each assigned the five machine
   settings by hand; both go through `profiles.keep_machine_settings`, which walks
   the table a test already holds against `Config`.
-- **A profile that states `[osc]` or `[device]` is told that 0.7.0
-  refuses it.** It still wins in 0.6.x. A profile is the desk, not the
-  machine: with profiles able to name a backend, one marker per config
-  directory cannot say which desk is where, and two such profiles hold
-  two device locks over that one marker. ADR 0026. One main config per
-  directory is now a stated rule for the same reason: the marker and
-  `profiles/` belong to the directory, not to the file.
+- **A profile that names another machine is told that 0.7.0 refuses
+  it.** It still wins for the switch in 0.6.x. A profile is the desk,
+  not the machine: with profiles able to name a backend, one marker per
+  config directory cannot say which desk is where, and two such profiles
+  hold two device locks over that one marker. ADR 0026. A profile that
+  restates its `routing.conf`'s own `[osc]` and `[device]` -- every one
+  made with `--dump-config` -- is not meant and stays accepted. One main
+  config per directory is now a stated rule for the same reason: the
+  marker and `profiles/` belong to the directory, not to the file.
 - **The public surface grows, and nothing in it changes shape.**
   `ReceivePortError`, since `await_link_echo`, `verify_routing` and
-  `verify_and_repair` raise it; `Outcome.read_back`, `Outcome.durable`
-  and `Outcome.retargets`; `Config.loaded` and `Config.notices`;
+  `verify_and_repair` raise it; `Machine`, and with it `Config.loaded`
+  and `Config.main`; `Outcome.read_back` and `Outcome.durable`;
   `load_config(path, base=None)`; and `blind_reapply_mix(config,
   should_stop, why=None)`. No existing signature changes. Behaviour behind existing names changes where Fixed
   says so: `verify_routing` and `await_link_echo` raise where `None`

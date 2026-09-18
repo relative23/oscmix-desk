@@ -99,3 +99,12 @@ better than one matching neither.
 The outcome maps to more than two codes since 0.6.6: 4 when the switch
 was applied but its marker could not be written, 5 when the unit refused
 the reload; a `--diff` that differs exits 3 (ADR 0019).
+
+## Amended in 0.6.11
+
+"A profile inherits `[osc]` and `[device]` from the main config unless
+it states them" stays true in 0.6.x, and ends for a profile that states
+*another* machine: [ADR 0026](0026-a-profile-is-the-desk-not-the-machine.md).
+Restating the main config's own values, as a dumped profile does, stays
+accepted.
+
