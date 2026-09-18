@@ -329,11 +329,9 @@ def _desk_under_the_lock(config_path: Optional[Path],
 def _kept_for_this_process(fresh: Config, running: Config) -> Config:
     """``fresh`` with this process's machine settings, saying so when that
     puts a desk checked for one interface onto another."""
-    named = fresh.device_name
     fresh = keep_machine_settings(fresh, running)
-    log_device_replaced(named, fresh.device_name,
-                        "a running session keeps its interface until it is "
-                        "restarted")
+    log_device_replaced(fresh, "a running session keeps the interface it "
+                        "was started for", since=running)
     return fresh
 
 

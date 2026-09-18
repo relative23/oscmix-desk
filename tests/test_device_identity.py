@@ -1513,24 +1513,59 @@ def test_a_re_read_that_lands_on_another_interface_says_so(tmp_path, caplog,
     was checked for a box with no model, the name was pinned back, and
     `/output/41/stereo` went to an interface with twenty outputs -- in
     silence. Validating for the running interface needs the parser to
-    know it (0.7.0); until then the reload says what happened."""
-    from oscmix_desk import Config
-
+    know it (0.7.0); until then the re-read says what happened."""
     path = write_config(tmp_path / "routing.conf",
-                        "[device]\nname = Some Box\n\n"
-                        "[route:main]\nplayback = 1/2\noutput = 41/42\n")
-    running = Config()
+                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    running = profiles.load_config(path)
     args = (running, path) if reread == "_reloaded_desk" else (path, running)
+    notice = ("a running session keeps the interface it was started for: "
+              "this config was checked for 'Some Box' and is used for "
+              "'Fireface UCX II'")
+    with caplog.at_level("WARNING"):
+        getattr(session_module, reread)(*args)
+    assert "checked for" not in caplog.text, "the same model: nothing to say"
+
+    path.write_text("[device]\nname = Some Box\n\n"
+                    "[route:main]\nplayback = 1/2\noutput = 41/42\n")
     with caplog.at_level("WARNING"):
         fresh = getattr(session_module, reread)(*args)
     assert fresh.device_name == "Fireface UCX II"
-    assert ("a running session keeps its interface until it is restarted: "
-            "this config was checked for 'Some Box' and is used for "
-            "'Fireface UCX II'") in caplog.text
-    # The same model under the same name: nothing to say.
+    assert fresh.checked_for == "Some Box"
+    assert notice in caplog.text
+
+    # The third way there: routing.conf untouched, an active profile that
+    # names its own interface, switched to while the session runs.
     caplog.clear()
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    write_config(tmp_path / "profiles" / "far.conf",
+                 "[device]\nname = Some Box\n\n"
+                 "[route:far]\nplayback = 1/2\noutput = 41/42\n")
+    (tmp_path / "active-profile").write_text("far\n")
     with caplog.at_level("WARNING"):
         getattr(session_module, reread)(*args)
-    assert "checked for" not in caplog.text
+    assert notice in caplog.text
 
+
+@pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
+def test_a_re_read_does_not_blame_itself_for_what_the_start_already_said(
+        tmp_path, caplog, reread):
+    """A start with `--device "Some Box"` over a file for a UCX II says so
+    once, in the CLI. The re-read found the same mismatch and announced it
+    again -- at the start, and on every SIGHUP -- as the session "keeping
+    its interface", with advice to restart that changes nothing (found by
+    review, 0.6.11)."""
+    from oscmix_desk import cli
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    running = profiles.load_config(path)
+    with caplog.at_level("WARNING"):
+        cli._override_device(running, "Some Box")
+    assert "--device replaces [device] name after validation" in caplog.text
+    assert running.checked_for == "Fireface UCX II"
+    caplog.clear()
+    args = (running, path) if reread == "_reloaded_desk" else (path, running)
+    with caplog.at_level("WARNING"):
+        fresh = getattr(session_module, reread)(*args)
+    assert fresh.device_name == "Some Box"
+    assert "checked for" not in caplog.text

@@ -460,7 +460,10 @@ def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     # `globals` likewise -- an echo send is part of a mix, not part of
     # the box it runs on.
     desk = {"routes", "channels", "policies", "globals"}
-    machine = {f.name for f in dataclasses.fields(Config)} - desk
+    # `checked_for` is neither: it records which device name the file was
+    # validated for, and a desk re-read keeps its own (0.6.11).
+    record = {"checked_for"}
+    machine = {f.name for f in dataclasses.fields(Config)} - desk - record
     covered = {attr for _section, _option, attr in profiles.MACHINE_SETTINGS}
     assert machine == covered, (
         "not inherited by a profile switch: %s" % sorted(machine - covered))

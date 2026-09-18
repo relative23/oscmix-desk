@@ -503,8 +503,9 @@ def test_routes_on_an_unmodelled_device_have_a_warning_for_the_caller(
     has warned since 0.6.2, while its routes were written to hardware
     nobody modelled without a word. The parser stays quiet: it runs on
     every load, and the first cut of this warned two to four times per
-    start and about the wrong file while a profile was active. The
-    caller logs it once, about the desk in effect (0.6.11)."""
+    start and about the wrong file while a profile was active. The paths
+    that write or show a desk ask about the desk they have in hand
+    (`log_unchecked_routes`, 0.6.11)."""
     from oscmix_desk import config as config_mod
 
     with caplog.at_level("WARNING"):

@@ -171,9 +171,8 @@ def _override_device(config: Config, name: str) -> None:
     restore, which take their interface from the config and never saw
     the override (``_refuse_conflicting_actions``).
     """
-    checked_for = config.device_name
     config.device_name = name
-    log_device_replaced(checked_for, name,
+    log_device_replaced(config,
                         "--device replaces [device] name after validation")
 
 
@@ -319,16 +318,20 @@ def _refuse_conflicting_actions(parser: ArgumentParser,
         parser.error("%s cannot be combined" % " and ".join(asked))
     if args.dry_run and asked and asked[0] not in ("--profile", "--no-profile"):
         parser.error("--dry-run cannot be combined with %s" % asked[0])
+    if args.device is not None and not args.device.strip():
+        # Falsy, so the override below skipped it without a word.
+        parser.error("--device needs a name")
     overrides = [flag for flag, given in (("--device", args.device),
                                           ("--osc-port", args.osc_port))
                  if given is not None]
     if overrides and asked and asked[0] in ("--profile", "--no-profile"):
-        # A switch resolves its interface and its ports from the config
-        # (profiles._target). The overrides never reached it: they were
-        # dropped without a word, while the dry run of the same switch
-        # honoured them and so showed something the switch would not do.
-        parser.error("%s cannot be combined with %s: a switch takes its "
-                     "interface and ports from routing.conf and the profile"
+        # A switch and a restore resolve their interface and ports from
+        # the config (profiles._target). The overrides never reached
+        # them: they were dropped without a word, while the dry run of
+        # the same switch looked for the interface --device named, and
+        # so showed something the switch would not do.
+        parser.error("%s cannot be combined with %s: a switch or a restore "
+                     "takes its interface and ports from the config"
                      % (" and ".join(overrides), asked[0]))
     if not (math.isfinite(args.timeout) and args.timeout >= 0):
         parser.error("--timeout must be a finite number of seconds, not %r"
@@ -352,9 +355,9 @@ def _dry_run_desk(args: "argparse.Namespace",
         return EXIT_CONFIG
     # The desk exactly as the switch would load it, machine settings
     # included. Until 0.6.11 the ports and the device name of the desk
-    # *in effect* were written over it -- so a profile naming its own
-    # interface was shown for another one, and a profile inheriting
-    # routing.conf's port was shown on the active profile's.
+    # *in effect* were written over it, and the name is what a dry run
+    # acts on: it looked for, and warned about, the active desk's
+    # interface while showing a profile that names its own.
     return run_session(args, desk)
 
 

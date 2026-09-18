@@ -277,7 +277,9 @@ moved it to `f2fdd5e`, and all three have been settable since.
 
 The five structural threats in [After
 0.4.0](#after-040-what-actually-threatens-this) are all addressed, and
-the write direction is proven. **There is no planned next release.** The ALSA-pool question that held
+the write direction is proven. **No release is planned for new
+surface**; 0.7.0, described above, tightens types and changes none of
+it. The ALSA-pool question that held
 this spot is answered, and the answer is no. Measured 2026-08-28: under
 a 10-dump `/refresh` flood -- idle, under full-core spin load, under
 the suite, and under four parallel suites (the mutation gate's shape)

@@ -80,10 +80,12 @@ Common findings in the journal:
   does not warn); a typo in the name looks the same.
 - `...: this config was checked for '<A>' and is used for '<B>'` -- the
   file's `[device] name` is one model and the routes go to another, so
-  the channel check was made for the wrong interface. Two causes, named
-  at the start of the line: `--device` (put the name in `routing.conf`
-  instead), or `routing.conf` was edited to name another interface while
-  the session is running -- a reload keeps the interface the backend is
+  the channel check was made for the wrong interface. The start of the
+  line names the cause. `--device replaces [device] name`: put the name
+  in `routing.conf` instead, so the channels are checked for the
+  interface they go to. `a running session keeps the interface it was
+  started for`: `routing.conf`, or a profile that names its own
+  `[device]`, now says another interface than the one the backend is
   bound to; `systemctl --user restart oscmix.service` moves it.
 - `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
   GUI was listening on the state port, so the read-back was not possible.

@@ -230,8 +230,9 @@ def _unchecked(caplog):
             if "no register model" in r.getMessage()]
 
 
-def test_a_listing_writes_nothing_and_warns_about_nothing(tmp_path, caplog):
-    """From the parser the warning fired N+1 times for N profiles."""
+def test_a_listing_is_not_warned_about_unchecked_routes(tmp_path, caplog):
+    """From the parser the warning fired N+1 times for N profiles. A listing
+    writes no route, so there is nothing to be warned about."""
     from oscmix_desk import cli
 
     path = _unmodelled_desk(tmp_path)
@@ -309,24 +310,39 @@ def test_a_device_override_that_bypasses_the_validation_is_named(
 
 
 @pytest.mark.parametrize("action", [["--profile", "one"], ["--no-profile"]])
-@pytest.mark.parametrize("override", [["--device", "Some Box"],
-                                      ["--osc-port", "9000"]])
+@pytest.mark.parametrize(("override", "named"), [
+    (["--device", "Some Box"], "--device"),
+    (["--osc-port", "9000"], "--osc-port"),
+    (["--osc-port", "9000", "--device", "Some Box"],
+     "--device and --osc-port")])
 @pytest.mark.parametrize("dry", [[], ["--dry-run"]])
 def test_an_override_a_switch_never_saw_is_refused(tmp_path, capsys, action,
-                                                   override, dry):
-    """A switch takes its interface and ports from the config. `--device`
-    and `--osc-port` were dropped on that path without a word, while the
-    dry run of the same switch honoured them -- and so showed something
-    the switch would not do (0.6.11)."""
+                                                   override, named, dry):
+    """A switch and a restore take their interface and ports from the
+    config. `--device` and `--osc-port` were dropped on that path without
+    a word, while the dry run of the same switch looked for the interface
+    `--device` named -- and so showed something the switch would not do
+    (0.6.11)."""
     from oscmix_desk import cli
 
     path = _unmodelled_desk(tmp_path)
     with pytest.raises(SystemExit) as refused:
         cli.main(["--config", str(path), *action, *override, *dry])
     assert refused.value.code == 2
-    assert ("%s cannot be combined with %s: a switch takes its interface "
-            "and ports from routing.conf and the profile"
-            % (override[0], action[0])) in capsys.readouterr().err
+    assert ("%s cannot be combined with %s: a switch or a restore takes its "
+            "interface and ports from the config"
+            % (named, action[0])) in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("name", ["", "  "])
+def test_an_empty_device_name_is_refused_rather_than_dropped(capsys, name):
+    """Falsy, so `if args.device:` skipped it without a word."""
+    from oscmix_desk import cli
+
+    with pytest.raises(SystemExit) as refused:
+        cli.main(["--device", name, "--list-profiles"])
+    assert refused.value.code == 2
+    assert "--device needs a name" in capsys.readouterr().err
 
 
 def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
@@ -334,21 +350,31 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
     from oscmix_desk import cli
 
     seen = []
-    monkeypatch.setattr(cli, "run_session",
-                        lambda args, config: seen.append(
-                            (config.device_name, config.osc_port)) or 0)
+
+    def record(name):
+        return lambda *a: seen.append(
+            (name, a[-1].device_name, a[-1].osc_port)) or 0
+
+    monkeypatch.setattr(cli, "run_session", record("start"))
+    monkeypatch.setattr(cli, "_diff", record("--diff"))
+    monkeypatch.setattr(cli, "_snapshot", record("--snapshot"))
     path = tmp_path / "routing.conf"
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    assert cli.main(["--config", str(path), "--device", "fireface ucx ii",
-                     "--osc-port", "9000"]) == 0
-    assert seen == [("fireface ucx ii", 9000)]
+    overrides = ["--device", "fireface ucx ii", "--osc-port", "9000"]
+    for action in ([], ["--diff"], ["--snapshot"]):
+        assert cli.main(["--config", str(path), *overrides, *action]) == 0
+    assert seen == [(name, "fireface ucx ii", 9000)
+                    for name in ("start", "--diff", "--snapshot")]
 
 
 def test_a_dry_run_shows_the_profile_for_the_interface_the_profile_names(
         tmp_path, caplog, monkeypatch):
     """The desk in effect's ports and device name were written over the
-    profile before it was shown: a profile naming its own interface was
-    shown, and warned about, as another one's (0.6.11)."""
+    profile before it was shown. The name is what a dry run acts on -- it
+    looks for that interface and warns about it -- so a profile naming its
+    own was shown as the active desk's. The ports are not printed; they
+    are asserted because "the desk as the switch loads it" is the rule
+    (0.6.11)."""
     from oscmix_desk import cli
 
     shown = []

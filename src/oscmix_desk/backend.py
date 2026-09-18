@@ -41,7 +41,7 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Iterable, Iterator, Optional, Sequence, Tuple, Type
 
-from .errors import ReceivePortError as ReceivePortError  # part of the seam
+from .errors import ReceivePortError
 from .osc import decode_osc, encode_osc, iter_osc_messages
 
 Message = Tuple[str, str, Tuple[object, ...]]

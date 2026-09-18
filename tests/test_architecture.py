@@ -56,9 +56,14 @@ ALLOWED_IMPORTS = {
     # link_messages/mix_messages moved down into reconcile: they are
     # pure message shapes, and keeping them here made reconcile sit
     # above routing while routing wanted to call it -- a cycle.
-    "routing": {"backend", "config", "constants", "log", "osc", "reconcile"},
-    "verify": {"backend", "config", "constants", "log", "osc", "reconcile",
-               "registers", "routing"},
+    # `errors` since 0.6.11, here and in verify: both have to tell a
+    # receive port that cannot be bound from one that is held (ADR 0025),
+    # and the leaf is where that exception lives -- imported from there,
+    # because `__init__` is the only module that re-exports.
+    "routing": {"backend", "config", "constants", "errors", "log", "osc",
+                "reconcile"},
+    "verify": {"backend", "config", "constants", "errors", "log", "osc",
+               "reconcile", "registers", "routing"},
     "pipewire": {"config", "errors", "log"},
     "process": {"constants", "discovery", "log"},
     # `profiles` since 0.6.3: a reload has to apply the same desk a

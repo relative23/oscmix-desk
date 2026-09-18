@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from typing import Callable, Dict, Mapping, Optional, Sequence
 
-from .backend import Backend, ReceivePortError, loopback
+from .backend import Backend, loopback
 from .config import Config, Route
 from .constants import (
     DEFAULT_OSC_RECV_PORT,
@@ -16,6 +16,7 @@ from .constants import (
     LINK_SETTLE,
     LINK_SYNC_BLIND_DELAY,
 )
+from .errors import ReceivePortError
 from .log import log
 from .reconcile import (
     desired,

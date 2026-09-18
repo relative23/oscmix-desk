@@ -161,3 +161,24 @@ the name beside the marker is the last fallback. The unit takes the same
 lock for its apply, verifier and reconcile (ADR 0019), and a switch does
 not poll the unit's STATUS line -- it reloads the unit and the unit's
 reconcile is serialised behind its verifier (ADR 0019, 0013).
+
+## Amended in 0.6.11
+
+The inheritance happens *before* the profile is validated. Until 0.6.11
+a profile was parsed onto the defaults and given `[osc]` and `[device]`
+afterwards, so it was checked against the UCX II whatever interface the
+desk was for: on a desk naming another box, a profile's `output = 25/26`
+was refused for the UCX II's twenty channels, and its `[output:1]`
+section was accepted through the UCX II's table while the same section
+in `routing.conf` is ignored with a warning. A profile is now read onto
+the main config's machine settings; one that states a setting itself
+still wins, because the parser falls back to what it is read onto only
+for what the file does not say.
+
+"Takes effect on the next start" has a consequence that is now said out
+loud. A running session keeps the interface it was started for, so a
+reload that finds `routing.conf`, or an active profile, naming another
+one uses a desk that was checked for the wrong interface. It warns, and
+a restart moves it. `--device`, which also arrives after the
+validation, warns the same way, and is refused together with a switch
+or a restore, which never saw it.

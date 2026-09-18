@@ -110,6 +110,20 @@ def _unprivileged_ports_start():
                     reason="this user may bind port 80")
 def test_the_measured_case_a_privileged_receive_port():
     """Against the kernel, not a double: the case this was found with."""
+    # Neither root nor a lowered threshold, and still allowed to bind it:
+    # CAP_NET_BIND_SERVICE in a rootless container, for one. Asked of the
+    # kernel directly, so the test skips instead of leaking a listener.
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.bind(("127.0.0.1", 80))
+    except OSError as exc:
+        denied = exc.errno == errno.EACCES
+    else:
+        denied = False
+    finally:
+        probe.close()
+    if not denied:
+        pytest.skip("this process may bind port 80, or something holds it")
     with pytest.raises(ReceivePortError) as raised:
         backend.loopback(free_udp_port(), 80).listen()
     assert raised.value.errno == errno.EACCES

@@ -136,6 +136,12 @@ class Config:
     #: ``(family, option) -> "pin" | "remember"`` from a ``[pin]``
     #: section, overriding the register table's default for that option.
     policies: Dict[Tuple[str, str], str] = field(default_factory=dict)
+    #: The device name the file was validated for, set by ``load_config``.
+    #: ``device_name`` can be replaced afterwards -- by ``--device``, by a
+    #: re-read under a running session -- and this is what remembers that
+    #: the channel checks were made for another interface (0.6.11).
+    #: Neither the desk's nor the machine's: a record of the validation.
+    checked_for: str = ""
 
 
 #: The last place a desk is looked for, after the user's own.
@@ -409,6 +415,7 @@ def load_config(path: Optional[Path],
 
     _check_device_channels(config)
     _check_link_agreement(config.routes)
+    config.checked_for = config.device_name
     return config
 
 
@@ -501,23 +508,35 @@ def log_unchecked_routes(config: "Config") -> None:
         log.warning("%s", message)
 
 
-def log_device_replaced(checked_for: str, used: str, why: str) -> None:
+def log_device_replaced(config: "Config", why: str,
+                        since: Optional["Config"] = None) -> None:
     """Say so when a desk checked for one interface is used for another.
 
-    A config is validated for the device its file names. Two things
-    replace that name afterwards: ``--device``, and a re-read under a
-    running process, which keeps the interface it is bound to. When the
-    two names are different models -- or one is no model at all -- the
-    channel and section checks said nothing about the interface the
-    routes go to: measured, outputs 41/42 reached a UCX II, which has
-    twenty, in silence (0.6.11). Checking for the replacement itself
-    needs the parser to know it, which is the frozen-config work of
-    0.7.0; until then this is the notice.
+    A config is validated for the device its file names (``checked_for``).
+    The name can be replaced afterwards: by ``--device``, and by a re-read
+    under a running session, which keeps the interface it was started
+    for whatever the file or an active profile now says. When the two are
+    different models -- or one is no model at all -- the channel and
+    section checks said nothing about the interface the routes go to:
+    measured, outputs 41/42 reached a UCX II, which has twenty, in
+    silence (0.6.11). Checking for the replacement itself needs the
+    parser to know it, which is the frozen-config work of 0.7.0; until
+    then this is the notice.
+
+    ``since`` is the config the process already runs. What that one was
+    checked for has been said once, at the start; a reload that finds the
+    same thing again is not news, and saying it again would blame the
+    reload for what ``--device`` did (found by review).
     """
-    if device_for_name(used) is not device_for_name(checked_for):
-        log.warning("%s: this config was checked for %r and is used for %r, "
-                    "so its channels and sections were validated against "
-                    "the wrong interface", why, checked_for, used)
+    checked = device_for_name(config.checked_for or config.device_name)
+    if checked is device_for_name(config.device_name):
+        return
+    if since is not None and checked is device_for_name(
+            since.checked_for or since.device_name):
+        return
+    log.warning("%s: this config was checked for %r and is used for %r, so "
+                "its channels and sections were validated against the wrong "
+                "interface", why, config.checked_for, config.device_name)
 
 
 def _has_register_model(config: "Config") -> bool:
