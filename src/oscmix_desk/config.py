@@ -569,22 +569,27 @@ def unchecked_routes_warning(config: "Config") -> Optional[str]:
             % (config.device_name, len(config.routes), _modelled_names()))
 
 
-def log_desk_notices(config: "Config") -> None:
+def desk_notices(config: "Config") -> List[str]:
+    """What there is to say about a desk before it is written or shown."""
+    return [message for message in (unchecked_routes_warning(config),
+                                    other_machine_warning(config),
+                                    replaced_device_warning(config))
+            if message]
+
+
+def log_desk_notices(config: "Config", said: Sequence[str] = ()) -> None:
     """Warn, once, where a desk is about to be written or shown.
 
-    A start asks under the device lock, about the desk it read there; a
-    dry run, a diff and a dump about the one they show; a switch, a
-    restore and a SIGHUP reload about theirs. Each asks about the desk it
-    has in hand. The first placement asked once in the CLI about the desk
-    *in effect*, which for ``--profile`` and ``--no-profile`` is not the
-    one being written, and a reload never passed it at all; the second
-    asked at the top of a start, about a file read before the wait for
-    the device and the lock, which can be hours (found by review, 0.6.11).
+    A start, a dry run, a diff and the PipeWire sinks ask about the desk
+    they have in hand; a switch, a restore and a SIGHUP reload about
+    theirs. The first placement asked once in the CLI about the desk *in
+    effect*, which for ``--profile`` and ``--no-profile`` is not the one
+    being written, and a reload never passed it at all (found by review,
+    0.6.11). ``said`` is what was said already: a start asks again under
+    the device lock, about the desk it re-read there, and repeats nothing.
     """
-    for message in (unchecked_routes_warning(config),
-                    other_machine_warning(config),
-                    replaced_device_warning(config)):
-        if message:
+    for message in desk_notices(config):
+        if message not in said:
             log.warning("%s", message)
 
 

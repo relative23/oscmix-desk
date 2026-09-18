@@ -288,30 +288,35 @@ def test_a_reload_warns_about_the_desk_it_re_read(tmp_path, caplog):
 
 
 def test_a_device_override_that_bypasses_the_validation_is_named(
-        tmp_path, caplog):
+        tmp_path, caplog, monkeypatch):
     """`--device` arrives after the file was validated. When it names
     another model, or none, the channel check said nothing about the
-    interface the routes now go to. Said where the desk is shown or
-    written, with the other notices about it -- not by a listing, which
-    said it while it was said at the override (0.6.11)."""
+    interface the routes now go to. Said with the other notices, by what
+    shows or writes this desk: a dump shows the device's, a snapshot and
+    a listing show none -- and the listing said it, while it was said at
+    the override (0.6.11)."""
     from oscmix_desk import cli
 
     path = tmp_path / "routing.conf"
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    for name in ("_diff", "_snapshot", "_dump_config"):
+        monkeypatch.setattr(cli, name, lambda config: 0)
+    monkeypatch.setattr(cli, "pw_dump_objects", lambda: None)
     notice = ("--device replaces [device] name after validation: this config "
               "was checked for 'Fireface UCX II' and is used for 'Some Box'")
-    for action in (["--dry-run", "--timeout", "0"], ["--dump-config"],
-                   ["--pipewire-sinks"]):
+    for action, times in ((["--dry-run", "--timeout", "0"], 1),
+                          (["--diff"], 1), (["--pipewire-sinks"], 1),
+                          (["--dump-config"], 0), (["--snapshot"], 0),
+                          (["--list-profiles"], 0)):
         caplog.clear()
         with caplog.at_level("WARNING"):
             cli.main(["--config", str(path), "--device", "Some Box", *action])
-        assert caplog.text.count(notice) == 1, action
-    for quiet in (["--device", "Some Box", "--list-profiles"],
-                  ["--device", "fireface ucx ii", "--dump-config"]):
-        caplog.clear()
-        with caplog.at_level("WARNING"):
-            cli.main(["--config", str(path), *quiet])
-        assert "--device" not in caplog.text, quiet
+        assert caplog.text.count(notice) == times, action
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        cli.main(["--config", str(path), "--device", "fireface ucx ii",
+                  "--diff"])
+    assert "--device" not in caplog.text, "the same model, spelled differently"
 
 
 @pytest.mark.parametrize("action", [["--profile", "one"], ["--no-profile"]])

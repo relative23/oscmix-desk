@@ -1654,8 +1654,8 @@ def test_the_advice_fits_the_cause(tmp_path, caplog):
     (tmp_path / "active-profile").write_text("far\n")
     with caplog.at_level("ERROR"):
         assert _reread("_reloaded_desk", running, path) is None
-    assert "take [osc] and [device] out of profile 'far', or --no-profile" \
-        in caplog.text
+    assert ("take [osc] and [device] out of profile 'far' and send the reload "
+            "again, or --no-profile") in caplog.text
     assert "restart" not in caplog.text
     # routing.conf moved, with or without a profile active: an ordinary
     # profile states nothing, so neither of its remedies could work, and
@@ -1702,8 +1702,8 @@ def test_no_profile_is_named_only_where_it_can_work(tmp_path, caplog):
     """`--no-profile` writes where the bare routing.conf says: it never saw
     `--osc-port`, is refused together with it, and is refused for a port
     nobody listens on. It was offered to a session running under an
-    override, and to one started under the profile's own port, where
-    routing.conf alone is not the session's machine (found by review)."""
+    override (found by review). What is left is the edit, and the reload
+    that applies it -- another switch would go to the file's port too."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     write_config(tmp_path / "profiles" / "p.conf", "[osc]\nrecv-port = 8333\n"
@@ -1716,10 +1716,12 @@ def test_no_profile_is_named_only_where_it_can_work(tmp_path, caplog):
     with caplog.at_level("ERROR"):
         assert _reread("_reloaded_desk", under_an_override, path) is None
     assert caplog.text.rstrip().endswith(
-        "so it was not applied; take [osc] and [device] out of profile 'p'")
+        "so it was not applied; take [osc] and [device] out of profile 'p' "
+        "and send the reload again")
 
     # Started under a profile that named port 9000, which now names 9001:
-    # routing.conf never moved, and is still not where this session runs.
+    # routing.conf never moved, and is still not where this session runs,
+    # so the edit alone would leave a desk for 7222 -- a restart follows.
     write_config(tmp_path / "profiles" / "p.conf", "[osc]\nport = 9001\n"
                  "[route:p]\nplayback = 1/2\noutput = 3/4\n")
     started_under_it = profiles.load_config(path)
@@ -1753,18 +1755,42 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
     assert (fresh.device_name, fresh.osc_port, fresh.serial) == (
         "Some Box", 9000, "24216011")
     assert "another backend" not in caplog.text
-    # What the desk is used for is said by whoever writes it: the reload
-    # itself, and for a start `_apply_and_verify`, once it has the desk.
+    # The reload says what its desk is used for. The start said so before
+    # it looked for the interface, and under the lock repeats nothing.
     assert caplog.text.count("checked for") == (reread == "_reloaded_desk")
+
+
+def test_a_start_that_finds_no_interface_has_said_why_it_looked_elsewhere(
+        tmp_path, caplog, monkeypatch):
+    """A profile that names another machine is what sends a start looking
+    for another box, or into exit 2 beside the session holding that port:
+    the starts that never reach the lock. Told only under the lock, those
+    were the ones that were not told (found by review)."""
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    write_config(tmp_path / "profiles" / "far.conf",
+                 "[device]\nserial = 99887766\n"
+                 "[route:far]\nplayback = 1/2\noutput = 3/4\n")
+    (tmp_path / "active-profile").write_text("far\n")
+    config, active = profiles.effective_config(path)
+    assert active == "far"
+    monkeypatch.setattr(session_module, "_find_client",
+                        lambda *a: (None, 0))
+    with caplog.at_level("WARNING"):
+        assert session_module.run_session(
+            argparse.Namespace(dry_run=False, config=path), config) == 0
+    assert ("this profile names another backend or interface than its "
+            "routing.conf -- serial '99887766' (not '')") in caplog.text
 
 
 def test_a_start_gives_its_notices_about_the_desk_it_applies(
         tmp_path, caplog, monkeypatch):
-    """They were given at the top of the start, about the file as read
-    before the wait for the device and the lock -- hours, on a machine
-    booted with the interface off. A file with nothing in it to check,
-    given routes in that time, reached the `--device` interface unannounced
-    (found by review)."""
+    """The top of a start speaks about the file as read before the wait for
+    the device and the lock -- hours, on a machine booted with the
+    interface off. A file with nothing in it to check, given routes in
+    that time, reached the `--device` interface unannounced; what is new
+    about the desk re-read under the lock is said there, and what was
+    said already is not repeated (found by review)."""
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Fireface 802\n")
     started = profiles.load_config(path)
@@ -1788,7 +1814,16 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     assert verifier is not None
     verifier.join(timeout=5)
     assert [route.output for route in applied[0].routes] == [(29, 30)]
-    assert caplog.text.count("was checked for 'Fireface 802' and is used for "
-                             "'Fireface UCX II'") == 1
+    notice = "was checked for 'Fireface 802' and is used for 'Fireface UCX II'"
+    assert caplog.text.count(notice) == 1
+    # The same file, read by a start that already said so: not twice.
+    caplog.clear()
+    restarted = profiles.load_config(path)
+    cli._override_device(restarted, "Fireface UCX II")
+    with caplog.at_level("WARNING"):
+        config_module.log_desk_notices(restarted)
+        session_module._apply_and_verify(Running(), restarted,
+                                         {"stop": False}, path).join(timeout=5)
+    assert caplog.text.count(notice) == 1
 
 

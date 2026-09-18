@@ -285,6 +285,43 @@ def real_systemctl_output():
 
 
 @pytest.fixture(autouse=True)
+def _no_real_backend(monkeypatch):
+    """No test talks to the machine's own backend.
+
+    A desk with no `[osc]` section resolves to UDP 7222 and 8222, where
+    the developer's oscmix listens: a test that ran `--dump-config`
+    unstubbed read the UCX II through it on every run, and on a machine
+    without one waited out the read instead (0.6.11, found by review).
+    In-process only; what runs as a subprocess is given free ports. The
+    refusal is raised *and* held against the test at teardown, since the
+    code under test is entitled to catch what it could not send.
+    """
+    from oscmix_desk.constants import DEFAULT_OSC_PORT, DEFAULT_OSC_RECV_PORT
+
+    reached = []
+
+    def guarded(name):
+        real = getattr(socket.socket, name)
+
+        def call(self, *args):
+            address = args[-1] if name == "sendto" else args[0]
+            if isinstance(address, tuple) and address[1] in (
+                    DEFAULT_OSC_PORT, DEFAULT_OSC_RECV_PORT):
+                reached.append("%s %r" % (name, address))
+                raise AssertionError("a test reached for the machine's "
+                                     "backend: %s" % reached[-1])
+            return real(self, *args)
+
+        return call
+
+    for name in ("bind", "connect", "sendto"):
+        monkeypatch.setattr(socket.socket, name, guarded(name))
+    yield
+    assert reached == [], \
+        "a test reached for the machine's backend: %s" % reached
+
+
+@pytest.fixture(autouse=True)
 def _no_real_config(tmp_path_factory, monkeypatch):
     """No test reads the developer's routing.conf, profiles or marker.
 

@@ -125,8 +125,8 @@ Decided, and recorded so that none of it is found twice. No new surface:
 nothing is added to what a `routing.conf` can declare.
 
 1. **Modules a person can read, first and alone.** Six source modules
-   are over 600 lines (`registers` 1038, `config` 1036, `profiles` 1002,
-   `reconcile` 843, `session` 732, `cli` 708) and four test files over
+   are over 600 lines (`registers` 1038, `config` 1041, `profiles` 1002,
+   `reconcile` 843, `session` 742, `cli` 710) and four test files over
    900. Split at seams that exist -- in `profiles`: the device lock, the
    marker's persistence, the switch transaction, which are the three
    identities the second review found tangled; in `config`: the model,

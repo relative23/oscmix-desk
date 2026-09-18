@@ -249,8 +249,10 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     if args.snapshot:
         return _snapshot(config)
 
-    if args.diff or args.dump_config or args.pipewire_sinks:
-        log_desk_notices(config)        # the desk these show, after --device
+    if args.diff or args.pipewire_sinks:
+        # The two that show this desk. A dump shows the device's, and a
+        # snapshot and a listing show none.
+        log_desk_notices(config)
     if args.diff:
         return _diff(config)
 

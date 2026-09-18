@@ -18,6 +18,7 @@ from typing import Dict, Optional, Tuple
 from .config import (
     Config,
     Machine,
+    desk_notices,
     discover_config_path,
     log_desk_notices,
     profile_path,
@@ -225,9 +226,6 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         return None
 
     config = _desk_under_the_lock(config_path, config)
-    # About the desk read here, not the one the start read before it
-    # waited for the device and the lock.
-    log_desk_notices(config)
     if not desired(config):
         # Everything the config declares, not only its routes. Since
         # 0.4.0 a file may consist of `[input:3]`, `[eq:input:3]` or
@@ -323,7 +321,14 @@ def _desk_under_the_lock(config_path: Optional[Path],
         log.error("%s is no longer usable (%s); applying the desk this "
                   "process started with", config_path, exc)
         return running
-    return _kept_for_this_process(fresh, running, active) or running
+    kept = _kept_for_this_process(fresh, running, active)
+    if kept is None:
+        return running
+    # The start spoke about the file as it read it, before the wait for
+    # the device and the lock -- hours, on a machine booted with the
+    # interface off. What is new about the desk applied is said here.
+    log_desk_notices(kept, said=desk_notices(running))
+    return kept
 
 
 def _kept_for_this_process(fresh: Config, running: Config,
@@ -341,9 +346,10 @@ def _kept_for_this_process(fresh: Config, running: Config,
 
     The re-read file is resolved the way a restart would resolve it --
     the command line's overrides over it, as at the start -- and then held
-    against what this session runs (``Machine.elsewhere``). So a reload
-    applies what a restart would apply here, and refuses what a restart
-    would take somewhere else. The first cuts compared the bare file: they
+    against what this session runs (``Machine.elsewhere``, which also
+    says where the two still differ). So a reload applies what a restart
+    would apply here, and refuses what a restart would take somewhere
+    else. The first cuts compared the bare file: they
     refused the session's own desk under ``--osc-port``, with advice to
     restart that a restart did not follow (found by review, 0.6.11).
     """
@@ -381,9 +387,11 @@ def _advice(profile: Optional[str], follow: bool, restorable: bool) -> str:
         + SERVICE_UNIT + ")"
     if profile is None:
         return restart % "it"
-    return "take [osc] and [device] out of profile %r%s" % (
-        profile, ", then " + restart % "routing.conf" if follow
-        else ", or --no-profile" if restorable else "")
+    edit = "take [osc] and [device] out of profile %r" % profile
+    if follow:
+        return "%s, then %s" % (edit, restart % "routing.conf")
+    return "%s and send the reload again%s" % (
+        edit, ", or --no-profile" if restorable else "")
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -510,8 +518,10 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
 
 def run_session(args: argparse.Namespace, config: Config) -> int:
     """Discover the device, run the backend, and supervise it."""
-    if args.dry_run:
-        log_desk_notices(config)    # the desk it shows; a start asks under the lock
+    # The desk a start looks for an interface with, or a dry run shows --
+    # after --device. Before the search, since a profile that names
+    # another machine is why that search may end elsewhere, or nowhere.
+    log_desk_notices(config)
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
 

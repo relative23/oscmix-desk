@@ -90,9 +90,10 @@ Common findings in the journal:
   session keeps its backend, so the desk was **not** applied. For
   `routing.conf`: `systemctl --user restart oscmix.service` follows it.
   For a profile that itself names another machine: take `[osc]` and
-  `[device]` out of it -- a restart would move the unit off its
-  interface. The line names `--no-profile` as well where that can work,
-  and a restart after the edit where `routing.conf` needs one.
+  `[device]` out of it and reload (`systemctl --user reload
+  oscmix.service`) -- a restart would move the unit off its interface.
+  The line names `--no-profile` as well where that can work, and a
+  restart instead of the reload where `routing.conf` needs one.
 - `this profile names another backend or interface than its
   routing.conf` -- works for the switch in 0.6.x and is refused from
   0.7.0 (ADR 0026). A profile made with `--dump-config` restates the
