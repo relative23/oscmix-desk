@@ -35,11 +35,21 @@ from .discovery import (
     usb_device_present,
     wait_for_device,
 )
-from .errors import ConfigError, DeviceAmbiguous, DeviceLockUnavailable
+from .errors import (
+    ConfigError,
+    DeviceAmbiguous,
+    DeviceLockUnavailable,
+    ReceivePortError,
+)
 from .log import log
 from .notify import sd_notify
 from .process import _cleanup_stale_backend, socket_owner, supervise
-from .profiles import DeviceLock, effective_config, take_device_lock
+from .profiles import (
+    DeviceLock,
+    effective_config,
+    keep_machine_settings,
+    take_device_lock,
+)
 from .reconcile import desired, plan
 from .routing import apply_routing, wait_unless_stopped
 from .verify import reconcile_now, verify_and_repair
@@ -258,6 +268,13 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
             verify_and_repair(config, should_stop)
             sd_notify("STATUS=running; verifier finished at %s"
                       % time.strftime("%H:%M:%S"))
+        except ReceivePortError as exc:
+            # Not "skipped": this port can never be read, so the desk
+            # stays unverified until somebody changes `[osc] recv-port`
+            # or whatever keeps it from being bound (0.6.11).
+            log.error("routing cannot be verified: %s", exc)
+            sd_notify("STATUS=running; verifier failed at %s"
+                      % time.strftime("%H:%M:%S"))
         except OSError as exc:
             # The socket, not the desk: a thread traceback said nothing a
             # person could act on, and the lock's release was all that
@@ -296,15 +313,11 @@ def _desk_under_the_lock(config_path: Optional[Path],
         log.error("%s is no longer usable (%s); applying the desk this "
                   "process started with", config_path, exc)
         return running
-    fresh.osc_port = running.osc_port
-    fresh.osc_recv_port = running.osc_recv_port
-    fresh.device_name = running.device_name
-    # And the interface: the lock was taken and the backend bound for
-    # this process's usb id and pinned serial, and a profile naming
-    # another box does not move either of them (ADR 0024).
-    fresh.usb_id = running.usb_id
-    fresh.serial = running.serial
-    return fresh
+    # The ports and the device name, and the interface: the lock was
+    # taken and the backend bound for this process's usb id and pinned
+    # serial, and a profile naming another box does not move either of
+    # them (ADR 0024).
+    return keep_machine_settings(fresh, running)
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -573,6 +586,10 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
         try:
             return bool(reconcile_now(fresh, "SIGHUP",
                                       lambda: stop_requested["stop"]))
+        except ReceivePortError as exc:
+            log.error("SIGHUP: %s; reconcile skipped -- with no dump there "
+                      "is no way to tell what to leave alone", exc)
+            return False
         except OSError as exc:
             # Out of `supervise` and `run_session` as a traceback until
             # 0.6.10, with the backend left to systemd.
@@ -611,12 +628,7 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
     # interface belong to the process that is running, and changing them
     # here would mean writing to a port nobody is listening on -- with no
     # error, because OSC over UDP has no delivery guarantee (ADR 0024).
-    fresh.osc_port = running.osc_port
-    fresh.osc_recv_port = running.osc_recv_port
-    fresh.device_name = running.device_name
-    fresh.usb_id = running.usb_id
-    fresh.serial = running.serial
-    return fresh
+    return keep_machine_settings(fresh, running)
 
 
 def _config_path(args: argparse.Namespace) -> Optional[Path]:

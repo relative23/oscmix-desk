@@ -230,3 +230,23 @@ def test_pw_dump_is_run_once_bounded_and_as_text(monkeypatch):
     assert pipewire.pw_dump_objects() is None
     monkeypatch.setattr(pipewire.shutil, "which", lambda name: None)
     assert pipewire.pw_dump_objects() is None
+
+
+def test_objects_without_usable_properties_are_passed_over():
+    """`{"info": null}` raised AttributeError out of `--pipewire-sinks`
+    (0.6.11): pw-dump prints it for an object that went away."""
+    import json
+
+    from oscmix_desk import pipewire
+
+    sink = {"info": {"props": {"media.class": "Audio/Sink",
+                               "node.name": "alsa_output.fireface",
+                               "node.description": "Fireface UCX II"}}}
+    odd = [{"info": None}, {"info": "gone"}, {"info": {"props": None}},
+           {"info": {"props": ["not", "a", "mapping"]}}, {"id": 7}, {}]
+    assert pipewire.find_sink(odd, "Fireface UCX II") is None
+    assert pipewire.find_sink([*odd, sink], "Fireface UCX II") == (
+        "alsa_output.fireface", None)
+    assert pipewire.pw_sink_info("Fireface UCX II",
+                                 dump_text=json.dumps([*odd, sink])) == (
+        "alsa_output.fireface", None)

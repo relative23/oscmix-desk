@@ -34,7 +34,7 @@ from .constants import (
     __version__,
 )
 from .discovery import device_firmware, resolve_device
-from .errors import ConfigError, DeviceAmbiguous
+from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
 from .log import log
 from .pipewire import find_sink, generate_pipewire_conf, pw_dump_objects
 from .process import (
@@ -572,7 +572,12 @@ def _read_device(config: Config) -> Optional[Dict[str, Tuple[object, ...]]]:
     and "nobody answered" call for opposite responses.
     """
     device = loopback(config.osc_port, config.osc_recv_port)
-    listener = device.listen()
+    try:
+        listener = device.listen()
+    except ReceivePortError as exc:
+        # Not the GUI, so closing it would not help; say what it is.
+        log.error("%s", exc.strerror)
+        return None
     if listener is None:
         log.error("UDP %d is in use -- close the mixer GUI; its meters and "
                   "this read would split the device's replies",

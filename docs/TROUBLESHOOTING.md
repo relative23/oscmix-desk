@@ -66,6 +66,17 @@ Common findings in the journal:
 - `routing verified against device state` -- the read-back confirmed the
   hardware mixer matches routing.conf; this is the "everything works"
   line.
+- `routing cannot be verified: ... cannot bind the receive port UDP N:
+  <reason>` with `Status: running; verifier failed` -- the receive port
+  cannot be bound, and not because the mixer GUI has it. The routing *is*
+  applied; it cannot be read back until the cause is gone. `Permission
+  denied` is a `[osc] recv-port` below 1024. Until 0.6.11 this was
+  reported as "in use", which sent the reader to a GUI that was closed.
+- `no register model for '<name>': its N route(s) are written as given`
+  -- `[device] name` is not an interface this project has a register
+  table for, so the routes' channel numbers are not checked against the
+  hardware. Expected on anything but a UCX II; a typo in the name looks
+  the same.
 - `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
   GUI was listening on the state port, so the read-back was not possible.
 - `unconfirmed after retry: ...` -- the device never reported the listed

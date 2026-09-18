@@ -60,7 +60,7 @@ since.
   invisible in it.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
-- Twenty-four [decision records](docs/decisions/) carry the reasoning and the
+- Twenty-five [decision records](docs/decisions/) carry the reasoning and the
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work

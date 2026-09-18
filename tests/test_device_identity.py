@@ -1466,3 +1466,40 @@ def test_the_unit_desk_reads_the_real_proc_and_compares_files_safely(
 
     monkeypatch.setattr(cli.Path, "resolve", unreadable)
     assert cli._same_file(tmp_path / "a", tmp_path / "a") is False
+
+
+# --------------------------------------------------------------------------
+# 0.6.11: one rule for what a re-read desk may not change.
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
+def test_a_re_read_desk_keeps_every_machine_setting_of_the_process(
+        tmp_path, reread):
+    """The verifier's re-read and the SIGHUP's each spelled the five
+    assignments out by hand; `profiles.MACHINE_SETTINGS` is the list, and
+    a setting added to it is kept by both without anybody remembering."""
+    from oscmix_desk import Config
+
+    path = write_config(tmp_path / "routing.conf", """
+[device]
+name = Another Box
+usb-id = 1111:2222
+serial = 99887766
+
+[osc]
+port = 9001
+recv-port = 9002
+
+[route:main]
+playback = 1/2
+output = 3/4
+""")
+    running = Config(serial="24216011")
+    args = (running, path) if reread == "_reloaded_desk" else (path, running)
+    fresh = getattr(session_module, reread)(*args)
+    assert fresh is not running
+    assert [route.output for route in fresh.routes] == [(3, 4)], \
+        "the desk itself is the file's"
+    for _section, _option, attr in profiles.MACHINE_SETTINGS:
+        assert getattr(fresh, attr) == getattr(running, attr), attr
+    assert fresh.osc_port != 9001

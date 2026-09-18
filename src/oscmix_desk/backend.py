@@ -34,12 +34,14 @@ timing would just be the old control flow with an extra indirection.
 
 from __future__ import annotations
 
+import errno
 import socket
 import struct
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Iterable, Iterator, Optional, Sequence, Tuple, Type
 
+from .errors import ReceivePortError as ReceivePortError  # part of the seam
 from .osc import decode_osc, encode_osc, iter_osc_messages
 
 Message = Tuple[str, str, Tuple[object, ...]]
@@ -107,7 +109,8 @@ class Listener:
     Exists as an object because binding is the operation that can fail
     in a way the caller must handle: the mixer GUI holds the receive
     port whenever its window is open, and that is a normal state, not an
-    error. ``Backend.listen`` returns None for it.
+    error. ``Backend.listen`` returns None for it, and raises
+    ``ReceivePortError`` for every other reason the port cannot be had.
     """
 
     def __init__(self, sock: "socket.socket") -> None:
@@ -178,16 +181,28 @@ class Backend:
     def listen(self) -> Optional[Listener]:
         """Bind the receive port, or None when something else holds it.
 
+        None is EADDRINUSE and nothing else: the mixer GUI has the port,
+        which is a normal state every caller has an answer for. Any other
+        failure -- EACCES for a port below 1024, a socket that cannot be
+        had -- is a ``ReceivePortError`` carrying the real reason, where
+        it used to be reported as a busy port (0.6.11).
+
         No ``SO_REUSEADDR`` on purpose: a bind that succeeded alongside
         the mixer GUI would split the backend's datagrams between both
         readers and produce quietly wrong numbers on both sides.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock: Optional[socket.socket] = None
         try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.bind((self.host, self.recv_port))
-        except OSError:
-            sock.close()
-            return None
+        except OSError as exc:
+            if sock is not None:
+                sock.close()
+            if exc.errno == errno.EADDRINUSE:
+                return None
+            raise ReceivePortError(
+                exc.errno, "cannot bind the receive port UDP %d: %s"
+                % (self.recv_port, exc.strerror or exc)) from exc
         return Listener(sock)
 
 

@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
-from .backend import Backend, loopback
+from .backend import Backend, ReceivePortError, loopback
 from .config import Config
 from .constants import DUMP_LISTEN_SETTLE, VERIFY_SETTLE, VERIFY_TIMEOUT
 from .log import log
@@ -261,8 +261,9 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
     # reader would not have.
     """Ask oscmix to dump its state and compare it against ``registers``.
 
-    Returns ``None`` when verification is impossible (the receive port is
-    taken, normally because the mixer GUI is listening there), otherwise
+    Returns ``None`` when verification is impossible because the receive
+    port is taken, normally by the mixer GUI; a port that cannot be bound
+    for any other reason raises ``ReceivePortError``. Otherwise
     a :class:`VerifyResult` classifying every expected register as
     confirmed (reported with a matching value), mismatched (reported
     with a different value -- a later matching report overrides), or
@@ -480,6 +481,28 @@ def reconcile_now(config: Config, reason: str,
     return True
 
 
+def _read_back(registers: Registers, config: Config,
+               on_observed: Callable[[str, Sequence[object]], None],
+               should_stop: StopCheck,
+               device: Optional[Device]) -> Optional[VerifyResult]:
+    """``verify_routing`` for the verifier, with the desk left whole.
+
+    For the desk a port that cannot be bound is the held port over again:
+    the dump that syncs oscmix's link state cannot be watched, so the mix
+    is re-established blind. For the caller it is not -- a port that can
+    never be read is not a verification "skipped" -- so the error goes on
+    once the mix is safe (0.6.11).
+    """
+    try:
+        return verify_routing(registers, config.osc_port,
+                              config.osc_recv_port, VERIFY_TIMEOUT,
+                              on_observed=on_observed,
+                              should_stop=should_stop, device_model=device)
+    except ReceivePortError as exc:
+        blind_reapply_mix(config, should_stop, why=exc.strerror)
+        raise
+
+
 def verify_and_repair(config: Config,
                       should_stop: StopCheck = never_stop) -> None:
     """Read the applied routing back and re-send once on problems.
@@ -515,11 +538,8 @@ def verify_and_repair(config: Config,
     for attempt in (1, 2):
         if should_stop():
             return
-        result = verify_routing(registers, config.osc_port,
-                                config.osc_recv_port, VERIFY_TIMEOUT,
-                                on_observed=on_observed,
-                                should_stop=should_stop,
-                                device_model=device)
+        result = _read_back(registers, config, on_observed, should_stop,
+                            device)
         if should_stop():
             return
         if result is None:

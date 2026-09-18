@@ -501,6 +501,23 @@ def silent_backend():
     return _RecordingBackend(reports=None)
 
 
+class _UnbindableBackend(_RecordingBackend):
+    """The receive port cannot be bound, and nobody holds it."""
+
+    def listen(self):
+        from oscmix_desk.errors import ReceivePortError
+        raise ReceivePortError(
+            13, "cannot bind the receive port UDP 80: Permission denied")
+
+
+@pytest.fixture
+def unbindable_backend():
+    """`[osc] recv-port = 80` for an ordinary user: EACCES, not the GUI."""
+    from oscmix_desk import backend as backend_mod
+    _RecordingBackend.traits = backend_mod.OSCMIX
+    return _UnbindableBackend()
+
+
 def _echo_within_traits(sent):
     """Echo back what a backend with OSCMIX's traits would report.
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from typing import Callable, Dict, Mapping, Optional, Sequence
 
-from .backend import Backend, loopback
+from .backend import Backend, ReceivePortError, loopback
 from .config import Config, Route
 from .constants import (
     DEFAULT_OSC_RECV_PORT,
@@ -75,7 +75,8 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
 
     Returns True when everything arrived, False on timeout, and None when
     the receive port is unavailable (the mixer GUI holds it), in which
-    case the caller falls back to a plain wait.
+    case the caller falls back to a plain wait. A port that cannot be
+    bound for any other reason raises ``ReceivePortError``.
 
     ``backend`` is the caller's, when it has one. Without it this built
     its own from ``recv_port`` and ignored the one ``apply_routing`` had
@@ -139,8 +140,18 @@ def _cross_the_barrier(config: Config, recv_port: int,
         log.info("this backend updates its link state on write; no barrier")
         return
     timeout = LINK_ECHO_TIMEOUT
-    echoed = await_link_echo(output_link_state(config.routes), recv_port,
-                             timeout, backend=device)
+    try:
+        echoed = await_link_echo(output_link_state(config.routes), recv_port,
+                                 timeout, backend=device)
+    except ReceivePortError as exc:
+        # The links are on the wire by now. Letting this out would end
+        # the apply between its phases -- pairs linked, no mix -- which
+        # is the one state this function exists to prevent. Wait blind,
+        # as for a held port; the read-back reports it for what it is.
+        log.error("link echo unobservable: %s; waiting %.1fs", exc,
+                  LINK_SETTLE)
+        time.sleep(LINK_SETTLE)
+        return
     if echoed is None:
         log.info("link echo unobservable (UDP %d in use); waiting %.1fs",
                  recv_port, LINK_SETTLE)
@@ -257,8 +268,11 @@ def send_mix(config: Config) -> None:
 
 
 def blind_reapply_mix(config: Config,
-                      should_stop: StopCheck = never_stop) -> None:
+                      should_stop: StopCheck = never_stop,
+                      why: Optional[str] = None) -> None:
     """Re-apply the mix when the device dump cannot be observed.
+
+    ``why`` names the cause in the log when it is not the usual one.
 
     The mixer GUI holds the receive port, so the link reports are
     invisible; ``/refresh`` still has to go out because that dump is what
@@ -273,8 +287,9 @@ def blind_reapply_mix(config: Config,
     if should_stop():
         return
     loopback(config.osc_port, config.osc_recv_port).request_dump()
-    log.info("register sync unobservable (UDP %d in use); re-applying mix "
-             "after %.0fs", config.osc_recv_port, LINK_SYNC_BLIND_DELAY)
+    log.info("register sync unobservable (%s); re-applying mix after %.0fs",
+             why or "UDP %d in use" % config.osc_recv_port,
+             LINK_SYNC_BLIND_DELAY)
     if wait_unless_stopped(LINK_SYNC_BLIND_DELAY, should_stop):
         log.info("stop requested during the blind delay; mix not re-applied")
         return

@@ -55,7 +55,7 @@ from .discovery import (
     udp_port_listening,
     usb_device_present,
 )
-from .errors import ConfigError, DeviceAmbiguous
+from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
 from .log import log
 from .process import port_holder
 from .registers import device_for_name
@@ -109,6 +109,12 @@ class Outcome:
     #: could not remove it: the desk holds only until the next reload or
     #: start, and the caller must not send that reload itself (ADR 0019).
     persisted: bool = True
+    #: Whether a read-back ran at all. False when the receive port was
+    #: held or could not be bound: ``unverified`` then means "unknown",
+    #: as it does for NOT_CHECKED, and ``reason`` says why nobody looked.
+    #: Until 0.6.11 that case was worded "N register(s) unconfirmed",
+    #: which is what a read-back that ran and came up short says.
+    read_back: bool = True
 
     @property
     def applied(self) -> bool:
@@ -135,6 +141,10 @@ class Outcome:
         if self.reason == NOT_CHECKED:
             return ("applied %r; not checked, so none of its %d register(s) "
                     "is confirmed" % (self.name, len(self.unverified)))
+        if not self.read_back:
+            return ("applied %r; not read back (%s), so none of its %d "
+                    "register(s) is confirmed"
+                    % (self.name, self.reason, len(self.unverified)))
         missed = [p for p in self.unverified if p not in self.unverifiable]
         if not missed:
             return ("applied %r; %d register(s) this backend cannot report: %s"
@@ -193,6 +203,20 @@ MACHINE_SETTINGS = (
     ("device", "usb-id", "usb_id"),
     ("device", "serial", "serial"),
 )
+
+
+def keep_machine_settings(desk: Config, running: Config) -> Config:
+    """``desk``, with the machine-level settings of the process that runs.
+
+    The backend is bound and talking to one interface; a desk re-read
+    under it -- for the verifier, for a SIGHUP -- changes the routing and
+    nothing in ``MACHINE_SETTINGS``. The session spelled the five
+    assignments out twice until 0.6.11, which is the way one gets
+    forgotten: the table is what a test holds against ``Config``.
+    """
+    for _section, _option, attr in MACHINE_SETTINGS:
+        setattr(desk, attr, getattr(running, attr))
+    return desk
 
 
 def _inherit_transport(profile: Config, main: Config, path: Path) -> None:
@@ -885,16 +909,25 @@ def _check(name: str, config: Config, device: Backend) -> Outcome:
     """
     model = device_for_name(config.device_name)
     registers = expected_registers(config)
-    result = verify_routing(registers, config.osc_port, config.osc_recv_port,
-                            VERIFY_TIMEOUT, device_model=model,
-                            backend=device)
+    try:
+        result = verify_routing(registers, config.osc_port,
+                                config.osc_recv_port, VERIFY_TIMEOUT,
+                                device_model=model, backend=device)
+    except ReceivePortError as exc:
+        # Applied -- the barrier waited blind -- and unverifiable for a
+        # reason that is not the mixer GUI. The outcome carries it, where
+        # it used to read "receive port in use" (0.6.11).
+        log.error("profile %r applied; it cannot be verified: %s", name, exc)
+        return Outcome(state=APPLIED_UNVERIFIED, name=name,
+                       reason=exc.strerror or str(exc),
+                       unverified=sorted(registers), read_back=False)
     if result is None:
         # The mixer GUI holds the port. Applied, blind, and said so.
         log.info("profile %r applied; read-back port in use, cannot verify",
                  name)
         return Outcome(state=APPLIED_UNVERIFIED, name=name,
                        reason="receive port in use (mixer GUI running?)",
-                       unverified=sorted(registers))
+                       unverified=sorted(registers), read_back=False)
 
     unverified = sorted(result.mismatched + result.unobserved)
     if not unverified:

@@ -524,6 +524,15 @@ def _check_device_channels(config: Config) -> None:
     """
     device = device_for_name(config.device_name)
     if device is None:
+        if config.routes:
+            # Still no opinion, and no longer a silent one: a channel
+            # section on such a device has warned since 0.6.2 while its
+            # routes went to the device unchecked without a word (0.6.11).
+            log.warning(
+                "no register model for %r: its %d route(s) are written as "
+                "given, with no check that the device has those channels "
+                "(modelled: %s)", config.device_name, len(config.routes),
+                _modelled_names())
         return
     for route in config.routes:
         kind, source = route.source

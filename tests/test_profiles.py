@@ -213,6 +213,13 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
     assert outcome.applied is True
     assert outcome.unverified, "unverifiable without a list is not an outcome"
     assert "/output/1/volume" in outcome.unverified
+    # Nobody looked, so the line must not read like a read-back that ran
+    # and came up short ("N register(s) unconfirmed", until 0.6.11).
+    assert outcome.read_back is False
+    assert outcome.describe() == (
+        "applied 'tracking'; not read back (receive port in use (mixer GUI "
+        "running?)), so none of its %d register(s) is confirmed"
+        % len(outcome.unverified))
 
 
 def test_the_three_states_are_the_only_three(tmp_path):

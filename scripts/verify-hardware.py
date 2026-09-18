@@ -24,6 +24,7 @@ Fireface.
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import math
 import os
@@ -439,7 +440,14 @@ def main() -> int:
 
     try:
         reader = LevelReader(config.osc_recv_port)
-    except OSError:
+    except OSError as exc:
+        if exc.errno != errno.EADDRINUSE:
+            # Not the GUI, and not a reason to skip: a measurement that
+            # cannot bind its port for another reason has failed (0.6.11).
+            print("error: cannot bind the receive port UDP %d: %s"
+                  % (config.osc_recv_port, exc.strerror or exc),
+                  file=sys.stderr)
+            return 1
         print("skip: UDP %d is in use -- close the mixer GUI, its meters "
               "and ours would split the stream" % config.osc_recv_port,
               file=sys.stderr)

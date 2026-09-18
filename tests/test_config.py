@@ -497,6 +497,32 @@ def test_an_unmodelled_device_keeps_working_exactly_as_before(session_mod,
     assert config.routes[0].output == (40, 41)
 
 
+def test_an_unmodelled_device_s_routes_are_unchecked_out_loud(session_mod,
+                                                              tmp_path,
+                                                              caplog):
+    """Still no opinion (ADR 0006) -- but a channel section on such a device
+    has warned since 0.6.2, while its routes were written to hardware
+    nobody modelled without a word. The warning names the device, counts
+    the routes and says what is modelled; a modelled device, and a desk
+    with no routes, get none."""
+    unmodelled = write(tmp_path, "[device]\nname = Fireface UFX III\n\n"
+                                 "[route:x]\nplayback = 1/2\noutput = 40/41\n"
+                                 "[route:y]\nplayback = 3/4\noutput = 3/4\n")
+    with caplog.at_level("WARNING"):
+        session_mod.load_config(unmodelled)
+    assert ("no register model for 'Fireface UFX III': its 2 route(s) are "
+            "written as given") in caplog.text
+    assert "(modelled: Fireface UCX II)" in caplog.text
+
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        session_mod.load_config(write(
+            tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
+        session_mod.load_config(write(
+            tmp_path, "[device]\nname = Fireface UFX III\n"))
+    assert "no register model" not in caplog.text
+
+
 def test_an_untested_device_constrains_only_what_upstream_declares(
         session_mod, tmp_path):
     """This test used to assert the opposite, and the change is the point.
@@ -667,12 +693,20 @@ def test_a_channel_section_for_a_device_without_registers_is_named_ignored(
         config = session_mod.load_config(path)
     assert len(config.routes) == 1
     assert config.channels == []
-    messages = _warnings(caplog)
+    messages = [m for m in _warnings(caplog) if "[input:3]" in m]
     assert len(messages) == 1
-    assert "[input:3]" in messages[0]
     assert name in messages[0]
     assert "Fireface UCX II" in messages[0], "the warning names what is modelled"
     assert "newer version" not in messages[0]
+    # The route: checked against the 802's channel map, which upstream
+    # declares; unchecked, and said so since 0.6.11, on a name nobody
+    # modelled. Nothing else is warned about.
+    others = [m for m in _warnings(caplog) if "[input:3]" not in m]
+    if name == "Fireface 802":
+        assert others == []
+    else:
+        assert len(others) == 1
+        assert "its 1 route(s) are written as given" in others[0]
 
 
 @pytest.mark.parametrize("section", ["eq:input:3", "clock"])

@@ -104,7 +104,13 @@ def find_sink(objects: List[Dict[str, Any]], device_name: str,
     """pw_sink_info over objects already read."""
     needle = device_name.lower()
     for obj in objects:
-        props = obj.get("info", {}).get("props") or {}
+        # `info` is null for an object pw-dump saw go away (its monitor
+        # mode prints those), and nothing promises `props` is a mapping.
+        # `.get` on either raised AttributeError until 0.6.11.
+        info = obj.get("info")
+        props = info.get("props") if isinstance(info, dict) else None
+        if not isinstance(props, dict):
+            continue
         if props.get("media.class") != "Audio/Sink":
             continue
         name = props.get("node.name")

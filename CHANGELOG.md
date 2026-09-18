@@ -1,5 +1,57 @@
 # Changelog
 
+## Unreleased
+
+What an outside review of 0.6.10 named, checked against the tree before
+anything changed, and cut in two: the defects and the small repairs
+here, the tighter types -- enums for phases and write reasons, a named
+result instead of `Optional[bool]`, a frozen `Config` -- in 0.7.0,
+because they change public names. The pin does not move and the
+register table has no new row.
+
+### Fixed
+
+- **A receive port that cannot be bound is no longer reported as a busy
+  one.** `Backend.listen` answered `None` for every `OSError`, and
+  `None` means "the mixer GUI has the port" to every caller. Measured:
+  `[osc] recv-port = 80` fails with `EACCES`, and the desk ran
+  unverified for good under `UDP 80 in use (mixer GUI running?)`. `None`
+  is `EADDRINUSE` alone now; anything else is a `ReceivePortError` with
+  the real cause, and the status line reads `verifier failed` rather
+  than nothing. The review's own remedy -- re-raise -- would have ended
+  an apply between its phases, pairs linked and no mix, because the
+  barrier binds the port after the links are on the wire: the barrier
+  waits blind instead, the verifier re-establishes the mix before it
+  reports the failure, and the three reads exit 1 with the cause rather
+  than a traceback. ADR 0025.
+
+- **A switch nobody could read back says so.** With the receive port
+  held or unbindable the outcome line read `N register(s) unconfirmed`,
+  which is what a read-back that ran and came up short says. It reads
+  `not read back (<why>), so none of its N register(s) is confirmed`.
+
+- **`--pipewire-sinks` survives an object without properties.** pw-dump
+  prints `"info": null` for an object that went away, and the sink
+  search raised `AttributeError` on it.
+
+- **`verify-hardware.py` skips only for a held port.** Any failure to
+  bind was a skip (exit 77) with "close the mixer GUI"; another cause is
+  an error now.
+
+### Changed
+
+- **Routes on a device nobody modelled are unchecked out loud.** A
+  channel section on such a device has warned since 0.6.2, while its
+  routes went to the hardware without a channel check and without a
+  word. Still no opinion (ADR 0006); the warning names the device, the
+  number of routes and what is modelled.
+- **One rule for what a re-read desk may not change.** The verifier's
+  re-read and the SIGHUP's each assigned the five machine settings by
+  hand; both go through `profiles.keep_machine_settings`, which walks
+  the table a test already holds against `Config`.
+- **CI uploads artifacts on Node 24.** `actions/upload-artifact` moves
+  from the v5 pin, which targets the deprecated Node 20, to v7.0.1.
+
 ## 0.6.10 (2026-09-17)
 
 What a full check of the released 0.6.9 found -- gates, the live desk,

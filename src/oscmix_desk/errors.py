@@ -25,3 +25,21 @@ class DeviceLockUnavailable(Exception):
     "nothing to apply" or "a stop arrived", and the start treated all
     three alike: it sent READY=1 for a desk it never wrote (ADR 0024).
     """
+
+
+class ReceivePortError(OSError):
+    """The receive port cannot be bound, and not because somebody holds it.
+
+    ``Backend.listen`` answers None for the one failure that is a normal
+    state: EADDRINUSE, the mixer GUI has the port. Until 0.6.11 it
+    answered None for every other OSError as well, and every caller then
+    said "in use -- close the mixer GUI" about a port nothing held.
+    Measured: ``[osc] recv-port = 80`` fails with EACCES for an ordinary
+    user, and the desk ran unverified for good under a message that named
+    the wrong cause.
+
+    An OSError, so the handlers the verifier and the reconcile already
+    have for a socket they cannot use apply to it. It is never allowed to
+    end an apply half-way: the link barrier catches it and waits blind,
+    because the links are on the wire by then (ADR 0025).
+    """

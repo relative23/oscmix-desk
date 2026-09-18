@@ -99,7 +99,10 @@ ALLOWED_IMPORTS = {
     "registers": {"constants"},
     # The one place that opens a socket to the device. Its Traits name
     # the upstream behaviour the timing constants work around.
-    "backend": {"osc"},
+    # `errors` since 0.6.11: a receive port that cannot be bound for a
+    # reason other than a holder is an exception every caller has to be
+    # able to name, and errors is a leaf.
+    "backend": {"errors", "osc"},
     # Pure: config + the message shapes + the register table. No
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.

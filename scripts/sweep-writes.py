@@ -53,7 +53,7 @@ from oscmix_desk.discovery import (
     device_firmware,
     resolve_device,
 )
-from oscmix_desk.errors import DeviceAmbiguous
+from oscmix_desk.errors import DeviceAmbiguous, ReceivePortError
 from oscmix_desk.profiles import take_device_lock
 
 #: Steps as a fraction of the declared range, smallest first. One percent
@@ -485,7 +485,12 @@ def main() -> int:
         return 1
 
     device = loopback(args.osc_port, args.osc_recv_port)
-    listener = device.listen()
+    try:
+        listener = device.listen()
+    except ReceivePortError as exc:
+        lock.release()
+        sys.stderr.write("%s\n" % exc.strerror)
+        return 1
     if listener is None:
         lock.release()
         sys.stderr.write("UDP %d is in use -- close the mixer GUI\n"

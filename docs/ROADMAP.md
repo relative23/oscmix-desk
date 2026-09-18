@@ -88,7 +88,24 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.10)
+## Where we are (0.6.11)
+
+**0.6.11 (unreleased)** is what an outside review of 0.6.10 named,
+measured before anything changed. One finding was a defect: the receive
+port's `listen()` reported every failure to bind as "the mixer GUI has
+it", so a port that could never be bound -- `recv-port = 80`, `EACCES`
+-- left the desk unverified for good under a message that named the
+wrong cause. The review's remedy, re-raising, would have torn an apply
+between its phases; the barrier waits blind instead and the verifier
+fails out loud once the mix is safe (ADR 0025). With it: an outcome
+nobody could read back is worded as one, routes on an unmodelled device
+warn, the sink search survives `"info": null`, and one table decides
+what a re-read desk may not change. The review's larger half -- enums
+for phases and write reasons, a result type for the barrier, a frozen
+`Config`, a decision about strict handling of unmodelled devices --
+changes public names and is 0.7.0. Its packaging proposal is declined
+as a requirement: ADR 0004 stands, and on the target platform `pip
+install --user` into the system Python is refused (PEP 668).
 
 **0.6.10 (2026-09-17)** is what a full check of the released 0.6.9
 found -- gates, the live desk, and independent reviews of the whole
