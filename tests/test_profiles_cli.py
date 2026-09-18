@@ -332,17 +332,21 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
             == EXIT_OK
     assert "could not tell which desk oscmix.service runs" in caplog.text
     # A unit that was read and resolves no config has no desk to re-apply:
-    # that None is an answer, not a guess (found by review).
+    # that None is an answer, not a guess. A command line this parser
+    # cannot read is a guess again (both found by review).
     from oscmix_desk.process import UnitProcess
 
-    caplog.clear()
-    monkeypatch.setattr(cli, "unit_process", lambda *_a: UnitProcess(
-        argv=("oscmix-session",), environ={"HOME": str(tmp_path / "none")},
-        cwd=tmp_path))
-    with caplog.at_level("WARNING"):
-        cli._report_outcome(applied, tmp_path / "routing.conf")
-    assert "could not tell" not in caplog.text
+    for argv, guessed in ((("oscmix-session",), False),
+                          (("oscmix-session", "--timeout", "abc"), True)):
+        caplog.clear()
+        monkeypatch.setattr(cli, "unit_process", lambda *_a, argv=argv:
+                            UnitProcess(argv=argv, cwd=tmp_path, environ={
+                                "HOME": str(tmp_path / "none")}))
+        with caplog.at_level("WARNING"):
+            cli._report_outcome(applied, tmp_path / "routing.conf")
+        assert ("could not tell" in caplog.text) is guessed, argv
     # Nor was a unit that is not running guessed about.
+    caplog.clear()
     monkeypatch.setattr(cli, "unit_process", lambda *_a: None)
     monkeypatch.setattr(cli, "reload_service", lambda: cli.RELOAD_NOT_RUNNING)
     with caplog.at_level("WARNING"):

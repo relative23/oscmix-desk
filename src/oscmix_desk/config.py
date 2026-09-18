@@ -135,6 +135,26 @@ class Machine(NamedTuple):
             for name, mine, theirs in zip(self._fields, self, other)
             if mine != theirs)
 
+    def elsewhere(self, record: "Machine", live: "Machine") -> str:
+        """Why this is not the session that ``record`` and ``live`` describe,
+        or "" when it is.
+
+        ``record`` is what the session's file said when it started and
+        ``live`` what it runs with -- they differ by ``--device``,
+        ``--osc-port`` and the serial a start pins. A setting that equals
+        either is this session's: a file that names the port given on
+        the command line, or the very box that was pinned, has not moved
+        anywhere. Nor has one that names no serial, which means "the only
+        one". The first cuts compared one of the two and refused the
+        session's own desk (found by review, 0.6.11).
+        """
+        return ", ".join(
+            "%s %r (not %r)" % (name.replace("_", " "), mine, running)
+            for name, mine, said, running in zip(self._fields, self, record,
+                                                 live)
+            if mine not in (said, running)
+            and not (name == "serial" and mine == ""))
+
 
 @dataclass
 class Config:
@@ -404,6 +424,10 @@ def load_config(path: Optional[Path],
     """
     config = Config() if base is None else base
     if path is None:
+        # No file resolves to the defaults, and that is a record too: a
+        # session started without one is otherwise refused its own desk
+        # the day a routing.conf that names nothing appears.
+        config.loaded = _machine_of(config)
         return config
     if not path.is_file():
         raise ConfigError("config file not found: %s" % path)
@@ -437,9 +461,13 @@ def load_config(path: Optional[Path],
 
     _check_device_channels(config)
     _check_link_agreement(config.routes)
-    config.loaded = Machine(config.device_name, config.usb_id, config.serial,
-                            config.osc_port, config.osc_recv_port)
+    config.loaded = _machine_of(config)
     return config
+
+
+def _machine_of(config: Config) -> Machine:
+    return Machine(config.device_name, config.usb_id, config.serial,
+                   config.osc_port, config.osc_recv_port)
 
 
 def _dispatch(parser: "configparser.ConfigParser", config: "Config",
@@ -574,8 +602,9 @@ def log_device_replaced(config: "Config", why: str) -> None:
     override itself needs the parser to know it, which is the
     frozen-config work of 0.7.0; until then this is the notice.
     """
-    if config.loaded is None:
-        return                      # no file, so nothing was checked
+    if config.loaded is None or not (config.routes or config.channels
+                                     or config.globals):
+        return                      # nothing in it was checked for a device
     if device_for_name(config.loaded.device_name) is not device_for_name(
             config.device_name):
         log.warning("%s: this config was checked for %r and is used for %r, "

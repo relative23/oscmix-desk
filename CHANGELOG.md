@@ -80,10 +80,11 @@ register table has no new row.
   differs and what to do -- a restart for a `routing.conf` that moved;
   for a profile, taking the sections out or `--no-profile`, because a
   restart would move the unit off its interface. A `Config` records the
-  machine settings its file resolved to, so `--device` and `--osc-port`
-  do not read as a change, and the serial a start pinned is the box it
-  is on: a file that names that box, or none, has not moved. The switch
-  still reloads the unit and leaves the decision to it, and says so.
+  machine settings its file resolved to, and a setting is the session's
+  own when it equals that record *or* what the session runs with: so
+  `--device`, `--osc-port` and the serial a start pins do not read as a
+  change, whichever side names them. The switch still reloads the unit
+  and leaves the decision to it, and says so.
 - **`--device` over a file for another model says so.** The override
   arrives after the file was validated, so the channels were checked for
   one interface and written to another in silence. Validating *for* the
@@ -100,7 +101,8 @@ register table has no new row.
   When the unit's `/proc` entry cannot be read the reload still goes
   out -- nearly every switch is for the unit's own desk, and an untold
   unit lets its verifier re-apply the old one -- but with a warning. A
-  unit that was read and resolves no config is not a guess.
+  unit that was read and resolves no config is not a guess; one whose
+  command line this version cannot parse is.
 - **An empty `[device] name` is a configuration error.** The name is a
   substring match, and the empty string is a substring of every name.
   Measured on the start path: with one MIDI-capable card `name =`
@@ -131,7 +133,8 @@ register table has no new row.
   config directory cannot say which desk is where, and two such profiles
   hold two device locks over that one marker. ADR 0026. A profile that
   restates its `routing.conf`'s own `[osc]` and `[device]` -- every one
-  made with `--dump-config` -- is not meant and stays accepted. One main
+  made with `--dump-config`, until `routing.conf` changes them -- is not
+  meant and stays accepted. One main
   config per directory is now a stated rule for the same reason: the
   marker and `profiles/` belong to the directory, not to the file.
 - **The public surface grows, and nothing in it changes shape.**

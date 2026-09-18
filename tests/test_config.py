@@ -563,8 +563,7 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
     compare against the record, not against those."""
     from oscmix_desk import config as config_mod
 
-    assert session_mod.Config().loaded is None, "no file, no record"
-    assert session_mod.load_config(None).loaded is None
+    assert session_mod.Config().loaded is None, "not loaded, no record"
     named = session_mod.load_config(write(
         tmp_path, "[device]\nname = Fireface 802\nserial = 11223344\n\n"
                   "[osc]\nport = 9001\n"))
@@ -577,6 +576,44 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
         "serial '11223344' (not '5'), osc recv port 8222 (not 9)")
     # Without a record there is nothing to compare, and nothing is said.
     config_mod.log_device_replaced(session_mod.Config(device_name="X"), "why")
+
+
+def test_a_desk_is_elsewhere_only_when_it_is_neither_said_nor_run():
+    """`record` is what the session's file said at its start, `live` what it
+    runs with; they differ by `--device`, `--osc-port` and the pinned
+    serial. Comparing one of them refused the session's own desk: first the
+    pinned box once routing.conf named it, then the port given on the
+    command line once the file named that (both found by review)."""
+    from oscmix_desk.config import Machine
+
+    record = Machine("Fireface UCX II", "2a39:3fd9", "", 7222, 8222)
+    live = Machine("Some Box", "2a39:3fd9", "24216011", 9000, 8222)
+    for same in (record, live,
+                 record._replace(serial="24216011"),       # the pinned box
+                 record._replace(osc_port=9000),           # the --osc-port
+                 live._replace(serial="")):                # "the only one"
+        assert same.elsewhere(record, live) == "", same
+    assert record._replace(serial="99887766").elsewhere(record, live) == \
+        "serial '99887766' (not '24216011')"
+    assert record._replace(osc_port=9500, device_name="Fireface 802") \
+        .elsewhere(record, live) == ("device name 'Fireface 802' (not 'Some "
+                                     "Box'), osc port 9500 (not 9000)")
+
+
+def test_no_file_resolves_to_the_defaults_and_that_is_a_record(session_mod,
+                                                              tmp_path):
+    """A session started without a routing.conf, with `--osc-port 9000`, was
+    refused the file that appeared later and named nothing: the same file
+    present at its start is applied (found by review)."""
+    from oscmix_desk.config import Machine
+
+    nothing = session_mod.load_config(None)
+    assert nothing.loaded == Machine("Fireface UCX II", "2a39:3fd9", "",
+                                     7222, 8222)
+    appeared = session_mod.load_config(write(
+        tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
+    live = nothing.loaded._replace(osc_port=9000)
+    assert appeared.loaded.elsewhere(nothing.loaded, live) == ""
 
 
 def test_an_untested_device_constrains_only_what_upstream_declares(

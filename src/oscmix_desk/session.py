@@ -336,30 +336,29 @@ def _kept_for_this_process(fresh: Config, running: Config,
     by the reload the switch sent; a `routing.conf` edited to name a box
     with 42 outputs reached a UCX II, which has twenty (ADR 0026).
 
-    What the files resolved to is compared (``Config.loaded``), not the
-    live attributes, so ``--device`` and ``--osc-port`` do not read as a
-    change; a session started with no file has only the live ones. The
-    serial is the exception, because a start pins the box it found: a
-    file that names that very box, or none, has not moved.
+    ``Machine.elsewhere`` decides: a setting that equals what this
+    session's file said at the start, or what the session runs with, is
+    this session's -- so ``--device``, ``--osc-port`` and the pinned
+    serial do not read as a change, whichever side names them.
     """
-    theirs = fresh.loaded
-    ours = running.loaded or Machine(
-        running.device_name, running.usb_id, running.serial,
-        running.osc_port, running.osc_recv_port)
-    if theirs is None:
-        return keep_machine_settings(fresh, running)
-    if theirs.serial in ("", running.serial):
-        theirs = theirs._replace(serial=ours.serial)
-    if theirs == ours:
+    live = Machine(running.device_name, running.usb_id, running.serial,
+                   running.osc_port, running.osc_recv_port)
+    moved = "" if fresh.loaded is None else fresh.loaded.elsewhere(
+        running.loaded or live, live)
+    if not moved:
         return keep_machine_settings(fresh, running)
     # A restart follows a routing.conf that moved. It would follow a
     # profile too -- off this interface, which nothing would then manage
-    # -- so that case is sent to the profile instead (ADR 0026).
+    # -- so that case is sent to the profile instead (ADR 0026). The
+    # profile is the cause only when *it* names another machine than its
+    # routing.conf, not whenever one happens to be active.
+    by_profile = active and fresh.main is not None \
+        and fresh.loaded != fresh.main
     log.error("the desk now in effect is for another backend or interface "
               "-- %s -- and a running session keeps the one it was started "
-              "for, so it was not applied; %s", theirs.differs_from(ours),
+              "for, so it was not applied; %s", moved,
               "take [osc] and [device] out of profile %r, or --no-profile"
-              % active if active else
+              % active if by_profile else
               "restart the session to follow it (systemctl --user restart "
               "%s)" % SERVICE_UNIT)
     return None

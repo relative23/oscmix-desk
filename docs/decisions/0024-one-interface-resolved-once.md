@@ -220,5 +220,7 @@ with the desk does not: it pinned the re-read desk to the running
 interface and *applied* it, even when the file, or the active profile,
 named another box or another backend -- so a desk written for one
 interface was written to another. Such a desk is not applied now; the
-reconcile is skipped, the error names what differs, and a restart
-follows it ([ADR 0026](0026-a-profile-is-the-desk-not-the-machine.md)).
+reconcile is skipped and the error names what differs and the way out --
+a restart when `routing.conf` moved, the profile itself when the profile
+names another machine
+([ADR 0026](0026-a-profile-is-the-desk-not-the-machine.md)).

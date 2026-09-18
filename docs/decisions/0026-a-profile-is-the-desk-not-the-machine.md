@@ -50,7 +50,10 @@ What is ended is a profile that resolves to *another* machine, not the
 sections themselves: `--dump-config > profiles/x.conf` is the documented
 way to make a profile, and it writes `[device]` and `[osc]` into every
 one. A profile that restates its `routing.conf`'s values says nothing,
-and stays accepted.
+and stays accepted -- for as long as they are its `routing.conf`'s
+values. Change the port there and a dumped profile names the old one:
+it is then a profile for another machine, is told so, and the remedy it
+is given, taking the sections out, is the right one.
 
 In 0.6.11, without changing what an accepted file means (ADR 0006):
 
@@ -58,15 +61,18 @@ In 0.6.11, without changing what an accepted file means (ADR 0006):
   written that 0.7.0 refuses it.
 * A running session does not apply a re-read desk that resolves to
   another device name, usb id, serial or port than its own: the
-  reconcile is skipped and the error names what differs. What the
-  *files* resolved to is compared (`Config.loaded`), so `--device` and
-  `--osc-port` do not read as a change; the serial a start pinned is the
-  box it is on, so a file naming that box, or none, has not moved.
-* The advice fits the cause. A `routing.conf` that moved is followed by
-  a restart. A profile would be followed too -- off this interface,
-  which nothing would then manage, or into exit 2 beside the session
-  that already holds that port -- so it is sent to the profile: take
-  the sections out, or `--no-profile`.
+  reconcile is skipped and the error names what differs. A setting is
+  the session's own when it equals what the session's file said at its
+  start *or* what the session runs with (`Machine.elsewhere`), so
+  `--device`, `--osc-port` and the serial a start pins do not read as a
+  change, whichever side names them; no serial means "the only one".
+* The advice fits the cause, not the presence of a profile. A
+  `routing.conf` that moved is followed by a restart, with or without a
+  profile active. A profile that *itself* names another machine would
+  be followed too -- off this interface, which nothing would then
+  manage, or into exit 2 beside the session that already holds that
+  port -- so it is sent to the profile: take the sections out, or
+  `--no-profile`.
 * The switch still reloads the unit and leaves the decision to it. A
   first cut decided in the CLI by comparing the profile with
   `routing.conf`; but the unit may itself have been started under such a

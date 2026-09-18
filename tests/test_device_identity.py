@@ -1223,15 +1223,15 @@ def test_the_unit_s_desk_is_resolved_in_the_unit_s_environment(tmp_path,
     by_xdg = desk(tmp_path / "unit-xdg")
     monkeypatch.setattr(cli, "unit_process", _unit({
         "XDG_CONFIG_HOME": str(by_xdg.parent.parent)}))
-    assert cli._unit_desk() == by_xdg
+    assert cli._unit_desk() == (True, by_xdg)
     by_home = desk(tmp_path / "unit-home" / ".config")
     monkeypatch.setattr(cli, "unit_process", _unit({
         "HOME": str(tmp_path / "unit-home")}))
-    assert cli._unit_desk() == by_home
+    assert cli._unit_desk() == (True, by_home)
     # OSCMIX_CONFIG in the unit wins over both, existing or not.
     monkeypatch.setattr(cli, "unit_process", _unit({
         "OSCMIX_CONFIG": str(tmp_path / "named.conf"), "HOME": str(tmp_path)}))
-    assert cli._unit_desk() == tmp_path / "named.conf"
+    assert cli._unit_desk() == (True, tmp_path / "named.conf")
 
 
 def test_the_unit_s_desk_is_its_config_argument_before_its_environment(
@@ -1248,30 +1248,30 @@ def test_the_unit_s_desk_is_its_config_argument_before_its_environment(
                  ("oscmix-session", "--config=/x/routing.conf"),
                  ("oscmix-session", "--conf", "/x/routing.conf", "--timeout", "5")):
         monkeypatch.setattr(cli, "unit_process", _unit(environ, argv, "/unit"))
-        assert cli._unit_desk() == Path("/x/routing.conf"), argv
+        assert cli._unit_desk() == (True, Path("/x/routing.conf")), argv
     monkeypatch.setattr(cli, "unit_process",
                         _unit(environ, ("oscmix-session", "--config", "desk/r.conf"),
                               "/unit"))
-    assert cli._unit_desk() == Path("/unit/desk/r.conf")
+    assert cli._unit_desk() == (True, Path("/unit/desk/r.conf"))
     monkeypatch.setattr(cli, "unit_process",
                         _unit({"OSCMIX_CONFIG": "desk/r.conf"}, cwd="/unit"))
-    assert cli._unit_desk() == Path("/unit/desk/r.conf")
+    assert cli._unit_desk() == (True, Path("/unit/desk/r.conf"))
     # A command line this parser cannot read: cannot be told, and the
     # parser's usage text is the unit's, not this switch's stderr.
     monkeypatch.setattr(cli, "unit_process",
                         _unit(environ, ("oscmix-session", "--config"), "/unit"))
     monkeypatch.setattr(cli.sys, "stderr", io.StringIO())
-    assert cli._unit_desk() is None
+    assert cli._unit_desk() == (False, None), "cannot be told"
     assert cli.sys.stderr.getvalue() == ""
     # An empty final argument is an argument, not a terminator: a unit
     # started with `--device ''` runs its --config, not "cannot be told".
     monkeypatch.setattr(cli, "unit_process", _unit(
         environ, ("oscmix-session", "--config", "/x/r.conf", "--device", ""),
         "/unit"))
-    assert cli._unit_desk() == Path("/x/r.conf")
-    # No desk anywhere: None, and the switch reloads as before.
+    assert cli._unit_desk() == (True, Path("/x/r.conf"))
+    # No desk anywhere: told, and there is none -- an answer, not a guess.
     monkeypatch.setattr(cli, "unit_process", _unit({"HOME": str(tmp_path)}))
-    assert cli._unit_desk() is None
+    assert cli._unit_desk() == (True, None)
 
 
 def test_the_unit_s_process_is_read_from_proc(tmp_path, monkeypatch):
@@ -1457,7 +1457,7 @@ def test_the_unit_desk_reads_the_real_proc_and_compares_files_safely(
     roots = []
     monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
     monkeypatch.setattr(cli, "unit_process", lambda root: roots.append(root))
-    assert cli._unit_desk() is None
+    assert cli._unit_desk() == (False, None)
     assert roots == [Path("/proc")]
     assert cli._same_file(tmp_path / "a", None) is False
 
@@ -1564,7 +1564,8 @@ def test_the_box_a_start_pinned_is_not_another_box_when_the_file_names_it(
     path.write_text("[device]\nserial = 99887766\n" + route)
     with caplog.at_level("ERROR"):
         assert _reread("_reloaded_desk", running, path) is None
-    assert "serial '99887766' (not '')" in caplog.text
+    assert "serial '99887766' (not '24216011')" in caplog.text, \
+        "against the box it is on, not against what the file once said"
 
 
 def test_a_session_started_without_a_file_compares_what_it_runs(tmp_path,
@@ -1600,13 +1601,23 @@ def test_the_advice_fits_the_cause(tmp_path, caplog):
     assert "take [osc] and [device] out of profile 'far', or --no-profile" \
         in caplog.text
     assert "restart" not in caplog.text
-    caplog.clear()
-    (tmp_path / "active-profile").unlink()
+    # routing.conf moved, with or without a profile active: an ordinary
+    # profile states nothing, so neither of its remedies could work, and
+    # `--no-profile` would be refused for a port nobody listens on.
+    write_config(tmp_path / "profiles" / "plain.conf",
+                 "[route:p]\nplayback = 1/2\noutput = 3/4\n")
     path.write_text("[osc]\nport = 9500\n"
                     "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    with caplog.at_level("ERROR"):
-        assert _reread("_reloaded_desk", running, path) is None
-    assert "systemctl --user restart oscmix.service" in caplog.text
+    for marker in ("plain\n", None):
+        caplog.clear()
+        if marker:
+            (tmp_path / "active-profile").write_text(marker)
+        else:
+            (tmp_path / "active-profile").unlink()
+        with caplog.at_level("ERROR"):
+            assert _reread("_reloaded_desk", running, path) is None
+        assert "systemctl --user restart oscmix.service" in caplog.text
+        assert "--no-profile" not in caplog.text
 
 
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])

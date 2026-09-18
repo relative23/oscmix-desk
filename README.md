@@ -212,7 +212,8 @@ oscmix-session --profile tracking
 
 Leave `[osc]` and `[device]` out of a profile. Those describe the
 machine, not the desk, and are taken from your main config. A dumped
-profile restates them, which is harmless. A profile that names *another*
+profile restates them, which is harmless until `routing.conf`'s own
+change -- it then names the old ones. A profile that names *another*
 port or interface still wins in 0.6.x, is told so, and is not applied by
 a running session to its own interface; from 0.7.0 it is refused
 ([ADR 0026](docs/decisions/0026-a-profile-is-the-desk-not-the-machine.md)).

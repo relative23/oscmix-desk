@@ -408,7 +408,7 @@ def _report_outcome(outcome: "Outcome",
     # that switch (0.6.9). The unit's desk is what the unit resolved --
     # its own --config, else its own environment -- not what this
     # process would.
-    unit_desk = _unit_desk()
+    told, unit_desk = _unit_desk()
     if config_path is not None and unit_desk is not None \
             and not _same_file(config_path, unit_desk):
         log.info("%s not reloaded: it runs %s, and this switch was for %s",
@@ -421,15 +421,14 @@ def _report_outcome(outcome: "Outcome",
         # journal says so (session._kept_for_this_process).
         log.info("%s reloaded; its own reconcile follows the new desk, or "
                  "says in its journal why it does not", SERVICE_UNIT)
-        if config_path is not None and unit_desk is None \
-                and _unit_is_unreadable():
+        if config_path is not None and not told:
             # Reloaded all the same: nearly every switch is for the unit's
             # own desk, and leaving the unit untold lets its verifier
             # re-apply the old one (0.6.3). But it is a guess, so say so.
             log.warning("could not tell which desk %s runs (its /proc entry "
-                        "could not be read): if this switch was for another "
-                        "desk, the unit has re-applied its own over it",
-                        SERVICE_UNIT)
+                        "or its command line could not be read): if this "
+                        "switch was for another desk, the unit has "
+                        "re-applied its own over it", SERVICE_UNIT)
         return EXIT_OK
     if reloaded == RELOAD_NOT_RUNNING:
         log.info("%s is not running; nothing to reload", SERVICE_UNIT)
@@ -440,8 +439,12 @@ def _report_outcome(outcome: "Outcome",
     return EXIT_RELOAD_FAILED
 
 
-def _unit_desk() -> Optional[Path]:
-    """The config the running unit resolves, or None when that cannot be told.
+def _unit_desk() -> Tuple[bool, Optional[Path]]:
+    """(whether it could be told, the config the running unit resolves).
+
+    ``(True, None)`` is an answer -- the unit resolves no config, so it has
+    no desk to re-apply -- and ``(False, None)`` is not: read once, because
+    a second look after the reload may see another unit state.
 
     Worked out the way the unit did (session._config_path): --config on
     its command line first, then its environment. Its own parser reads
@@ -451,23 +454,16 @@ def _unit_desk() -> Optional[Path]:
     """
     unit = unit_process(Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
     if unit is None:
-        return None
+        return False, None
     # A line this parser cannot read is "cannot be told", and its usage
     # text belongs to the unit, not on this switch's stderr.
     try:
         with contextlib.redirect_stderr(io.StringIO()):
             args, _ = build_arg_parser().parse_known_args(list(unit.argv[1:]))
     except SystemExit:
-        return None
+        return False, None
     named = args.config or discover_config_path(unit.environ)
-    return None if named is None else unit.cwd / named
-
-
-def _unit_is_unreadable() -> bool:
-    """None from ``_unit_desk`` has two meanings, and only one is a guess:
-    a unit that was read and resolves no config has no desk to re-apply."""
-    return unit_process(Path(os.environ.get("OSCMIX_PROC_ROOT",
-                                            "/proc"))) is None
+    return True, None if named is None else unit.cwd / named
 
 
 def _same_file(one: Path, other: Optional[Path]) -> bool:

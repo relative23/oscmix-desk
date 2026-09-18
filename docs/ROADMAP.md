@@ -125,8 +125,8 @@ Decided, and recorded so that none of it is found twice. No new surface:
 nothing is added to what a `routing.conf` can declare.
 
 1. **Modules a person can read, first and alone.** Six source modules
-   are over 600 lines (`registers` 1038, `profiles` 999, `config` 990,
-   `reconcile` 843, `session` 711, `cli` 708) and four test files over
+   are over 600 lines (`registers` 1038, `config` 1019, `profiles` 999,
+   `reconcile` 843, `session` 710, `cli` 704) and four test files over
    900. Split at seams that exist -- in `profiles`: the device lock, the
    marker's persistence, the switch transaction, which are the three
    identities the second review found tangled; in `config`: the model,
@@ -139,8 +139,8 @@ nothing is added to what a `routing.conf` can declare.
    changelog lose their history to `docs/history/`.
 2. **A profile is the desk** (ADR 0026): a profile that resolves to
    another machine than its `routing.conf` is a `ConfigError`. One that
-   restates the same values, as every dumped profile does, stays
-   accepted.
+   restates the same values, as a dumped profile does until its
+   `routing.conf` changes them, stays accepted.
 3. **Tighter types** (first review): `Phase` as `IntEnum`, `WriteReason`
    and the register domains, policies and verification classes as enums
    where they steer control flow; one named result for "the receive port
