@@ -61,10 +61,11 @@ register table has no new row.
   channel section on such a device has warned since 0.6.2, while its
   routes went to the hardware without a channel check and without a
   word. Still no opinion (ADR 0006); the warning names the device, the
-  number of routes and what is modelled, and comes from the four places
-  that load a desk to write or show it -- a start and the dry runs, a
-  switch, a restore, a SIGHUP reload -- about that desk. A listing or a
-  read, which writes no route, is not warned about them.
+  number of routes and what is modelled, and comes from the places that
+  load a desk to write or show it -- a start, a switch, a restore, a
+  SIGHUP reload, the dry runs, `--diff`, `--dump-config` and
+  `--pipewire-sinks` -- about that desk. A listing, which shows no
+  route, is not warned about them.
 - **A desk for somewhere else is not applied here.** A running session
   keeps the backend and interface it was started for, and until now it
   pinned whatever it re-read to them and wrote it. Measured by review:
@@ -79,19 +80,25 @@ register table has no new row.
   port is refused now: `reconcile skipped`, and an error naming what
   differs and what to do -- a restart for a `routing.conf` that moved;
   for a profile that itself names another machine, taking the sections
-  out or `--no-profile`, because a restart would move the unit off its
-  interface. The re-read file is resolved the way a restart would
+  out, because a restart would move the unit off its interface, with
+  `--no-profile` named only where it can work. The re-read file is resolved the way a restart would
   resolve it: a `Config` records what its file said (`Config.loaded`)
   and what the command line replaced (`Config.overrides`), so a file
   under `--device` or `--osc-port`, or one that names the box the start
   pinned, is the session's own, and a reload applies what a restart
   would apply here. The switch still reloads the unit and leaves the
   decision to it, and says so.
-- **`--device` over a file for another model says so**, at the start
-  and at every reload that applies such a desk. The override arrives
-  after the file was validated, so the channels were checked for one
-  interface and written to another in silence. Validating *for* the
-  override needs the parser to know it, which is part of 0.7.0.
+- **`--device` over a file for another model says so**, wherever such
+  a desk is written or shown: a start, a reload, a dry run, `--diff`,
+  `--dump-config`, `--pipewire-sinks`. The override arrives after the
+  file was validated, so the channels were checked for one interface
+  and written to another in silence. Validating *for* the override
+  needs the parser to know it, which is part of 0.7.0.
+- **A start gives its notices about the desk it applies.** They were
+  given at the top of the start, about the file as read before the wait
+  for the device and the lock -- which can be hours on a machine booted
+  with the interface off -- while the desk applied is the one re-read
+  under the lock.
 - **The marker's temporary file has a name of its own.** Two switches
   holding different device locks shared `active-profile.tmp`, and one
   could rename the file the other was still writing.

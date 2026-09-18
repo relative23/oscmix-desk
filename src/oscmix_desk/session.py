@@ -20,7 +20,6 @@ from .config import (
     Machine,
     discover_config_path,
     log_desk_notices,
-    log_device_replaced,
     profile_path,
 )
 from .constants import (
@@ -226,6 +225,9 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         return None
 
     config = _desk_under_the_lock(config_path, config)
+    # About the desk read here, not the one the start read before it
+    # waited for the device and the lock.
+    log_desk_notices(config)
     if not desired(config):
         # Everything the config declares, not only its routes. Since
         # 0.4.0 a file may consist of `[input:3]`, `[eq:input:3]` or
@@ -352,32 +354,36 @@ def _kept_for_this_process(fresh: Config, running: Config,
     moved = fresh.loaded.under(running.overrides).elsewhere(live)
     if not moved:
         return keep_machine_settings(fresh, running)
-    home = moved if fresh.main is None else \
-        fresh.main.under(running.overrides).elsewhere(live)
+    main = fresh.main or fresh.loaded           # routing.conf alone
+    home = main.under(running.overrides).elsewhere(live)
     log.error("the desk now in effect is for another backend or interface "
               "-- %s -- and a running session keeps the one it was started "
               "for, so it was not applied; %s", moved,
-              _advice(active if home != moved else None, bool(home)))
+              _advice(active if home != moved else None, bool(home),
+                      not main.elsewhere(live)))
     return None
 
 
-def _advice(profile: Optional[str], home_moved: bool) -> str:
+def _advice(profile: Optional[str], follow: bool, restorable: bool) -> str:
     """What to do about a desk for elsewhere, by its cause (ADR 0026).
 
-    ``profile`` is the active profile when *it* names the other machine:
-    routing.conf alone says something else about where. A restart would
-    follow such a profile off this interface, which nothing would then
-    manage, so that case is sent to the profile. ``--no-profile`` writes
-    where routing.conf says, which is here only while that has not moved
-    as well; everything else is a routing.conf that a restart follows.
+    ``profile`` is the active profile when *it* is the cause: routing.conf
+    alone says something else about where. A restart would follow such a
+    profile off this interface, which nothing would then manage, so that
+    case is sent to the profile -- and on to a restart (``follow``) when
+    routing.conf alone is not this session's machine either. Only while
+    it is, bare, can ``--no-profile`` be the other way out
+    (``restorable``): that writes where the file says, never saw
+    ``--device`` or ``--osc-port``, and is refused for a port nobody
+    listens on. Everything else is a routing.conf that a restart follows.
     """
     restart = "restart the session to follow %s (systemctl --user restart " \
         + SERVICE_UNIT + ")"
     if profile is None:
         return restart % "it"
-    return "take [osc] and [device] out of profile %r, %s" % (
-        profile, "then " + restart % "routing.conf" if home_moved
-        else "or --no-profile")
+    return "take [osc] and [device] out of profile %r%s" % (
+        profile, ", then " + restart % "routing.conf" if follow
+        else ", or --no-profile" if restorable else "")
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -504,8 +510,8 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
 
 def run_session(args: argparse.Namespace, config: Config) -> int:
     """Discover the device, run the backend, and supervise it."""
-    # The desk a start applies, or a dry run shows -- after --device.
-    log_desk_notices(config)
+    if args.dry_run:
+        log_desk_notices(config)    # the desk it shows; a start asks under the lock
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
 
@@ -696,11 +702,6 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
              profile_path(active, path) if active else path,
              len(kept.routes), len(kept.channels))
     log_desk_notices(kept)
-    # What a restart would say as well. The start's own notice covers the
-    # desk of that moment: a file with nothing to check, given sections
-    # later, reached the `--device` interface unannounced (0.6.11).
-    log_device_replaced(kept, "SIGHUP: --device replaces [device] name "
-                              "after validation")
     return kept
 
 

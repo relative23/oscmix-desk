@@ -291,22 +291,27 @@ def test_a_device_override_that_bypasses_the_validation_is_named(
         tmp_path, caplog):
     """`--device` arrives after the file was validated. When it names
     another model, or none, the channel check said nothing about the
-    interface the routes now go to."""
+    interface the routes now go to. Said where the desk is shown or
+    written, with the other notices about it -- not by a listing, which
+    said it while it was said at the override (0.6.11)."""
     from oscmix_desk import cli
 
     path = tmp_path / "routing.conf"
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    with caplog.at_level("WARNING"):
-        cli.main(["--config", str(path), "--device", "Some Box",
-                  "--list-profiles"])
-    assert ("--device replaces [device] name after validation: this config "
-            "was checked for 'Fireface UCX II' and is used for 'Some Box'"
-            ) in caplog.text
-    caplog.clear()
-    with caplog.at_level("WARNING"):
-        cli.main(["--config", str(path), "--device", "fireface ucx ii",
-                  "--list-profiles"])
-    assert "--device" not in caplog.text, "the same model, spelled differently"
+    notice = ("--device replaces [device] name after validation: this config "
+              "was checked for 'Fireface UCX II' and is used for 'Some Box'")
+    for action in (["--dry-run", "--timeout", "0"], ["--dump-config"],
+                   ["--pipewire-sinks"]):
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            cli.main(["--config", str(path), "--device", "Some Box", *action])
+        assert caplog.text.count(notice) == 1, action
+    for quiet in (["--device", "Some Box", "--list-profiles"],
+                  ["--device", "fireface ucx ii", "--dump-config"]):
+        caplog.clear()
+        with caplog.at_level("WARNING"):
+            cli.main(["--config", str(path), *quiet])
+        assert "--device" not in caplog.text, quiet
 
 
 @pytest.mark.parametrize("action", [["--profile", "one"], ["--no-profile"]])
@@ -372,7 +377,7 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
 
     def record(name):
         return lambda *a: seen.append(
-            (name, a[-1].device_name, a[-1].osc_port)) or 0
+            (name, a[-1].device_name, a[-1].osc_port, a[-1].overrides)) or 0
 
     monkeypatch.setattr(cli, "run_session", record("start"))
     monkeypatch.setattr(cli, "_diff", record("--diff"))
@@ -382,8 +387,16 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
     overrides = ["--device", "fireface ucx ii", "--osc-port", "9000"]
     for action in ([], ["--diff"], ["--snapshot"]):
         assert cli.main(["--config", str(path), *overrides, *action]) == 0
-    assert seen == [(name, "fireface ucx ii", 9000)
+    # Replaced, and remembered as replaced: what a session resolves a
+    # re-read file with (`session._kept_for_this_process`).
+    from oscmix_desk import CommandLine
+
+    said = CommandLine(device_name="fireface ucx ii", osc_port=9000)
+    assert seen == [(name, "fireface ucx ii", 9000, said)
                     for name in ("start", "--diff", "--snapshot")]
+    seen.clear()
+    assert cli.main(["--config", str(path)]) == 0
+    assert seen == [("start", "Fireface UCX II", 7222, CommandLine())]
 
 
 def test_a_dry_run_shows_the_profile_for_the_interface_the_profile_names(

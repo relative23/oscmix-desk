@@ -19,7 +19,7 @@ from .config import (
     Config,
     discover_config_path,
     load_config,
-    log_device_replaced,
+    log_desk_notices,
     profile_path,
 )
 from .constants import (
@@ -167,14 +167,14 @@ def _override_device(config: Config, name: str) -> None:
 
     It arrives after the file was validated, so the channels and sections
     were checked for the device the *file* names; see
-    ``config.log_device_replaced``. Refused together with a switch or a
-    restore, which take their interface from the config and never saw
-    the override (``_refuse_conflicting_actions``).
+    ``config.replaced_device_warning``. Refused together with a switch or
+    a restore, which take their interface from the config and never saw
+    the override (``_refuse_conflicting_actions``). Remembered as an
+    override, like ``--osc-port``: a desk this process reads again is
+    resolved the way a restart would resolve it.
     """
     config.device_name = name
     config.overrides = config.overrides._replace(device_name=name)
-    log_device_replaced(config,
-                        "--device replaces [device] name after validation")
 
 
 def _desk_in_effect(config_path: Optional[Path]) -> Optional[Config]:
@@ -249,6 +249,8 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     if args.snapshot:
         return _snapshot(config)
 
+    if args.diff or args.dump_config or args.pipewire_sinks:
+        log_desk_notices(config)        # the desk these show, after --device
     if args.diff:
         return _diff(config)
 

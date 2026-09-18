@@ -153,11 +153,13 @@ class Machine(NamedTuple):
 
         ``self`` is what a restart of that session would resolve its file
         to, the command line included (``under``), and ``live`` what the
-        session runs with. Naming no serial means "the only one", which is
-        whichever box the start pinned. The first cuts compared the bare
-        file and refused the session's own desk: the pinned box once
-        routing.conf named it, then a file under ``--osc-port`` (found by
-        review, 0.6.11).
+        session runs with. Naming no serial means "the only one", which a
+        running session takes to be the box its start pinned: it does not
+        count the boxes again, so with a second one plugged in since, a
+        restart asks for the serial where a reload goes on writing to
+        the pinned box. The first cuts compared the bare file and refused
+        the session's own desk: the pinned box once routing.conf named
+        it, then a file under ``--osc-port`` (found by review, 0.6.11).
         """
         mine = self if self.serial else self._replace(serial=live.serial)
         return mine.differs_from(live)
@@ -570,15 +572,18 @@ def unchecked_routes_warning(config: "Config") -> Optional[str]:
 def log_desk_notices(config: "Config") -> None:
     """Warn, once, where a desk is about to be written or shown.
 
-    Four places load a desk for that: a start and the dry runs
-    (``session.run_session``), a switch, a restore, and a SIGHUP reload.
-    Each asks about the desk it has in hand. The first placement asked
-    once in the CLI about the desk *in effect*, which for ``--profile``
-    and ``--no-profile`` is not the one being written, and a reload never
-    passed it at all (found by review, 0.6.11).
+    A start asks under the device lock, about the desk it read there; a
+    dry run, a diff and a dump about the one they show; a switch, a
+    restore and a SIGHUP reload about theirs. Each asks about the desk it
+    has in hand. The first placement asked once in the CLI about the desk
+    *in effect*, which for ``--profile`` and ``--no-profile`` is not the
+    one being written, and a reload never passed it at all; the second
+    asked at the top of a start, about a file read before the wait for
+    the device and the lock, which can be hours (found by review, 0.6.11).
     """
     for message in (unchecked_routes_warning(config),
-                    other_machine_warning(config)):
+                    other_machine_warning(config),
+                    replaced_device_warning(config)):
         if message:
             log.warning("%s", message)
 
@@ -600,8 +605,9 @@ def other_machine_warning(config: "Config") -> Optional[str]:
             % mine.differs_from(home))
 
 
-def log_device_replaced(config: "Config", why: str) -> None:
-    """Say so when a desk checked for one interface is used for another.
+def replaced_device_warning(config: "Config") -> Optional[str]:
+    """What to say about a desk checked for one interface and used for
+    another, or None.
 
     A config is validated for the device its file names
     (``loaded.device_name``), and ``--device`` replaces the name
@@ -614,13 +620,14 @@ def log_device_replaced(config: "Config", why: str) -> None:
     """
     if config.loaded is None or not (config.routes or config.channels
                                      or config.globals):
-        return                      # nothing in it was checked for a device
-    if device_for_name(config.loaded.device_name) is not device_for_name(
+        return None                 # nothing in it was checked for a device
+    if device_for_name(config.loaded.device_name) is device_for_name(
             config.device_name):
-        log.warning("%s: this config was checked for %r and is used for %r, "
-                    "so its channels and sections were validated against "
-                    "the wrong interface", why, config.loaded.device_name,
-                    config.device_name)
+        return None
+    return ("--device replaces [device] name after validation: this config "
+            "was checked for %r and is used for %r, so its channels and "
+            "sections were validated against the wrong interface"
+            % (config.loaded.device_name, config.device_name))
 
 
 def _has_register_model(config: "Config") -> bool:

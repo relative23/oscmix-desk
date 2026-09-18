@@ -249,8 +249,8 @@ def keep_machine_settings(desk: Config, running: Config) -> Config:
     """
     for _section, _option, attr in MACHINE_SETTINGS:
         setattr(desk, attr, getattr(running, attr))
-    # What the command line replaced stays replaced in the desk that is
-    # kept, or the next re-read would compare the bare file again.
+    # Where two of those came from goes with them: the kept desk is
+    # resolved for this command line as much as the running one is.
     desk.overrides = running.overrides
     return desk
 

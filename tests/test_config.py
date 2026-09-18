@@ -575,7 +575,13 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
         "Fireface 802", "2a39:3fd9", "5", 9001, 9)) == (
         "serial '11223344' (not '5'), osc recv port 8222 (not 9)")
     # Without a record there is nothing to compare, and nothing is said.
-    config_mod.log_device_replaced(session_mod.Config(device_name="X"), "why")
+    routed = session_mod.load_config(write(
+        tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
+    routed.device_name = "X"
+    assert "checked for 'Fireface UCX II' and is used for 'X'" in \
+        config_mod.replaced_device_warning(routed)
+    routed.loaded = None
+    assert config_mod.replaced_device_warning(routed) is None
 
 
 def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():
