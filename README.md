@@ -60,7 +60,7 @@ since.
   invisible in it.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
-- Twenty-five [decision records](docs/decisions/) carry the reasoning and the
+- Twenty-six [decision records](docs/decisions/) carry the reasoning and the
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work
@@ -211,8 +211,12 @@ oscmix-session --profile tracking
 ```
 
 Leave `[osc]` and `[device]` out of a profile. Those describe the
-machine, not the desk, and are taken from your main config unless a
-profile states them itself.
+machine, not the desk, and are taken from your main config. A profile
+that states them still wins in 0.6.x and is told so; from 0.7.0 it is
+refused ([ADR 0026](docs/decisions/0026-a-profile-is-the-desk-not-the-machine.md)).
+One main config per directory: the profiles and the record of the
+active one belong to the directory, so a second backend gets a directory
+of its own (`--config`).
 
 A switch reports exactly one of three things, and no partly valid
 config is ever half-applied:

@@ -36,3 +36,4 @@ silences half the outputs.
 | [0023](0023-one-lock-path-for-every-writer.md) | One lock path for every writer, and no writing to an absent device |
 | [0024](0024-one-interface-resolved-once.md) | One interface, resolved once, and a lock only its group can touch |
 | [0025](0025-a-port-that-cannot-be-bound-is-not-a-busy-one.md) | A receive port that cannot be bound is not a busy one, and it never tears an apply |
+| [0026](0026-a-profile-is-the-desk-not-the-machine.md) | A profile is the desk, not the machine |

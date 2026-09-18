@@ -107,10 +107,69 @@ another interface its channel sections reached hardware the main config
 is not allowed to touch. Two more rounds of the same review stayed on
 that seam -- a desk is validated for the device its file names, and
 `--device` or a reload under a running session can replace the name
-afterwards. Both say so now, a switch refuses the overrides it never
-honoured, and a dry run shows the desk as the switch loads it;
+afterwards. `--device` says so now, a switch refuses the overrides it
+never honoured, and a dry run shows the desk as the switch loads it;
 validating *for* the replacement is what the frozen `Config` of 0.7.0
-is for. The review's larger half -- enums
+is for. A second outside review, of 0.6.10, then named the rest of the
+seam: a profile may state its own port and serial, the switch wrote it
+to that backend, and the reload the switch sent made the unit write the
+same desk to its own -- one persisted profile, three targets, and two
+device locks over one marker. 0.6.11 stops the wrong writes (a re-read
+desk for somewhere else is not applied, and the unit is not reloaded for
+it) and decides the question: a profile is the desk, not the machine
+(ADR 0026).
+
+### Planned: 0.7.0
+
+Decided, and recorded so that none of it is found twice. No new surface:
+nothing is added to what a `routing.conf` can declare.
+
+1. **Modules a person can read, first and alone.** Six source modules
+   are over 600 lines (`registers` 1038, `config` 964, `profiles` 960,
+   `reconcile` 843, `cli` 689, `session` 677) and four test files over
+   900. Split at seams that exist -- in `profiles`: the device lock, the
+   marker's persistence, the switch transaction, which are the three
+   identities the second review found tangled; in `config`: the model,
+   the section parsers, the search for the file; in `session`: start,
+   verifier, reconcile; in `cli`: one module per group of actions; the
+   register *table* apart from the functions that read it. Alone,
+   because the suite isolates itself by patching module attributes, and
+   a moved function silently unhooks a patch: the isolation fixtures
+   assert their targets exist before anything moves. This file and the
+   changelog lose their history to `docs/history/`.
+2. **A profile is the desk** (ADR 0026): `[osc]` and `[device]` in a
+   profile are a `ConfigError`; the inheritance code goes.
+3. **Tighter types** (first review): `Phase` as `IntEnum`, `WriteReason`
+   and the register domains, policies and verification classes as enums
+   where they steer control flow; one named result for "the receive port
+   is unavailable" instead of `None` through `listen`,
+   `await_link_echo` and `verify_routing`; `RegisterValue` instead of
+   `value: object` (most of the 24 `type: ignore`). The floor is Python
+   3.9: no `StrEnum`, and `format()` of a `(str, Enum)` changed in 3.12,
+   so output uses `.value`.
+4. **A frozen `Config` from a builder**: parse, validate, freeze. The
+   parser knows the overrides, so `--device` is validated *for* rather
+   than warned about, and `_find_client` stops writing the pinned serial
+   into its argument.
+5. **Outcome as a result type**: `durable`, whether the unit was told,
+   whether the target was confirmed -- fields today, states then.
+6. **Smaller, each with its reason:** refuse the stale-backend cleanup
+   when `pidfd_open` is unavailable instead of falling back to
+   `os.kill`; one retry of a reconcile that was skipped because the GUI
+   held the port, on the next trigger and never on a timer (ADR 0013);
+   a strict/best-effort policy for unmodelled devices and a firmware
+   range the evidence vouches for (amends ADR 0006); multi-process tests
+   over two targets, the marker, SIGHUP/SIGTERM and fsync faults;
+   `--dry-run` printing the planned writes without the device; optional
+   `[project]` metadata, with `install.sh` staying the installer (ADR
+   0004; `pip install --user` is refused on the target platform, PEP
+   668).
+
+Considered and not planned: an apply journal. Every start is a full
+apply already, so a dirty flag adds nothing there; the one gap is a
+switch killed mid-apply under a running unit, which the next trigger
+repairs. A config-state lock beside the device lock: unnecessary once a
+profile cannot name a backend. The review's larger half -- enums
 for phases and write reasons, a result type for the barrier, a frozen
 `Config`, a decision about strict handling of unmodelled devices --
 changes public names and is 0.7.0. Its packaging proposal is declined

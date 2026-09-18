@@ -212,3 +212,13 @@ owns the directory.
 - **Retry the lock inside the start instead of failing it.** The wait is
   already 30 s; a longer one is a start that hangs, and systemd's
   restart is the retry with a log line per attempt.
+
+## Amended in 0.6.11
+
+"A reload keeps the interface of the running process" stays. What it did
+with the desk does not: it pinned the re-read desk to the running
+interface and *applied* it, even when the file, or the active profile,
+named another box or another backend -- so a desk written for one
+interface was written to another. Such a desk is not applied now; the
+reconcile is skipped, the error names what differs, and a restart
+follows it ([ADR 0026](0026-a-profile-is-the-desk-not-the-machine.md)).

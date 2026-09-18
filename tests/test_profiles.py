@@ -460,9 +460,9 @@ def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     # `globals` likewise -- an echo send is part of a mix, not part of
     # the box it runs on.
     desk = {"routes", "channels", "policies", "globals"}
-    # `checked_for` is neither: it records which device name the file was
-    # validated for, and a desk re-read keeps its own (0.6.11).
-    record = {"checked_for"}
+    # Neither: `loaded` records the machine settings the file resolved to,
+    # and `notices` what to say where the desk is written (0.6.11).
+    record = {"loaded", "notices"}
     machine = {f.name for f in dataclasses.fields(Config)} - desk - record
     covered = {attr for _section, _option, attr in profiles.MACHINE_SETTINGS}
     assert machine == covered, (
@@ -671,10 +671,10 @@ def test_the_marker_functions_answer_nothing_without_a_config(tmp_path):
     # never an AttributeError on a path that does not exist.
     assert profiles.active_profile_path(None) is None
     assert profiles.active_profile(None) is None
-    assert profiles.remember_active_profile("tracking", None) is False
+    assert profiles.remember_active_profile("tracking", None).in_effect is False
     profiles.forget_active_profile(None)          # nothing to forget
     path = _desk(tmp_path, tracking=TRACKING)
-    assert profiles.remember_active_profile("tracking", path) is True
+    assert profiles.remember_active_profile("tracking", path).in_effect is True
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
     profiles.forget_active_profile(path)
     profiles.forget_active_profile(path)          # twice is fine
@@ -697,9 +697,9 @@ def test_a_marker_write_that_fails_leaves_the_old_marker_whole(tmp_path,
 
     monkeypatch.setattr(profiles.os, "replace", refuse)
     with caplog.at_level("WARNING"):
-        assert profiles.remember_active_profile("mixdown", path) is False
+        assert profiles.remember_active_profile("mixdown", path).in_effect is False
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
-    assert not (tmp_path / "active-profile.tmp").exists()
+    assert list(tmp_path.glob("*.tmp")) == []
     assert "not remembered" in caplog.text
 
 
@@ -718,14 +718,22 @@ def test_the_marker_goes_through_a_temporary_file_and_a_rename(tmp_path,
     monkeypatch.setattr(profiles.os, "replace", record)
     umask = os.umask(0o022)
     try:
-        assert profiles.remember_active_profile("tracking", path) is True
+        assert profiles.remember_active_profile("tracking", path).in_effect is True
     finally:
         os.umask(umask)
-    assert renames == [("active-profile.tmp", "active-profile")]
+    # A temporary name of its own, beside the marker. It was the fixed
+    # `active-profile.tmp` until 0.6.11, which two switches holding
+    # different device locks shared: one could rename the file the other
+    # was still writing.
+    (source, target), = renames
+    assert target == "active-profile"
+    assert source.startswith("active-profile.")
+    assert source.endswith(".tmp")
+    assert source != "active-profile.tmp"
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
-    # A plain file, not an executable one: os.open's default mode is 0o777.
+    # World-readable like before, not mkstemp's 0600: the launcher reads it.
     assert stat.S_IMODE((tmp_path / "active-profile").stat().st_mode) == 0o644
-    assert not (tmp_path / "active-profile.tmp").exists()
+    assert list(tmp_path.glob("*.tmp")) == []
 
 
 def test_a_switch_refuses_when_another_holds_the_lock_too_long(
@@ -946,11 +954,11 @@ def test_a_config_directory_that_cannot_be_written_is_a_warning(tmp_path,
     tmp_path.chmod(0o500)
     try:
         with caplog.at_level("WARNING"):
-            assert profiles.remember_active_profile("tracking", path) is False
+            assert profiles.remember_active_profile("tracking", path).in_effect is False
     finally:
         tmp_path.chmod(0o700)
     assert not (tmp_path / "active-profile").exists()
-    assert not (tmp_path / "active-profile.tmp").exists()
+    assert list(tmp_path.glob("*.tmp")) == []
     assert "not remembered" in caplog.text
 
 
@@ -1046,10 +1054,10 @@ def test_a_restore_that_cannot_forget_says_so_in_the_outcome(
 
 def test_forgetting_reports_whether_the_marker_is_gone(tmp_path):
     path = _desk(tmp_path, tracking=TRACKING)
-    assert profiles.forget_active_profile(path) is True, "nothing to remove"
+    assert profiles.forget_active_profile(path).in_effect is True, "nothing to remove"
     (tmp_path / "active-profile").write_text("tracking\n")
-    assert profiles.forget_active_profile(path) is True
-    assert profiles.forget_active_profile(None) is True
+    assert profiles.forget_active_profile(path).in_effect is True
+    assert profiles.forget_active_profile(None).in_effect is True
 
 
 def test_an_applied_switch_that_was_remembered_stays_persisted(
@@ -1075,7 +1083,7 @@ def test_a_short_write_is_finished_rather_than_truncated(tmp_path,
 
     path = _desk(tmp_path, tracking=TRACKING)
     monkeypatch.setattr(profiles.os, "write", one_byte_at_a_time)
-    assert profiles.remember_active_profile("tracking", path) is True
+    assert profiles.remember_active_profile("tracking", path).in_effect is True
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
 
 
@@ -1087,11 +1095,11 @@ def test_a_directory_that_cannot_be_synced_warns_on_both_paths(
     path = _desk(tmp_path, tracking=TRACKING)
     monkeypatch.setattr(profiles, "_fsync_directory", lambda _d: False)
     with caplog.at_level("WARNING"):
-        assert profiles.remember_active_profile("tracking", path) is True
+        assert profiles.remember_active_profile("tracking", path).in_effect is True
     assert "may not survive a power cut" in caplog.text
     caplog.clear()
     with caplog.at_level("WARNING"):
-        assert profiles.forget_active_profile(path) is True
+        assert profiles.forget_active_profile(path).in_effect is True
     assert "may come back after a power cut" in caplog.text
 
 
@@ -1549,3 +1557,71 @@ def test_a_marker_that_is_not_utf8_is_ignored_with_a_warning(tmp_path, caplog):
         _config, active = profiles.effective_config(path)
     assert active is None
     assert "ignoring" in caplog.text
+
+
+# --------------------------------------------------------------------------
+# 0.6.11: a profile that names its own backend, and what a marker promises.
+# --------------------------------------------------------------------------
+
+def _retargeting_desk(tmp_path):
+    path = write_config(tmp_path / "routing.conf", "[osc]\nport = 9001\n" + GOOD)
+    write_config(tmp_path / "profiles" / "here.conf", GOOD)
+    write_config(tmp_path / "profiles" / "same.conf", "[osc]\nport = 9001\n" + GOOD)
+    write_config(tmp_path / "profiles" / "there.conf",
+                 "[osc]\nport = 9500\n\n[device]\nserial = 99887766\n" + GOOD)
+    return path
+
+
+def test_a_profile_that_states_machine_settings_is_told_what_0_7_0_does(
+        tmp_path, caplog, recording_backend):
+    """It still wins in 0.6.x (ADR 0011). ADR 0026 ends that: one persisted
+    profile meant three targets, and two such profiles hold two device
+    locks over one marker. Said where the desk is written, once; a
+    profile that restates routing.conf's values is told as well, because
+    0.7.0 refuses the sections, not the difference."""
+    path = _retargeting_desk(tmp_path)
+    assert profiles.load_profile("here", path).notices == []
+    for name, sections in (("same", "[osc]"), ("there", "[osc] and [device]")):
+        notice, = profiles.load_profile(name, path).notices
+        assert notice.startswith("%s.conf states %s: a profile is the desk"
+                                 % (name, sections))
+        assert "from 0.7.0 this is refused" in notice
+    assert profiles.load_config(path).notices == [], "routing.conf may"
+    with caplog.at_level("WARNING"):
+        profiles.switch_profile("there", config_path=path,
+                                backend=recording_backend, verify=False)
+    assert caplog.text.count("from 0.7.0 this is refused") == 1
+
+
+def test_a_switch_says_whether_the_profile_names_another_backend(
+        tmp_path, recording_backend):
+    path = _retargeting_desk(tmp_path)
+    for name, elsewhere in (("here", False), ("same", False), ("there", True)):
+        outcome = profiles.switch_profile(name, config_path=path,
+                                          backend=recording_backend,
+                                          verify=False)
+        assert outcome.retargets is elsewhere, name
+    assert profiles.restore_main(config_path=path, backend=recording_backend,
+                                 verify=False).retargets is False
+
+
+def test_a_marker_that_may_not_survive_a_power_cut_says_so_in_the_outcome(
+        tmp_path, monkeypatch, recording_backend):
+    """The marker is in effect, so the unit is reloaded as usual; what is
+    not known is whether the directory entry reached the disk. That was a
+    log line only, and `persisted=True` read as more than it meant."""
+    path = _retargeting_desk(tmp_path)
+    durable = profiles.switch_profile("here", config_path=path,
+                                      backend=recording_backend, verify=False)
+    assert (durable.persisted, durable.durable) == (True, True)
+    assert "power cut" not in durable.describe()
+    monkeypatch.setattr(profiles, "_fsync_directory", lambda _d: False)
+    for outcome in (
+            profiles.switch_profile("here", config_path=path,
+                                    backend=recording_backend, verify=False),
+            profiles.restore_main(config_path=path, backend=recording_backend,
+                                  verify=False)):
+        assert (outcome.persisted, outcome.durable) == (True, False)
+        assert outcome.describe().endswith(
+            "; remembered, but it may not survive a power cut")
+

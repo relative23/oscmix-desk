@@ -18,8 +18,7 @@ from typing import Dict, Optional, Tuple
 from .config import (
     Config,
     discover_config_path,
-    log_device_replaced,
-    log_unchecked_routes,
+    log_desk_notices,
     profile_path,
 )
 from .constants import (
@@ -29,6 +28,7 @@ from .constants import (
     EXIT_OK,
     PORT_READY_TIMEOUT,
     RECONCILE_WAIT_FOR_VERIFIER,
+    SERVICE_UNIT,
     VERIFIER_STOP_GRACE,
     VERIFY_SETTLE,
 )
@@ -319,20 +319,34 @@ def _desk_under_the_lock(config_path: Optional[Path],
         log.error("%s is no longer usable (%s); applying the desk this "
                   "process started with", config_path, exc)
         return running
-    # The ports and the device name, and the interface: the lock was
-    # taken and the backend bound for this process's usb id and pinned
-    # serial, and a profile naming another box does not move either of
-    # them (ADR 0024).
-    return _kept_for_this_process(fresh, running)
+    return _kept_for_this_process(fresh, running) or running
 
 
-def _kept_for_this_process(fresh: Config, running: Config) -> Config:
-    """``fresh`` with this process's machine settings, saying so when that
-    puts a desk checked for one interface onto another."""
-    fresh = keep_machine_settings(fresh, running)
-    log_device_replaced(fresh, "a running session keeps the interface it "
-                        "was started for", since=running)
-    return fresh
+def _kept_for_this_process(fresh: Config, running: Config) -> Optional[Config]:
+    """``fresh`` with this process's machine settings, or None when it is a
+    desk for somewhere else.
+
+    The lock was taken and the backend bound for this process's ports,
+    usb id and pinned serial, and nothing re-read under it moves them
+    (ADR 0024). Until 0.6.11 that meant the re-read desk was applied
+    *here* whatever it named: a profile stating another port and serial
+    was written to its own interface by the switch, and then to this one
+    by the reload the switch sent; a `routing.conf` edited to name a box
+    with 42 outputs reached a UCX II, which has twenty. What the file
+    resolved to (``Config.loaded``) is compared instead of the live
+    attributes, so ``--device``, ``--osc-port`` and the pinned serial do
+    not read as a change. A session started with no file has no record
+    and takes whatever appears.
+    """
+    ours, theirs = running.loaded, fresh.loaded
+    if ours is not None and theirs is not None and theirs != ours:
+        log.error("the desk now in effect is for another backend or "
+                  "interface -- %s -- and a running session keeps the one "
+                  "it was started for, so it was not applied; restart the "
+                  "session to follow it (systemctl --user restart %s)",
+                  theirs.differs_from(ours), SERVICE_UNIT)
+        return None
+    return keep_machine_settings(fresh, running)
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -460,7 +474,7 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
 def run_session(args: argparse.Namespace, config: Config) -> int:
     """Discover the device, run the backend, and supervise it."""
     # The desk a start applies, or a dry run shows -- after --device.
-    log_unchecked_routes(config)
+    log_desk_notices(config)
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
 
@@ -634,20 +648,24 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
         log.error("SIGHUP: %s is not usable (%s); keeping the running "
                   "configuration", path, exc)
         return None
-    # Name what was actually reloaded. On the first live run this line
-    # said routing.conf while the profile above it was in effect -- true
-    # of the file read, misleading about the desk.
-    log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
-             profile_path(active, path) if active else path,
-             len(fresh.routes), len(fresh.channels))
     # The backend is already bound and already talking to a device. A
     # reload reconciles the *desk*; the ports, the device name and the
     # interface belong to the process that is running, and changing them
     # here would mean writing to a port nobody is listening on -- with no
     # error, because OSC over UDP has no delivery guarantee (ADR 0024).
-    fresh = _kept_for_this_process(fresh, running)
-    log_unchecked_routes(fresh)
-    return fresh
+    kept = _kept_for_this_process(fresh, running)
+    if kept is None:
+        return None
+    # Name what was actually reloaded. On the first live run this line
+    # said routing.conf while the profile above it was in effect -- true
+    # of the file read, misleading about the desk. And only once it is
+    # the desk that will be applied: "reloaded X" above "X was not
+    # applied" read as a contradiction on the desk (0.6.11).
+    log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
+             profile_path(active, path) if active else path,
+             len(kept.routes), len(kept.channels))
+    log_desk_notices(kept)
+    return kept
 
 
 def _config_path(args: argparse.Namespace) -> Optional[Path]:

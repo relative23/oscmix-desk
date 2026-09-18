@@ -408,6 +408,11 @@ def _report_outcome(outcome: "Outcome",
     # that switch (0.6.9). The unit's desk is what the unit resolved --
     # its own --config, else its own environment -- not what this
     # process would.
+    if outcome.retargets:
+        log.info("%s not reloaded: this profile names its own backend or "
+                 "interface, which a running session does not follow; a "
+                 "restart does", SERVICE_UNIT)
+        return EXIT_OK
     unit_desk = _unit_desk()
     if config_path is not None and unit_desk is not None \
             and not _same_file(config_path, unit_desk):
@@ -418,6 +423,14 @@ def _report_outcome(outcome: "Outcome",
     if reloaded == RELOAD_DONE:
         log.info("%s reloaded, so its own reconcile follows the new desk",
                  SERVICE_UNIT)
+        if config_path is not None and unit_desk is None:
+            # Reloaded all the same: nearly every switch is for the unit's
+            # own desk, and leaving the unit untold lets its verifier
+            # re-apply the old one (0.6.3). But it is a guess, so say so.
+            log.warning("could not tell which desk %s runs (its /proc entry "
+                        "could not be read): if this switch was for another "
+                        "desk, the unit has re-applied its own over it",
+                        SERVICE_UNIT)
         return EXIT_OK
     if reloaded == RELOAD_NOT_RUNNING:
         log.info("%s is not running; nothing to reload", SERVICE_UNIT)

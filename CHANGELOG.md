@@ -65,19 +65,38 @@ register table has no new row.
   that load a desk to write or show it -- a start and the dry runs, a
   switch, a restore, a SIGHUP reload -- about that desk. A listing or a
   read, which writes no route, is not warned about them.
-- **A desk checked for one interface and used for another says so.** A
-  config is validated for the device its file names, and the name can be
-  replaced afterwards: by `--device`, and by a re-read under a running
-  session, which keeps the interface it was started for whatever
-  `routing.conf` or an active profile now names. Measured by review:
+- **A desk for somewhere else is not applied here.** A running session
+  keeps the backend and interface it was started for, and until now it
+  pinned whatever it re-read to them and wrote it. Measured by review:
   `routing.conf` edited to name another box with `output = 41/42`,
   reloaded under a session bound to a UCX II, sent `/output/41/stereo`
-  to an interface with twenty outputs in silence. Both warn now. A
-  `Config` records what it was checked for, so a reload does not repeat
-  what `--device` already said at the start; a file that names another
-  interface than the session's is said at every reload, because every
-  reload writes it. Validating *for* the replacement needs the parser to
-  know it, which is part of 0.7.0.
+  to an interface with twenty outputs. And from a second outside review:
+  a profile stating its own port and serial was written to its
+  interface by the switch, and then to the unit's by the reload the
+  switch sent -- one persisted profile meant one target for a switch,
+  another for a reload, and the first again after a restart. A re-read
+  desk whose file resolves to another device name, usb id, serial or
+  port is refused now: `reconcile skipped`, an error naming what
+  differs, and the advice to restart. The switch does not send that
+  reload in the first place. A `Config` records the machine settings its
+  file resolved to, so `--device`, `--osc-port` and the pinned serial do
+  not read as a change.
+- **`--device` over a file for another model says so.** The override
+  arrives after the file was validated, so the channels were checked for
+  one interface and written to another in silence. Validating *for* the
+  override needs the parser to know it, which is part of 0.7.0.
+- **The marker's temporary file has a name of its own.** Two switches
+  holding different device locks shared `active-profile.tmp`, and one
+  could rename the file the other was still writing.
+- **A marker that may not survive a power cut says so in the outcome.**
+  When the directory cannot be synced the marker is in effect and the
+  unit is reloaded as before; that the change may not have reached the
+  disk was a log line only, and is now part of the outcome line and of
+  `Outcome.durable`.
+- **A reload sent without knowing the unit's desk says it guessed.**
+  When the unit's `/proc` entry cannot be read the reload still goes
+  out -- nearly every switch is for the unit's own desk, and an untold
+  unit lets its verifier re-apply the old one -- but with a warning.
 - **An empty `[device] name` is a configuration error.** The name is a
   substring match, and the empty string is a substring of every name.
   Measured on the start path: with one MIDI-capable card `name =`
@@ -102,12 +121,19 @@ register table has no new row.
   re-read under the lock and the SIGHUP's each assigned the five machine
   settings by hand; both go through `profiles.keep_machine_settings`, which walks
   the table a test already holds against `Config`.
-- **The public surface grows by one name and four optional things.**
+- **A profile that states `[osc]` or `[device]` is told that 0.7.0
+  refuses it.** It still wins in 0.6.x. A profile is the desk, not the
+  machine: with profiles able to name a backend, one marker per config
+  directory cannot say which desk is where, and two such profiles hold
+  two device locks over that one marker. ADR 0026. One main config per
+  directory is now a stated rule for the same reason: the marker and
+  `profiles/` belong to the directory, not to the file.
+- **The public surface grows, and nothing in it changes shape.**
   `ReceivePortError`, since `await_link_echo`, `verify_routing` and
-  `verify_and_repair` raise it; `Outcome.read_back`;
-  `Config.checked_for`; `load_config(path, base=None)`; and
-  `blind_reapply_mix(config, should_stop, why=None)`. No existing
-  signature changes. Behaviour behind existing names changes where Fixed
+  `verify_and_repair` raise it; `Outcome.read_back`, `Outcome.durable`
+  and `Outcome.retargets`; `Config.loaded` and `Config.notices`;
+  `load_config(path, base=None)`; and `blind_reapply_mix(config,
+  should_stop, why=None)`. No existing signature changes. Behaviour behind existing names changes where Fixed
   says so: `verify_routing` and `await_link_echo` raise where `None`
   used to cover every failure to bind, `load_config` refuses an empty
   `[device] name`, and `load_profile` validates for the desk's device.

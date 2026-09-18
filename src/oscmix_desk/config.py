@@ -11,7 +11,7 @@ import pwd
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 from .constants import (
     CHANNEL_MAX,
@@ -119,6 +119,23 @@ class GlobalSetting:
         return "/%s/%s" % (self.family, self.option)
 
 
+class Machine(NamedTuple):
+    """The five settings that say *where* a desk goes, not what it is."""
+
+    device_name: str
+    usb_id: str
+    serial: str
+    osc_port: int
+    osc_recv_port: int
+
+    def differs_from(self, other: "Machine") -> str:
+        """The settings that differ, for a person: ``serial '2' (not '1')``."""
+        return ", ".join(
+            "%s %r (not %r)" % (name.replace("_", " "), mine, theirs)
+            for name, mine, theirs in zip(self._fields, self, other)
+            if mine != theirs)
+
+
 @dataclass
 class Config:
     device_name: str = DEFAULT_DEVICE_NAME
@@ -136,13 +153,16 @@ class Config:
     #: ``(family, option) -> "pin" | "remember"`` from a ``[pin]``
     #: section, overriding the register table's default for that option.
     policies: Dict[Tuple[str, str], str] = field(default_factory=dict)
-    #: The device name the file was validated for, set by ``load_config``.
-    #: ``device_name`` can be replaced afterwards -- by ``--device``, by a
-    #: re-read under a running session -- and this is what remembers that
-    #: the channel checks were made for another interface (0.6.11).
-    #: Neither the desk's nor the machine's: a record of the validation,
-    #: and None for a ``Config`` no file was validated into.
-    checked_for: Optional[str] = None
+    #: The machine settings as the *file* resolved them, set by
+    #: ``load_config`` and never changed. The five attributes above can be
+    #: replaced afterwards -- by ``--device`` and ``--osc-port``, by the
+    #: serial a start pins, by a running session that keeps its own -- and
+    #: this is what remembers which interface the file was validated for
+    #: and which backend it names (0.6.11). None when no file was loaded.
+    loaded: Optional[Machine] = None
+    #: Things to say where this desk is written or shown, and only there:
+    #: from the parser they were said on every load.
+    notices: List[str] = field(default_factory=list)
 
 
 #: The last place a desk is looked for, after the user's own.
@@ -416,7 +436,17 @@ def load_config(path: Optional[Path],
 
     _check_device_channels(config)
     _check_link_agreement(config.routes)
-    config.checked_for = config.device_name
+    config.loaded = Machine(config.device_name, config.usb_id, config.serial,
+                            config.osc_port, config.osc_recv_port)
+    stated = [s for s in ("osc", "device") if parser.has_section(s)]
+    if base is not None and stated:
+        # `base` is how a profile is read. It still wins in 0.6.x, as it
+        # always has (ADR 0011); ADR 0026 is why that ends.
+        config.notices.append(
+            "%s states [%s]: a profile is the desk, not the machine, and "
+            "from 0.7.0 this is refused -- put it in routing.conf, or give "
+            "a second backend a config directory of its own"
+            % (path.name, "] and [".join(stated)))
     return config
 
 
@@ -496,7 +526,7 @@ def unchecked_routes_warning(config: "Config") -> Optional[str]:
     section on such a device has warned since 0.6.2, while its routes
     went to the hardware without a channel check and without a word.
     Asked by the paths that write or show a desk, about that desk
-    (``log_unchecked_routes``) -- from the parser it fired on every load,
+    (``log_desk_notices``) -- from the parser it fired on every load,
     and named routing.conf's routes while a profile was the desk being
     written (0.6.11).
     """
@@ -507,7 +537,7 @@ def unchecked_routes_warning(config: "Config") -> Optional[str]:
             % (config.device_name, len(config.routes), _modelled_names()))
 
 
-def log_unchecked_routes(config: "Config") -> None:
+def log_desk_notices(config: "Config") -> None:
     """Warn, once, where a desk is about to be written or shown.
 
     Four places load a desk for that: a start and the dry runs
@@ -517,45 +547,31 @@ def log_unchecked_routes(config: "Config") -> None:
     and ``--no-profile`` is not the one being written, and a reload never
     passed it at all (found by review, 0.6.11).
     """
-    message = unchecked_routes_warning(config)
-    if message:
-        log.warning("%s", message)
+    for message in (unchecked_routes_warning(config), *config.notices):
+        if message:
+            log.warning("%s", message)
 
 
-def log_device_replaced(config: "Config", why: str,
-                        since: Optional["Config"] = None) -> None:
+def log_device_replaced(config: "Config", why: str) -> None:
     """Say so when a desk checked for one interface is used for another.
 
-    A config is validated for the device its file names (``checked_for``).
-    The name can be replaced afterwards: by ``--device``, and by a re-read
-    under a running session, which keeps the interface it was started
-    for whatever the file or an active profile now says. When the two are
-    different models -- or one is no model at all -- the channel and
-    section checks said nothing about the interface the routes go to:
-    measured, outputs 41/42 reached a UCX II, which has twenty, in
-    silence (0.6.11). Checking for the replacement itself needs the
-    parser to know it, which is the frozen-config work of 0.7.0; until
-    then this is the notice.
-
-    ``since`` is the config the process already runs. What that one was
-    checked for has been said once, at the start; a reload that finds the
-    same thing again is not news, and saying it again would blame the
-    reload for what ``--device`` did (found by review). A file that names
-    another interface than the session's is said at every reload, because
-    every reload writes it.
+    A config is validated for the device its file names
+    (``loaded.device_name``), and ``--device`` replaces the name
+    afterwards. When the two are different models -- or one is no model
+    at all -- the channel and section checks said nothing about the
+    interface the routes go to: measured, outputs 41/42 reached a UCX
+    II, which has twenty, in silence (0.6.11). Validating for the
+    override itself needs the parser to know it, which is the
+    frozen-config work of 0.7.0; until then this is the notice.
     """
-    if config.checked_for is None:
+    if config.loaded is None:
         return                      # no file, so nothing was checked
-    checked = device_for_name(config.checked_for)
-    if checked is device_for_name(config.device_name):
-        return
-    if since is not None and checked is device_for_name(
-            since.device_name if since.checked_for is None
-            else since.checked_for):
-        return
-    log.warning("%s: this config was checked for %r and is used for %r, so "
-                "its channels and sections were validated against the wrong "
-                "interface", why, config.checked_for, config.device_name)
+    if device_for_name(config.loaded.device_name) is not device_for_name(
+            config.device_name):
+        log.warning("%s: this config was checked for %r and is used for %r, "
+                    "so its channels and sections were validated against "
+                    "the wrong interface", why, config.loaded.device_name,
+                    config.device_name)
 
 
 def _has_register_model(config: "Config") -> bool:

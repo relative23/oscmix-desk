@@ -505,7 +505,7 @@ def test_routes_on_an_unmodelled_device_have_a_warning_for_the_caller(
     every load, and the first cut of this warned two to four times per
     start and about the wrong file while a profile was active. The paths
     that write or show a desk ask about the desk they have in hand
-    (`log_unchecked_routes`, 0.6.11)."""
+    (`log_desk_notices`, 0.6.11)."""
     from oscmix_desk import config as config_mod
 
     with caplog.at_level("WARNING"):
@@ -554,41 +554,29 @@ def test_an_empty_device_name_is_a_config_error(session_mod, tmp_path, name):
         session_mod.load_config(path)
 
 
-def test_a_config_records_the_device_it_was_checked_for(session_mod, tmp_path):
+def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
+                                                           tmp_path):
+    """`loaded` is what the file said, and it stays what the file said: the
+    live attributes are replaced by `--device`, `--osc-port`, the serial a
+    start pins and a running session's own -- and both notices that
+    matter (checked for another interface, a desk for another backend)
+    compare against the record, not against those."""
     from oscmix_desk import config as config_mod
 
-    assert session_mod.Config().checked_for is None, "no file, no check"
-    assert session_mod.load_config(None).checked_for is None
+    assert session_mod.Config().loaded is None, "no file, no record"
+    assert session_mod.load_config(None).loaded is None
     named = session_mod.load_config(write(
-        tmp_path, "[device]\nname = Fireface 802\n"))
-    assert named.checked_for == "Fireface 802"
-    assert session_mod.load_config(write(
-        tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n")
-    ).checked_for == "Fireface UCX II", "the default is a name too"
-    # Replaced afterwards: the record stays, and that is what a notice
-    # compares against. Without a record there is nothing to compare.
-    named.device_name = "Fireface UCX II"
-    assert named.checked_for == "Fireface 802"
+        tmp_path, "[device]\nname = Fireface 802\nserial = 11223344\n\n"
+                  "[osc]\nport = 9001\n"))
+    assert named.loaded == config_mod.Machine(
+        "Fireface 802", "2a39:3fd9", "11223344", 9001, 8222)
+    named.device_name, named.osc_port, named.serial = "X", 7, "9"
+    assert named.loaded.device_name == "Fireface 802"
+    assert named.loaded.differs_from(config_mod.Machine(
+        "Fireface 802", "2a39:3fd9", "5", 9001, 9)) == (
+        "serial '11223344' (not '5'), osc recv port 8222 (not 9)")
+    # Without a record there is nothing to compare, and nothing is said.
     config_mod.log_device_replaced(session_mod.Config(device_name="X"), "why")
-
-
-def test_a_session_started_without_a_file_still_hears_about_a_later_one(
-        session_mod, tmp_path, caplog):
-    """`since` is what the process already runs. Started with no config its
-    record is None, and what it was "checked for" is then the name it
-    runs under: a routing.conf that appears later and names another
-    model is news, one naming the same model is not."""
-    from oscmix_desk import config as config_mod
-
-    running = session_mod.Config()                 # no file: UCX II, None
-    for name, expected in (("Fireface 802", True), ("Fireface UCX II", False)):
-        fresh = session_mod.load_config(write(
-            tmp_path, "[device]\nname = %s\n" % name))
-        fresh.device_name = running.device_name    # what a re-read pins
-        caplog.clear()
-        with caplog.at_level("WARNING"):
-            config_mod.log_device_replaced(fresh, "kept", since=running)
-        assert ("checked for %r" % name in caplog.text) is expected, name
 
 
 def test_an_untested_device_constrains_only_what_upstream_declares(

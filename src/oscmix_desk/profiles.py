@@ -40,17 +40,18 @@ import fcntl
 import grp
 import os
 import stat
+import tempfile
 import time
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Iterator, List, Optional, Sequence, Tuple
+from typing import Iterator, List, NamedTuple, Optional, Sequence, Tuple
 
 from .backend import Backend, loopback
 from .config import (
     Config,
     list_profiles,
     load_config,
-    log_unchecked_routes,
+    log_desk_notices,
     profile_path,
 )
 from .constants import SWITCH_LOCK_WAIT, VERIFY_TIMEOUT
@@ -114,6 +115,14 @@ class Outcome:
     #: could not remove it: the desk holds only until the next reload or
     #: start, and the caller must not send that reload itself (ADR 0019).
     persisted: bool = True
+    #: False when the marker change is in effect but its directory could
+    #: not be synced, so a power cut may bring the previous state back.
+    #: ``persisted`` decides the reload; this is said in the line only.
+    durable: bool = True
+    #: The profile names another backend or interface than routing.conf.
+    #: The unit for this config tree is then not reloaded: it would not
+    #: apply the desk anyway (``session._kept_for_this_process``).
+    retargets: bool = False
     #: Whether a read-back ran, for an applied outcome (a refusal wrote
     #: nothing, so there was nothing to read). False when the caller
     #: asked for none, or the receive port was held or could not be
@@ -137,9 +146,12 @@ class Outcome:
     def describe(self) -> str:
         """One line, for a person."""
         line = self._describe_state()
-        if self.persisted:
-            return line
-        return line + "; not remembered, so the next reload or start undoes it"
+        if not self.persisted:
+            return line + ("; not remembered, so the next reload or start "
+                           "undoes it")
+        if not self.durable:
+            return line + "; remembered, but it may not survive a power cut"
+        return line
 
     def _describe_state(self) -> str:
         if self.state == REFUSED:
@@ -279,8 +291,21 @@ def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
     return name
 
 
-def remember_active_profile(name: str, config_path: Optional[Path]) -> bool:
-    """Record a switch that was applied. False, and a warning, if it cannot.
+class Marked(NamedTuple):
+    """What a change of the marker achieved.
+
+    ``in_effect`` decides whether the unit may be reloaded (ADR 0019).
+    ``durable`` is the smaller promise: the directory was synced, so a
+    power cut cannot bring the previous marker back. Until 0.6.11 that
+    was a log line and the answer was a single bool that read as both.
+    """
+
+    in_effect: bool
+    durable: bool
+
+
+def remember_active_profile(name: str, config_path: Optional[Path]) -> Marked:
+    """Record a switch that was applied; a warning when it cannot.
 
     Not an outcome state: the device already has the profile, and a
     fourth state for "applied but forgotten" would be the "applied, but
@@ -288,16 +313,21 @@ def remember_active_profile(name: str, config_path: Optional[Path]) -> bool:
     """
     path = active_profile_path(config_path)
     if path is None:
-        return False
+        return Marked(False, False)
     # Written beside and renamed over, never in place: a crash or a
     # power loss between open and close would otherwise leave an empty
     # marker, and an empty marker reads as "no profile" -- the choice
     # silently gone on the next start. The old marker stays whole until
     # the new one is complete on disk, and the rename is atomic.
-    tmp = path.with_name(path.name + ".tmp")
+    # A name of its own: two switches that hold different device locks
+    # -- two profiles naming two backends -- shared `active-profile.tmp`,
+    # and one could rename the file the other was still writing (0.6.11).
+    tmp = ""
     try:
-        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+        fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp",
+                                   dir=path.parent)
         try:
+            os.fchmod(fd, 0o644)
             data = (name + "\n").encode("utf-8")
             written = 0
             while written < len(data):
@@ -309,18 +339,19 @@ def remember_active_profile(name: str, config_path: Optional[Path]) -> bool:
         finally:
             os.close(fd)
         os.replace(tmp, path)
-        if not _fsync_directory(path.parent):
-            log.warning("profile %r remembered, but %s could not be synced: "
-                        "the marker is in effect now and may not survive a "
-                        "power cut", name, path.parent)
     except OSError as exc:
         log.warning("profile %r applied but not remembered: cannot write "
                     "%s (%s); the desk holds until the next reload or "
                     "start, which applies routing.conf", name, path, exc)
         with contextlib.suppress(OSError):
             os.unlink(tmp)
-        return False
-    return True
+        return Marked(False, False)
+    durable = _fsync_directory(path.parent)
+    if not durable:
+        log.warning("profile %r remembered, but %s could not be synced: "
+                    "the marker is in effect now and may not survive a "
+                    "power cut", name, path.parent)
+    return Marked(True, durable)
 
 
 def _fsync_directory(directory: Path) -> bool:
@@ -464,10 +495,11 @@ def _refused_for_the_device(name: str, reason: str) -> "Outcome":
 class DeviceLock:
     """A held device lock, or a stand-in for "there was nothing to lock".
 
-    The stand-in exists so no caller has to branch: a session without a
-    config directory, and an install whose lock file predates ADR 0019,
-    both write without one and say so once, rather than refusing to
-    drive the device at all.
+    The stand-in is for the one case with no path to lock at: no shared
+    directory, no runtime directory and no config directory, so no other
+    writer could find a lock either. It is not a way to write without a
+    lock that exists: a lock that cannot be *taken* is ``None`` from
+    ``take_device_lock``, and every caller refuses on it (since 0.6.7).
     """
 
     def __init__(self, fd: Optional[int] = None) -> None:
@@ -719,30 +751,31 @@ def _refused_for_the_lock(name: str) -> Outcome:
     return Outcome(state=REFUSED, name=name, reason=reason)
 
 
-def forget_active_profile(config_path: Optional[Path]) -> bool:
+def forget_active_profile(config_path: Optional[Path]) -> Marked:
     """Remove the marker; nothing to remove is not an error.
 
-    False when it is still there afterwards, which the caller carries in
-    the outcome: a reload sent then would re-apply the profile the
+    Not ``in_effect`` when it is still there afterwards, which the caller
+    carries in the outcome: a reload sent then would re-apply the profile the
     marker still names and undo the restore (ADR 0019).
     """
     path = active_profile_path(config_path)
     if path is None:
-        return True
+        return Marked(True, True)
     try:
         path.unlink()
     except FileNotFoundError:
-        pass
+        return Marked(True, True)
     except OSError as exc:
         log.warning("cannot remove %s (%s); the desk holds until the next "
                     "reload or start, which applies the profile it names",
                     path, exc)
-        return False
-    if not _fsync_directory(path.parent):
+        return Marked(False, False)
+    durable = _fsync_directory(path.parent)
+    if not durable:
         log.warning("marker removed, but %s could not be synced: the profile "
                     "is out of effect now and may come back after a power "
                     "cut", path.parent)
-    return True
+    return Marked(True, durable)
 
 
 def effective_config(config_path: Optional[Path]) -> Tuple[Config, Optional[str]]:
@@ -795,7 +828,7 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         # "channel 99 out of range" without a name is a search.
         log.error("profile %r refused, nothing written: %s", name, exc)
         return Outcome(state=REFUSED, name=name, reason=str(exc))
-    log_unchecked_routes(config)
+    log_desk_notices(config)
 
     try:
         target = _target(config, reach=backend is None)
@@ -816,17 +849,23 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         # could not be written travels in the outcome rather than only
         # in the log: the caller must then not reload the unit, whose
         # reconcile would undo what just landed (ADR 0019).
-        remembered = remember_active_profile(name, config_path)
+        marked = remember_active_profile(name, config_path)
+        # A profile that names its own backend is not the unit's to follow
+        # at a reload (ADR 0026); the caller leaves the unit alone.
+        retargets = _names_another_backend(config, config_path)
 
         if not verify:
             # Not confirmed, because nobody looked -- which is a different
             # fact from "looked and did not see it", and the state is the
             # same either way. Everything expected goes in the list.
-            return Outcome(state=APPLIED_UNVERIFIED, name=name,
-                           reason=NOT_CHECKED, persisted=remembered,
-                           unverified=sorted(expected_registers(config)),
-                           read_back=False)
-        return replace(_check(name, config, device), persisted=remembered)
+            outcome = Outcome(state=APPLIED_UNVERIFIED, name=name,
+                              reason=NOT_CHECKED,
+                              unverified=sorted(expected_registers(config)),
+                              read_back=False)
+        else:
+            outcome = _check(name, config, device)
+        return replace(outcome, persisted=marked.in_effect,
+                       durable=marked.durable, retargets=retargets)
 
 
 def restore_main(config_path: Optional[Path] = None,
@@ -845,7 +884,7 @@ def restore_main(config_path: Optional[Path] = None,
     except ConfigError as exc:
         log.error("routing.conf refused, nothing written: %s", exc)
         return Outcome(state=REFUSED, name="routing.conf", reason=str(exc))
-    log_unchecked_routes(config)
+    log_desk_notices(config)
     try:
         target = _target(config, reach=backend is None)
     except _Refused as refusal:
@@ -860,14 +899,25 @@ def restore_main(config_path: Optional[Path] = None,
         device = backend if backend is not None else loopback(
             config.osc_port, config.osc_recv_port)
         _write(config, device)
-        forgotten = forget_active_profile(config_path)
+        marked = forget_active_profile(config_path)
         if not verify:
-            return Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
-                           reason=NOT_CHECKED, persisted=forgotten,
-                           unverified=sorted(expected_registers(config)),
-                           read_back=False)
-        return replace(_check("routing.conf", config, device),
-                       persisted=forgotten)
+            outcome = Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
+                              reason=NOT_CHECKED,
+                              unverified=sorted(expected_registers(config)),
+                              read_back=False)
+        else:
+            outcome = _check("routing.conf", config, device)
+        return replace(outcome, persisted=marked.in_effect,
+                       durable=marked.durable)
+
+
+def _names_another_backend(profile: Config,
+                           config_path: Optional[Path]) -> bool:
+    """Whether the profile resolved to other machine settings than its
+    main config does -- another port, serial, usb id or device name."""
+    if config_path is None or not Path(config_path).is_file():
+        return False
+    return profile.loaded != load_config(config_path).loaded
 
 
 def _write(config: Config, device: Backend) -> None:

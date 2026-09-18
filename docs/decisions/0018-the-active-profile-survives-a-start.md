@@ -175,10 +175,10 @@ the main config's machine settings; one that states a setting itself
 still wins, because the parser falls back to what it is read onto only
 for what the file does not say.
 
-"Takes effect on the next start" has a consequence that is now said out
-loud. A running session keeps the interface it was started for, so a
-reload that finds `routing.conf`, or an active profile, naming another
-one uses a desk that was checked for the wrong interface. It warns, and
-a restart moves it. `--device`, which also arrives after the
-validation, warns the same way, and is refused together with a switch
-or a restore, which never saw it.
+"Takes effect on the next start" has a consequence that is now
+enforced. A running session keeps the backend and interface it was
+started for, so a reload that finds `routing.conf`, or an active
+profile, resolving to another one does not apply that desk: it was
+written for somewhere else (ADR 0026). `--device`, which also arrives
+after the validation, warns when it names another model, and is refused
+together with a switch or a restore, which never saw it.

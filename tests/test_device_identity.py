@@ -1505,55 +1505,60 @@ output = 3/4
     assert fresh.osc_port != 9001
 
 
+def _reread(name, running, path):
+    """`_desk_under_the_lock` answers with the running desk when it refuses,
+    `_reloaded_desk` with None; both mean "not applied"."""
+    args = (running, path) if name == "_reloaded_desk" else (path, running)
+    fresh = getattr(session_module, name)(*args)
+    return None if fresh is running else fresh
+
+
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
-def test_a_re_read_that_lands_on_another_interface_says_so(tmp_path, caplog,
-                                                           reread):
-    """Measured by review: routing.conf edited to name 'Some Box' with
-    output 41/42, reloaded under a session bound to a UCX II. The file
-    was checked for a box with no model, the name was pinned back, and
-    `/output/41/stereo` went to an interface with twenty outputs -- in
-    silence. Validating for the running interface needs the parser to
-    know it (0.7.0); until then the re-read says what happened."""
+@pytest.mark.parametrize(("elsewhere", "named"), [
+    ("[device]\nname = Some Box\n", "device name 'Some Box'"),
+    ("[device]\nserial = 99887766\n", "serial '99887766' (not '')"),
+    ("[osc]\nport = 9500\n", "osc port 9500 (not 7222)"),
+], ids=["another model", "another box of the model", "another backend"])
+def test_a_re_read_desk_for_somewhere_else_is_not_applied_here(
+        tmp_path, caplog, reread, elsewhere, named):
+    """Until 0.6.11 it was pinned to this session's interface and written.
+    Measured and reviewed: `routing.conf` edited to name a box with 42
+    outputs reached a UCX II, which has twenty; a profile stating another
+    port and serial was written to its own interface by the switch and
+    then to this one by the reload the switch sent -- the same persisted
+    profile meant one target for a switch, another for a reload, and the
+    first again after a restart. A notice that compared models was silent
+    for two boxes of one model."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     running = profiles.load_config(path)
-    args = (running, path) if reread == "_reloaded_desk" else (path, running)
-    notice = ("a running session keeps the interface it was started for: "
-              "this config was checked for 'Some Box' and is used for "
-              "'Fireface UCX II'")
-    with caplog.at_level("WARNING"):
-        getattr(session_module, reread)(*args)
-    assert "checked for" not in caplog.text, "the same model: nothing to say"
+    assert _reread(reread, running, path) is not None, "its own desk"
 
-    path.write_text("[device]\nname = Some Box\n\n"
-                    "[route:main]\nplayback = 1/2\noutput = 41/42\n")
-    with caplog.at_level("WARNING"):
-        fresh = getattr(session_module, reread)(*args)
-    assert fresh.device_name == "Fireface UCX II"
-    assert fresh.checked_for == "Some Box"
-    assert notice in caplog.text
+    # As the file itself ...
+    path.write_text(elsewhere + "[route:far]\nplayback = 1/2\noutput = 3/4\n")
+    with caplog.at_level("INFO"):
+        assert _reread(reread, running, path) is None
+    assert "the desk now in effect is for another backend or interface" \
+        in caplog.text
+    assert named in caplog.text
+    assert "systemctl --user restart oscmix.service" in caplog.text
+    assert "SIGHUP: reloaded" not in caplog.text, "it was not"
 
-    # The third way there: routing.conf untouched, an active profile that
-    # names its own interface, switched to while the session runs.
-    caplog.clear()
+    # ... and as an active profile over an untouched routing.conf.
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    write_config(tmp_path / "profiles" / "far.conf",
-                 "[device]\nname = Some Box\n\n"
-                 "[route:far]\nplayback = 1/2\noutput = 41/42\n")
+    write_config(tmp_path / "profiles" / "far.conf", elsewhere
+                 + "[route:far]\nplayback = 1/2\noutput = 3/4\n")
     (tmp_path / "active-profile").write_text("far\n")
-    with caplog.at_level("WARNING"):
-        getattr(session_module, reread)(*args)
-    assert notice in caplog.text
+    assert _reread(reread, running, path) is None
 
 
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
-def test_a_re_read_does_not_blame_itself_for_what_the_start_already_said(
+def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
         tmp_path, caplog, reread):
-    """A start with `--device "Some Box"` over a file for a UCX II says so
-    once, in the CLI. The re-read found the same mismatch and announced it
-    again -- at the start, and on every SIGHUP -- as the session "keeping
-    its interface", with advice to restart that changes nothing (found by
-    review, 0.6.11)."""
+    """`--device`, `--osc-port` and the serial a start pins change the live
+    attributes, not what the file resolved to -- and the file is what a
+    re-read compares. A first cut compared models of live names and
+    announced a `--device` start again at every SIGHUP."""
     from oscmix_desk import cli
 
     path = write_config(tmp_path / "routing.conf",
@@ -1562,10 +1567,12 @@ def test_a_re_read_does_not_blame_itself_for_what_the_start_already_said(
     with caplog.at_level("WARNING"):
         cli._override_device(running, "Some Box")
     assert "--device replaces [device] name after validation" in caplog.text
-    assert running.checked_for == "Fireface UCX II"
+    running.osc_port, running.serial = 9000, "24216011"
     caplog.clear()
-    args = (running, path) if reread == "_reloaded_desk" else (path, running)
     with caplog.at_level("WARNING"):
-        fresh = getattr(session_module, reread)(*args)
-    assert fresh.device_name == "Some Box"
+        fresh = _reread(reread, running, path)
+    assert fresh is not None
+    assert (fresh.device_name, fresh.osc_port, fresh.serial) == (
+        "Some Box", 9000, "24216011")
+    assert "another backend" not in caplog.text
     assert "checked for" not in caplog.text

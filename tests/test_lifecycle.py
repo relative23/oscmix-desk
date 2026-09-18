@@ -617,8 +617,20 @@ def test_a_backend_that_never_binds_its_port_fails_the_start(session_mod,
         "a backend this start will not use must not be left running"
 
 
+_LATER = "[route:y]\nplayback = 5/6\noutput = 5/6\n"
+
+
+# A profile that names another box is a desk for somewhere else. Until
+# 0.6.11 it was pinned to this process's interface and applied here (ADR
+# 0024 kept the machine settings; ADR 0026 is why the desk does not
+# follow): the start applies the desk it was started with.
+@pytest.mark.parametrize(("profile", "applied_output"), [
+    (_LATER, (5, 6)),
+    ("[device]\nusb-id = 1234:5678\nserial = 99887766\n" + _LATER, (1, 2)),
+], ids=["a desk for this interface", "a desk for another interface"])
 def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
-                                               session_mod):
+                                               session_mod, profile,
+                                               applied_output):
     """A switch that commits while the start waits for the lock wins.
 
     The config this process parsed at startup is a snapshot older than
@@ -634,11 +646,7 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
 
     path = write_config(tmp_path / "routing.conf",
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
-    # A profile may state [device] -- and must not move the interface a
-    # running start has already bound and locked for (ADR 0024).
-    write_config(tmp_path / "profiles" / "later.conf",
-                 "[device]\nusb-id = 1234:5678\nserial = 99887766\n"
-                 "[route:y]\nplayback = 5/6\noutput = 5/6\n")
+    write_config(tmp_path / "profiles" / "later.conf", profile)
     applied = []
     monkeypatch.setattr(session_module, "apply_routing",
                         lambda config, *a, **k: applied.append(config))
@@ -660,8 +668,8 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
                                                 {"stop": False}, path)
     assert verifier is not None
     verifier.join(timeout=5)
-    assert [r.output for r in applied[0].routes] == [(5, 6)], \
-        "the start applied the desk it read before waiting"
+    assert [r.output for r in applied[0].routes] == [applied_output], \
+        "the start applied the wrong desk"
     assert applied[0].osc_port == started.osc_port, \
         "the ports belong to the running process, not to the desk"
     assert applied[0].osc_recv_port == started.osc_recv_port

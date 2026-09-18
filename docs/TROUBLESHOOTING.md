@@ -78,15 +78,20 @@ Common findings in the journal:
   checked against the hardware. Expected on an interface this project
   has never seen (the 802 is checked against upstream's channel map and
   does not warn); a typo in the name looks the same.
-- `...: this config was checked for '<A>' and is used for '<B>'` -- the
-  file's `[device] name` is one model and the routes go to another, so
-  the channel check was made for the wrong interface. The start of the
-  line names the cause. `--device replaces [device] name`: put the name
-  in `routing.conf` instead, so the channels are checked for the
-  interface they go to. `a running session keeps the interface it was
-  started for`: `routing.conf`, or a profile that names its own
-  `[device]`, now says another interface than the one the backend is
-  bound to; `systemctl --user restart oscmix.service` moves it.
+- `--device replaces [device] name after validation: this config was
+  checked for '<A>' and is used for '<B>'` -- the file names one model
+  and the override another, so the channel check was made for the wrong
+  interface. Put the name in `routing.conf` instead.
+- `the desk now in effect is for another backend or interface -- ...`
+  with `Status: running; reconcile skipped` -- `routing.conf`, or the
+  active profile, now resolves to another device name, usb id, serial or
+  port than the ones this session was started with; the line says
+  which. A running session keeps its backend, so the desk was **not**
+  applied. `systemctl --user restart oscmix.service` follows it.
+- `<profile>.conf states [osc]: a profile is the desk, not the machine`
+  -- works in 0.6.x and is refused from 0.7.0 (ADR 0026). Move the
+  section to `routing.conf`; a second backend gets a config directory
+  of its own (`--config`).
 - `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
   GUI was listening on the state port, so the read-back was not possible.
 - `unconfirmed after retry: ...` -- the device never reported the listed
