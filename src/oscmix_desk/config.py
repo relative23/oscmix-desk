@@ -140,8 +140,9 @@ class Config:
     #: ``device_name`` can be replaced afterwards -- by ``--device``, by a
     #: re-read under a running session -- and this is what remembers that
     #: the channel checks were made for another interface (0.6.11).
-    #: Neither the desk's nor the machine's: a record of the validation.
-    checked_for: str = ""
+    #: Neither the desk's nor the machine's: a record of the validation,
+    #: and None for a ``Config`` no file was validated into.
+    checked_for: Optional[str] = None
 
 
 #: The last place a desk is looked for, after the user's own.
@@ -437,6 +438,15 @@ def _dispatch(parser: "configparser.ConfigParser", config: "Config",
             _check_options(section, "device", parser.options(section))
             config.device_name = parser.get(section, "name",
                                             fallback=config.device_name).strip()
+            if not config.device_name:
+                # The name is a substring match on the ALSA clients, and
+                # the empty string is a substring of every one of them:
+                # `name =` selected whatever client came first, or was
+                # "ambiguous" between the interface and Midi Through.
+                raise ConfigError(
+                    "[device] name: expected the interface's name, for "
+                    "example %r; an empty name matches every ALSA client"
+                    % DEFAULT_DEVICE_NAME)
             usb_id = parser.get(section, "usb-id", fallback=config.usb_id).strip()
             if not re.fullmatch(r"[0-9a-fA-F]{4}:[0-9a-fA-F]{4}", usb_id):
                 raise ConfigError(
@@ -526,13 +536,18 @@ def log_device_replaced(config: "Config", why: str,
     ``since`` is the config the process already runs. What that one was
     checked for has been said once, at the start; a reload that finds the
     same thing again is not news, and saying it again would blame the
-    reload for what ``--device`` did (found by review).
+    reload for what ``--device`` did (found by review). A file that names
+    another interface than the session's is said at every reload, because
+    every reload writes it.
     """
-    checked = device_for_name(config.checked_for or config.device_name)
+    if config.checked_for is None:
+        return                      # no file, so nothing was checked
+    checked = device_for_name(config.checked_for)
     if checked is device_for_name(config.device_name):
         return
     if since is not None and checked is device_for_name(
-            since.checked_for or since.device_name):
+            since.device_name if since.checked_for is None
+            else since.checked_for):
         return
     log.warning("%s: this config was checked for %r and is used for %r, so "
                 "its channels and sections were validated against the wrong "

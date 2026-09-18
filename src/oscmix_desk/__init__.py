@@ -7,15 +7,20 @@ The runtime deliberately imports nothing outside the standard library, so
 the package runs from a checkout on a bare system. ``tests/test_architecture.py``
 enforces that, along with the layering the modules are arranged in:
 
-    constants, errors, log      no internal imports
-    osc, notify, discovery      leaves
-    config                      constants, errors
-    routing                     config, constants, log, osc
+    constants, errors, log, osc no internal imports
+    notify, discovery, registers the leaves above, nothing else
+    config                      constants, errors, log, registers
+    backend                     errors, osc
+    reconcile                   config, constants, registers
+    routing                     backend, reconcile, and the leaves
     verify                      routing, ...
-    pipewire, process           leaves plus config/discovery
+    pipewire, process, launcher leaves plus config/discovery
     profiles                    routing, verify; the desk in effect
     session                     composes everything below it
     cli                         the only entry point
+
+The exact edges are ``ALLOWED_IMPORTS`` in that test, which holds them to
+what each module really imports, no more and no less.
 """
 
 from __future__ import annotations

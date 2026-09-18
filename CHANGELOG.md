@@ -72,17 +72,24 @@ register table has no new row.
   `routing.conf` or an active profile now names. Measured by review:
   `routing.conf` edited to name another box with `output = 41/42`,
   reloaded under a session bound to a UCX II, sent `/output/41/stereo`
-  to an interface with twenty outputs in silence. Both warn now, once:
-  a `Config` records what it was checked for, so a reload does not
-  repeat what `--device` already said at the start. Validating *for*
-  the replacement needs the parser to know it, which is part of 0.7.0.
+  to an interface with twenty outputs in silence. Both warn now. A
+  `Config` records what it was checked for, so a reload does not repeat
+  what `--device` already said at the start; a file that names another
+  interface than the session's is said at every reload, because every
+  reload writes it. Validating *for* the replacement needs the parser to
+  know it, which is part of 0.7.0.
+- **An empty `[device] name` is a configuration error.** The name is a
+  substring match on the ALSA clients, and the empty string is a
+  substring of every one: `name =` matched the interface and `Midi
+  Through` alike.
 - **`--device` and `--osc-port` are refused with `--profile` and
   `--no-profile`.** A switch and a restore take their interface and
   ports from the config; the overrides were dropped on that path without
   a word, while the dry run of the same switch looked for the interface
   `--device` named and so showed something the switch would not do.
-  Exit 2, naming the pair. An empty `--device ''` is refused as well; it
-  was skipped in silence.
+  Exit 2, naming the pair. An empty `--device ''` is refused as well --
+  it was skipped in silence -- and a given name is stripped like the
+  file's, where padding used to find no client.
 - **A dry run shows the desk as the switch would load it.** The device
   name and ports of the desk *in effect* were written over it first, and
   the name is what a dry run acts on: a profile naming its own interface
@@ -95,11 +102,17 @@ register table has no new row.
   `ReceivePortError`, since `await_link_echo`, `verify_routing` and
   `verify_and_repair` raise it; `Outcome.read_back`;
   `Config.checked_for`; `load_config(path, base=None)`; and
-  `blind_reapply_mix(config, should_stop, why=None)`. Nothing existing
-  changes its meaning.
+  `blind_reapply_mix(config, should_stop, why=None)`. No existing
+  signature changes; the one change of behaviour behind an existing name
+  is the first entry under Fixed, where `None` used to cover every
+  failure to bind.
 - **No test opens the machine's `/dev/snd/seq`.** The device wait opens
   it to make the kernel load `snd-seq`; read-only and harmless, and
   still the machine's. The suite points `OSCMIX_SEQ_DEV` at nothing.
+- **The layer map is exact.** `tests/test_architecture.py` held every
+  module to the imports it is allowed; it now also fails on an allowed
+  edge nothing uses. Three had outlived their imports, and the package
+  docstring described the graph of 0.2.0.
 - **CI uploads artifacts on Node 24.** `actions/upload-artifact` moves
   from the v5 pin, which targets the deprecated Node 20, to v7.0.1.
 

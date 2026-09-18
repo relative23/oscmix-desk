@@ -217,7 +217,9 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
         return EXIT_CONFIG
 
     if args.device:
-        _override_device(config, args.device)
+        # Stripped like `[device] name` is: the client search compares
+        # the name as given, and padding matched nothing.
+        _override_device(config, args.device.strip())
     if args.osc_port is not None:
         # Bounded like `[osc] port` in the file. A port outside the range
         # used to pass straight through: nothing bound it, and the first
@@ -319,7 +321,7 @@ def _refuse_conflicting_actions(parser: ArgumentParser,
     if args.dry_run and asked and asked[0] not in ("--profile", "--no-profile"):
         parser.error("--dry-run cannot be combined with %s" % asked[0])
     if args.device is not None and not args.device.strip():
-        # Falsy, so the override below skipped it without a word.
+        # '' was skipped without a word, and '  ' was searched for.
         parser.error("--device needs a name")
     overrides = [flag for flag, given in (("--device", args.device),
                                           ("--osc-port", args.osc_port))

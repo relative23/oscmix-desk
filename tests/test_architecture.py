@@ -60,11 +60,11 @@ ALLOWED_IMPORTS = {
     # receive port that cannot be bound from one that is held (ADR 0025),
     # and the leaf is where that exception lives -- imported from there,
     # because `__init__` is the only module that re-exports.
-    "routing": {"backend", "config", "constants", "errors", "log", "osc",
+    "routing": {"backend", "config", "constants", "errors", "log",
                 "reconcile"},
-    "verify": {"backend", "config", "constants", "errors", "log", "osc",
+    "verify": {"backend", "config", "constants", "errors", "log",
                "reconcile", "registers", "routing"},
-    "pipewire": {"config", "errors", "log"},
+    "pipewire": {"config", "errors"},
     "process": {"constants", "discovery", "log"},
     # `profiles` since 0.6.3: a reload has to apply the same desk a
     # start does, and "the active profile, else routing.conf" is
@@ -176,6 +176,19 @@ def test_module_only_imports_its_declared_layer(path):
         "%s imports %s, which its layer does not allow (allowed: %s)"
         % (path.name, sorted(relative - allowed), sorted(allowed) or "nothing")
     )
+
+
+@pytest.mark.parametrize("path", module_paths(), ids=lambda p: p.stem)
+def test_the_declared_layer_is_what_the_module_imports(path):
+    """The other direction. An edge nothing uses is a permission nobody
+    reviewed: `routing -> osc`, `verify -> osc` and `pipewire -> log` sat
+    in the map long after the imports were gone, and the package
+    docstring described a graph from 0.2.0 (found by review, 0.6.11)."""
+    _, relative = imports_of(path)
+    allowed = ALLOWED_IMPORTS[path.stem]
+    assert allowed <= relative, (
+        "%s no longer imports %s; take it out of ALLOWED_IMPORTS"
+        % (path.name, sorted(allowed - relative)))
 
 
 def test_the_import_graph_is_acyclic():

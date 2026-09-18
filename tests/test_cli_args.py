@@ -336,13 +336,32 @@ def test_an_override_a_switch_never_saw_is_refused(tmp_path, capsys, action,
 
 @pytest.mark.parametrize("name", ["", "  "])
 def test_an_empty_device_name_is_refused_rather_than_dropped(capsys, name):
-    """Falsy, so `if args.device:` skipped it without a word."""
+    """`--device ''` was skipped without a word, and `--device '  '` was
+    searched for as it stood."""
     from oscmix_desk import cli
 
     with pytest.raises(SystemExit) as refused:
         cli.main(["--device", name, "--list-profiles"])
     assert refused.value.code == 2
     assert "--device needs a name" in capsys.readouterr().err
+
+
+def test_a_device_name_is_stripped_like_the_one_in_the_file(tmp_path,
+                                                            monkeypatch):
+    """The client search compares the name as given, so `--device
+    " Fireface UCX II "` found no client, while the file's name has always
+    been stripped."""
+    from oscmix_desk import cli
+
+    seen = []
+    monkeypatch.setattr(cli, "run_session",
+                        lambda args, config: seen.append(config.device_name)
+                        or 0)
+    path = tmp_path / "routing.conf"
+    path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
+    assert cli.main(["--config", str(path),
+                     "--device", "  Fireface UCX II "]) == 0
+    assert seen == ["Fireface UCX II"]
 
 
 def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
