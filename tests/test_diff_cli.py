@@ -16,6 +16,7 @@ from conftest import free_udp_port, osc_bundle
 from test_dump_config_cli import FakeBackend, dump_of
 
 from oscmix_desk import cli
+from oscmix_desk import reads as reads_mod
 
 CONFIG = ("[device]\nname = Fireface UCX II\n\n"
           "[route:main]\nplayback = 1/2\noutput = 5/6\nlevel = 0.0\n\n"
@@ -176,7 +177,7 @@ def test_silence_is_an_error_not_an_empty_diff(session_mod, capsys, tmp_path,
     expires -- paying the real 8 s to learn that is what pushed the CI
     mutation job past its limit once already.
     """
-    monkeypatch.setattr(cli, "DUMP_READ_SECONDS", 0.6)
+    monkeypatch.setattr(reads_mod, "DUMP_READ_SECONDS", 0.6)
     code, out, _ = run_diff(session_mod, capsys, tmp_path, [])
     assert code == 1
     assert "matches the config" not in out
@@ -247,7 +248,7 @@ def test_the_output_is_sorted_so_two_runs_can_be_diffed(session_mod, capsys,
 
 def test_silence_is_an_error_not_an_empty_snapshot(session_mod, capsys,
                                                    tmp_path, monkeypatch):
-    monkeypatch.setattr(cli, "DUMP_READ_SECONDS", 0.6)
+    monkeypatch.setattr(reads_mod, "DUMP_READ_SECONDS", 0.6)
     code, out = run_snapshot(session_mod, capsys, tmp_path, [])
     assert code == 1
     assert out == ""
@@ -274,10 +275,10 @@ def test_the_three_outcomes_have_three_codes(session_mod, capsys, tmp_path,
     # waiting here is paid thousands of times. The read window and the
     # quiet detection are what this test would otherwise sit through
     # three times over, and neither is what it is about.
-    monkeypatch.setattr(cli, "DUMP_QUIET_SECONDS", 0.15)
+    monkeypatch.setattr(reads_mod, "DUMP_QUIET_SECONDS", 0.15)
     matched, _out, _ = run_diff(session_mod, capsys, tmp_path, IN_SYNC)
     differed, _out, _ = run_diff(session_mod, capsys, tmp_path, DRIFTED)
-    monkeypatch.setattr(cli, "DUMP_READ_SECONDS", 0.6)
+    monkeypatch.setattr(reads_mod, "DUMP_READ_SECONDS", 0.6)
     silent, _out, _ = run_diff(session_mod, capsys, tmp_path, [])
 
     assert (matched, differed, silent) == (EXIT_OK, EXIT_DIFFERS, EXIT_FAILURE)

@@ -23,8 +23,10 @@ from conftest import free_udp_port, write_config
 
 from oscmix_desk import backend, locking, profiles, routing, verify
 from oscmix_desk import outcome as outcome_mod
+from oscmix_desk import reads as reads_mod
 from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
+from oscmix_desk.constants import EXIT_FAILURE
 from oscmix_desk.errors import ReceivePortError
 
 #: What the double raises, as `str()` and as `strerror`.
@@ -285,10 +287,10 @@ def test_a_read_fails_with_the_reason_and_not_with_a_traceback(
         tmp_path, monkeypatch, caplog, flag):
     from oscmix_desk import cli
 
-    monkeypatch.setattr(cli, "loopback", lambda *_a: _unbindable())
+    monkeypatch.setattr(reads_mod, "loopback", lambda *_a: _unbindable())
     path = write_config(tmp_path / "routing.conf", DESK)
     with caplog.at_level("ERROR"):
-        assert cli.main(["--config", str(path), flag]) == cli.EXIT_FAILURE
+        assert cli.main(["--config", str(path), flag]) == EXIT_FAILURE
     assert DENIED in caplog.text
     assert "close the mixer GUI" not in caplog.text
 

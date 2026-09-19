@@ -425,7 +425,7 @@ def test_the_dump_command_passes_channel_state_to_the_renderer():
 
     from conftest import repo_file
 
-    source = repo_file("src", "oscmix_desk", "cli.py").read_text()
+    source = repo_file("src", "oscmix_desk", "reads.py").read_text()
     tree = ast.parse(source)
     called = {node.func.id for node in ast.walk(tree)
               if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}

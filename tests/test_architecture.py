@@ -85,16 +85,19 @@ ALLOWED_IMPORTS = {
     # around every reconcile.
     "reload": {"constants", "discovery", "errors", "locking", "log", "model",
                "notices", "notify", "paths", "profiles", "verify"},
-    # `discovery` since 0.6.2: the snapshot header names the device's
-    # serial and firmware, which are the leaf's to answer. A leaf with no
-    # imports of its own, already below session; cli reading it changes
-    # no direction in the graph.
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
-    "cli": {"backend", "config", "constants", "devices", "discovery", "dump",
-            "errors", "log", "model", "notices", "outcome", "paths",
-            "pipewire", "process", "profiles", "reconcile", "session"},
+    "cli": {"config", "constants", "errors", "log", "model", "notices",
+            "outcome", "paths", "pipewire", "process", "profiles", "reads",
+            "session"},
+    # The three actions that read the device, split out of cli in 0.7.0.
+    # `discovery` since 0.6.2: the snapshot header names the device's
+    # serial and firmware, which are the leaf's to answer. `process` for
+    # whose backend holds the port, `dump` for the device's state as a
+    # config.
+    "reads": {"backend", "constants", "devices", "discovery", "dump", "errors",
+              "log", "model", "process", "reconcile"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.

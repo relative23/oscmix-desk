@@ -107,7 +107,8 @@ acyclic graph.
 | `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` -- kept for the machine the session runs on, or refused as a desk for somewhere else |
 | `session` | the service lifecycle: wait for the device, start the backend, apply, signal ready, verify, shut down |
 | `launcher` | the desktop entry's entry point; deliberately depends on almost nothing |
-| `cli` | argument parsing and the exit-code mapping, and nothing else |
+| `reads` | the three actions that read the device and write nothing: `--snapshot`, `--diff`, `--dump-config` |
+| `cli` | argument parsing, one action per invocation, and the exit-code mapping -- a switch's outcome and the unit's reload included |
 | `__init__` | the public surface, and the only module that re-exports |
 
 ## The register model is data

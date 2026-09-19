@@ -28,6 +28,7 @@ from oscmix_desk import marker as marker_mod
 from oscmix_desk import notices as notices_mod
 from oscmix_desk import outcome as outcome_mod
 from oscmix_desk import paths as paths_mod
+from oscmix_desk import reads as reads_mod
 from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.discovery import (
@@ -567,17 +568,17 @@ def test_the_unit_declares_the_lock_directory_writable():
 
 
 def test_a_snapshot_names_the_resolved_box(tmp_path, monkeypatch):
-    from oscmix_desk import Config, cli
+    from oscmix_desk import Config
 
     one = fake_proc(tmp_path / "one", boxes=[B])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(one))
-    assert cli._snapshot_serial(Config()) == B[1]
+    assert reads_mod._snapshot_serial(Config()) == B[1]
     two = fake_proc(tmp_path / "two", boxes=[A, B])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(two))
-    assert cli._snapshot_serial(Config()) == "ambiguous"
-    assert cli._snapshot_serial(Config(serial=A[1])) == A[1]
+    assert reads_mod._snapshot_serial(Config()) == "ambiguous"
+    assert reads_mod._snapshot_serial(Config(serial=A[1])) == A[1]
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(tmp_path / "none")))
-    assert cli._snapshot_serial(Config()) == "?"
+    assert reads_mod._snapshot_serial(Config()) == "?"
 
 
 def test_hardware_evidence_refuses_to_name_one_of_two_boxes(tmp_path,
@@ -736,12 +737,12 @@ def test_a_serial_with_letters_is_a_config_error(tmp_path):
 
 
 def test_a_snapshot_names_the_box_its_backend_drives(tmp_path, monkeypatch):
-    from oscmix_desk import Config, cli
+    from oscmix_desk import Config
 
     port = free_udp_port()
     proc = fake_proc(tmp_path, boxes=[A, B], bound=[(port, "oscmix", A[0])])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    assert cli._snapshot_serial(Config(serial=B[1], osc_port=port)) == A[1]
+    assert reads_mod._snapshot_serial(Config(serial=B[1], osc_port=port)) == A[1]
 
 
 def test_the_sweep_refuses_two_boxes_before_it_takes_anything(monkeypatch,
@@ -1081,16 +1082,16 @@ def test_a_lock_directory_that_cannot_be_searched_says_permission_and_group(
 def test_a_snapshot_reads_the_real_proc_by_default(monkeypatch):
     from pathlib import Path
 
-    from oscmix_desk import Config, cli
+    from oscmix_desk import Config
 
     seen = []
     monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
-    monkeypatch.setattr(cli, "port_holder",
+    monkeypatch.setattr(reads_mod, "port_holder",
                         lambda port, proc: seen.append(proc) or None)
-    monkeypatch.setattr(cli, "resolve_device",
+    monkeypatch.setattr(reads_mod, "resolve_device",
                         lambda usb, name, serial, proc: seen.append(proc)
                         or Device(usb, B[1], B[0]))
-    assert cli._snapshot_serial(Config()) == B[1]
+    assert reads_mod._snapshot_serial(Config()) == B[1]
     assert seen == [Path("/proc"), Path("/proc")]
 
 
