@@ -407,3 +407,21 @@ def test_the_page_carries_no_history():
     assert dated == [], (
         "version numbers in the architecture body belong in the roadmap: %s"
         % dated)
+
+
+def test_a_patch_that_nothing_reads_fails_the_test(monkeypatch):
+    """The guard in conftest, held to doing what it says.
+
+    `oscmix_desk.profiles` imports `lock_key` for its callers' sake and
+    reads it itself, so that patch goes through; the package root reads
+    nothing, so a patch on it would steer no code at all.
+    """
+    import oscmix_desk
+    from oscmix_desk import profiles
+
+    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.1)
+    with pytest.raises(pytest.fail.Exception,
+                       match=r"patching oscmix_desk\.load_config changes "
+                             "nothing"):
+        monkeypatch.setattr(oscmix_desk, "load_config", None)
+    assert oscmix_desk.load_config is not None, "and nothing was replaced"

@@ -9,6 +9,7 @@ which run them as real subprocesses.
 ``if __name__ == "__main__"`` guard keeps the import side-effect free.
 """
 
+import ast
 import collections
 import importlib.machinery
 import importlib.util
@@ -16,9 +17,11 @@ import os
 import socket
 import struct
 import sys
+import types
 from pathlib import Path
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
@@ -164,6 +167,58 @@ def load_executable(name):
     sys.modules[loader.name] = module
     loader.exec_module(module)
     return module
+
+
+# --------------------------------------------------------------------------
+# A patch nothing reads is a test that tests nothing.
+# --------------------------------------------------------------------------
+
+_NAMES_READ = {}
+
+
+def _names_read(module):
+    """Every name the module's own code loads, as far as its source says."""
+    path = getattr(module, "__file__", None)
+    if path not in _NAMES_READ:
+        tree = ast.parse(Path(path).read_text(encoding="utf-8"))
+        _NAMES_READ[path] = {
+            node.id for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+    return _NAMES_READ[path]
+
+
+def _is_ours(module):
+    path = getattr(module, "__file__", None) or ""
+    return path.endswith(".py") and any(
+        path.startswith(str(PROJECT_ROOT / part) + os.sep)
+        for part in ("src", "scripts"))
+
+
+_setattr = MonkeyPatch.setattr
+
+
+def _setattr_that_something_reads(self, target, name=None, *args, **kwargs):
+    """``monkeypatch.setattr``, refusing a patch on one of this project's
+    modules that the module itself never reads.
+
+    The suite isolates itself from the machine, and steers the code under
+    test, by replacing module attributes. A function that moves to another
+    module takes its reads with it: the patch on the old module still
+    succeeds -- the name is still imported there -- and changes nothing.
+    That is how tests reached the machine's lock directory and its user
+    manager before (0.6.1, 0.6.10), and it is what splitting the large
+    modules would have done a hundred times over in silence (0.7.0).
+    """
+    if isinstance(target, types.ModuleType) and isinstance(name, str) \
+            and _is_ours(target) and name not in _names_read(target):
+        pytest.fail("patching %s.%s changes nothing: no code in %s reads "
+                    "that name -- patch the module that does"
+                    % (target.__name__, name, target.__name__),
+                    pytrace=False)
+    return _setattr(self, target, name, *args, **kwargs)
+
+
+MonkeyPatch.setattr = _setattr_that_something_reads
 
 
 @pytest.fixture(autouse=True)
