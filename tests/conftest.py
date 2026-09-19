@@ -235,9 +235,9 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
     search falls through to the runtime directory below unless a test
     sets it itself.
     """
-    from oscmix_desk import profiles
+    from oscmix_desk import locking
 
-    machine = (os.environ.get("XDG_RUNTIME_DIR"), profiles.SHARED_LOCK_DIR)
+    machine = (os.environ.get("XDG_RUNTIME_DIR"), locking.SHARED_LOCK_DIR)
     monkeypatch.setenv("XDG_RUNTIME_DIR",
                        str(tmp_path_factory.mktemp("runtime")))
     absent = str(tmp_path_factory.mktemp("nolockdir") / "absent")
@@ -246,7 +246,7 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
     # that renames the variable falls back to /run/oscmix-desk, and the
     # 0.6.9 mutation run left lock files there -- tests that could have
     # held the running desk's lock while they ran.
-    monkeypatch.setattr(profiles, "SHARED_LOCK_DIR", absent)
+    monkeypatch.setattr(locking, "SHARED_LOCK_DIR", absent)
     yield
     # Checked before monkeypatch restores anything, since this fixture
     # asked for it. A test may point either location somewhere of its
@@ -258,7 +258,7 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
               "(monkeypatch.undo()?)")
     runtime, shared = machine
     assert shared != os.environ.get("OSCMIX_LOCK_DIR",
-                                    profiles.SHARED_LOCK_DIR), undone
+                                    locking.SHARED_LOCK_DIR), undone
     assert runtime is None or runtime != os.environ.get("XDG_RUNTIME_DIR"), \
         undone
 

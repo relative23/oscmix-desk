@@ -72,9 +72,12 @@ ALLOWED_IMPORTS = {
     # start does, and "the active profile, else routing.conf" is
     # answered in profiles.effective_config. profiles sits above verify
     # and imports nothing from session, so no cycle.
-    "session": {"config", "constants", "discovery", "errors", "log",
-                "notify", "process", "profiles", "reconcile", "routing",
-                "verify"},
+    # `locking` since 0.7.0: the unit takes the device lock itself, around
+    # its apply and around every reconcile, and the lock is a module of
+    # its own now rather than a part of profiles.
+    "session": {"config", "constants", "discovery", "errors", "locking",
+                "log", "notify", "process", "profiles", "reconcile",
+                "routing", "verify"},
     # `discovery` since 0.6.2: the snapshot header names the device's
     # serial and firmware, which are the leaf's to answer. A leaf with no
     # imports of its own, already below session; cli reading it changes
@@ -83,8 +86,8 @@ ALLOWED_IMPORTS = {
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
     "cli": {"backend", "config", "constants", "devices", "discovery",
-            "errors", "log", "pipewire", "process", "profiles", "reconcile",
-            "session"},
+            "errors", "log", "outcome", "pipewire", "process", "profiles",
+            "reconcile", "session"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
@@ -96,7 +99,15 @@ ALLOWED_IMPORTS = {
     # process.socket_owner (ADR 0024). process imports nothing above
     # discovery, so no cycle.
     "profiles": {"backend", "config", "constants", "devices", "discovery",
-                 "errors", "log", "process", "routing", "verify"},
+                 "errors", "locking", "log", "marker", "outcome", "process",
+                 "routing", "verify"},
+    # The three things a switch is made of besides its order, split out of
+    # profiles in 0.7.0. Each is a near-leaf: the lock knows its wait and
+    # the journal, the marker knows what a profile name is, and an outcome
+    # is a value that imports nothing.
+    "locking": {"constants", "log"},
+    "marker": {"config", "errors", "log"},
+    "outcome": set(),
     "launcher": {"constants", "discovery"},
     # A leaf: the shape of a row and of a device, and the questions asked
     # of a table somebody hands it.
@@ -117,8 +128,9 @@ ALLOWED_IMPORTS = {
     # recordings instead of hardware.
     "reconcile": {"config", "constants", "devices", "registers"},
     "__init__": {"config", "constants", "discovery", "errors", "launcher",
-                 "log", "notify", "osc", "pipewire", "process", "profiles",
-                 "reconcile", "registers", "routing", "session", "verify"},
+                 "locking", "log", "marker", "notify", "osc", "outcome",
+                 "pipewire", "process", "profiles", "reconcile", "registers",
+                 "routing", "session", "verify"},
 
 }
 
@@ -422,14 +434,14 @@ def test_the_page_carries_no_history():
 def test_a_patch_that_nothing_reads_fails_the_test(monkeypatch):
     """The guard in conftest, held to doing what it says.
 
-    `oscmix_desk.profiles` imports `lock_key` for its callers' sake and
-    reads it itself, so that patch goes through; the package root reads
-    nothing, so a patch on it would steer no code at all.
+    `oscmix_desk.locking` reads the wait it imports, so that patch goes
+    through; the package root reads nothing, so a patch on it would steer
+    no code at all.
     """
     import oscmix_desk
-    from oscmix_desk import profiles
+    from oscmix_desk import locking
 
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.1)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.1)
     with pytest.raises(pytest.fail.Exception,
                        match=r"patching oscmix_desk\.load_config changes "
                              "nothing"):

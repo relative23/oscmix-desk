@@ -23,8 +23,10 @@ from pathlib import Path
 import pytest
 from conftest import fake_proc, free_udp_port, repo_file, write_config
 
-from oscmix_desk import cli, profiles
+from oscmix_desk import cli, locking, profiles
 from oscmix_desk import config as config_module
+from oscmix_desk import marker as marker_mod
+from oscmix_desk import outcome as outcome_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.discovery import (
     Device,
@@ -74,11 +76,15 @@ def _lock_dir(tmp_path, monkeypatch):
     return shared
 
 
-def _record_keys(monkeypatch, module, keys):
+def _record_keys(monkeypatch, module, keys, who=None):
+    """Record who took the lock with which key. The session calls
+    `take_device_lock` itself; a switch and a restore take it through
+    `locking._switch_lock`, which reads the name in its own module."""
     real = module.take_device_lock
+    who = who or module.__name__.rsplit(".", 1)[1]
 
     def take(config_path, key=None, wait=None):
-        keys.append((module.__name__.rsplit(".", 1)[1], key))
+        keys.append((who, key))
         return real(config_path, key, wait)
 
     monkeypatch.setattr(module, "take_device_lock", take)
@@ -132,7 +138,7 @@ def test_every_path_takes_b_s_lock_and_reaches_only_b(
     path = _desk(tmp_path, port, serial=B[1])
     keys, started, reconciled, wired = [], [], [], []
     _record_keys(monkeypatch, session_module, keys)
-    _record_keys(monkeypatch, profiles, keys)
+    _record_keys(monkeypatch, locking, keys, who="switch")
     monkeypatch.setattr(profiles, "loopback",
                         lambda send, recv: wired.append(send) or recording_backend)
 
@@ -146,7 +152,7 @@ def test_every_path_takes_b_s_lock_and_reaches_only_b(
     assert started == [B[0]], "the unit bridges B's client, not the first one"
     assert unit.serial == B[1]
     assert [who for who, _key in keys] == ["session", "session",
-                                           "profiles", "profiles"], \
+                                           "switch", "switch"], \
         "apply, reconcile, switch and restore each took the lock"
     assert {key for _who, key in keys} == {KEY_B}, keys
     assert switched.applied
@@ -168,12 +174,12 @@ def test_a_switch_refuses_a_backend_that_drives_the_other_box(
                         lambda send, recv: wired.append(send) or recording_backend)
 
     outcome = profiles.switch_profile("b", config_path=path, verify=False)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.reason == ("the backend on UDP %d drives the interface "
                               "%s, not %s" % (port, A[1], B[1]))
     assert wired == []
     assert recording_backend.sent == []
-    assert not profiles.active_profile_path(path).exists()
+    assert not marker_mod.active_profile_path(path).exists()
 
 
 def test_two_boxes_and_no_serial_refuse_everywhere(tmp_path, monkeypatch):
@@ -194,7 +200,7 @@ def test_two_boxes_and_no_serial_refuse_everywhere(tmp_path, monkeypatch):
     assert notified == []
     assert started == []
     for outcome in (switched, restored):
-        assert outcome.state == profiles.REFUSED
+        assert outcome.state == outcome_mod.REFUSED
         assert "2 interfaces match" in outcome.reason
 
 
@@ -209,7 +215,7 @@ def test_one_box_gives_the_unit_and_a_switch_the_same_key(
     path = _desk(tmp_path, port)
     keys = []
     _record_keys(monkeypatch, session_module, keys)
-    _record_keys(monkeypatch, profiles, keys)
+    _record_keys(monkeypatch, locking, keys, who="switch")
     monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
 
     _run_the_unit(tmp_path, monkeypatch, path, [], [])
@@ -244,13 +250,13 @@ def test_a_stranger_s_socket_on_the_port_is_refused_and_receives_nothing(
         _lock_dir(tmp_path, monkeypatch)
         path = _desk(tmp_path, port)
         outcome = profiles.switch_profile("b", config_path=path, verify=False)
-        assert outcome.state == profiles.REFUSED, outcome.reason
+        assert outcome.state == outcome_mod.REFUSED, outcome.reason
         assert outcome.reason == (
             "UDP %d is held by pid %d, not by an oscmix backend of this user"
             % (port, os.getpid()))
         with pytest.raises(BlockingIOError):
             stranger.recv(65535)
-        assert not profiles.active_profile_path(path).exists()
+        assert not marker_mod.active_profile_path(path).exists()
     finally:
         stranger.close()
 
@@ -296,7 +302,7 @@ def test_a_holder_that_is_not_oscmix_and_one_without_a_bridge(tmp_path):
 # --------------------------------------------------------------------------
 
 def _take(key, wait=0.2):
-    return profiles.take_device_lock(None, key, wait=wait)
+    return locking.take_device_lock(None, key, wait=wait)
 
 
 def test_a_symlink_at_the_lock_path_is_refused_and_its_target_untouched(
@@ -514,7 +520,7 @@ def test_a_refusal_in_a_directory_of_an_unknown_group_still_says_why(
     def unknown(_gid):
         raise KeyError(_gid)
 
-    monkeypatch.setattr(profiles.grp, "getgrgid", unknown)
+    monkeypatch.setattr(locking.grp, "getgrgid", unknown)
     try:
         with caplog.at_level("ERROR"):
             assert _take("k") is None
@@ -603,12 +609,12 @@ def test_a_backend_that_changes_during_the_lock_wait_is_refused_after_it(
                      bound=[(port, "oscmix", B[0])])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
     _lock_dir(tmp_path, monkeypatch)
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 5.0)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
     path = _desk(tmp_path, port, serial=B[1])
     wired = []
     monkeypatch.setattr(profiles, "loopback",
                         lambda send, recv: wired.append(send) or recording_backend)
-    held = profiles.take_device_lock(None, KEY_B)
+    held = locking.take_device_lock(None, KEY_B)
     assert held is not None
 
     def backend_swapped_then_lock_released():
@@ -619,12 +625,12 @@ def test_a_backend_that_changes_during_the_lock_wait_is_refused_after_it(
 
     threading.Timer(0.3, backend_swapped_then_lock_released).start()
     outcome = profiles.switch_profile("b", config_path=path, verify=False)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.reason == ("the backend on UDP %d drives the interface "
                               "%s, not %s" % (port, A[1], B[1]))
     assert wired == []
     assert recording_backend.sent == []
-    assert not profiles.active_profile_path(path).exists()
+    assert not marker_mod.active_profile_path(path).exists()
 
 
 def test_names_that_are_not_utf8_do_not_break_a_switch(tmp_path, monkeypatch,
@@ -658,10 +664,10 @@ def test_a_backend_left_without_its_interface_is_not_written_to(
     _lock_dir(tmp_path, monkeypatch)
     path = _desk(tmp_path, port)
     keys = []
-    _record_keys(monkeypatch, profiles, keys)
+    _record_keys(monkeypatch, locking, keys, who="switch")
     monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
     outcome = profiles.switch_profile("b", config_path=path, verify=False)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.reason == ("2a39:3fd9 is not visible to ALSA, so no backend "
                               "can be driving it")
     assert keys == []
@@ -996,10 +1002,10 @@ def test_a_restore_also_checks_again_after_the_lock_wait(
                      bound=[(port, "oscmix", B[0])])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
     _lock_dir(tmp_path, monkeypatch)
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 5.0)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
     path = _desk(tmp_path, port, serial=B[1])
     monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
-    held = profiles.take_device_lock(None, KEY_B)
+    held = locking.take_device_lock(None, KEY_B)
 
     def swapped_then_released():
         bridge = next(p for p in proc.iterdir() if p.name.isdigit()
@@ -1009,7 +1015,7 @@ def test_a_restore_also_checks_again_after_the_lock_wait(
 
     threading.Timer(0.3, swapped_then_released).start()
     outcome = profiles.restore_main(config_path=path, verify=False)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.name == "routing.conf"
     assert outcome.reason == ("the backend on UDP %d drives the interface "
                               "%s, not %s" % (port, A[1], B[1]))
@@ -1022,9 +1028,9 @@ def test_the_switch_refusal_after_the_wait_names_the_profile(
     proc = fake_proc(tmp_path / "proc", boxes=[B], bound=[(port, "oscmix", B[0])])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
     _lock_dir(tmp_path, monkeypatch)
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 5.0)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
     path = _desk(tmp_path, port, serial=B[1])
-    held = profiles.take_device_lock(None, KEY_B)
+    held = locking.take_device_lock(None, KEY_B)
 
     def backend_gone_then_released():
         (proc / "net" / "udp").write_text("  sl  local_address\n")
@@ -1032,7 +1038,7 @@ def test_the_switch_refusal_after_the_wait_names_the_profile(
 
     threading.Timer(0.3, backend_gone_then_released).start()
     outcome = profiles.switch_profile("b", config_path=path, verify=False)
-    assert (outcome.state, outcome.name) == (profiles.REFUSED, "b")
+    assert (outcome.state, outcome.name) == (outcome_mod.REFUSED, "b")
     assert "nothing is listening on UDP" in outcome.reason
 
 
@@ -1043,10 +1049,10 @@ def test_a_restore_that_cannot_reach_its_interface_takes_no_lock(
                        str(fake_proc(tmp_path / "proc", bound=[(port, "oscmix", 28)])))
     _lock_dir(tmp_path, monkeypatch)
     keys = []
-    _record_keys(monkeypatch, profiles, keys)
+    _record_keys(monkeypatch, locking, keys, who="switch")
     outcome = profiles.restore_main(config_path=_desk(tmp_path, port),
                                     verify=False)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert keys == [], "refused before the lock, like a bad config"
 
 
@@ -1064,7 +1070,7 @@ def test_a_lock_directory_that_cannot_be_searched_says_permission_and_group(
     record = next(r.getMessage() for r in caplog.records
                   if "cannot open the device lock" in r.getMessage())
     assert record.endswith(": Permission denied; %s belongs to group %s"
-                           % (shared, profiles._group_of(shared)))
+                           % (shared, locking._group_of(shared)))
 
 
 def test_a_snapshot_reads_the_real_proc_by_default(monkeypatch):
@@ -1145,13 +1151,13 @@ def _unit(environ=None, argv=("oscmix-session",), cwd="/"):
 def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch,
                                                             capsys):
     """The unit re-applied its own routing.conf over the switch (0.6.9)."""
-    from oscmix_desk import cli, profiles
+    from oscmix_desk import cli
 
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
                         lambda: reloads.append(1) or cli.RELOAD_DONE)
-    outcome = profiles.Outcome(state=profiles.APPLIED_UNVERIFIED, name="x",
-                               reason=profiles.NOT_CHECKED, persisted=True)
+    outcome = outcome_mod.Outcome(state=outcome_mod.APPLIED_UNVERIFIED, name="x",
+                               reason=outcome_mod.NOT_CHECKED, persisted=True)
     unit_desk = tmp_path / "unit" / "routing.conf"
     unit_desk.parent.mkdir()
     unit_desk.write_text(DESK)
@@ -1173,7 +1179,7 @@ def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch
 
 def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
         tmp_path, monkeypatch, capsys):
-    from oscmix_desk import cli, profiles
+    from oscmix_desk import cli
 
     unit_desk = tmp_path / "unit" / "routing.conf"
     other = tmp_path / "other" / "routing.conf"
@@ -1183,8 +1189,8 @@ def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
                         lambda: reloads.append(1) or cli.RELOAD_DONE)
-    outcome = profiles.Outcome(state=profiles.APPLIED_UNVERIFIED, name="x",
-                               reason=profiles.NOT_CHECKED, persisted=True)
+    outcome = outcome_mod.Outcome(state=outcome_mod.APPLIED_UNVERIFIED, name="x",
+                               reason=outcome_mod.NOT_CHECKED, persisted=True)
     # The unit names its desk in its own Environment=.
     monkeypatch.setattr(cli, "unit_process",
                         _unit({"OSCMIX_CONFIG": str(unit_desk)}))
@@ -1342,7 +1348,7 @@ def test_a_verifier_that_cannot_reach_the_backend_ends_quietly(
     statuses = []
     monkeypatch.setattr(session_module, "sd_notify", statuses.append)
     _lock_dir(tmp_path, monkeypatch)
-    lock = profiles.take_device_lock(None, KEY_B)
+    lock = locking.take_device_lock(None, KEY_B)
     with caplog.at_level("ERROR"):
         thread = session_module._verify_in_background(_Child(), Config(),
                                                       {"stop": False}, lock)
@@ -1350,7 +1356,7 @@ def test_a_verifier_that_cannot_reach_the_backend_ends_quietly(
     assert not thread.is_alive()
     assert "verifier could not reach the backend" in caplog.text
     assert any("verifier failed" in s for s in statuses)
-    assert profiles.take_device_lock(None, KEY_B, wait=0.2) is not None, \
+    assert locking.take_device_lock(None, KEY_B, wait=0.2) is not None, \
         "the lock was released"
 
 

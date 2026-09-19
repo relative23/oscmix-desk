@@ -13,6 +13,7 @@ import pytest
 from conftest import free_udp_port, proc_with_ports, write_config
 
 from oscmix_desk import cli
+from oscmix_desk import outcome as outcome_mod
 from oscmix_desk.constants import (
     EXIT_CONFIG,
     EXIT_NOT_PERSISTED,
@@ -320,16 +321,15 @@ def test_a_restore_reloads_the_unit_that_runs_its_desk(tmp_path, monkeypatch):
     """`--no-profile` was only ever driven with a unit nobody could read,
     which reloads whatever the switch was for: handing the reload decision
     no config at all went unnoticed (a survivor of `_main`, 0.6.11)."""
-    from oscmix_desk import profiles
 
     path = tmp_path / "routing.conf"
     path.write_text(GOOD)
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
                         lambda: reloads.append(1) or cli.RELOAD_DONE)
-    monkeypatch.setattr(cli, "restore_main", lambda _path: profiles.Outcome(
-        state=profiles.APPLIED_UNVERIFIED, name="routing.conf",
-        reason=profiles.NOT_CHECKED))
+    monkeypatch.setattr(cli, "restore_main", lambda _path: outcome_mod.Outcome(
+        state=outcome_mod.APPLIED_UNVERIFIED, name="routing.conf",
+        reason=outcome_mod.NOT_CHECKED))
     monkeypatch.setattr(cli, "_unit_desk", lambda: (True, path))
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert reloads == [1]
@@ -344,12 +344,11 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
     """Unknown is still a reload: nearly every switch is for the unit's own
     desk, and an untold unit lets its verifier re-apply the old one
     (0.6.3). But a second review is right that it is a guess."""
-    from oscmix_desk import profiles
 
     monkeypatch.setattr(cli, "reload_service", lambda: cli.RELOAD_DONE)
     monkeypatch.setattr(cli, "unit_process", lambda *_a: None)
-    applied = profiles.Outcome(state=profiles.APPLIED_UNVERIFIED, name="x",
-                               reason=profiles.NOT_CHECKED)
+    applied = outcome_mod.Outcome(state=outcome_mod.APPLIED_UNVERIFIED, name="x",
+                               reason=outcome_mod.NOT_CHECKED)
     with caplog.at_level("WARNING"):
         assert cli._report_outcome(applied, tmp_path / "routing.conf") \
             == EXIT_OK

@@ -24,6 +24,8 @@ import re
 import pytest
 from conftest import repo_file
 
+from oscmix_desk import locking
+
 
 def _key(path):
     """The device key the code under test derives for this config.
@@ -858,15 +860,14 @@ def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
     """
     import argparse
 
-    from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
     applied = []
     monkeypatch.setattr(session_module, "reconcile_now",
                         lambda *a, **k: applied.append(a))
-    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 0.3)
-    held = profiles_mod.take_device_lock(path, _key(path))
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
+    held = locking.take_device_lock(path, _key(path))
     assert held is not None
     try:
         with caplog.at_level("WARNING"):
@@ -882,7 +883,6 @@ def test_a_reconcile_holds_the_lock_while_it_writes_and_frees_it_after(
         tmp_path, monkeypatch, session_mod):
     import argparse
 
-    from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
@@ -890,11 +890,11 @@ def test_a_reconcile_holds_the_lock_while_it_writes_and_frees_it_after(
     monkeypatch.setattr(
         session_module, "reconcile_now",
         lambda *a, **k: during.append(
-            profiles_mod.take_device_lock(path, _key(path), wait=0.1)))
+            locking.take_device_lock(path, _key(path), wait=0.1)))
     session_module._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
     assert during == [None], "a switch must not get in while this writes"
-    after = profiles_mod.take_device_lock(path, _key(path), wait=0.2)
+    after = locking.take_device_lock(path, _key(path), wait=0.2)
     assert after is not None, "and must get in once it is done"
     after.release()
 
@@ -1040,7 +1040,6 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
 
     from conftest import write_config
 
-    from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
@@ -1049,9 +1048,9 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
     applied = []
     monkeypatch.setattr(session_module, "reconcile_now",
                         lambda config, *a: applied.append(config) or True)
-    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
 
-    held = profiles_mod.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, _key(path))
     assert held is not None
 
     def commit_then_release():

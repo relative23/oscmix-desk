@@ -16,8 +16,9 @@ enforces that, along with the layering the modules are arranged in:
     routing                     backend, config, reconcile, ...
     verify                      routing, ...
     pipewire, process, launcher leaves plus config/discovery
-    profiles                    routing, verify, process, ...
-    session                     profiles, verify, routing, process, ...
+    locking, marker, outcome    near-leaves: constants, config, log
+    profiles                    routing, verify, process, locking, ...
+    session                     profiles, locking, verify, routing, ...
     cli                         session, profiles, ...; oscmix-session
     launcher                    (above) oscmix-launch, the desktop entry
 
@@ -67,29 +68,26 @@ from .discovery import (
                         wait_for_device,
 )
 from .errors import (
-    ConfigError,
-    DeviceAmbiguous,
-    DeviceLockUnavailable,
-    ReceivePortError,
+                        ConfigError,
+                        DeviceAmbiguous,
+                        DeviceLockUnavailable,
+                        ReceivePortError,
 )
 from .launcher import main as launch_mixer
+from .locking import take_device_lock
 from .log import log
+from .marker import active_profile
 from .notify import sd_notify
 from .osc import decode_osc, encode_osc, iter_osc_messages
+from .outcome import APPLIED_UNVERIFIED, APPLIED_VERIFIED, REFUSED, Outcome
 from .pipewire import generate_pipewire_conf, pipewire_positions, pw_sink_info
 from .process import find_stale_backends, port_holder, supervise
 from .profiles import (
-                        APPLIED_UNVERIFIED,
-                        APPLIED_VERIFIED,
-                        REFUSED,
-                        Outcome,
-                        active_profile,
                         describe_profiles,
                         effective_config,
                         load_profile,
                         restore_main,
                         switch_profile,
-                        take_device_lock,
 )
 from .reconcile import link_messages, mix_messages, policy_for
 from .registers import PIN, REMEMBER

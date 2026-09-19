@@ -95,7 +95,10 @@ acyclic graph.
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
 | `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and say who holds a port and which interface that backend bridges |
 | `pipewire` | generate named virtual sinks from the same config |
-| `profiles` | switch to `profiles/<name>.conf` as a transaction, reporting an outcome rather than raising |
+| `locking` | the lock every writer of one interface holds: where it lives, how it is opened, how long it is waited for |
+| `marker` | which profile is in effect, remembered beside the config: read, written through a rename, removed |
+| `outcome` | what a switch did, as a value: applied and verified, applied and unverified, refused |
+| `profiles` | switch to `profiles/<name>.conf` under that lock, in one fixed order -- validate, write, remember, check -- reporting an outcome rather than raising |
 | `session` | the service lifecycle: wait for the device, start the backend, apply, signal ready, verify, shut down |
 | `launcher` | the desktop entry's entry point; deliberately depends on almost nothing |
 | `cli` | argument parsing and the exit-code mapping, and nothing else |

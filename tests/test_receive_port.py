@@ -21,7 +21,8 @@ from pathlib import Path
 import pytest
 from conftest import free_udp_port, write_config
 
-from oscmix_desk import backend, profiles, routing, verify
+from oscmix_desk import backend, locking, profiles, routing, verify
+from oscmix_desk import outcome as outcome_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.errors import ReceivePortError
 
@@ -220,7 +221,7 @@ def test_the_status_says_failed_and_the_journal_says_why(tmp_path, monkeypatch,
     statuses = []
     monkeypatch.setattr(session_module, "sd_notify", statuses.append)
     _shared_locks(tmp_path, monkeypatch)
-    lock = profiles.take_device_lock(None, "2a39-3fd9-99887766")
+    lock = locking.take_device_lock(None, "2a39-3fd9-99887766")
     with caplog.at_level("ERROR"):
         thread = session_module._verify_in_background(
             _Child(), session_module.Config(), {"stop": False}, lock)
@@ -230,7 +231,7 @@ def test_the_status_says_failed_and_the_journal_says_why(tmp_path, monkeypatch,
     assert "could not reach the backend" not in caplog.text, \
         "that line names the send port, which is fine"
     assert statuses[-1].startswith("STATUS=running; verifier failed at ")
-    assert profiles.take_device_lock(None, "2a39-3fd9-99887766",
+    assert locking.take_device_lock(None, "2a39-3fd9-99887766",
                                      wait=0.2) is not None
 
 
@@ -265,7 +266,7 @@ def test_a_switch_is_applied_and_says_why_it_could_not_check(
         outcome = profiles.switch_profile(
             "tracking", config_path=tmp_path / "routing.conf",
             backend=unbindable_backend)
-    assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
     assert outcome.reason == DENIED
     assert "/output/1/volume" in outcome.unverified
     assert outcome.persisted is True

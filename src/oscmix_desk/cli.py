@@ -38,6 +38,7 @@ from .devices import device_for_name
 from .discovery import device_firmware, resolve_device
 from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
 from .log import log
+from .outcome import REFUSED, Outcome
 from .pipewire import find_sink, generate_pipewire_conf, pw_dump_objects
 from .process import (
     RELOAD_DONE,
@@ -47,8 +48,6 @@ from .process import (
     unit_process,
 )
 from .profiles import (
-    REFUSED,
-    Outcome,
     describe_profiles,
     effective_config,
     load_profile,

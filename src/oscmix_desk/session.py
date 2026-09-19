@@ -48,15 +48,11 @@ from .errors import (
     DeviceLockUnavailable,
     ReceivePortError,
 )
+from .locking import DeviceLock, take_device_lock
 from .log import log
 from .notify import sd_notify
 from .process import _cleanup_stale_backend, socket_owner, supervise
-from .profiles import (
-    DeviceLock,
-    effective_config,
-    keep_machine_settings,
-    take_device_lock,
-)
+from .profiles import effective_config, keep_machine_settings
 from .reconcile import desired, plan
 from .routing import apply_routing, wait_unless_stopped
 from .verify import reconcile_now, verify_and_repair

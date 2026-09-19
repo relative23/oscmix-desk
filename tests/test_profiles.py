@@ -26,7 +26,9 @@ import stat
 import pytest
 from conftest import write_config
 
-from oscmix_desk import profiles
+from oscmix_desk import locking, profiles
+from oscmix_desk import marker as marker_mod
+from oscmix_desk import outcome as outcome_mod
 
 
 def _key(path):
@@ -84,7 +86,7 @@ def test_a_config_that_does_not_parse_is_refused_with_nothing_on_the_wire(
                                       config_path=tmp_path / "routing.conf",
                                       backend=recording_backend)
 
-    assert outcome.state == profiles.REFUSED, why
+    assert outcome.state == outcome_mod.REFUSED, why
     assert outcome.applied is False
     assert recording_backend.sent == [], (
         "%s sent %d datagram(s) before refusing"
@@ -100,7 +102,7 @@ def test_a_missing_profile_is_refused_not_crashed(tmp_path, recording_backend):
     outcome = profiles.switch_profile("nosuch",
                                       config_path=tmp_path / "routing.conf",
                                       backend=recording_backend)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert recording_backend.sent == []
     assert "nosuch" in outcome.reason
 
@@ -135,7 +137,7 @@ def test_a_name_that_escapes_the_directory_is_refused(tmp_path,
     outcome = profiles.switch_profile("../evil",
                                       config_path=tmp_path / "routing.conf",
                                       backend=recording_backend)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert recording_backend.sent == []
 
 
@@ -178,7 +180,7 @@ def test_verified_means_the_device_confirmed_it(tmp_path, confirming_backend):
     outcome = profiles.switch_profile("levels",
                                       config_path=tmp_path / "routing.conf",
                                       backend=confirming_backend)
-    assert outcome.state == profiles.APPLIED_VERIFIED
+    assert outcome.state == outcome_mod.APPLIED_VERIFIED
     assert outcome.applied is True
     assert outcome.unverified == []
 
@@ -209,7 +211,7 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
                                       config_path=tmp_path / "routing.conf",
                                       backend=silent_backend)
 
-    assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
     assert outcome.applied is True
     assert outcome.unverified, "unverifiable without a list is not an outcome"
     assert "/output/1/volume" in outcome.unverified
@@ -225,19 +227,19 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
 def test_the_three_states_are_the_only_three(tmp_path):
     # A fourth state would be the "partly, and here is a traceback" the
     # roadmap forbids, arriving by accretion.
-    assert set(profiles.STATES) == {profiles.APPLIED_VERIFIED,
-                                    profiles.APPLIED_UNVERIFIED,
-                                    profiles.REFUSED}
+    assert set(outcome_mod.STATES) == {outcome_mod.APPLIED_VERIFIED,
+                                    outcome_mod.APPLIED_UNVERIFIED,
+                                    outcome_mod.REFUSED}
 
 
 def test_every_outcome_answers_whether_the_device_was_written_to(tmp_path):
     # `applied` is the field a script branches on; it must never be
     # ambiguous, whatever the state.
-    for state in profiles.STATES:
-        outcome = profiles.Outcome(state=state, name="x", reason="",
+    for state in outcome_mod.STATES:
+        outcome = outcome_mod.Outcome(state=state, name="x", reason="",
                                    unverified=[])
         assert isinstance(outcome.applied, bool)
-        assert outcome.applied is (state != profiles.REFUSED)
+        assert outcome.applied is (state != outcome_mod.REFUSED)
 
 
 # --------------------------------------------------------------------------
@@ -316,8 +318,8 @@ def test_profile_path_maps_a_name_to_a_file(tmp_path):
 
 
 def test_the_outcome_describes_itself_in_one_line(tmp_path):
-    for state in profiles.STATES:
-        line = profiles.Outcome(state=state, name="tracking", reason="why",
+    for state in outcome_mod.STATES:
+        line = outcome_mod.Outcome(state=state, name="tracking", reason="why",
                                 unverified=["/output/1/volume"]).describe()
         assert "tracking" in line
         assert "\n" not in line
@@ -421,7 +423,7 @@ def test_the_playback_matrix_is_named_as_uncheckable_not_as_a_miss(
                                       config_path=tmp_path / "routing.conf",
                                       backend=confirming_backend)
 
-    assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
     assert outcome.unverified == ["/mix/1/playback/1"]
     assert outcome.unverifiable == ["/mix/1/playback/1"]
     line = outcome.describe()
@@ -431,8 +433,8 @@ def test_the_playback_matrix_is_named_as_uncheckable_not_as_a_miss(
 
 def test_a_genuine_miss_reads_differently_from_an_uncheckable_one(tmp_path):
     """The distinction the message exists to make."""
-    both = profiles.Outcome(
-        state=profiles.APPLIED_UNVERIFIED, name="x",
+    both = outcome_mod.Outcome(
+        state=outcome_mod.APPLIED_UNVERIFIED, name="x",
         unverified=["/mix/1/playback/1", "/output/1/volume"],
         unverifiable=["/mix/1/playback/1"])
     assert "1 register(s) unconfirmed" in both.describe()
@@ -493,7 +495,7 @@ def test_not_checking_reads_differently_from_checking_and_missing(
     outcome = profiles.switch_profile("tracking",
                                       config_path=tmp_path / "routing.conf",
                                       backend=recording_backend, verify=False)
-    assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
     assert "not checked" in outcome.describe()
     assert "unconfirmed" not in outcome.describe()
     assert outcome.read_back is False, "nobody looked, so the field says so"
@@ -528,7 +530,7 @@ def test_an_applied_switch_is_remembered_beside_the_config(tmp_path,
                                       backend=recording_backend)
     assert outcome.applied
     assert (tmp_path / "active-profile").read_text().strip() == "tracking"
-    assert profiles.active_profile(path) == "tracking"
+    assert marker_mod.active_profile(path) == "tracking"
 
 
 def test_a_refused_switch_remembers_nothing(tmp_path, recording_backend):
@@ -536,7 +538,7 @@ def test_a_refused_switch_remembers_nothing(tmp_path, recording_backend):
     assert not profiles.switch_profile("broken", config_path=path,
                                        backend=recording_backend).applied
     assert not (tmp_path / "active-profile").exists()
-    assert profiles.active_profile(path) is None
+    assert marker_mod.active_profile(path) is None
 
 
 def test_effective_config_is_the_remembered_profile(tmp_path):
@@ -594,7 +596,7 @@ def test_restore_main_applies_routing_conf_and_forgets(tmp_path,
     outcome = profiles.restore_main(path, backend=confirming_backend)
     assert outcome.applied
     assert outcome.name == "routing.conf"
-    assert outcome.reason != profiles.NOT_CHECKED, "a restore checks by default"
+    assert outcome.reason != outcome_mod.NOT_CHECKED, "a restore checks by default"
     assert confirming_backend.dumps == 1, \
         "the read-back asks the backend it was given, not a socket of its own"
     assert not (tmp_path / "active-profile").exists()
@@ -608,7 +610,7 @@ def test_a_refused_restore_keeps_the_profile(tmp_path, recording_backend):
     (tmp_path / "active-profile").write_text("tracking\n")
     outcome = profiles.restore_main(path, backend=recording_backend)
     assert not outcome.applied
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.name == "routing.conf"
     with pytest.raises(profiles.ConfigError) as parsed:
         profiles.load_config(path)
@@ -643,9 +645,9 @@ def test_a_switch_can_be_asked_not_to_check(tmp_path, recording_backend):
     path = _desk(tmp_path, tracking=TRACKING)
     outcome = profiles.switch_profile("tracking", config_path=path,
                                       backend=recording_backend, verify=False)
-    assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
     assert outcome.name == "tracking"
-    assert outcome.reason == profiles.NOT_CHECKED
+    assert outcome.reason == outcome_mod.NOT_CHECKED
     assert outcome.persisted is True, "the marker was written either way"
     assert outcome.unverified == sorted(
         profiles.expected_registers(profiles.load_profile("tracking", path)))
@@ -658,9 +660,9 @@ def test_restore_main_can_be_asked_not_to_check(tmp_path, recording_backend):
     (tmp_path / "active-profile").write_text("tracking\n")
     outcome = profiles.restore_main(path, backend=recording_backend,
                                     verify=False)
-    assert outcome.state == profiles.APPLIED_UNVERIFIED
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
     assert outcome.name == "routing.conf"
-    assert outcome.reason == profiles.NOT_CHECKED
+    assert outcome.reason == outcome_mod.NOT_CHECKED
     assert outcome.read_back is False
     assert outcome.persisted is True, "the marker was removed either way"
     assert outcome.unverified == sorted(
@@ -671,17 +673,17 @@ def test_restore_main_can_be_asked_not_to_check(tmp_path, recording_backend):
 def test_the_marker_functions_answer_nothing_without_a_config(tmp_path):
     # No routing.conf, no profiles directory, no marker: None and False,
     # never an AttributeError on a path that does not exist.
-    assert profiles.active_profile_path(None) is None
-    assert profiles.active_profile(None) is None
+    assert marker_mod.active_profile_path(None) is None
+    assert marker_mod.active_profile(None) is None
     # In effect and durable, both, each time: `durable` alone went
     # unasserted outside a switch (survivors, 0.6.11).
-    assert profiles.remember_active_profile("tracking", None) == (False, False)
-    assert profiles.forget_active_profile(None) == (True, True)
+    assert marker_mod.remember_active_profile("tracking", None) == (False, False)
+    assert marker_mod.forget_active_profile(None) == (True, True)
     path = _desk(tmp_path, tracking=TRACKING)
-    assert profiles.remember_active_profile("tracking", path) == (True, True)
+    assert marker_mod.remember_active_profile("tracking", path) == (True, True)
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
-    assert profiles.forget_active_profile(path) == (True, True)
-    assert profiles.forget_active_profile(path) == (True, True), "twice is fine"
+    assert marker_mod.forget_active_profile(path) == (True, True)
+    assert marker_mod.forget_active_profile(path) == (True, True), "twice is fine"
     assert not (tmp_path / "active-profile").exists()
 
 
@@ -701,7 +703,7 @@ def test_a_marker_write_that_fails_leaves_the_old_marker_whole(tmp_path,
 
     monkeypatch.setattr(profiles.os, "replace", refuse)
     with caplog.at_level("WARNING"):
-        assert profiles.remember_active_profile("mixdown", path) == (False,
+        assert marker_mod.remember_active_profile("mixdown", path) == (False,
                                                                      False)
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
     assert list(tmp_path.glob("*.tmp")) == []
@@ -714,7 +716,7 @@ def test_the_marker_goes_through_a_temporary_file_and_a_rename(tmp_path,
     import os
 
     renames = []
-    real_replace = profiles.os.replace
+    real_replace = marker_mod.os.replace
 
     def record(src, dst):
         assert os.path.dirname(src) == str(tmp_path), \
@@ -725,7 +727,7 @@ def test_the_marker_goes_through_a_temporary_file_and_a_rename(tmp_path,
     monkeypatch.setattr(profiles.os, "replace", record)
     umask = os.umask(0o022)
     try:
-        assert profiles.remember_active_profile("tracking", path).in_effect is True
+        assert marker_mod.remember_active_profile("tracking", path).in_effect is True
     finally:
         os.umask(umask)
     # A temporary name of its own, beside the marker. It was the fixed
@@ -746,21 +748,21 @@ def test_the_marker_goes_through_a_temporary_file_and_a_rename(tmp_path,
 def test_a_switch_refuses_when_another_holds_the_lock_too_long(
         tmp_path, recording_backend, monkeypatch, caplog):
     path = _desk(tmp_path, tracking=TRACKING)
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     umask = os.umask(0o022)
     try:
-        with profiles._switch_lock(path, _key(path)) as held:
+        with locking._switch_lock(path, _key(path)) as held:
             assert held
             with caplog.at_level("INFO"):
                 outcome = profiles.switch_profile("tracking", config_path=path,
                                                   backend=recording_backend)
     finally:
         os.umask(umask)
-    lock = profiles.device_lock_path(path, _key(path))
+    lock = locking.device_lock_path(path, _key(path))
     # A plain file every writer of the interface can open -- owner and
     # group, the group being the shared directory's (ADR 0024).
     assert stat.S_IMODE(lock.stat().st_mode) == 0o660
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.name == "tracking"
     assert "holds the device lock" in outcome.reason
     assert recording_backend.sent == [], "a refused switch writes nothing"
@@ -844,7 +846,7 @@ def test_an_unreadable_marker_is_ignored_with_a_warning(tmp_path, caplog):
     marker.chmod(0)
     try:
         with caplog.at_level("WARNING"):
-            assert profiles.active_profile(path) is None
+            assert marker_mod.active_profile(path) is None
     finally:
         marker.chmod(0o600)
     assert "ignoring" in caplog.text
@@ -857,18 +859,18 @@ def test_a_marker_that_cannot_be_removed_is_a_warning_not_a_crash(tmp_path,
     marker.mkdir()
     (marker / "child").write_text("")               # unlink raises
     with caplog.at_level("WARNING"):
-        assert profiles.forget_active_profile(path) == (False, False)
+        assert marker_mod.forget_active_profile(path) == (False, False)
     assert "cannot remove %s (" % marker in caplog.text
 
 
 def test_a_marker_change_that_could_not_be_synced_names_the_directory(
         tmp_path, monkeypatch, caplog):
     path = _desk(tmp_path, tracking=TRACKING)
-    monkeypatch.setattr(profiles, "_fsync_directory", lambda _d: False)
+    monkeypatch.setattr(marker_mod, "_fsync_directory", lambda _d: False)
     with caplog.at_level("WARNING"):
-        assert profiles.remember_active_profile("tracking", path) == (True,
+        assert marker_mod.remember_active_profile("tracking", path) == (True,
                                                                       False)
-        assert profiles.forget_active_profile(path) == (True, False)
+        assert marker_mod.forget_active_profile(path) == (True, False)
     assert ("profile 'tracking' remembered, but %s could not be synced"
             % tmp_path) in caplog.text
     assert ("marker removed, but %s could not be synced" % tmp_path) \
@@ -878,18 +880,18 @@ def test_a_marker_change_that_could_not_be_synced_names_the_directory(
 def test_fsync_of_the_directory_reports_what_it_did(tmp_path, monkeypatch):
     # Never raises, because some filesystems refuse it. It says so
     # instead, and the caller turns that into a warning (0.6.6).
-    assert profiles._fsync_directory(tmp_path) is True
-    assert profiles._fsync_directory(tmp_path / "does-not-exist") is False
+    assert marker_mod._fsync_directory(tmp_path) is True
+    assert marker_mod._fsync_directory(tmp_path / "does-not-exist") is False
 
     def refuse(fd):
         raise OSError("fsync unsupported")
 
     monkeypatch.setattr(profiles.os, "fsync", refuse)
-    assert profiles._fsync_directory(tmp_path) is False
+    assert marker_mod._fsync_directory(tmp_path) is False
 
 
 def test_without_a_config_there_is_nothing_to_lock():
-    with profiles._switch_lock(None) as held:
+    with locking._switch_lock(None) as held:
         assert held is True
 
 
@@ -897,10 +899,10 @@ def test_no_profile_refuses_when_another_switch_holds_the_lock(
         tmp_path, recording_backend, monkeypatch):
     path = _desk(tmp_path, tracking=TRACKING)
     (tmp_path / "active-profile").write_text("tracking\n")
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
-    with profiles._switch_lock(path, _key(path)):
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
+    with locking._switch_lock(path, _key(path)):
         outcome = profiles.restore_main(path, backend=recording_backend)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.name == "routing.conf"
     assert "holds the device lock" in outcome.reason
     assert recording_backend.sent == []
@@ -911,7 +913,7 @@ def test_no_profile_refuses_when_another_switch_holds_the_lock(
 def test_an_empty_marker_means_no_profile(tmp_path):
     path = _desk(tmp_path, tracking=TRACKING)
     (tmp_path / "active-profile").write_text("\n")
-    assert profiles.active_profile(path) is None
+    assert marker_mod.active_profile(path) is None
 
 
 def test_a_profile_is_validated_for_the_desk_s_device_not_the_default(
@@ -975,7 +977,7 @@ def test_a_config_directory_that_cannot_be_written_is_a_warning(tmp_path,
     tmp_path.chmod(0o500)
     try:
         with caplog.at_level("WARNING"):
-            assert profiles.remember_active_profile("tracking", path).in_effect is False
+            assert marker_mod.remember_active_profile("tracking", path).in_effect is False
     finally:
         tmp_path.chmod(0o700)
     assert not (tmp_path / "active-profile").exists()
@@ -989,13 +991,13 @@ def test_a_config_directory_that_cannot_be_written_is_a_warning(tmp_path,
 
 def test_the_device_lock_is_exclusive_and_released(tmp_path):
     path = _desk(tmp_path, tracking=TRACKING)
-    lock = profiles.take_device_lock(path, _key(path))
+    lock = locking.take_device_lock(path, _key(path))
     assert lock is not None
-    assert profiles.device_lock_path(path, _key(path)).exists()
-    assert profiles.take_device_lock(path, _key(path), wait=0.2) is None, \
+    assert locking.device_lock_path(path, _key(path)).exists()
+    assert locking.take_device_lock(path, _key(path), wait=0.2) is None, \
         "a second writer must not hold it at the same time"
     lock.release()
-    second = profiles.take_device_lock(path, _key(path), wait=0.2)
+    second = locking.take_device_lock(path, _key(path), wait=0.2)
     assert second is not None
     second.release()
     lock.release()          # releasing twice is not an error
@@ -1003,7 +1005,7 @@ def test_the_device_lock_is_exclusive_and_released(tmp_path):
 
 def test_a_writer_without_a_config_gets_a_stand_in(tmp_path):
     # Nothing to lock, and no caller should have to branch on that.
-    lock = profiles.take_device_lock(None)
+    lock = locking.take_device_lock(None)
     assert lock is not None
     lock.release()
 
@@ -1016,9 +1018,9 @@ def test_the_unit_locks_a_file_it_cannot_open_for_writing(tmp_path):
     lock_file.write_text("")
     lock_file.chmod(0o444)
     try:
-        lock = profiles.take_device_lock(path, _key(path))
+        lock = locking.take_device_lock(path, _key(path))
         assert lock is not None
-        assert profiles.take_device_lock(path, _key(path), wait=0.2) is None
+        assert locking.take_device_lock(path, _key(path), wait=0.2) is None
         lock.release()
     finally:
         lock_file.chmod(0o644)
@@ -1040,7 +1042,7 @@ def test_a_lock_that_cannot_be_opened_is_a_refusal(tmp_path, monkeypatch,
     tmp_path.chmod(0o500)
     try:
         with caplog.at_level("ERROR"):
-            lock = profiles.take_device_lock(path, _key(path))
+            lock = locking.take_device_lock(path, _key(path))
     finally:
         tmp_path.chmod(0o700)
     assert lock is None
@@ -1075,10 +1077,10 @@ def test_a_restore_that_cannot_forget_says_so_in_the_outcome(
 
 def test_forgetting_reports_whether_the_marker_is_gone(tmp_path):
     path = _desk(tmp_path, tracking=TRACKING)
-    assert profiles.forget_active_profile(path).in_effect is True, "nothing to remove"
+    assert marker_mod.forget_active_profile(path).in_effect is True, "nothing to remove"
     (tmp_path / "active-profile").write_text("tracking\n")
-    assert profiles.forget_active_profile(path).in_effect is True
-    assert profiles.forget_active_profile(None).in_effect is True
+    assert marker_mod.forget_active_profile(path).in_effect is True
+    assert marker_mod.forget_active_profile(None).in_effect is True
 
 
 def test_an_applied_switch_that_was_remembered_stays_persisted(
@@ -1097,14 +1099,14 @@ def test_a_short_write_is_finished_rather_than_truncated(tmp_path,
     The marker is renamed over a correct one, so a truncated name would
     replace a good desk with a profile that does not exist.
     """
-    real_write = profiles.os.write
+    real_write = marker_mod.os.write
 
     def one_byte_at_a_time(fd, data):
         return real_write(fd, data[:1])
 
     path = _desk(tmp_path, tracking=TRACKING)
     monkeypatch.setattr(profiles.os, "write", one_byte_at_a_time)
-    assert profiles.remember_active_profile("tracking", path).in_effect is True
+    assert marker_mod.remember_active_profile("tracking", path).in_effect is True
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
 
 
@@ -1114,13 +1116,13 @@ def test_a_directory_that_cannot_be_synced_warns_on_both_paths(
     # it survives a power cut, and that has to be said rather than
     # swallowed.
     path = _desk(tmp_path, tracking=TRACKING)
-    monkeypatch.setattr(profiles, "_fsync_directory", lambda _d: False)
+    monkeypatch.setattr(marker_mod, "_fsync_directory", lambda _d: False)
     with caplog.at_level("WARNING"):
-        assert profiles.remember_active_profile("tracking", path).in_effect is True
+        assert marker_mod.remember_active_profile("tracking", path).in_effect is True
     assert "may not survive a power cut" in caplog.text
     caplog.clear()
     with caplog.at_level("WARNING"):
-        assert profiles.forget_active_profile(path).in_effect is True
+        assert marker_mod.forget_active_profile(path).in_effect is True
     assert "may come back after a power cut" in caplog.text
 
 
@@ -1146,7 +1148,7 @@ def test_the_lock_lives_in_the_runtime_directory(tmp_path, monkeypatch):
     runtime = tmp_path / "run"
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
     path = _desk(tmp_path, tracking=TRACKING)
-    assert profiles.device_lock_path(path, "2a39-3fd9-24216011") == \
+    assert locking.device_lock_path(path, "2a39-3fd9-24216011") == \
         runtime / "oscmix-desk" / "2a39-3fd9-24216011.lock"
     assert (runtime / "oscmix-desk").is_dir(), "and it is created"
 
@@ -1155,9 +1157,9 @@ def test_without_a_runtime_directory_the_lock_stays_beside_the_config(
         tmp_path, monkeypatch):
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     path = _desk(tmp_path, tracking=TRACKING)
-    assert profiles.device_lock_path(path, "2a39-3fd9-24216011") == \
+    assert locking.device_lock_path(path, "2a39-3fd9-24216011") == \
         tmp_path / "active-profile.lock"
-    assert profiles.device_lock_path(None, "2a39-3fd9-24216011") is None
+    assert locking.device_lock_path(None, "2a39-3fd9-24216011") is None
 
 
 def test_two_configs_over_one_device_take_the_same_lock(tmp_path, monkeypatch):
@@ -1171,11 +1173,11 @@ def test_two_configs_over_one_device_take_the_same_lock(tmp_path, monkeypatch):
     first = _desk(tmp_path / "a", tracking=TRACKING)
     second = _desk(tmp_path / "b", tracking=TRACKING)
     key = "2a39-3fd9-24216011"
-    assert profiles.device_lock_path(first, key) == \
-        profiles.device_lock_path(second, key)
-    held = profiles.take_device_lock(first, key)
+    assert locking.device_lock_path(first, key) == \
+        locking.device_lock_path(second, key)
+    held = locking.take_device_lock(first, key)
     assert held is not None
-    assert profiles.take_device_lock(second, key, wait=0.2) is None
+    assert locking.take_device_lock(second, key, wait=0.2) is None
     held.release()
 
 
@@ -1189,14 +1191,14 @@ def test_without_a_runtime_directory_the_config_path_is_the_lock(
     """
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     path = _desk(tmp_path, tracking=TRACKING)
-    lock = profiles.take_device_lock(path, "2a39-3fd9-24216011")
+    lock = locking.take_device_lock(path, "2a39-3fd9-24216011")
     assert lock is not None
     assert (tmp_path / "active-profile.lock").exists()
-    assert profiles.take_device_lock(path, "2a39-3fd9-24216011",
+    assert locking.take_device_lock(path, "2a39-3fd9-24216011",
                                      wait=0.2) is None
     lock.release()
     # And with no config either there is nothing to contend over.
-    assert profiles.take_device_lock(None, "2a39-3fd9-24216011") is not None
+    assert locking.take_device_lock(None, "2a39-3fd9-24216011") is not None
 
 
 def test_a_runtime_directory_that_cannot_be_made_falls_back_and_says_so(
@@ -1208,7 +1210,7 @@ def test_a_runtime_directory_that_cannot_be_made_falls_back_and_says_so(
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(blocker))
     path = _desk(tmp_path, tracking=TRACKING)
     with caplog.at_level("WARNING"):
-        where = profiles.device_lock_path(path, "2a39-3fd9-24216011")
+        where = locking.device_lock_path(path, "2a39-3fd9-24216011")
     assert where == tmp_path / "active-profile.lock"
     assert str(blocker / "oscmix-desk") in caplog.text, \
         "the warning names the directory it could not use"
@@ -1223,9 +1225,9 @@ def test_a_switch_without_a_runtime_directory_locks_beside_the_config(
     then contend with a lock held there.
     """
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     path = _desk(tmp_path, tracking=TRACKING)
-    held = profiles.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, _key(path))
     assert held is not None
     assert (tmp_path / "active-profile.lock").exists()
     try:
@@ -1233,7 +1235,7 @@ def test_a_switch_without_a_runtime_directory_locks_beside_the_config(
                                           backend=recording_backend)
     finally:
         held.release()
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert recording_backend.sent == []
 
 
@@ -1257,7 +1259,7 @@ def test_the_shared_directory_wins_over_the_runtime_directory(
     shared = _shared(tmp_path, monkeypatch)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
     path = _desk(tmp_path, tracking=TRACKING)
-    assert profiles.device_lock_path(path, "2a39-3fd9-24216011") == \
+    assert locking.device_lock_path(path, "2a39-3fd9-24216011") == \
         shared / "2a39-3fd9-24216011.lock"
 
 
@@ -1273,17 +1275,17 @@ def test_a_writer_without_a_runtime_directory_computes_the_same_path(
     shared = _shared(tmp_path, monkeypatch)
     path = _desk(tmp_path, tracking=TRACKING)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
-    with_env = profiles.device_lock_path(path, "2a39-3fd9-24216011")
+    with_env = locking.device_lock_path(path, "2a39-3fd9-24216011")
     monkeypatch.delenv("XDG_RUNTIME_DIR")
-    without_env = profiles.device_lock_path(path, "2a39-3fd9-24216011")
+    without_env = locking.device_lock_path(path, "2a39-3fd9-24216011")
     assert with_env == without_env == shared / "2a39-3fd9-24216011.lock"
 
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
-    held = profiles.take_device_lock(path, "2a39-3fd9-24216011")
+    held = locking.take_device_lock(path, "2a39-3fd9-24216011")
     assert held is not None
     try:
         monkeypatch.delenv("XDG_RUNTIME_DIR")
-        assert profiles.take_device_lock(
+        assert locking.take_device_lock(
             path, "2a39-3fd9-24216011", wait=0.2) is None
     finally:
         held.release()
@@ -1295,13 +1297,13 @@ def test_two_user_sessions_over_one_interface_contend(tmp_path, monkeypatch):
     path = _desk(tmp_path, tracking=TRACKING)
     key = "2a39-3fd9-24216011"
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run-1000"))
-    first = profiles.take_device_lock(path, key)
+    first = locking.take_device_lock(path, key)
     assert first is not None
     try:
         monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run-2000"))
-        assert profiles.device_lock_path(path, key) == \
+        assert locking.device_lock_path(path, key) == \
             shared / ("%s.lock" % key)
-        assert profiles.take_device_lock(path, key, wait=0.2) is None
+        assert locking.take_device_lock(path, key, wait=0.2) is None
     finally:
         first.release()
 
@@ -1317,11 +1319,11 @@ def test_a_vanishing_runtime_directory_does_not_free_the_lock(
     runtime = tmp_path / "run"
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
     path = _desk(tmp_path, tracking=TRACKING)
-    held = profiles.take_device_lock(path, "2a39-3fd9-24216011")
+    held = locking.take_device_lock(path, "2a39-3fd9-24216011")
     assert held is not None
     try:
         shutil.rmtree(runtime, ignore_errors=True)
-        assert profiles.take_device_lock(
+        assert locking.take_device_lock(
             path, "2a39-3fd9-24216011", wait=0.2) is None
     finally:
         held.release()
@@ -1334,10 +1336,10 @@ def test_a_writer_without_a_config_still_takes_the_lock(tmp_path, monkeypatch):
     loudest writer in the repository.
     """
     _shared(tmp_path, monkeypatch)
-    held = profiles.take_device_lock(None, "2a39-3fd9-24216011")
+    held = locking.take_device_lock(None, "2a39-3fd9-24216011")
     assert held is not None
     try:
-        assert profiles.take_device_lock(
+        assert locking.take_device_lock(
             None, "2a39-3fd9-24216011", wait=0.2) is None
     finally:
         held.release()
@@ -1359,7 +1361,7 @@ def test_an_existing_shared_directory_is_never_fallen_back_from(
     shared.chmod(0o500)                      # no new file may be created
     try:
         with caplog.at_level("ERROR"):
-            lock = profiles.take_device_lock(path, "2a39-3fd9-24216011")
+            lock = locking.take_device_lock(path, "2a39-3fd9-24216011")
     finally:
         shared.chmod(0o1777)
     assert lock is None
@@ -1381,10 +1383,10 @@ def test_a_switch_to_an_absent_interface_writes_nothing(tmp_path, monkeypatch):
     monkeypatch.setenv("OSCMIX_SYSFS_USB", str(tmp_path / "no-usb"))
     path = _desk(tmp_path, tracking=TRACKING)
     outcome = profiles.switch_profile("tracking", config_path=path)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.name == "tracking", "a refusal says what it refused"
     assert outcome.reason == "2a39:3fd9 is not connected"
-    assert not profiles.active_profile_path(path).exists(), \
+    assert not marker_mod.active_profile_path(path).exists(), \
         "and it remembers nothing"
 
 
@@ -1393,7 +1395,7 @@ def test_a_restore_to_an_absent_interface_writes_nothing(tmp_path, monkeypatch):
     monkeypatch.setenv("OSCMIX_SYSFS_USB", str(tmp_path / "no-usb"))
     path = _desk(tmp_path, tracking=TRACKING)
     outcome = profiles.restore_main(config_path=path)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert outcome.name == "routing.conf"
     assert outcome.reason == "2a39:3fd9 is not connected"
 
@@ -1422,9 +1424,9 @@ def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, monkeypatch):
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
     path = _desk(tmp_path, tracking=TRACKING)
     outcome = profiles.switch_profile("tracking", config_path=path)
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert "nothing is listening" in outcome.reason
-    assert not profiles.active_profile_path(path).exists()
+    assert not marker_mod.active_profile_path(path).exists()
 
 
 def test_the_serial_is_inherited_like_the_usb_id(tmp_path):
@@ -1452,12 +1454,12 @@ def test_the_lock_file_is_openable_by_a_second_user(tmp_path, monkeypatch):
     _shared(tmp_path, monkeypatch)
     umask = os.umask(0o077)
     try:
-        held = profiles.take_device_lock(None, "2a39-3fd9-24216011")
+        held = locking.take_device_lock(None, "2a39-3fd9-24216011")
     finally:
         os.umask(umask)
     assert held is not None
     try:
-        info = profiles.device_lock_path(None, "2a39-3fd9-24216011").stat()
+        info = locking.device_lock_path(None, "2a39-3fd9-24216011").stat()
         assert stat.S_IMODE(info.st_mode) == 0o660, \
             "created 0o%o; a second writer cannot open it" % stat.S_IMODE(info.st_mode)
         assert info.st_gid == (tmp_path / "shared").stat().st_gid
@@ -1475,10 +1477,10 @@ def test_a_configured_serial_is_the_key_a_switch_and_a_restore_lock_on(
     its own box (ADR 0023).
     """
     _shared(tmp_path, monkeypatch)
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     path = _desk(tmp_path, main=GOOD + "\n[device]\nserial = 99887766\n",
                  tracking=TRACKING)
-    held = profiles.take_device_lock(None, "2a39-3fd9-99887766")
+    held = locking.take_device_lock(None, "2a39-3fd9-99887766")
     assert held is not None
     try:
         switched = profiles.switch_profile("tracking", config_path=path,
@@ -1487,8 +1489,8 @@ def test_a_configured_serial_is_the_key_a_switch_and_a_restore_lock_on(
                                          backend=recording_backend)
     finally:
         held.release()
-    assert switched.state == profiles.REFUSED
-    assert restored.state == profiles.REFUSED
+    assert switched.state == outcome_mod.REFUSED
+    assert restored.state == outcome_mod.REFUSED
     assert "holds the device lock" in switched.reason
     assert recording_backend.sent == []
 
@@ -1501,9 +1503,9 @@ def test_a_restore_without_a_runtime_directory_locks_beside_the_config(
     a separate call, and nothing observed it passing the path down.
     """
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
-    monkeypatch.setattr(profiles, "SWITCH_LOCK_WAIT", 0.3)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     path = _desk(tmp_path, tracking=TRACKING)
-    held = profiles.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, _key(path))
     assert held is not None
     assert (tmp_path / "active-profile.lock").exists()
     try:
@@ -1511,7 +1513,7 @@ def test_a_restore_without_a_runtime_directory_locks_beside_the_config(
                                         backend=recording_backend)
     finally:
         held.release()
-    assert outcome.state == profiles.REFUSED
+    assert outcome.state == outcome_mod.REFUSED
     assert recording_backend.sent == []
 
 
@@ -1521,8 +1523,8 @@ def test_without_an_override_the_lock_directory_is_the_shared_one(
     shared = tmp_path / "shared"
     shared.mkdir(mode=0o1777)
     monkeypatch.delenv("OSCMIX_LOCK_DIR", raising=False)
-    monkeypatch.setattr(profiles, "SHARED_LOCK_DIR", str(shared))
-    assert profiles.device_lock_path(None, "2a39-3fd9-24216011") == \
+    monkeypatch.setattr(locking, "SHARED_LOCK_DIR", str(shared))
+    assert locking.device_lock_path(None, "2a39-3fd9-24216011") == \
         shared / "2a39-3fd9-24216011.lock"
 
 
@@ -1644,7 +1646,7 @@ def test_a_marker_that_may_not_survive_a_power_cut_says_so_in_the_outcome(
                                       backend=recording_backend, verify=False)
     assert (durable.persisted, durable.durable) == (True, True)
     assert "power cut" not in durable.describe()
-    monkeypatch.setattr(profiles, "_fsync_directory", lambda _d: False)
+    monkeypatch.setattr(marker_mod, "_fsync_directory", lambda _d: False)
     for outcome in (
             profiles.switch_profile("here", config_path=path,
                                     backend=recording_backend, verify=False),

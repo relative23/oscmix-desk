@@ -55,7 +55,7 @@ from oscmix_desk.discovery import (
     resolve_device,
 )
 from oscmix_desk.errors import DeviceAmbiguous, ReceivePortError
-from oscmix_desk.profiles import take_device_lock
+from oscmix_desk.locking import take_device_lock
 
 #: Steps as a fraction of the declared range, smallest first. One percent
 #: is below the quantisation of several families, which is the point: it

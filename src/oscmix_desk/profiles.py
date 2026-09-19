@@ -12,39 +12,22 @@ So the order is fixed and the whole module is arranged around it --
 **parse and validate everything, then write, then check.** A config that
 cannot be understood costs an error message and not one datagram.
 
-That is why this states an outcome rather than raising. Three, and only
-three:
+That is why this states an outcome rather than raising (``outcome``):
+applied and verified, applied and unverified, or refused. There is
+deliberately no fourth. "Partly applied, and here is a traceback" is the
+state this module exists to make unrepresentable.
 
-``APPLIED_VERIFIED``
-    Written, and the device reported the values back.
-
-``APPLIED_UNVERIFIED``
-    Written, and the read-back could not confirm it -- normally because
-    the mixer GUI holds UDP 8222, which is the common desktop case, not
-    a fault. Carries the list of what went unconfirmed, because
-    "unverified" without the list is not an outcome a person can act on.
-
-``REFUSED``
-    Nothing was written. The config did not parse, the profile does not
-    exist, or the name was not a name.
-
-There is deliberately no fourth. "Partly applied, and here is a
-traceback" is the state this module exists to make unrepresentable.
+The order of a switch is this module's, and only this module's: which
+interface and backend it may write to, the lock taken (``locking``), the
+write, the profile remembered (``marker``), the read-back.
 """
 
 from __future__ import annotations
 
-import contextlib
-import errno
-import fcntl
-import grp
 import os
-import stat
-import tempfile
-import time
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from pathlib import Path
-from typing import Iterator, List, NamedTuple, Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 
 from .backend import Backend, loopback
 from .config import (
@@ -54,7 +37,7 @@ from .config import (
     log_desk_notices,
     profile_path,
 )
-from .constants import SWITCH_LOCK_WAIT, VERIFY_TIMEOUT
+from .constants import VERIFY_TIMEOUT
 from .devices import device_for_name
 from .discovery import (
     Device,
@@ -63,114 +46,23 @@ from .discovery import (
     usb_device_present,
 )
 from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
+from .locking import _switch_lock, held_elsewhere
 from .log import log
+from .marker import (
+    active_profile,
+    forget_active_profile,
+    remember_active_profile,
+)
+from .outcome import (
+    APPLIED_UNVERIFIED,
+    APPLIED_VERIFIED,
+    NOT_CHECKED,
+    REFUSED,
+    Outcome,
+)
 from .process import port_holder
 from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
-
-
-def _short(paths: List[str], limit: int = 6) -> str:
-    """A register list a person can read at the end of a sentence."""
-    shown = ", ".join(paths[:limit])
-    return shown if len(paths) <= limit else "%s and %d more" % (
-        shown, len(paths) - limit)
-
-#: Written, and the device reported it back.
-APPLIED_VERIFIED = "applied-verified"
-#: Written; the read-back could not confirm it. ``unverified`` says what.
-APPLIED_UNVERIFIED = "applied-unverified"
-#: Nothing was written. ``reason`` says why.
-REFUSED = "refused"
-
-#: The ``reason`` on an outcome where the read-back was never attempted,
-#: because the caller asked for none. Distinct wording from a read-back
-#: that ran and came up short: the register list means "unknown" here
-#: and "looked for and absent" there, and the state cannot say so.
-NOT_CHECKED = "verification not requested"
-
-#: The complete set. A fourth member is a design change, and
-#: ``tests/test_profiles.py`` asserts this is exhaustive so it cannot
-#: arrive by accretion.
-STATES = (APPLIED_VERIFIED, APPLIED_UNVERIFIED, REFUSED)
-
-
-@dataclass(frozen=True)
-class Outcome:
-    """What a switch did. Every field answerable without a traceback."""
-
-    state: str
-    name: str
-    reason: str = ""
-    #: Everything not confirmed at its expected value.
-    unverified: List[str] = field(default_factory=list)
-    #: The subset of ``unverified`` this backend never reports at all --
-    #: the playback mix matrix, and anything write-only. Kept separate
-    #: because "I could not check it" and "it cannot be checked" are
-    #: different facts, and on a real routing the second is the normal
-    #: case: every switch leaves /mix/<out>/playback/<pb> unconfirmed,
-    #: measured, by design (backend.Traits.dumps_playback_matrix).
-    unverifiable: List[str] = field(default_factory=list)
-    #: Whether the marker now says what the device does. False when the
-    #: switch landed but the marker could not be written, or the restore
-    #: could not remove it: the desk holds only until the next reload or
-    #: start, and the caller must not send that reload itself (ADR 0019).
-    persisted: bool = True
-    #: False when the marker change is in effect but its directory could
-    #: not be synced, so a power cut may bring the previous state back.
-    #: ``persisted`` decides the reload; this is said in the line only.
-    durable: bool = True
-    #: Whether a read-back ran, for an applied outcome (a refusal wrote
-    #: nothing, so there was nothing to read). False when the caller
-    #: asked for none, or the receive port was held or could not be
-    #: bound: ``unverified`` then means "unknown" rather than "looked for
-    #: and absent", and ``reason`` says why nobody looked. Not derivable
-    #: from ``reason``, which is free text for an unbindable port. Until
-    #: 0.6.11 a held port was worded "N register(s) unconfirmed", which
-    #: is what a read-back that ran and came up short says.
-    read_back: bool = True
-
-    @property
-    def applied(self) -> bool:
-        """Whether anything reached the device.
-
-        The field a script branches on, derived from the state rather
-        than stored beside it: two sources for one fact is how "applied
-        but the flag says otherwise" happens.
-        """
-        return self.state != REFUSED
-
-    def describe(self) -> str:
-        """One line, for a person."""
-        line = self._describe_state()
-        if not self.persisted:
-            return line + ("; not remembered, so the next reload or start "
-                           "undoes it")
-        if not self.durable:
-            return line + "; remembered, but it may not survive a power cut"
-        return line
-
-    def _describe_state(self) -> str:
-        if self.state == REFUSED:
-            return "refused %r, nothing written: %s" % (self.name, self.reason)
-        if self.state == APPLIED_VERIFIED:
-            return "applied %r and verified it at the device" % self.name
-        if self.reason == NOT_CHECKED:
-            return ("applied %r; not checked, so none of its %d register(s) "
-                    "is confirmed" % (self.name, len(self.unverified)))
-        if not self.read_back:
-            return ("applied %r; not read back (%s), so none of its %d "
-                    "register(s) is confirmed"
-                    % (self.name, self.reason, len(self.unverified)))
-        missed = [p for p in self.unverified if p not in self.unverifiable]
-        if not missed:
-            return ("applied %r; %d register(s) this backend cannot report: %s"
-                    % (self.name, len(self.unverifiable),
-                       _short(self.unverifiable)))
-        return ("applied %r; %d register(s) unconfirmed: %s%s"
-                % (self.name, len(missed), _short(missed),
-                   "" if not self.unverifiable
-                   else " (plus %d this backend cannot report)"
-                        % len(self.unverifiable)))
 
 
 def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
@@ -253,147 +145,6 @@ def keep_machine_settings(desk: Config, running: Config) -> Config:
     # resolved for this command line as much as the running one is.
     desk.overrides = running.overrides
     return desk
-
-
-#: Where the active profile's name is kept: one line, beside
-#: routing.conf. Written by the CLI after an applied switch, removed by
-#: `--no-profile`, and only ever *read* by the session -- which is what
-#: keeps the unit's ProtectHome=read-only true. Beside the config rather
-#: than in a state directory, so that `--config` selects the profiles
-#: and the marker together (ADR 0018).
-ACTIVE_MARKER = "active-profile"
-
-
-def active_profile_path(config_path: Optional[Path]) -> Optional[Path]:
-    """The marker file for this config, or None without a config."""
-    if config_path is None:
-        return None
-    return Path(config_path).parent / ACTIVE_MARKER
-
-
-def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
-    """The remembered profile name, or None.
-
-    A marker whose content is not a profile name is ignored with a
-    warning rather than trusted: the name is used to build a path.
-    """
-    path = active_profile_path(config_path)
-    if path is None or not path.is_file():
-        return None
-    try:
-        name = path.read_text(encoding="utf-8").strip()
-    except (OSError, UnicodeDecodeError) as exc:
-        log.warning("ignoring %s: %s", path, exc)
-        return None
-    if not name:
-        return None
-    try:
-        profile_path(name, config_path)
-    except ConfigError as exc:
-        log.warning("ignoring %s: %s", path, exc)
-        return None
-    return name
-
-
-class Marked(NamedTuple):
-    """What a change of the marker achieved.
-
-    ``in_effect`` decides whether the unit may be reloaded (ADR 0019).
-    ``durable`` is the smaller promise: the directory was synced, so a
-    power cut cannot bring the previous marker back. Until 0.6.11 that
-    was a log line and the answer was a single bool that read as both.
-    """
-
-    in_effect: bool
-    durable: bool
-
-
-def remember_active_profile(name: str, config_path: Optional[Path]) -> Marked:
-    """Record a switch that was applied; a warning when it cannot.
-
-    Not an outcome state: the device already has the profile, and a
-    fourth state for "applied but forgotten" would be the "applied, but
-    the flag says otherwise" case ADR 0011 forbids.
-    """
-    path = active_profile_path(config_path)
-    if path is None:
-        return Marked(False, False)
-    # Written beside and renamed over, never in place: a crash or a
-    # power loss between open and close would otherwise leave an empty
-    # marker, and an empty marker reads as "no profile" -- the choice
-    # silently gone on the next start. The old marker stays whole until
-    # the new one is complete on disk, and the rename is atomic.
-    # A name of its own: two switches that hold different device locks
-    # -- two profiles naming two backends -- shared `active-profile.tmp`,
-    # and one could rename the file the other was still writing (0.6.11).
-    tmp = ""
-    try:
-        fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp",
-                                   dir=path.parent)
-        try:
-            os.fchmod(fd, 0o644)
-            data = (name + "\n").encode("utf-8")
-            written = 0
-            while written < len(data):
-                # write(2) may write less than it was given without
-                # failing. A short write here would fsync and rename a
-                # truncated profile name over a correct marker.
-                written += os.write(fd, data[written:])
-            os.fsync(fd)
-        finally:
-            os.close(fd)
-        os.replace(tmp, path)
-    except OSError as exc:
-        log.warning("profile %r applied but not remembered: cannot write "
-                    "%s (%s); the desk holds until the next reload or "
-                    "start, which applies routing.conf", name, path, exc)
-        with contextlib.suppress(OSError):
-            os.unlink(tmp)
-        return Marked(False, False)
-    durable = _fsync_directory(path.parent)
-    if not durable:
-        log.warning("profile %r remembered, but %s could not be synced: "
-                    "the marker is in effect now and may not survive a "
-                    "power cut", name, path.parent)
-    return Marked(True, durable)
-
-
-def _fsync_directory(directory: Path) -> bool:
-    """Make a rename or an unlink durable; False when it could not be.
-
-    Some filesystems refuse the fsync of a directory, which is why this
-    never raises. It says so now rather than swallowing it: without it
-    the rename is visible but not durable, and a power cut can bring
-    the previous marker back (0.6.6).
-    """
-    try:
-        fd = os.open(directory, os.O_RDONLY)
-    except OSError:
-        return False
-    try:
-        os.fsync(fd)
-    except OSError:
-        return False
-    finally:
-        os.close(fd)
-    return True
-
-
-#: The lock every writer of this desk takes, beside the marker: a
-#: switch, `--no-profile`, and the unit's own apply, verifier and
-#: reconcile (ADR 0019). Two writers at once would interleave their link
-#: phases and mix writes on the wire -- the ordering ADR 0001 exists to
-#: guarantee. This name is the last fallback, beside the marker, for a
-#: session with neither the shared lock directory nor a runtime
-#: directory; every other writer keys on the interface (ADR 0023).
-SWITCH_LOCK = "active-profile.lock"
-
-#: The one path that is the same for every writer on the machine,
-#: created 3770 root:audio by tmpfiles.d. Overridable for tests through
-#: OSCMIX_LOCK_DIR; a directory that is absent means the root steps of
-#: the installer never ran, and the search falls through to the ones
-#: that depend on the caller (ADR 0023).
-SHARED_LOCK_DIR = "/run/oscmix-desk"
 
 
 class _Refused(Exception):
@@ -496,290 +247,10 @@ def _refused_for_the_device(name: str, reason: str) -> "Outcome":
     return Outcome(state=REFUSED, name=name, reason=reason)
 
 
-class DeviceLock:
-    """A held device lock, or a stand-in for "there was nothing to lock".
-
-    The stand-in is for the one case with no path to lock at: no shared
-    directory, no runtime directory and no config directory, so no other
-    writer could find a lock either. It is not a way to write without a
-    lock that exists: a lock that cannot be *taken* is ``None`` from
-    ``take_device_lock``, and every caller refuses on it (since 0.6.7).
-    """
-
-    def __init__(self, fd: Optional[int] = None) -> None:
-        self._fd = fd
-
-    def release(self) -> None:
-        if self._fd is None:
-            return
-        fd, self._fd = self._fd, None
-        try:
-            fcntl.flock(fd, fcntl.LOCK_UN)
-        finally:
-            os.close(fd)
-
-
-def device_lock_path(config_path: Optional[Path],
-                     key: Optional[str] = None) -> Optional[Path]:
-    """Where the lock for this device lives.
-
-    `/run/oscmix-desk/<key>.lock` whenever that directory exists, which
-    the installer creates through tmpfiles.d. It is the only candidate
-    that depends on neither the environment nor the user nor the config
-    directory, so every writer of one interface computes it identically
-    -- including one under sudo, cron or a bare ssh command, which have
-    no `$XDG_RUNTIME_DIR` and used to walk straight past a holder
-    (ADR 0023).
-
-    `$XDG_RUNTIME_DIR/oscmix-desk/` second, for a machine whose
-    installer never ran the root steps. Beside the config last, for a
-    session with neither. None when there is no config either: nothing
-    to lock, nothing to contend with.
-    """
-    if key:
-        shared = Path(os.environ.get("OSCMIX_LOCK_DIR", SHARED_LOCK_DIR))
-        if shared.is_dir():
-            # It exists, so every other writer on this machine is using
-            # it. Falling back from here would put this process on a
-            # different path from the holder, which is the hole the
-            # runtime directory had (ADR 0023). Unusable is a refusal.
-            return shared / ("%s.lock" % key)
-        runtime = os.environ.get("XDG_RUNTIME_DIR")
-        if runtime:
-            directory = Path(runtime) / "oscmix-desk"
-            try:
-                directory.mkdir(parents=True, exist_ok=True)
-            except OSError as exc:
-                log.warning("cannot use %s (%s); falling back to the config "
-                            "directory", directory, exc)
-            else:
-                return directory / ("%s.lock" % key)
-    marker = active_profile_path(config_path)
-    return None if marker is None else marker.with_name(SWITCH_LOCK)
-
-
-#: How every lock file is opened. The shared directory is writable by a
-#: whole group, so what sits at a lock path may have been put there by
-#: someone else. O_NOFOLLOW refuses a symbolic link instead of following
-#: it -- 0.6.8 followed one and chmod'ed its target to 0666, stopped only
-#: by fs.protected_symlinks. O_NONBLOCK keeps a FIFO from blocking open()
-#: until a writer appears -- a planted one hung every writer, the 30 s
-#: wait included (ADR 0024).
-_LOCK_OPEN = os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
-
-#: Owner and group: the shared directory belongs to `audio`, and every
-#: writer of the interface is in it. Nobody else may hold the lock.
-LOCK_FILE_MODE = 0o660
-
-
-def _open_lock(path: Path) -> Optional[int]:
-    """Open the lock file read-write, or read-only, or not at all.
-
-    The unit runs with `ProtectHome=read-only`, so under a config
-    directory it can neither create the file nor open it for writing.
-    `flock` needs neither: the lock lives on the open file description,
-    and a read-only one holds it exactly as well. None means there is no
-    descriptor to lock, which the caller turns into a refusal rather
-    than into an unlocked write (ADR 0022).
-
-    Only a regular file is a lock. A directory, FIFO, socket or device
-    at the path is refused, whoever put it there (ADR 0024).
-    """
-    fd = _open_regular(path, os.O_RDWR | os.O_CREAT)
-    if fd is not None:
-        _share_with_the_directory_group(fd, path)
-        return fd
-    return _open_regular(path, os.O_RDONLY)
-
-
-def _open_regular(path: Path, flags: int) -> Optional[int]:
-    try:
-        fd = os.open(path, flags | _LOCK_OPEN, LOCK_FILE_MODE)
-    except OSError:
-        return None
-    try:
-        regular = stat.S_ISREG(os.fstat(fd).st_mode)
-    except OSError:
-        regular = False
-    if not regular:
-        os.close(fd)
-        return None
-    return fd
-
-
-def _share_with_the_directory_group(fd: int, path: Path) -> None:
-    """Give a lock file this process owns the directory's group and 0660.
-
-    The mode passed to open() is masked by the umask, so a unit with
-    umask 077 would create a file no other writer can open. Only a file
-    this process owns, with exactly one link, is touched: anything else
-    at that path is not this process's to change.
-
-    The unit itself can chmod but not regroup: a sandboxed user service
-    runs in a user namespace that maps only the user's own group, and
-    fchown to `audio` fails there with EINVAL. It does not need to -- a
-    file created in the setgid directory has the group already, and the
-    tmpfiles.d `z` line regroups one that predates it (ADR 0024).
-    """
-    try:
-        info = os.fstat(fd)
-        group = os.stat(path.parent).st_gid
-    except OSError:
-        return
-    if info.st_uid != os.geteuid() or info.st_nlink != 1:
-        return
-    try:
-        os.fchmod(fd, LOCK_FILE_MODE)
-        if info.st_gid != group:
-            os.fchown(fd, -1, group)
-    except OSError:
-        pass
-
-
-def _why_unopenable(path: Path) -> str:
-    """What a person needs to know to clear a lock that cannot be opened."""
-    try:
-        info = os.lstat(path)
-    except FileNotFoundError:
-        return _why_not_creatable(path.parent)
-    except OSError as exc:
-        return "%s; %s belongs to group %s" % (
-            exc.strerror or exc, path.parent, _group_of(path.parent))
-    if stat.S_ISLNK(info.st_mode):
-        return "it is a symbolic link"
-    if not stat.S_ISREG(info.st_mode):
-        return "it is not a regular file"
-    return "it belongs to uid %d and this user cannot open it" % info.st_uid
-
-
-def _why_not_creatable(directory: Path) -> str:
-    """Why no lock file could be created in ``directory``.
-
-    A read-only mount says so by name: under a sandbox that applies
-    ProtectSystem=strict, /run is read-only unless the unit declares the
-    directory writable, and "no such file" was the message that case
-    produced (measured, 0.6.9).
-    """
-    try:
-        read_only = bool(os.statvfs(directory).f_flag & os.ST_RDONLY)
-    except OSError:
-        read_only = False
-    if read_only:
-        return ("%s is read-only for this process; a service needs "
-                "ReadWritePaths=-%s" % (directory, directory))
-    return "it cannot be created in %s, which belongs to group %s" % (
-        directory, _group_of(directory))
-
-
-def _group_of(directory: Path) -> str:
-    try:
-        return grp.getgrgid(os.stat(directory).st_gid).gr_name
-    except (OSError, KeyError):
-        return "an unknown group"
-
-
-def take_device_lock(config_path: Optional[Path],
-                     key: Optional[str] = None,
-                     wait: Optional[float] = None) -> Optional[DeviceLock]:
-    """Take the lock every writer of this device holds, or None.
-
-    Every writer: a switch, `--no-profile`, and the unit's own apply,
-    verifier and reconcile (ADR 0019). None means it is not held, for
-    any reason -- contention that outlasted the wait, a lock file that
-    cannot be opened, a filesystem that cannot lock. Every caller
-    refuses on None since 0.6.7: a write nobody serialised is the thing
-    the lock exists to prevent, and "apply anyway" made the guarantee
-    conditional on nothing having gone wrong (ADR 0022).
-    """
-    path = device_lock_path(config_path, key)
-    if path is None:
-        return DeviceLock()          # no config, so nothing to contend with
-    fd = _open_lock(path)
-    if fd is None:
-        log.error("cannot open the device lock at %s: %s", path,
-                  _why_unopenable(path))
-        return None
-    deadline = time.monotonic() + (SWITCH_LOCK_WAIT if wait is None else wait)
-    announced = False
-    while True:
-        try:
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return DeviceLock(fd)
-        except OSError as exc:
-            if exc.errno not in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK):
-                # Not contention: a filesystem that cannot lock, or a
-                # descriptor that is gone. Waiting 30 s to say "somebody
-                # else has it" would be the wrong answer to both.
-                log.error("cannot lock %s (%s)", path, exc)
-                os.close(fd)
-                return None
-            if time.monotonic() >= deadline:
-                os.close(fd)
-                return None
-            if not announced:
-                log.info("another writer holds the device lock; waiting "
-                         "for it")
-                announced = True
-            time.sleep(0.1)
-
-
-def _switch_lock_held(config_path: Optional[Path],
-                      key: Optional[str] = None) -> Iterator[bool]:
-    """Hold the device lock for this config, or yield False after the wait.
-
-    Taken *after* the profile parsed: a refusal for a bad config needs
-    no lock and costs nothing, as ADR 0011 promises. Without a config
-    there is no directory to lock in and nothing to contend with.
-    """
-    lock = take_device_lock(config_path, key)
-    if lock is None:
-        yield False
-        return
-    try:
-        yield True
-    finally:
-        lock.release()
-
-
-#: Wrapped here rather than with the decorator, on purpose: mutmut
-#: leaves decorated functions unmutated, and this loop is what the
-#: no-interleave guarantee rests on (ADR 0018). A decorator kept it out
-#: of the 0.6.4 mutation run entirely; as a plain generator it is in.
-_switch_lock = contextlib.contextmanager(_switch_lock_held)
-
-
 def _refused_for_the_lock(name: str) -> Outcome:
-    reason = ("another writer still holds the device lock after %.0fs"
-              % SWITCH_LOCK_WAIT)
+    reason = held_elsewhere()
     log.error("profile %r refused, nothing written: %s", name, reason)
     return Outcome(state=REFUSED, name=name, reason=reason)
-
-
-def forget_active_profile(config_path: Optional[Path]) -> Marked:
-    """Remove the marker; nothing to remove is not an error.
-
-    Not ``in_effect`` when it is still there afterwards, which the caller
-    carries in the outcome: a reload sent then would re-apply the profile the
-    marker still names and undo the restore (ADR 0019).
-    """
-    path = active_profile_path(config_path)
-    if path is None:
-        return Marked(True, True)
-    try:
-        path.unlink()
-    except FileNotFoundError:
-        return Marked(True, True)
-    except OSError as exc:
-        log.warning("cannot remove %s (%s); the desk holds until the next "
-                    "reload or start, which applies the profile it names",
-                    path, exc)
-        return Marked(False, False)
-    durable = _fsync_directory(path.parent)
-    if not durable:
-        log.warning("marker removed, but %s could not be synced: the profile "
-                    "is out of effect now and may come back after a power "
-                    "cut", path.parent)
-    return Marked(True, durable)
 
 
 def effective_config(config_path: Optional[Path]) -> Tuple[Config, Optional[str]]:

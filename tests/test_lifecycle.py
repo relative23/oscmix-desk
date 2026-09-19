@@ -14,6 +14,8 @@ import time
 
 import pytest
 
+from oscmix_desk import locking
+
 
 def _key(path):
     """The device key the code under test derives for this config.
@@ -393,7 +395,7 @@ def test_a_failed_apply_releases_the_device_lock(
         session_module, session_mod, monkeypatch, tmp_path):
     from conftest import write_config
 
-    from oscmix_desk.profiles import take_device_lock
+    from oscmix_desk.locking import take_device_lock
 
     path = write_config(tmp_path / "routing.conf",
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
@@ -518,9 +520,8 @@ def test_stop_handlers_do_not_terminate_a_backend_that_is_already_gone(
 # --------------------------------------------------------------------------
 
 def _lock_probe(path):
-    from oscmix_desk import profiles as profiles_mod
 
-    return profiles_mod.take_device_lock(path, _key(path), wait=0.1)
+    return locking.take_device_lock(path, _key(path), wait=0.1)
 
 
 def test_the_start_holds_the_device_lock_until_the_verifier_is_done(
@@ -571,7 +572,6 @@ def test_a_start_that_cannot_take_the_lock_writes_nothing(
     """
     from conftest import write_config
 
-    from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import session as session_module
 
     path = write_config(tmp_path / "routing.conf",
@@ -582,8 +582,8 @@ def test_a_start_that_cannot_take_the_lock_writes_nothing(
     monkeypatch.setattr(session_module, "verify_and_repair",
                         lambda *a, **k: None)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
-    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 0.3)
-    held = profiles_mod.take_device_lock(path, _key(path))
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
+    held = locking.take_device_lock(path, _key(path))
     assert held is not None
     from oscmix_desk.errors import DeviceLockUnavailable
 
@@ -641,7 +641,6 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
 
     from conftest import write_config
 
-    from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import session as session_module
 
     path = write_config(tmp_path / "routing.conf",
@@ -653,10 +652,10 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
     monkeypatch.setattr(session_module, "verify_and_repair",
                         lambda *a, **k: None)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
-    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
     started = session_mod.load_config(path)
 
-    held = profiles_mod.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, _key(path))
     assert held is not None
 
     def commit_then_release():
@@ -687,7 +686,6 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
 
     from conftest import write_config
 
-    from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import session as session_module
 
     path = write_config(tmp_path / "routing.conf",
@@ -695,9 +693,9 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
     applied = []
     monkeypatch.setattr(session_module, "apply_routing",
                         lambda *a, **k: applied.append(a))
-    monkeypatch.setattr(profiles_mod, "SWITCH_LOCK_WAIT", 5.0)
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
     stop = {"stop": False}
-    held = profiles_mod.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, _key(path))
     assert held is not None
 
     def stop_then_release():
@@ -709,7 +707,7 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
         RunningChild(), session_mod.load_config(path), stop, path)
     assert verifier is None
     assert applied == [], "nothing is written on the way out"
-    after = profiles_mod.take_device_lock(path, _key(path), wait=0.2)
+    after = locking.take_device_lock(path, _key(path), wait=0.2)
     assert after is not None, "and the lock is released"
     after.release()
 
