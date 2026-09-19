@@ -111,9 +111,10 @@ def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
 #: A table rather than a list of ifs, because the failure mode is
 #: forgetting one: `usb-id` was left out of the first version and would
 #: have silently reverted to the compiled-in default on any machine that
-#: sets it. `tests/test_profiles.py` holds this table against the set of
-#: fields on Config that no `[route]` or channel section can write, so a
-#: new machine-level setting cannot be added without landing here too.
+#: sets it. `tests/test_profile_machine.py` holds this table against the
+#: set of fields on Config that no `[route]` or channel section can
+#: write, so a new machine-level setting cannot be added without landing
+#: here too.
 MACHINE_SETTINGS = (
     ("osc", "port", "osc_port"),
     ("osc", "recv-port", "osc_recv_port"),
