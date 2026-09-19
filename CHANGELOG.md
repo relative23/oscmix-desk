@@ -170,6 +170,12 @@ does not move and the register table has no new row.
   the not-covered bucket still empty, `min_score` 0.77 -> 0.79. The full
   run used a mutant tree removed beforehand; ten functions were
   re-judged by name afterwards.
+- **Two integration tests wait for what they assert.** They stopped the
+  session the moment the verifier's `/refresh` was on the wire, and a
+  verifier that is told to stop does not judge the answer: the
+  "verified" line they look for was then never written. One run in five
+  of the nightly flakiness gate on 0.6.10 (2026-09-18). They wait for
+  the line, then stop the session.
 - **No test opens the machine's `/dev/snd/seq`.** The device wait opens
   it to make the kernel load `snd-seq`; read-only and harmless, and
   still the machine's. The suite points `OSCMIX_SEQ_DEV` at nothing.

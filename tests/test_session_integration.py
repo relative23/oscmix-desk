@@ -249,6 +249,19 @@ def wait_for(predicate, timeout=10.0):
     return False
 
 
+def wait_for_line(log, line):
+    """Wait until the session has said ``line`` on the stderr it writes to
+    ``log``.
+
+    A SIGTERM sent the moment the verifier's `/refresh` was seen on the
+    wire stops it before the answer is judged, which is what the stop
+    contract asks of it -- and the "verified" line a test then looks for
+    was never written. One run in five on CI (2026-09-18); the wire says
+    what was sent, only the journal says what was concluded.
+    """
+    return wait_for(lambda: log.exists() and line in log.read_text())
+
+
 def terminate(proc):
     if proc.poll() is None:
         proc.kill()
@@ -270,11 +283,13 @@ def test_full_startup_verification_notify_and_shutdown(tmp_path, session_mod):
     notify.settimeout(10)
     env["NOTIFY_SOCKET"] = str(tmp_path / "notify.sock")
 
-    proc = subprocess.Popen(
-        [sys.executable, str(SESSION_BIN), "--config", str(config),
-         "--timeout", "5"],
-        env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-    )
+    journal = tmp_path / "stderr.log"
+    with open(journal, "w") as stderr_file:
+        proc = subprocess.Popen(
+            [sys.executable, str(SESSION_BIN), "--config", str(config),
+             "--timeout", "5"],
+            env=env, stdout=subprocess.PIPE, stderr=stderr_file, text=True,
+        )
     try:
         datagram_log = stub_dir / "datagrams.hex"
         # 5 routing registers, the /refresh of the verification pass and
@@ -313,11 +328,10 @@ def test_full_startup_verification_notify_and_shutdown(tmp_path, session_mod):
         # applied (verification then runs in the background).
         assert read_until_ready(notify) == b"READY=1"
 
+        assert wait_for_line(journal, "routing verified against device state")
         proc.send_signal(signal.SIGTERM)
         assert proc.wait(timeout=10) == 0
-        stderr = proc.stderr.read()
-        assert "routing verified against device state" in stderr
-        assert "re-sending" not in stderr
+        assert "re-sending" not in journal.read_text()
     finally:
         notify.close()
         terminate(proc)
@@ -355,11 +369,13 @@ def test_a_config_with_no_routes_is_applied_at_start(tmp_path, session_mod):
     config = tmp_path / "routing.conf"
     config.write_text(CHANNEL_ONLY_CONF.format(port=port, recv_port=recv_port))
 
-    proc = subprocess.Popen(
-        [sys.executable, str(SESSION_BIN), "--config", str(config),
-         "--timeout", "5"],
-        env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-    )
+    journal = tmp_path / "stderr.log"
+    with open(journal, "w") as stderr_file:
+        proc = subprocess.Popen(
+            [sys.executable, str(SESSION_BIN), "--config", str(config),
+             "--timeout", "5"],
+            env=env, stdout=subprocess.PIPE, stderr=stderr_file, text=True,
+        )
     try:
         datagram_log = stub_dir / "datagrams.hex"
         assert wait_for(
@@ -376,11 +392,10 @@ def test_a_config_with_no_routes_is_applied_at_start(tmp_path, session_mod):
             session_mod.encode_osc("/clock/source", "i", 0),
             session_mod.encode_osc("/refresh"),
         ]
+        assert wait_for_line(journal, "routing verified against device state")
         proc.send_signal(signal.SIGTERM)
         assert proc.wait(timeout=10) == 0
-        stderr = proc.stderr.read()
-        assert "routing verified against device state" in stderr
-        assert "untouched" not in stderr
+        assert "untouched" not in journal.read_text()
     finally:
         terminate(proc)
 
