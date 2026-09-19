@@ -386,31 +386,40 @@
     "its copy; one of them had changed after it.",
     "",
     "min_score 0.77 -> 0.79, by floor_note's rule: the measured score",
-    "rounded down to the hundredth."
+    "rounded down to the hundredth.",
+    "",
+    "0.7.0, the file split (2026-09-19): 0.794 -> 0.795 on 7485 -> 7484",
+    "mutants, which is the measurement saying what the step claims --",
+    "nothing changed. Six source modules became eighteen and every",
+    "mutant's name carries its module, so the run was a full one with",
+    "mutants/ removed, 114 minutes. The one mutant fewer is the lock",
+    "path's last fallback, spelled without the marker's function so that",
+    "the lock does not depend on the marker. Nothing uncovered, no new",
+    "survivor outside log arguments. min_score stays 0.79."
   ],
   "measured": {
+    "total": 7484,
+    "killed": 5938,
+    "survived": 1532,
+    "not_covered": 0,
+    "timeout": 14,
+    "score": 0.795,
+    "run_minutes": 114,
+    "cache": "mutants/ removed before the full run; nothing re-judged afterwards",
+    "scope": "register table exempt (ADR 0015), in devices.py since the split",
+    "note": [
+      "The tree after the 0.7.0 file split, before any behaviour change."
+    ]
+  },
+  "previous": {
+    "recorded": "2026-09-19",
     "total": 7485,
     "killed": 5934,
     "survived": 1535,
     "not_covered": 0,
-    "timeout": 16,
     "score": 0.794,
-    "run_minutes": 105,
-    "cache": "mutants/ removed before the full run; ten functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
-    "scope": "register table exempt (ADR 0015)",
-    "note": [
-      "The 0.6.11 release measurement."
-    ]
-  },
-  "previous": {
-    "recorded": "2026-09-17",
-    "total": 7118,
-    "killed": 5517,
-    "survived": 1587,
-    "not_covered": 0,
-    "score": 0.777,
     "why_it_moved": [
-      "The 0.6.10 release measurement; min_score 0.77."
+      "The 0.6.11 release measurement; min_score 0.79."
     ]
   },
   "confirmed_by_ci": {
@@ -440,7 +449,7 @@
     "fails nor nags on the run it was recorded from -- a baseline that",
     "prints 'raise me' on every CI run teaches people to ignore it.",
     "",
-    "0.014 of headroom on the measured 0.794, the same order as every",
+    "0.015 of headroom on the measured 0.795, the same order as every",
     "raise before it. What eats headroom stayed the same: assertions",
     "getting better or worse, because register rows land inside the",
     "ADR 0015 exemption."
