@@ -8,27 +8,12 @@ and says so.
 import re
 
 import pytest
+from conftest import device_key
 from reconcile_desk import routes_file
 
 from oscmix_desk import locking
 from oscmix_desk import reload as reload_mod
 
-
-def _key(path):
-    """The device key the code under test derives for this config.
-
-    From the same resolution the code uses, against the /proc the suite
-    points it at (ADR 0024) -- not against the machine's own card list.
-    """
-    import os
-    from pathlib import Path
-
-    from oscmix_desk.discovery import resolve_device
-    from oscmix_desk.profiles import load_config
-
-    config = load_config(path)
-    return resolve_device(config.usb_id, config.device_name, config.serial,
-                          Path(os.environ["OSCMIX_PROC_ROOT"])).key
 
 def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
         tmp_path, monkeypatch, session_mod, caplog):
@@ -47,7 +32,7 @@ def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
     monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a, **k: applied.append(a))
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
-    held = locking.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, device_key(path))
     assert held is not None
     try:
         with caplog.at_level("WARNING"):
@@ -67,11 +52,11 @@ def test_a_reconcile_holds_the_lock_while_it_writes_and_frees_it_after(
     during = []
     monkeypatch.setattr(reload_mod, "reconcile_now",
         lambda *a, **k: during.append(
-            locking.take_device_lock(path, _key(path), wait=0.1)))
+            locking.take_device_lock(path, device_key(path), wait=0.1)))
     reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
     assert during == [None], "a switch must not get in while this writes"
-    after = locking.take_device_lock(path, _key(path), wait=0.2)
+    after = locking.take_device_lock(path, device_key(path), wait=0.2)
     assert after is not None, "and must get in once it is done"
     after.release()
 
@@ -212,7 +197,7 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
                         lambda config, *a: applied.append(config) or True)
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
 
-    held = locking.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, device_key(path))
     assert held is not None
 
     def commit_then_release():

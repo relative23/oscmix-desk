@@ -10,27 +10,12 @@ import shutil
 import stat
 
 import pytest
+from conftest import device_key
 from profile_desk import GOOD, TRACKING, desk, shared_lock_dir
 
 from oscmix_desk import locking, profiles
 from oscmix_desk import outcome as outcome_mod
 
-
-def _key(path):
-    """The device key the code under test derives for this config.
-
-    From the same resolution the code uses, against the /proc the suite
-    points it at (ADR 0024) -- not against the machine's own card list.
-    """
-    import os
-    from pathlib import Path
-
-    from oscmix_desk.discovery import resolve_device
-    from oscmix_desk.profiles import load_config
-
-    config = load_config(path)
-    return resolve_device(config.usb_id, config.device_name, config.serial,
-                          Path(os.environ["OSCMIX_PROC_ROOT"])).key
 
 def test_a_switch_refuses_when_another_holds_the_lock_too_long(
         tmp_path, recording_backend, monkeypatch, caplog):
@@ -38,14 +23,14 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     umask = os.umask(0o022)
     try:
-        with locking._switch_lock(path, _key(path)) as held:
+        with locking._switch_lock(path, device_key(path)) as held:
             assert held
             with caplog.at_level("INFO"):
                 outcome = profiles.switch_profile("tracking", config_path=path,
                                                   backend=recording_backend)
     finally:
         os.umask(umask)
-    lock = locking.device_lock_path(path, _key(path))
+    lock = locking.device_lock_path(path, device_key(path))
     # A plain file every writer of the interface can open -- owner and
     # group, the group being the shared directory's (ADR 0024).
     assert stat.S_IMODE(lock.stat().st_mode) == 0o660
@@ -71,7 +56,7 @@ def test_no_profile_refuses_when_another_switch_holds_the_lock(
     path = desk(tmp_path, tracking=TRACKING)
     (tmp_path / "active-profile").write_text("tracking\n")
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
-    with locking._switch_lock(path, _key(path)):
+    with locking._switch_lock(path, device_key(path)):
         outcome = profiles.restore_main(path, backend=recording_backend)
     assert outcome.state == outcome_mod.REFUSED
     assert outcome.name == "routing.conf"
@@ -82,13 +67,13 @@ def test_no_profile_refuses_when_another_switch_holds_the_lock(
 
 def test_the_device_lock_is_exclusive_and_released(tmp_path):
     path = desk(tmp_path, tracking=TRACKING)
-    lock = locking.take_device_lock(path, _key(path))
+    lock = locking.take_device_lock(path, device_key(path))
     assert lock is not None
-    assert locking.device_lock_path(path, _key(path)).exists()
-    assert locking.take_device_lock(path, _key(path), wait=0.2) is None, \
+    assert locking.device_lock_path(path, device_key(path)).exists()
+    assert locking.take_device_lock(path, device_key(path), wait=0.2) is None, \
         "a second writer must not hold it at the same time"
     lock.release()
-    second = locking.take_device_lock(path, _key(path), wait=0.2)
+    second = locking.take_device_lock(path, device_key(path), wait=0.2)
     assert second is not None
     second.release()
     lock.release()          # releasing twice is not an error
@@ -107,9 +92,9 @@ def test_the_unit_locks_a_file_it_cannot_open_for_writing(tmp_path):
     lock_file.write_text("")
     lock_file.chmod(0o444)
     try:
-        lock = locking.take_device_lock(path, _key(path))
+        lock = locking.take_device_lock(path, device_key(path))
         assert lock is not None
-        assert locking.take_device_lock(path, _key(path), wait=0.2) is None
+        assert locking.take_device_lock(path, device_key(path), wait=0.2) is None
         lock.release()
     finally:
         lock_file.chmod(0o644)
@@ -130,7 +115,7 @@ def test_a_lock_that_cannot_be_opened_is_a_refusal(tmp_path, monkeypatch,
     tmp_path.chmod(0o500)
     try:
         with caplog.at_level("ERROR"):
-            lock = locking.take_device_lock(path, _key(path))
+            lock = locking.take_device_lock(path, device_key(path))
     finally:
         tmp_path.chmod(0o700)
     assert lock is None
@@ -215,7 +200,7 @@ def test_a_switch_without_a_runtime_directory_locks_beside_the_config(
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     path = desk(tmp_path, tracking=TRACKING)
-    held = locking.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, device_key(path))
     assert held is not None
     assert (tmp_path / "active-profile.lock").exists()
     try:
@@ -399,7 +384,7 @@ def test_a_restore_without_a_runtime_directory_locks_beside_the_config(
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     path = desk(tmp_path, tracking=TRACKING)
-    held = locking.take_device_lock(path, _key(path))
+    held = locking.take_device_lock(path, device_key(path))
     assert held is not None
     assert (tmp_path / "active-profile.lock").exists()
     try:

@@ -639,3 +639,115 @@ def confirming_backend():
     from oscmix_desk import backend as backend_mod
     _RecordingBackend.traits = backend_mod.OSCMIX
     return _RecordingBackend(reports=_echo_within_traits)
+
+
+def device_key(path):
+    """The device key the code under test derives for this config.
+
+    From the same resolution the code uses, against the /proc the suite
+    points it at (ADR 0024) -- not against the machine's own card list.
+    """
+    import os
+    from pathlib import Path
+
+    from oscmix_desk.discovery import resolve_device
+    from oscmix_desk.profiles import load_config
+
+    config = load_config(path)
+    return resolve_device(config.usb_id, config.device_name, config.serial,
+                          Path(os.environ["OSCMIX_PROC_ROOT"])).key
+
+
+@pytest.fixture
+def session_module():
+    from oscmix_desk import session
+
+    return session
+
+
+@pytest.fixture
+def lifecycle(session_module, monkeypatch):
+    """run_session with every outside interaction replaced.
+
+    Returns a helper that records the readiness notifications sent, so a
+    test can assert not only *that* READY was sent but how often.
+    """
+    from session_doubles import (
+        FakeChild,
+        RunningChild,
+        TimeoutExpired,
+        make_args,
+    )
+
+    notifications = []
+    children = []
+
+    def run(*, seq_client=42, usb_present=True, binaries=True,
+            returncode=0, stop_requested=False, routes=(), port_ready=True,
+            alive=False, config_fields=None, lock_unavailable=False,
+            ambiguous=False, session_running=False, backend_unreachable=False,
+            **args):
+        config_fields = config_fields or {}
+        monkeypatch.setattr(session_module, "sd_notify", notifications.append)
+        def wait(usb_id, device_name, serial, timeout, proc_root):
+            from oscmix_desk.discovery import Device, resolve_device
+            from oscmix_desk.errors import DeviceAmbiguous
+
+            if ambiguous:
+                raise DeviceAmbiguous("2 interfaces match 'Fireface UCX II'")
+            if seq_client is None:
+                return None
+            # The client is the fixture's; the serial is what the /proc
+            # the test points at shows for it, through the real resolution.
+            found = resolve_device(usb_id, device_name, serial, proc_root)
+            return Device(usb_id=usb_id, serial=found.serial, client=seq_client)
+
+        monkeypatch.setattr(session_module, "wait_for_device", wait)
+        monkeypatch.setattr(session_module, "usb_device_present",
+                            lambda *a, **k: usb_present)
+        monkeypatch.setattr(session_module, "resolve_binary",
+                            lambda *a, **k: "/bin/true" if binaries else None)
+        monkeypatch.setattr(session_module, "_cleanup_stale_backend",
+                            lambda *a, **k: 39000 if session_running else None)
+        monkeypatch.setattr(session_module, "_install_stop_handlers",
+                            lambda *a, **k: None)
+        # True: the port came up. False is the backend that lives but
+        # never binds, which since 0.6.6 fails the start (ADR 0021).
+        monkeypatch.setattr(session_module, "_await_backend_port",
+                            lambda *a, **k: port_ready)
+        def apply(*a, **k):
+            if lock_unavailable:
+                from oscmix_desk.errors import DeviceLockUnavailable
+                raise DeviceLockUnavailable("2a39:3fd9")
+            if backend_unreachable:
+                raise OSError(101, "Network is unreachable")
+
+        monkeypatch.setattr(session_module, "_apply_and_verify", apply)
+        def spawn(*a, **k):
+            child = RunningChild() if alive else FakeChild(returncode)
+            children.append(child)
+            return child
+
+        monkeypatch.setattr(session_module, "subprocess",
+                            type("S", (), {"Popen": staticmethod(spawn),
+                                           "TimeoutExpired": TimeoutExpired})())
+
+        def fake_supervise(child, stop, on_reload=None,
+                           reload_requested=None):
+            # Signature mirrors the real one, keywords included: a double
+            # that accepts **kwargs would have swallowed the reconcile
+            # trigger silently instead of failing here.
+            stop["stop"] = stop_requested
+            return returncode
+
+        monkeypatch.setattr(session_module, "supervise", fake_supervise)
+
+        from oscmix_desk import Config
+        config = Config(routes=list(routes), **config_fields)
+        run.config = config
+        return session_module.run_session(make_args(**args), config)
+
+    run.notifications = notifications
+    run.children = children
+    run.config = None
+    return run
