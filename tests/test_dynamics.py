@@ -18,6 +18,7 @@ import json
 import pytest
 from conftest import repo_file
 
+from oscmix_desk import dump
 from oscmix_desk.config import load_config
 from oscmix_desk.devices import UCX2
 from oscmix_desk.registers import (
@@ -193,14 +194,13 @@ def test_a_value_outside_the_bounds_is_refused(tmp_path, line, why):
 def test_the_dump_round_trips_a_pinned_dynamics_section(tmp_path):
     """Point 3 of the bar. Dynamics is REMEMBER, so a dump writes it as
     a comment; pinning it in `[pin]` is what puts it back in the file."""
-    from oscmix_desk import reconcile
 
     seen = {"/input/3/dynamics": (1,),
             "/input/3/dynamics/compthres": (-18.0,),
             "/input/3/dynamics/attack": (5,)}
     config = load_config(write(tmp_path, ""))
-    config.channels.extend(reconcile.channels_from_observed(seen, UCX2))
-    text = reconcile.render_config(config, UCX2)
+    config.channels.extend(dump.channels_from_observed(seen, UCX2))
+    text = dump.render_config(config, UCX2)
     assert "[dynamics:input:3]" in text
     assert "# compthres = -18.0" in text
     assert "# enabled = true" in text

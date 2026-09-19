@@ -19,7 +19,7 @@ state). The shapes still come from the device; only the numbers are ours.
 
 import pytest
 
-from oscmix_desk import reconcile
+from oscmix_desk import dump
 from oscmix_desk.config import load_config
 from oscmix_desk.devices import device_for_name
 from oscmix_desk.model import Config
@@ -78,9 +78,9 @@ def seen():
 def dumped(seen, device=UCX2):
     """`seen` as the file `--dump-config` would print."""
     config = Config(device_name="Fireface UCX II",
-                    channels=list(reconcile.channels_from_observed(seen, device)),
-                    globals=list(reconcile.globals_from_observed(seen, device)))
-    return reconcile.render_config(config, device)
+                    channels=list(dump.channels_from_observed(seen, device)),
+                    globals=list(dump.globals_from_observed(seen, device)))
+    return dump.render_config(config, device)
 
 
 # --------------------------------------------------------------------------
@@ -89,7 +89,7 @@ def dumped(seen, device=UCX2):
 
 def test_every_settable_global_register_is_recovered(seen):
     """The gap this closes: 42 registers reported, none of them written."""
-    recovered = reconcile.globals_from_observed(seen, UCX2)
+    recovered = dump.globals_from_observed(seen, UCX2)
     expected = {register.template
                 for family in global_families(UCX2)
                 for register in settable_globals(UCX2, family).values()}
@@ -104,7 +104,7 @@ def test_a_nested_option_is_recovered_under_its_sub_family(seen):
     in. Flattened, it would land in `[input:3]` and the file would set a
     register that section has no option for.
     """
-    recovered = reconcile.channels_from_observed(seen, UCX2)
+    recovered = dump.channels_from_observed(seen, UCX2)
     keys = {s.option for s in recovered if s.family == "input" and s.channel == 3}
     assert "eq/band1gain" in keys
 
@@ -151,7 +151,7 @@ def test_every_setting_survives_a_dump_and_a_reload(seen, tmp_path):
     `mainout = -1` and `wckout = true` coming back as `1`.
     """
     first = dumped(seen)
-    second = reconcile.render_config(reloaded(first, tmp_path), UCX2)
+    second = dump.render_config(reloaded(first, tmp_path), UCX2)
     assert settings_in(second) == settings_in(first)
 
 
@@ -166,8 +166,8 @@ def test_the_dump_is_a_fixed_point_from_the_second_render(seen, tmp_path):
     which is the property that matters for a config under version
     control.
     """
-    second = reconcile.render_config(reloaded(dumped(seen), tmp_path), UCX2)
-    third = reconcile.render_config(reloaded(second, tmp_path), UCX2)
+    second = dump.render_config(reloaded(dumped(seen), tmp_path), UCX2)
+    third = dump.render_config(reloaded(second, tmp_path), UCX2)
     assert third == second
 
 
@@ -241,7 +241,7 @@ def test_an_empty_section_is_not_invented(seen):
 def test_without_a_model_there_are_no_globals(seen):
     """Nothing to reconstruct from: the register table is the only thing
     that says which paths are global."""
-    assert reconcile.globals_from_observed(seen, None) == ()
+    assert dump.globals_from_observed(seen, None) == ()
 
 
 # --------------------------------------------------------------------------
@@ -286,7 +286,7 @@ def test_a_dump_keeps_every_row_of_a_multi_row_option(seen):
     Caught against the hardware rather than here, which is why this test
     exists.
     """
-    settings = reconcile.channels_from_observed(seen, UCX2)
+    settings = dump.channels_from_observed(seen, UCX2)
     gains = sorted(s.channel for s in settings
                    if s.family == "input" and s.option == "gain")
     assert gains == [1, 3], (

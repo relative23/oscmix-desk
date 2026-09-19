@@ -93,7 +93,8 @@ acyclic graph.
 | `notices` | what there is to say about a desk before it is written or shown |
 | `discovery` | find the device and resolve which interface a desk is for: serial, sequencer client and lock key from one answer; USB presence; whether a UDP port is bound |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
-| `reconcile` | `desired` / `observed` / `plan`, and rendering a `Config` back to text |
+| `reconcile` | `desired` / `observed` / `plan`: what should be written, in what order, and why |
+| `dump` | the other direction: what the device reports, recovered as routes and settings and rendered as a `routing.conf` |
 | `backend` | the one place that opens a socket to the device; its `Traits` name the upstream behaviour the timing constants work around |
 | `routing` | send a plan in two phases, with the link barrier between them |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |

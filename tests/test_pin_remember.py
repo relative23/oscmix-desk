@@ -271,8 +271,8 @@ def test_a_dump_emits_pinned_options_and_comments_out_remembered_ones():
     answer comes from the same column rather than from a rule inside the
     writer.
     """
+    from oscmix_desk.dump import render_config
     from oscmix_desk.model import ChannelSetting, Config
-    from oscmix_desk.reconcile import render_config
 
     config = Config(device_name="Fireface UCX II", channels=[
         ChannelSetting("output", 5, "volume", -12.0),    # remembered
@@ -295,8 +295,8 @@ def test_a_dumped_remembered_value_is_still_shown():
     Omitting remembered options would make a channel with a hand-set
     fader look like a channel with no state at all.
     """
+    from oscmix_desk.dump import render_config
     from oscmix_desk.model import ChannelSetting, Config
-    from oscmix_desk.reconcile import render_config
 
     text = render_config(Config(device_name="Fireface UCX II", channels=[
         ChannelSetting("output", 5, "volume", -12.0)]), UCX2)
@@ -312,8 +312,8 @@ def test_a_dumped_config_round_trips_through_the_parser(tmp_path):
     file that fails at the next boot -- and the person finds out then.
     """
     from oscmix_desk.config import load_config
+    from oscmix_desk.dump import render_config
     from oscmix_desk.model import ChannelSetting, Config
-    from oscmix_desk.reconcile import render_config
 
     config = Config(device_name="Fireface UCX II", channels=[
         ChannelSetting("output", 5, "volume", -12.0),
@@ -382,7 +382,7 @@ def test_channel_state_is_reconstructed_from_a_dump():
     has produced that shape. So the reconstruction is asserted from the
     reported registers, not from a hand-built Config.
     """
-    from oscmix_desk.reconcile import channels_from_observed
+    from oscmix_desk.dump import channels_from_observed
 
     seen = {
         "/output/5/volume": (-12.0,),
@@ -405,7 +405,7 @@ def test_channel_state_is_reconstructed_from_a_dump():
 def test_only_settable_options_are_reconstructed():
     # A dump that invented options would produce a file the parser
     # rejects -- and the person finds out at the next boot.
-    from oscmix_desk.reconcile import channels_from_observed
+    from oscmix_desk.dump import channels_from_observed
 
     seen = {"/output/5/name": ("Monitors",), "/input/1/48v": (1,),
             "/output/5/volume": (-3.0,)}

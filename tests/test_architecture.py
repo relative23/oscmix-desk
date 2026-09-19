@@ -86,9 +86,9 @@ ALLOWED_IMPORTS = {
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
-    "cli": {"backend", "config", "constants", "devices", "discovery", "errors",
-            "log", "model", "notices", "outcome", "paths", "pipewire",
-            "process", "profiles", "reconcile", "session"},
+    "cli": {"backend", "config", "constants", "devices", "discovery", "dump",
+            "errors", "log", "model", "notices", "outcome", "paths",
+            "pipewire", "process", "profiles", "reconcile", "session"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
@@ -138,6 +138,10 @@ ALLOWED_IMPORTS = {
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.
     "reconcile": {"constants", "devices", "model", "registers"},
+    # The other direction, split out of reconcile in 0.7.0: what the device
+    # reports, as a config and as its text. As pure as the reconciler,
+    # whose message shapes and policy it reads.
+    "dump": {"constants", "model", "reconcile", "registers"},
     "__init__": {"config", "constants", "discovery", "errors", "launcher",
                  "locking", "log", "marker", "model", "notify", "osc",
                  "outcome", "paths", "pipewire", "process", "profiles",

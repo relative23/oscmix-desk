@@ -30,6 +30,12 @@ from .constants import (
 )
 from .devices import device_for_name
 from .discovery import device_firmware, resolve_device
+from .dump import (
+    channels_from_observed,
+    globals_from_observed,
+    render_config,
+    routes_from_observed,
+)
 from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
 from .log import log
 from .model import Config
@@ -57,13 +63,9 @@ from .reconcile import (
     PHASE_MIX,
     REWRITE,
     Write,
-    channels_from_observed,
     desired,
-    globals_from_observed,
     observed,
     plan,
-    render_config,
-    routes_from_observed,
 )
 from .session import run_session
 

@@ -1622,7 +1622,7 @@ def test_a_profile_that_names_another_machine_is_told_what_0_7_0_does(
 
 
 def test_a_dumped_config_makes_a_profile_nobody_is_warned_about(tmp_path):
-    from oscmix_desk.reconcile import render_config
+    from oscmix_desk.dump import render_config
 
     path = write_config(tmp_path / "routing.conf", GOOD)
     dumped = render_config(profiles.load_config(path))
