@@ -72,6 +72,7 @@ from .registers import (
     REESTABLISHED,
     VERIFIABLE,
     Device,
+    Policy,
     Register,
     option_register,
     register_policy,
@@ -492,8 +493,8 @@ def matches(tags: str, want: Args, got: Args,
 
 
 def policy_for(path: str, device: Optional[Device] = None,
-               overrides: Optional[Mapping[Tuple[str, str], str]] = None
-               ) -> str:
+               overrides: Optional[Mapping[Tuple[str, str], Policy]] = None
+               ) -> Policy:
     """PIN or REMEMBER for a path, config override beating the table.
 
     Pure, and here rather than in ``registers`` because the override

@@ -23,7 +23,7 @@ from .constants import (
 from .devices import device_for_name
 from .errors import ConfigError
 from .model import Config, Machine, Route
-from .registers import POLICIES, global_families, settable_options
+from .registers import POLICIES, Policy, global_families, settable_options
 from .sections import (
     _is_nested_section,
     _parse_bool,
@@ -124,7 +124,7 @@ def _parse_pin(parser: "configparser.ConfigParser", section: str,
             raise ConfigError(
                 "[pin] %s: %s has no settable option %r (valid: %s)"
                 % (key, family, option, ", ".join(sorted(known)) or "none"))
-        config.policies[(family, option)] = raw
+        config.policies[(family, option)] = Policy(raw)
 
 
 def _check_options(section: str, kind: str, options: Sequence[str]) -> None:

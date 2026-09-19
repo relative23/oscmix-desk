@@ -17,7 +17,7 @@ from .constants import (
     DEFAULT_OSC_RECV_PORT,
     DEFAULT_USB_ID,
 )
-from .registers import ENABLE_OPTION
+from .registers import ENABLE_OPTION, Policy
 
 #: What a channel or global setting may hold once it is parsed: a switch,
 #: a number, or an enum's name as the device spells it.
@@ -164,7 +164,7 @@ class Config:
     globals: List[GlobalSetting] = field(default_factory=list)
     #: ``(family, option) -> "pin" | "remember"`` from a ``[pin]``
     #: section, overriding the register table's default for that option.
-    policies: Dict[Tuple[str, str], str] = field(default_factory=dict)
+    policies: Dict[Tuple[str, str], Policy] = field(default_factory=dict)
     #: The machine settings as the *file* resolved them, set by
     #: ``load_config`` and never changed. The five attributes above can be
     #: replaced afterwards -- by ``--device`` and ``--osc-port``, by the

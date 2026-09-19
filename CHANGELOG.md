@@ -62,11 +62,14 @@ behaviour: modules a person can read.
   `Register`. With the real types mypy asked two questions the ignores
   had answered for it -- whether the device can be `None` where its
   channels and its name are read -- and both now say so in the code.
-- **A phase and a write reason are enums.** `reconcile.Phase` (an
-  `IntEnum`, so its order is still the order of an apply) and
-  `reconcile.WriteReason`; `PHASE_LINK`, `MISSING` and the rest are the
-  same objects under their old names, and compare as the numbers and
-  strings they were. `--diff` prints a reason by its `.value`, because
+- **The closed sets are enums.** `reconcile.Phase` (an `IntEnum`, so
+  its order is still the order of an apply) and `reconcile.WriteReason`;
+  `registers.VerifyClass`, `Policy` and `Domain`, which every row of the
+  register table is now held to -- a misspelt class used to be a row no
+  code branched on, never verified and never failing. `PHASE_LINK`,
+  `MISSING`, `PIN`, `VERIFIABLE` and the rest are the same objects under
+  their old names, and compare, hash and join as the numbers and strings
+  they were; a `[pin]` line becomes a `Policy` where it is parsed. `--diff` prints a reason by its `.value`, because
   what `str()` makes of a string enum differs between the Python
   versions this runs on (first outside review).
 - **The wait for the link echo answers with a name.** `await_link_echo`

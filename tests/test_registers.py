@@ -455,3 +455,29 @@ def test_the_gain_rows_together_cover_what_the_device_reports():
     for register in rows:
         covered |= set(UCX2.channels_for(register.channels))
     assert covered == set(UCX2.channels_for("input-gain"))
+
+
+def test_every_row_carries_members_of_the_closed_sets():
+    """Verification class, policy and domain are enums since 0.7.0. They
+    were strings, and a row that misspelt one was a row with a class no
+    code branched on: nothing failed, the register was just never
+    verified, pinned or validated. Every row of every device is held to
+    the members here, and the old names are those members."""
+    for device in devices.DEVICES:
+        for register in device.registers:
+            assert isinstance(register.verify, registers.VerifyClass), register
+            assert isinstance(register.policy, registers.Policy), register
+            assert register.domain is None \
+                or isinstance(register.domain, registers.Domain), register
+    assert tuple(registers.VerifyClass) == registers.VERIFY_CLASSES
+    assert registers.POLICIES == (registers.PIN, registers.REMEMBER)
+    assert tuple(registers.Domain) \
+        == (registers.BOOL, registers.ENUM, registers.NUMBER)
+    # They compare, hash and join as the strings they were ...
+    assert registers.PIN == "pin"
+    assert {registers.VERIFIABLE: 1}["verifiable"] == 1
+    assert " or ".join(sorted(registers.POLICIES)) == "pin or remember"
+    # ... and print as them only by `.value`, on every Python this runs on.
+    assert registers.REESTABLISHED.value == "re-established"
+    with pytest.raises(ValueError, match="'pinned' is not a valid Policy"):
+        registers.Policy("pinned")

@@ -18,6 +18,7 @@ questions.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Dict, Mapping, Optional, Sequence, Set, Tuple
 
 # --------------------------------------------------------------------------
@@ -29,20 +30,29 @@ from typing import Dict, Mapping, Optional, Sequence, Set, Tuple
 # prose, which was fine for six registers and not for sixty.
 # --------------------------------------------------------------------------
 
-#: Reported by the dump, so a value is confirmed, mismatched or missing.
-VERIFIABLE = "verifiable"
+class VerifyClass(str, Enum):
+    """How a register can be checked. A closed set since it was named;
+    an enum since 0.7.0, like the two below (first outside review). All
+    three compare as the strings they were, and are printed by ``.value``:
+    what ``str()`` makes of a string enum differs between Python versions.
+    """
 
-#: Accepted by the device, never reported back. The verifier must say
-#: *unverifiable*, never *confirmed* -- `/input/*/name`, `/output/*/name`,
-#: `/output/*/loopback`, all confirmed absent from a full dump.
-WRITE_ONLY = "write-only"
+    #: Reported by the dump, so a value is confirmed, mismatched or missing.
+    VERIFIABLE = "verifiable"
+    #: Accepted by the device, never reported back. The verifier must say
+    #: *unverifiable*, never *confirmed* -- `/input/*/name`,
+    #: `/output/*/name`, `/output/*/loopback`, all confirmed absent from a
+    #: full dump.
+    WRITE_ONLY = "write-only"
+    #: Unverifiable *and* dependent on link state, so it is rewritten from
+    #: a known-good state rather than checked. The playback mix matrix is
+    #: the only member: a `/mix` write draws no reply and the dump omits it.
+    REESTABLISHED = "re-established"
 
-#: Unverifiable *and* dependent on link state, so it is rewritten from a
-#: known-good state rather than checked. The playback mix matrix is the
-#: only member: a `/mix` write draws no reply and the dump omits it.
-REESTABLISHED = "re-established"
 
-VERIFY_CLASSES = (VERIFIABLE, WRITE_ONLY, REESTABLISHED)
+VERIFIABLE, WRITE_ONLY = VerifyClass.VERIFIABLE, VerifyClass.WRITE_ONLY
+REESTABLISHED = VerifyClass.REESTABLISHED
+VERIFY_CLASSES: Tuple[VerifyClass, ...] = tuple(VerifyClass)
 
 
 # --------------------------------------------------------------------------
@@ -72,21 +82,32 @@ VERIFY_CLASSES = (VERIFIABLE, WRITE_ONLY, REESTABLISHED)
 # and by the ordinary start-up apply rather than by the verifier. The
 # cut-off was the shape of the timing, not anybody's decision.
 
-#: The config wins. A device value that disagrees is a mismatch: the
-#: read-back re-sends it, and so does any later reconcile.
-PIN = "pin"
+class Policy(str, Enum):
+    """Who wins after the initial write."""
 
-#: The device wins after the initial write. The config value is applied
-#: at start and then let go -- a later disagreement is the user having
-#: turned something, which is information, not a fault.
-REMEMBER = "remember"
+    #: The config wins. A device value that disagrees is a mismatch: the
+    #: read-back re-sends it, and so does any later reconcile.
+    PIN = "pin"
+    #: The device wins after the initial write. The config value is
+    #: applied at start and then let go -- a later disagreement is the
+    #: user having turned something, which is information, not a fault.
+    REMEMBER = "remember"
 
-POLICIES = (PIN, REMEMBER)
+
+PIN, REMEMBER = Policy.PIN, Policy.REMEMBER
+POLICIES: Tuple[Policy, ...] = tuple(Policy)
 
 
-#: Value domains, as a config author has to satisfy them.
-BOOL = "bool"
-ENUM = "enum"
+class Domain(str, Enum):
+    """Value domains, as a config author has to satisfy them."""
+
+    BOOL = "bool"
+    ENUM = "enum"
+    #: A quantity with a declared range and unit; see ``NUMBER`` below.
+    NUMBER = "number"
+
+
+BOOL, ENUM = Domain.BOOL, Domain.ENUM
 #: The capability a register names when it has no channel dimension at
 #: all -- `/echo/delay`, `/clock/source`, `/controlroom/dim`. There are
 #: 42 of these on a UCX II across five families, and they are the half
@@ -109,7 +130,7 @@ GLOBAL = "global"
 #: accepts, and that is worse than accepting one it does not: the first
 #: is a config that will not load, the second is an error the device
 #: reports.
-NUMBER = "number"
+NUMBER = Domain.NUMBER
 
 
 @dataclass(frozen=True)
@@ -124,12 +145,12 @@ class Register:
 
     template: str
     tags: str
-    verify: str
+    verify: VerifyClass
     channels: str
     #: What a config may set it to, or None when this project does not
     #: expose it as a setting. A register with no domain is readable and
     #: writable by the code, not by a `routing.conf`.
-    domain: Optional[str] = None
+    domain: Optional[Domain] = None
     #: For ENUM: the accepted names, exactly as the device reports them.
     #: Taken from upstream's device table, which is where the device's
     #: own vocabulary lives -- inventing synonyms here would mean a
@@ -160,7 +181,7 @@ class Register:
     #: the cable that is plugged in, and a wrong value there is a real
     #: signal problem rather than a matter of taste. REMEMBER belongs to
     #: everything a person reaches for during a session.
-    policy: str = REMEMBER
+    policy: Policy = REMEMBER
 
     @property
     def per_channel(self) -> bool:
@@ -208,7 +229,7 @@ class Device:
         return channel in self.channels_for(capability)
 
 
-def register_policy(device: Optional[Device], path: str) -> str:
+def register_policy(device: Optional[Device], path: str) -> Policy:
     """PIN or REMEMBER for a concrete path, from the register table.
 
     REMEMBER for anything the model does not know, matching the field
@@ -223,7 +244,8 @@ def register_policy(device: Optional[Device], path: str) -> str:
     return REMEMBER
 
 
-def verify_class(device: Optional[Device], path: str) -> Optional[str]:
+def verify_class(device: Optional[Device],
+                 path: str) -> Optional[VerifyClass]:
     """How a concrete OSC path verifies, or None when nothing is known.
 
     Concrete paths, not templates: the caller has a path off the wire.
