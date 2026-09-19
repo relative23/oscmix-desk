@@ -1,5 +1,7 @@
 """UDP port detection via /proc/net/udp (no ss/netstat dependency)."""
 
+from oscmix_desk import discovery, process
+
 # Real /proc/net/udp format; 0x1C36 == 7222.
 UDP_WITH_OSCMIX = """\
   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
@@ -30,23 +32,23 @@ def make_proc(tmp_path, udp=None, udp6=None):
 
 def test_detects_listening_port(session_mod, tmp_path):
     proc = make_proc(tmp_path, udp=UDP_WITH_OSCMIX)
-    assert session_mod.udp_port_listening(7222, proc) is True
+    assert discovery.udp_port_listening(7222, proc) is True
 
 
 def test_ignores_other_ports(session_mod, tmp_path):
     proc = make_proc(tmp_path, udp=UDP_WITHOUT_OSCMIX)
-    assert session_mod.udp_port_listening(7222, proc) is False
+    assert discovery.udp_port_listening(7222, proc) is False
 
 
 def test_detects_ipv6_socket(session_mod, tmp_path):
     proc = make_proc(tmp_path, udp=UDP_WITHOUT_OSCMIX, udp6=UDP6_WITH_OSCMIX)
-    assert session_mod.udp_port_listening(7222, proc) is True
+    assert discovery.udp_port_listening(7222, proc) is True
 
 
 def test_missing_proc_files(session_mod, tmp_path):
     proc = tmp_path / "proc"
     proc.mkdir()
-    assert session_mod.udp_port_listening(7222, proc) is False
+    assert discovery.udp_port_listening(7222, proc) is False
 
 
 def test_find_stale_backends_matches_only_oscmix(session_mod, tmp_path):
@@ -60,7 +62,7 @@ def test_find_stale_backends_matches_only_oscmix(session_mod, tmp_path):
         (entry / "cmdline").write_bytes(argv0 + b"\x00")
     (proc / "self").mkdir()  # non-numeric entries are skipped
     (proc / "105").mkdir()   # missing cmdline is skipped
-    assert session_mod.find_stale_backends(proc) == [101, 103]
+    assert process.find_stale_backends(proc) == [101, 103]
 
 
 def test_find_stale_backends_skips_unreadable_entries(session_mod, tmp_path):
@@ -82,7 +84,7 @@ def test_find_stale_backends_skips_unreadable_entries(session_mod, tmp_path):
 
     process.Path.stat = failing_stat
     try:
-        assert session_mod.find_stale_backends(proc) == []
+        assert process.find_stale_backends(proc) == []
     finally:
         process.Path.stat = real_stat
 
@@ -91,7 +93,7 @@ def test_wait_for_device_returns_the_resolved_interface(session_mod, tmp_path):
     from support import fake_proc
 
     proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
-    found = session_mod.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
+    found = discovery.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
                                         1.0, proc)
     assert (found.client, found.serial) == (24, "24216011")
 
@@ -105,14 +107,14 @@ def test_wait_for_device_gives_up_and_says_so(session_mod, tmp_path):
 
     proc = fake_proc(tmp_path / "proc")
     started = time.monotonic()
-    assert session_mod.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
+    assert discovery.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
                                        0.5, proc) is None
     assert time.monotonic() - started >= 0.4
 
 
 def test_wait_for_device_tolerates_a_missing_proc_file(session_mod, tmp_path):
     # snd_seq not loaded yet: the file simply is not there.
-    assert session_mod.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
+    assert discovery.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
                                        0.3, tmp_path / "nothing") is None
 
 

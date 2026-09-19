@@ -6,6 +6,8 @@ import threading
 import oracle
 from support import free_udp_port, repo_file
 
+from oscmix_desk import osc, verify
+
 
 def make_route(session_mod, **kwargs):
     defaults = dict(name="monitors", playback=(1, 2), output=(5, 6),
@@ -26,7 +28,7 @@ def test_prompt_reporting_hint(session_mod):
     # The playback mix matrix is not dumped at all, and the /playback/*
     # section streams so late in the multi-second dump that it cannot be
     # awaited. The audible /output/* path arrives early.
-    prompt = session_mod.register_promptly_reported
+    prompt = verify.register_promptly_reported
     assert prompt("/mix/5/playback/1") is False
     # Reported, and promptly: it is in the recording, at 0.0 s. This
     # line asserted False for two releases and is why the rule drifted
@@ -90,7 +92,7 @@ def run_verify(session_mod, registers, state, timeout=3.0):
 def test_verify_confirms_matching_state(session_mod):
     route = make_route(session_mod)
     registers = session_mod.expected_registers(session_mod.Config(routes=[route]))
-    state = [session_mod.encode_osc(path, types, *args)
+    state = [osc.encode_osc(path, types, *args)
              for path, types, args in oracle.route_messages(route)]
     result = run_verify(session_mod, registers, state)
     # Every register was replayed verbatim -- including the ones the
@@ -107,9 +109,9 @@ def test_verify_classifies_wrong_value_as_mismatch(session_mod):
     for path, types, args in oracle.route_messages(route):
         if path == "/output/5/volume":
             # Corrupt the register: -20 dB instead of 0 dB.
-            state.append(session_mod.encode_osc(path, "f", -20.0))
+            state.append(osc.encode_osc(path, "f", -20.0))
         else:
-            state.append(session_mod.encode_osc(path, types, *args))
+            state.append(osc.encode_osc(path, types, *args))
     result = run_verify(session_mod, registers, state, timeout=0.5)
     assert result.mismatched == ["/output/5/volume"]
     assert result.unobserved == []
@@ -118,7 +120,7 @@ def test_verify_classifies_wrong_value_as_mismatch(session_mod):
 def test_verify_classifies_missing_register_as_unobserved(session_mod):
     route = make_route(session_mod)
     registers = session_mod.expected_registers(session_mod.Config(routes=[route]))
-    state = [session_mod.encode_osc(path, types, *args)
+    state = [osc.encode_osc(path, types, *args)
              for path, types, args in oracle.route_messages(route)
              if path != "/mix/5/playback/1"]
     result = run_verify(session_mod, registers, state, timeout=0.5)
@@ -131,7 +133,7 @@ def test_hint_excluded_register_is_still_compared_when_reported(session_mod):
     # matrix, a wrong value must surface as a mismatch even though the
     # hint says the register is not promptly reported.
     registers = {"/mix/5/playback/1": ("fi", (0.0, 0))}
-    state = [session_mod.encode_osc("/mix/5/playback/1", "fi", -30.0, 0)]
+    state = [osc.encode_osc("/mix/5/playback/1", "fi", -30.0, 0)]
     result = run_verify(session_mod, registers, state, timeout=0.5)
     assert result.mismatched == ["/mix/5/playback/1"]
 
@@ -140,8 +142,8 @@ def test_later_matching_report_overrides_mismatch(session_mod):
     # During settling the device may first echo a stale value; a later
     # matching report must win.
     registers = {"/output/5/volume": ("f", (0.0,))}
-    state = [session_mod.encode_osc("/output/5/volume", "f", -20.0),
-             session_mod.encode_osc("/output/5/volume", "f", 0.0)]
+    state = [osc.encode_osc("/output/5/volume", "f", -20.0),
+             osc.encode_osc("/output/5/volume", "f", 0.0)]
     result = run_verify(session_mod, registers, state)
     assert result.confirmed == ["/output/5/volume"]
     assert result.mismatched == []
@@ -168,9 +170,9 @@ def test_a_mismatch_keeps_the_window_open(session_mod):
     # return the first, stale answer.
     registers = {"/output/5/volume": ("f", (0.0,)),
                  "/output/5/stereo": ("i", (1,))}
-    state = [session_mod.encode_osc("/output/5/volume", "f", -20.0),
-             session_mod.encode_osc("/output/5/stereo", "i", 1),
-             session_mod.encode_osc("/output/5/volume", "f", 0.0)]
+    state = [osc.encode_osc("/output/5/volume", "f", -20.0),
+             osc.encode_osc("/output/5/stereo", "i", 1),
+             osc.encode_osc("/output/5/volume", "f", 0.0)]
     result = run_verify(session_mod, registers, state)
     assert result.mismatched == []
     assert sorted(result.confirmed) == ["/output/5/stereo",
@@ -184,7 +186,7 @@ def test_exiting_early_needs_every_prompt_register_not_merely_some(session_mod):
     registers = {"/output/5/volume": ("f", (0.0,)),
                  "/output/6/volume": ("f", (0.0,)),
                  "/output/5/stereo": ("i", (1,))}
-    state = [session_mod.encode_osc(path, types, *args)
+    state = [osc.encode_osc(path, types, *args)
              for path, (types, args) in registers.items()]
     result = run_verify(session_mod, registers, state)
     assert result.unobserved == []
@@ -196,9 +198,9 @@ def test_registers_outside_the_expectation_are_ignored(session_mod):
     # guard is `expected is None or path in confirmed`; with `and` an
     # unexpected path would fall through into the comparison.
     registers = {"/output/5/volume": ("f", (0.0,))}
-    state = [session_mod.encode_osc("/input/3/gain", "f", 12.0),
-             session_mod.encode_osc("/hardware/ccmix", "i", 0),
-             session_mod.encode_osc("/output/5/volume", "f", 0.0)]
+    state = [osc.encode_osc("/input/3/gain", "f", 12.0),
+             osc.encode_osc("/hardware/ccmix", "i", 0),
+             osc.encode_osc("/output/5/volume", "f", 0.0)]
     result = run_verify(session_mod, registers, state)
     assert result.confirmed == ["/output/5/volume"]
     assert result.mismatched == []
@@ -209,7 +211,7 @@ def test_a_corrupt_message_does_not_end_the_dump(session_mod):
     # datagram in a multi-thousand-message dump must not abandon the rest.
     registers = {"/output/5/volume": ("f", (0.0,))}
     state = [b"\x01\x02\x03",                      # no NUL: undecodable
-             session_mod.encode_osc("/output/5/volume", "f", 0.0)]
+             osc.encode_osc("/output/5/volume", "f", 0.0)]
     result = run_verify(session_mod, registers, state)
     assert result.confirmed == ["/output/5/volume"]
 
@@ -219,7 +221,7 @@ def test_observer_receives_the_path_and_its_arguments(session_mod):
     # caller handed None for either would never fire it.
     seen = []
     registers = {"/output/5/stereo": ("i", (1,))}
-    state = [session_mod.encode_osc("/output/5/stereo", "i", 1)]
+    state = [osc.encode_osc("/output/5/stereo", "i", 1)]
     send_port, recv_port = free_udp_port(), free_udp_port()
     reflector = Reflector(send_port, recv_port, state)
     reflector.start()

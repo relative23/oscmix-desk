@@ -21,6 +21,8 @@ import time
 import oracle
 import pytest
 
+from oscmix_desk import osc
+
 ABSURD_SECONDS = 10.0        # a hang detector, not a budget
 
 
@@ -75,7 +77,7 @@ def test_encoding_routes_scales_linearly(session_mod):
         def work():
             for route in routes:
                 for path, types, args in oracle.route_messages(route):
-                    session_mod.encode_osc(path, types, *args)
+                    osc.encode_osc(path, types, *args)
         return timed(work)
 
     assert_scales_linearly(encode(50), encode(500), factor=10)
@@ -85,13 +87,13 @@ def test_decoding_a_dump_scales_linearly(session_mod):
     # A real /refresh dump is several thousand registers. Anything worse
     # than linear here turns verification into a timeout.
     def decode(count):
-        messages = [session_mod.encode_osc("/input/%d/gain" % (n % 20 + 1),
+        messages = [osc.encode_osc("/input/%d/gain" % (n % 20 + 1),
                                            "f", 0.0)
                     for n in range(count)]
 
         def work():
             for message in messages:
-                session_mod.decode_osc(message)
+                osc.decode_osc(message)
         return timed(work)
 
     assert_scales_linearly(decode(200), decode(2000), factor=10)
@@ -106,11 +108,11 @@ def test_bundle_walking_scales_linearly(session_mod):
     def walk(count):
         body = b"".join(
             struct.pack(">i", len(m)) + m
-            for m in (session_mod.encode_osc("/output/%d/level" % (n % 20 + 1),
+            for m in (osc.encode_osc("/output/%d/level" % (n % 20 + 1),
                                              "f", -20.0)
                       for n in range(count)))
         datagram = b"#bundle\x00" + b"\x00" * 8 + body
-        return timed(lambda: list(session_mod.iter_osc_messages(datagram)))
+        return timed(lambda: list(osc.iter_osc_messages(datagram)))
 
     assert_scales_linearly(walk(200), walk(2000), factor=10)
 
@@ -141,8 +143,8 @@ def test_expected_registers_scales_linearly(session_mod):
 @pytest.mark.parametrize("count", [1, 2000])
 def test_nothing_hangs_on_a_large_dump(session_mod, count):
     # The absolute bound: not a budget, a hang detector.
-    messages = [session_mod.encode_osc("/input/1/gain", "f", 0.0)] * count
+    messages = [osc.encode_osc("/input/1/gain", "f", 0.0)] * count
     started = time.perf_counter()
     for message in messages:
-        session_mod.decode_osc(message)
+        osc.decode_osc(message)
     assert time.perf_counter() - started < ABSURD_SECONDS

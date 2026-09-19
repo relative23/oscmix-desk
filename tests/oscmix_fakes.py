@@ -7,6 +7,8 @@ import time
 
 from support import osc_bundle
 
+from oscmix_desk import osc
+
 
 def make_route(session_mod, **kwargs):
     defaults = dict(name="monitors", playback=(1, 2), output=(5, 6),
@@ -63,9 +65,9 @@ class DumpingOscmix(threading.Thread):
                 continue          # keep listening past the verify window
             except OSError:
                 return
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _tags, _args = self.session_mod.decode_osc(message)
+                    path, _tags, _args = osc.decode_osc(message)
                 except ValueError:
                     continue
                 self.order.append(path)

@@ -85,23 +85,17 @@ def pw_dump_objects(dump_text: Optional[str] = None
     return [obj for obj in objects if isinstance(obj, dict)]
 
 
-def pw_sink_info(device_name: str, target: Optional[str] = None,
-                 dump_text: Optional[str] = None
-                 ) -> Optional[Tuple[str, Optional[List[str]]]]:
-    """(node.name, channel positions) of the device's sink, via pw-dump.
-
-    With ``target`` given, look that node up; otherwise search for a sink
-    matching the configured device name (or "fireface").
-    """
-    objects = pw_dump_objects(dump_text)
-    return None if objects is None else find_sink(objects, device_name,
-                                                  target)
-
-
 def find_sink(objects: List[Dict[str, Any]], device_name: str,
               target: Optional[str] = None
               ) -> Optional[Tuple[str, Optional[List[str]]]]:
-    """pw_sink_info over objects already read."""
+    """(node.name, channel positions) of the device's sink, or None.
+
+    With ``target`` given, look that node up; otherwise search for a sink
+    matching the configured device name (or "fireface"). Over objects
+    already read, so that a caller can tell "pw-dump could not be read"
+    from "no such sink" -- which is why the wrapper that did both in one
+    call had no caller left, and went in 0.7.0.
+    """
     needle = device_name.lower()
     for obj in objects:
         # `info` is null for an object pw-dump saw go away (its monitor

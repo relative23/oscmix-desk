@@ -10,6 +10,8 @@ import oracle
 from oscmix_fakes import make_route
 from support import free_udp_port, repo_file
 
+from oscmix_desk import osc
+
 
 class CapturingBackend(threading.Thread):
     """A socket that only records, in arrival order, what reaches it.
@@ -45,9 +47,9 @@ class CapturingBackend(threading.Thread):
                 continue
             except OSError:
                 return
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    self.received.append(self.session_mod.decode_osc(message))
+                    self.received.append(osc.decode_osc(message))
                 except ValueError:
                     continue
 

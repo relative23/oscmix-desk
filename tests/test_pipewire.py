@@ -4,29 +4,38 @@ import json
 
 import pytest
 
+from oscmix_desk import pipewire
+
+
+def _sink_info(device_name, target=None, dump_text=None):
+    """The two steps `--pipewire-sinks` takes, as one: read, then search."""
+    objects = pipewire.pw_dump_objects(dump_text)
+    return None if objects is None else pipewire.find_sink(objects,
+                                                          device_name, target)
+
 
 def make_config(session_mod, routes):
     return session_mod.Config(routes=tuple(routes))
 
 
 def test_position_fallback_mapping(session_mod):
-    assert session_mod.pipewire_positions((1, 2)) == ["FL", "FR"]
-    assert session_mod.pipewire_positions((5, 6)) == ["FC", "LFE"]
-    assert session_mod.pipewire_positions((7, 8)) == ["SL", "SR"]
+    assert pipewire.pipewire_positions((1, 2)) == ["FL", "FR"]
+    assert pipewire.pipewire_positions((5, 6)) == ["FC", "LFE"]
+    assert pipewire.pipewire_positions((7, 8)) == ["SL", "SR"]
 
 
 def test_position_fallback_rejects_channels_above_eight(session_mod):
     with pytest.raises(session_mod.ConfigError):
-        session_mod.pipewire_positions((9, 10))
+        pipewire.pipewire_positions((9, 10))
 
 
 def test_positions_follow_the_sink_layout_when_known(session_mod):
     # Pro-audio/Direct profile: 20 channels labeled AUX0..AUX19.
     aux = ["AUX%d" % i for i in range(20)]
-    assert session_mod.pipewire_positions((5, 6), aux) == ["AUX4", "AUX5"]
-    assert session_mod.pipewire_positions((19, 20), aux) == ["AUX18", "AUX19"]
+    assert pipewire.pipewire_positions((5, 6), aux) == ["AUX4", "AUX5"]
+    assert pipewire.pipewire_positions((19, 20), aux) == ["AUX18", "AUX19"]
     with pytest.raises(session_mod.ConfigError):
-        session_mod.pipewire_positions((21,), aux)
+        pipewire.pipewire_positions((21,), aux)
 
 
 def test_parse_positions_from_spa_json_string(pipewire_mod):
@@ -110,7 +119,7 @@ PW_DUMP = json.dumps([
 
 
 def test_sink_info_finds_fireface_with_positions(session_mod):
-    info = session_mod.pw_sink_info("Fireface UCX II", dump_text=PW_DUMP)
+    info = _sink_info("Fireface UCX II", dump_text=PW_DUMP)
     assert info == (
         "alsa_output.usb-RME_Fireface_UCX_II-00.Direct__sink",
         ["AUX0", "AUX1", "AUX2", "AUX3"],
@@ -118,24 +127,22 @@ def test_sink_info_finds_fireface_with_positions(session_mod):
 
 
 def test_sink_info_looks_up_explicit_target(session_mod):
-    info = session_mod.pw_sink_info("whatever", target="alsa_output.pci-hdmi",
+    info = _sink_info("whatever", target="alsa_output.pci-hdmi",
                                     dump_text=PW_DUMP)
     assert info == ("alsa_output.pci-hdmi", ["FL", "FR"])
 
 
 def test_sink_info_returns_none_without_match(session_mod):
-    assert session_mod.pw_sink_info(
+    assert _sink_info(
         "Babyface", dump_text=json.dumps([])) is None
-    assert session_mod.pw_sink_info("X", dump_text="not json") is None
+    assert _sink_info("X", dump_text="not json") is None
     # Not a list of objects is "could not be asked", not "no such sink":
     # the CLI words the two differently (0.6.10).
-    from oscmix_desk import pipewire
-
     for unreadable in ("", "not json", "{}", "null", "3"):
         assert pipewire.pw_dump_objects(unreadable) is None, unreadable
     assert pipewire.pw_dump_objects("[]") == []
     assert pipewire.pw_dump_objects('[1, {"id": 2}]') == [{"id": 2}]
-    assert session_mod.pw_sink_info("X", target="missing-node",
+    assert _sink_info("X", target="missing-node",
                                     dump_text=PW_DUMP) is None
 
 
@@ -199,8 +206,6 @@ def test_pw_dump_is_run_once_bounded_and_as_text(monkeypatch):
     read", never its partial output."""
     import subprocess
 
-    from oscmix_desk import pipewire
-
     seen = []
 
     def which(name):
@@ -235,8 +240,6 @@ def test_objects_without_usable_properties_are_passed_over():
     (0.6.11): pw-dump prints it for an object that went away."""
     import json
 
-    from oscmix_desk import pipewire
-
     sink = {"info": {"props": {"media.class": "Audio/Sink",
                                "node.name": "alsa_output.fireface",
                                "node.description": "Fireface UCX II"}}}
@@ -245,7 +248,7 @@ def test_objects_without_usable_properties_are_passed_over():
     assert pipewire.find_sink(odd, "Fireface UCX II") is None
     assert pipewire.find_sink([*odd, sink], "Fireface UCX II") == (
         "alsa_output.fireface", None)
-    assert pipewire.pw_sink_info("Fireface UCX II",
+    assert _sink_info("Fireface UCX II",
                                  dump_text=json.dumps([*odd, sink])) == (
         "alsa_output.fireface", None)
 
@@ -255,8 +258,6 @@ def test_the_sink_is_found_by_the_desks_name_past_what_is_not_it():
     whatever the desk is called: the name itself could be compared in the
     wrong case, and a sink that is passed over could end the search
     (survivors of `find_sink`, 0.6.11)."""
-    from oscmix_desk import pipewire
-
     def sink(name, description):
         return {"info": {"props": {"media.class": "Audio/Sink",
                                    "node.name": name,

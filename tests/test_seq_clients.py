@@ -1,5 +1,7 @@
 """Parsing /proc/asound/seq/clients (fixture captured from a real system)."""
 
+from oscmix_desk import discovery
+
 # Trimmed real output: the Fireface name also appears in port lines and
 # there is a "Midi Through" client before it -- both historic footguns.
 REAL_OUTPUT = """\
@@ -25,7 +27,7 @@ Client 144 : "PipeWire-System" [User UMP MIDI2]
 
 
 def test_parses_all_clients(session_mod):
-    clients = session_mod.parse_seq_clients(REAL_OUTPUT)
+    clients = discovery.parse_seq_clients(REAL_OUTPUT)
     assert clients == [
         (0, "System"),
         (14, "Midi Through"),
@@ -36,24 +38,24 @@ def test_parses_all_clients(session_mod):
 
 
 def test_finds_fireface_client_number(session_mod):
-    assert session_mod.select_seq_client(REAL_OUTPUT, "Fireface UCX II") == 24
+    assert discovery.select_seq_client(REAL_OUTPUT, "Fireface UCX II") == 24
 
 
 def test_port_lines_do_not_shadow_client_line(session_mod):
     # The device name appears in "Port 0/1" lines too; only the Client
     # line may match (the old grep -B1 approach picked "Midi Through").
-    result = session_mod.select_seq_client(REAL_OUTPUT, "Fireface UCX II")
+    result = discovery.select_seq_client(REAL_OUTPUT, "Fireface UCX II")
     assert result == 24
     assert result != 14
 
 
 def test_absent_device_returns_none(session_mod):
-    assert session_mod.select_seq_client(REAL_OUTPUT, "Babyface Pro") is None
+    assert discovery.select_seq_client(REAL_OUTPUT, "Babyface Pro") is None
 
 
 def test_empty_input(session_mod):
-    assert session_mod.parse_seq_clients("") == []
-    assert session_mod.select_seq_client("", "Fireface UCX II") is None
+    assert discovery.parse_seq_clients("") == []
+    assert discovery.select_seq_client("", "Fireface UCX II") is None
 
 
 def test_device_serials_read_the_product_string(tmp_path):

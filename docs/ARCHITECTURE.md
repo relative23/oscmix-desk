@@ -109,7 +109,7 @@ acyclic graph.
 | `launcher` | the desktop entry's entry point; deliberately depends on almost nothing |
 | `reads` | the three actions that read the device and write nothing: `--snapshot`, `--diff`, `--dump-config` |
 | `cli` | argument parsing, one action per invocation, and the exit-code mapping -- a switch's outcome and the unit's reload included |
-| `__init__` | the public surface, and the only module that re-exports |
+| `__init__` | the supported surface -- read a config, apply and verify it, switch profiles, the errors and outcomes, the two entry points -- and the only module that re-exports; every other module is implementation |
 
 ## The register model is data
 

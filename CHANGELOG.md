@@ -100,6 +100,18 @@ behaviour: modules a person can read.
   0.6.11 warning and `cli._override_device` are gone; `Config.loaded`
   is what the file said and `Config.overrides` what the command line
   put over it.
+- **The package root exports what is supported, and 40 names left it.**
+  `oscmix_desk.__all__` listed 78 names, most of them internals -- the
+  OSC codec, the message shapes, the sequencer search, the process scan,
+  the constants -- and every one was something a caller could come to
+  depend on (third outside review). It lists 38: reading a config,
+  applying and verifying it, switching profiles, the errors and
+  outcomes those produce, the two entry points, the three exit codes
+  and the version; `GlobalSetting` joined, since a `Config` holds them.
+  Everything else is reachable through its module as it always was
+  (`oscmix_desk.osc.encode_osc`), and is implementation. **A caller
+  that imported an internal from the root has to import it from its
+  module.** A test holds the set, so that it grows by decision.
 - **A `Config` is frozen.** The parser builds a private draft and returns
   a `Config` that is not assigned to again: its routes and settings are
   tuples, and the four places that changed one after the fact -- the

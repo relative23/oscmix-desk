@@ -17,7 +17,7 @@ from support import fake_proc, free_udp_port, osc_bundle
 from test_dump_config_cli import FakeBackend, dump_of
 from two_boxes import A, B
 
-from oscmix_desk import cli
+from oscmix_desk import cli, osc
 from oscmix_desk import reads as reads_mod
 from oscmix_desk.discovery import Device
 
@@ -68,9 +68,9 @@ class RecordingBackend(FakeBackend):
                 if self.stopping.is_set():
                     return
                 continue
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _t, _a = self.session_mod.decode_osc(message)
+                    path, _t, _a = osc.decode_osc(message)
                 except ValueError:
                     continue
                 self.received.append(path)

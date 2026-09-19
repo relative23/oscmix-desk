@@ -17,6 +17,7 @@ import pytest
 from oscmix_fakes import DumpingOscmix, make_config, make_route
 from support import free_udp_port
 
+from oscmix_desk import osc, reconcile, routing
 from oscmix_desk.routing import LinkEcho
 
 
@@ -86,7 +87,7 @@ class FakeOscmix(threading.Thread):
             return               # cancel() lost the race with the timer
         self.linked.add(pair)
         try:
-            self.sock.sendto(self.session_mod.encode_osc(path, "i", 1),
+            self.sock.sendto(osc.encode_osc(path, "i", 1),
                              ("127.0.0.1", self.recv_port))
         except OSError:
             pass                 # socket already closed by teardown
@@ -99,9 +100,9 @@ class FakeOscmix(threading.Thread):
                 continue
             except OSError:
                 return
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _tags, _args = self.session_mod.decode_osc(message)
+                    path, _tags, _args = osc.decode_osc(message)
                 except ValueError:
                     continue
                 self.record(path)
@@ -215,7 +216,7 @@ def test_all_routes_are_linked_before_any_mix_is_written(session_mod):
 def test_every_stereo_route_links_both_pairs(session_mod):
     route = make_route(session_mod, playback=(7, 8), output=(3, 4))
     links = {path: args
-             for path, _t, args in session_mod.link_messages(route)}
+             for path, _t, args in reconcile.link_messages(route)}
     assert links == {"/playback/7/stereo": (1,), "/output/3/stereo": (1,)}
 
 
@@ -226,19 +227,19 @@ def test_unlinked_route_states_the_unlink_explicitly(session_mod):
     # half of the pair goes silent -- measured on a UCX II.
     route = make_route(session_mod, stereo=False)
     links = [(path, args) for path, _t, args in
-             session_mod.link_messages(route)]
+             reconcile.link_messages(route)]
     assert links == [("/playback/1/stereo", (1,)), ("/output/5/stereo", (0,))]
     # ... and its mix writes use the hard-panned pair balance.
     mixes = [(path, args[1])
-             for path, _t, args in session_mod.mix_messages(route)]
+             for path, _t, args in reconcile.mix_messages(route)]
     assert mixes == [("/mix/5/playback/1", -100),
                      ("/mix/6/playback/1", 100)]
 
 
 def test_mono_route_needs_no_linking(session_mod):
     route = make_route(session_mod, playback=(1,), output=(9,))
-    assert session_mod.link_messages(route) == []
-    assert [p for p, _t, _a in session_mod.mix_messages(route)] == \
+    assert reconcile.link_messages(route) == []
+    assert [p for p, _t, _a in reconcile.mix_messages(route)] == \
         ["/mix/9/playback/1"]
 
 
@@ -246,7 +247,7 @@ def test_route_messages_is_the_two_phases_in_order(session_mod):
     # expected_registers() and the verification build on this identity.
     route = make_route(session_mod, volume=-3.0)
     assert oracle.route_messages(route) == (
-        session_mod.link_messages(route) + session_mod.mix_messages(route))
+        reconcile.link_messages(route) + reconcile.mix_messages(route))
 
 
 def test_routing_is_applied_even_when_the_echo_never_arrives(routing_mod, session_mod,
@@ -307,7 +308,7 @@ def test_await_link_echo_reports_port_unavailable(session_mod):
     blocker = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     blocker.bind(("127.0.0.1", recv_port))
     try:
-        result = session_mod.await_link_echo({"/output/5/stereo": 1},
+        result = routing.await_link_echo({"/output/5/stereo": 1},
                                              recv_port, timeout=0.1)
     finally:
         blocker.close()
@@ -316,7 +317,7 @@ def test_await_link_echo_reports_port_unavailable(session_mod):
 
 
 def test_await_link_echo_times_out_without_echo(session_mod):
-    assert session_mod.await_link_echo({"/output/5/stereo": 1},
+    assert routing.await_link_echo({"/output/5/stereo": 1},
                                        free_udp_port(),
                                        timeout=0.1) is LinkEcho.SILENT
 
@@ -330,7 +331,7 @@ def report_after(session_mod, recv_port, value, delay=0.1):
     def send():
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            sock.sendto(session_mod.encode_osc("/output/5/stereo", "i", value),
+            sock.sendto(osc.encode_osc("/output/5/stereo", "i", value),
                         ("127.0.0.1", recv_port))
         finally:
             sock.close()
@@ -349,7 +350,7 @@ def test_await_link_echo_rejects_the_opposite_value(session_mod):
         recv_port = free_udp_port()
         timer = report_after(session_mod, recv_port, stale)
         try:
-            assert session_mod.await_link_echo({"/output/5/stereo": want},
+            assert routing.await_link_echo({"/output/5/stereo": want},
                                                recv_port,
                                                timeout=0.4) is LinkEcho.SILENT
         finally:
@@ -363,7 +364,7 @@ def test_await_link_echo_accepts_either_link_value(session_mod):
         recv_port = free_udp_port()
         timer = report_after(session_mod, recv_port, want)
         try:
-            assert session_mod.await_link_echo({"/output/5/stereo": want},
+            assert routing.await_link_echo({"/output/5/stereo": want},
                                                recv_port,
                                                timeout=2.0) is LinkEcho.CONFIRMED
         finally:
@@ -371,7 +372,7 @@ def test_await_link_echo_accepts_either_link_value(session_mod):
 
 
 def test_await_link_echo_without_paths_is_immediate(session_mod):
-    echo = session_mod.await_link_echo({}, free_udp_port())
+    echo = routing.await_link_echo({}, free_udp_port())
     assert echo is LinkEcho.CONFIRMED
     assert echo, "and `if await_link_echo(...)` still means confirmed"
 
@@ -384,7 +385,7 @@ def test_output_link_state_carries_the_expected_value(session_mod):
                    stereo=False),
         make_route(session_mod, name="mono", playback=(1,), output=(9,)),
     ]
-    assert session_mod.output_link_state(routes) == {"/output/7/stereo": 1,
+    assert routing.output_link_state(routes) == {"/output/7/stereo": 1,
                                                      "/output/1/stereo": 0}
 
 
@@ -393,9 +394,9 @@ def test_unlinked_route_compensates_the_halved_gain(session_mod):
     # measured on a UCX II as an exact 6 dB deficit. `level` has to mean
     # the same thing on both paths, so the request is raised by 6.02 dB.
     linked = {p: a for p, _t, a in
-              session_mod.mix_messages(make_route(session_mod))}
+              reconcile.mix_messages(make_route(session_mod))}
     unlinked = {p: a for p, _t, a in
-                session_mod.mix_messages(make_route(session_mod,
+                reconcile.mix_messages(make_route(session_mod,
                                                     stereo=False))}
     assert linked["/mix/5/playback/1"] == (0.0, 0)
     sent, pan = unlinked["/mix/5/playback/1"]
@@ -405,7 +406,7 @@ def test_unlinked_route_compensates_the_halved_gain(session_mod):
 
 def test_unlinked_compensation_tracks_the_requested_level(session_mod):
     route = make_route(session_mod, stereo=False, level=-12.0)
-    sent = {p: a for p, _t, a in session_mod.mix_messages(route)}
+    sent = {p: a for p, _t, a in reconcile.mix_messages(route)}
     assert abs(sent["/mix/5/playback/1"][0] - (-12.0 + 6.0206)) < 0.001
 
 
@@ -414,7 +415,7 @@ def test_unlinked_route_cannot_be_pushed_above_unity(session_mod):
     # offset, so positive levels saturate instead of scaling. Sending more
     # would only pretend to be louder.
     route = make_route(session_mod, stereo=False, level=6.0)
-    sent = {p: a for p, _t, a in session_mod.mix_messages(route)}
+    sent = {p: a for p, _t, a in reconcile.mix_messages(route)}
     assert abs(sent["/mix/5/playback/1"][0] - 6.0206) < 0.001
 
 

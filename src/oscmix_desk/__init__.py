@@ -1,7 +1,13 @@
 """oscmix-desk -- declarative, verified mixer state for RME Fireface.
 
-The public surface of this package is what ``__all__`` lists below.
-Anything else is an implementation detail and may change without notice.
+The supported surface of this package is what ``__all__`` lists below:
+reading a config, applying and verifying it, switching profiles, the
+errors and outcomes those produce, and the two entry points. Until 0.7.0
+it listed 78 names, most of them internals -- the OSC codec, the message
+shapes, the sequencer search, the process scan -- which made every one of
+them something a caller could come to depend on (third outside review).
+The modules are importable as they always were, and are implementation:
+they change without notice.
 
 The runtime deliberately imports nothing outside the standard library, so
 the package runs from a checkout on a bare system. ``tests/test_architecture.py``
@@ -35,33 +41,7 @@ both directions.
 from __future__ import annotations
 
 from .config import load_config
-from .constants import (
-                        CHANNEL_MAX,
-                        CHANNEL_MIN,
-                        DEFAULT_DEVICE_NAME,
-                        DEFAULT_DEVICE_TIMEOUT,
-                        DEFAULT_OSC_PORT,
-                        DEFAULT_OSC_RECV_PORT,
-                        DEFAULT_USB_ID,
-                        EXIT_CONFIG,
-                        EXIT_FAILURE,
-                        EXIT_OK,
-                        LEVEL_MAX,
-                        LEVEL_MIN,
-                        UNLINKED_GAIN_OFFSET,
-                        __version__,
-)
-from .discovery import (
-                        Device,
-                        lock_key,
-                        parse_seq_clients,
-                        resolve_binary,
-                        resolve_device,
-                        select_seq_client,
-                        udp_port_listening,
-                        usb_device_present,
-                        wait_for_device,
-)
+from .constants import EXIT_CONFIG, EXIT_FAILURE, EXIT_OK, __version__
 from .errors import (
                         ConfigError,
                         DeviceAmbiguous,
@@ -70,12 +50,15 @@ from .errors import (
                         WriteFailed,
 )
 from .launcher import main as launch_mixer
-from .locking import take_device_lock
-from .log import log
 from .marker import active_profile
-from .model import ChannelSetting, CommandLine, Config, Machine, Route
-from .notify import sd_notify
-from .osc import decode_osc, encode_osc, iter_osc_messages
+from .model import (
+                        ChannelSetting,
+                        CommandLine,
+                        Config,
+                        GlobalSetting,
+                        Machine,
+                        Route,
+)
 from .outcome import (
                         APPLIED_UNVERIFIED,
                         APPLIED_VERIFIED,
@@ -84,8 +67,7 @@ from .outcome import (
                         Outcome,
 )
 from .paths import discover_config_path, list_profiles, profile_path
-from .pipewire import generate_pipewire_conf, pipewire_positions, pw_sink_info
-from .process import find_stale_backends, port_holder, supervise
+from .pipewire import generate_pipewire_conf
 from .profiles import (
                         describe_profiles,
                         effective_config,
@@ -93,21 +75,11 @@ from .profiles import (
                         restore_main,
                         switch_profile,
 )
-from .reconcile import link_messages, mix_messages, policy_for
-from .registers import PIN, REMEMBER
-from .routing import (
-                        LinkEcho,
-                        apply_routing,
-                        await_link_echo,
-                        blind_reapply_mix,
-                        output_link_state,
-                        send_mix,
-)
+from .routing import apply_routing
 from .session import run_session
 from .verify import (
                         VerifyResult,
                         expected_registers,
-                        register_promptly_reported,
                         verify_and_repair,
                         verify_routing,
 )
@@ -115,31 +87,18 @@ from .verify import (
 __all__ = [
                         "APPLIED_UNVERIFIED",
                         "APPLIED_VERIFIED",
-                        "CHANNEL_MAX",
-                        "CHANNEL_MIN",
-                        "DEFAULT_DEVICE_NAME",
-                        "DEFAULT_DEVICE_TIMEOUT",
-                        "DEFAULT_OSC_PORT",
-                        "DEFAULT_OSC_RECV_PORT",
-                        "DEFAULT_USB_ID",
                         "EXIT_CONFIG",
                         "EXIT_FAILURE",
                         "EXIT_OK",
-                        "LEVEL_MAX",
-                        "LEVEL_MIN",
-                        "PIN",
                         "REFUSED",
-                        "REMEMBER",
-                        "UNLINKED_GAIN_OFFSET",
                         "WRITTEN_IN_PART",
                         "ChannelSetting",
                         "CommandLine",
                         "Config",
                         "ConfigError",
-                        "Device",
                         "DeviceAmbiguous",
                         "DeviceLockUnavailable",
-                        "LinkEcho",
+                        "GlobalSetting",
                         "Machine",
                         "Outcome",
                         "ReceivePortError",
@@ -149,46 +108,19 @@ __all__ = [
                         "__version__",
                         "active_profile",
                         "apply_routing",
-                        "await_link_echo",
-                        "blind_reapply_mix",
-                        "decode_osc",
                         "describe_profiles",
                         "discover_config_path",
                         "effective_config",
-                        "encode_osc",
                         "expected_registers",
-                        "find_stale_backends",
                         "generate_pipewire_conf",
-                        "iter_osc_messages",
                         "launch_mixer",
-                        "link_messages",
                         "list_profiles",
                         "load_config",
                         "load_profile",
-                        "lock_key",
-                        "log",
-                        "mix_messages",
-                        "output_link_state",
-                        "parse_seq_clients",
-                        "pipewire_positions",
-                        "policy_for",
-                        "port_holder",
                         "profile_path",
-                        "pw_sink_info",
-                        "register_promptly_reported",
-                        "resolve_binary",
-                        "resolve_device",
                         "restore_main",
                         "run_session",
-                        "sd_notify",
-                        "select_seq_client",
-                        "send_mix",
-                        "supervise",
                         "switch_profile",
-                        "take_device_lock",
-                        "udp_port_listening",
-                        "usb_device_present",
                         "verify_and_repair",
                         "verify_routing",
-                        "wait_for_device",
 ]

@@ -16,7 +16,7 @@ import time
 
 from support import free_udp_port, osc_bundle
 
-from oscmix_desk import cli
+from oscmix_desk import cli, osc
 from oscmix_desk import reads as reads_mod
 
 
@@ -44,9 +44,9 @@ class FakeBackend(threading.Thread):
                 if self.stopping.is_set():
                     return
                 continue
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _t, _a = self.session_mod.decode_osc(message)
+                    path, _t, _a = osc.decode_osc(message)
                 except ValueError:
                     continue
                 if path == "/refresh":
@@ -55,7 +55,7 @@ class FakeBackend(threading.Thread):
 
 
 def dump_of(session_mod, registers):
-    return [session_mod.encode_osc(p, t, *a) for p, t, a in registers]
+    return [osc.encode_osc(p, t, *a) for p, t, a in registers]
 
 
 def run_dump(session_mod, capsys, registers, *, hold_port=False):
@@ -214,9 +214,9 @@ class TimingBackend(FakeBackend):
                 if self.stopping.is_set():
                     return
                 continue
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _t, _a = self.session_mod.decode_osc(message)
+                    path, _t, _a = osc.decode_osc(message)
                 except ValueError:
                     continue
                 if path == "/refresh":

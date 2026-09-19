@@ -10,6 +10,8 @@ import socket
 
 import pytest
 
+from oscmix_desk import notify
+
 
 @pytest.fixture
 def notify_mod():
@@ -31,7 +33,7 @@ def test_the_state_reaches_the_socket(session_mod, tmp_path, monkeypatch):
     listener.settimeout(5)
     monkeypatch.setenv("NOTIFY_SOCKET", str(path))
     try:
-        session_mod.sd_notify("READY=1")
+        notify.sd_notify("READY=1")
         assert listener.recv(64) == b"READY=1"
     finally:
         listener.close()

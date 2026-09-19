@@ -8,6 +8,8 @@ import oracle
 from oscmix_fakes import DumpingOscmix, make_config, make_route
 from support import free_udp_port
 
+from oscmix_desk import osc, routing
+
 
 def run_verify_and_repair(session_mod, routes, dump, recv_port=None,
                           blocked=False):
@@ -32,7 +34,7 @@ def run_verify_and_repair(session_mod, routes, dump, recv_port=None,
     return device
 
 def full_dump(session_mod, routes):
-    return [session_mod.encode_osc(path, types, *args)
+    return [osc.encode_osc(path, types, *args)
             for route in routes
             for path, types, args in oracle.route_messages(route)]
 
@@ -78,7 +80,7 @@ def test_mix_is_reapplied_even_when_the_dump_omits_the_links(verify_mod, session
     # but leaving the matrix as written at startup is the worse option.
     monkeypatch.setattr(verify_mod, "VERIFY_TIMEOUT", 0.3)
     routes = [make_route(session_mod)]
-    dump = [session_mod.encode_osc(path, types, *args)
+    dump = [osc.encode_osc(path, types, *args)
             for path, types, args in oracle.route_messages(routes[0])
             if path != "/output/5/stereo"]
     device = run_verify_and_repair(session_mod, routes, dump)
@@ -111,7 +113,7 @@ def test_send_mix_writes_the_matrix_without_the_links(session_mod):
     config = make_config(session_mod, [make_route(session_mod, volume=0.0)],
                          send_port, recv_port)
     try:
-        session_mod.send_mix(config)
+        routing.send_mix(config)
         device.drain()
     finally:
         device.stop()
@@ -135,7 +137,7 @@ def test_send_mix_writes_a_register_two_routes_share_once(session_mod):
               make_route(session_mod, name="b", playback=(3, 4), volume=0.0)]
     config = make_config(session_mod, routes, send_port, recv_port)
     try:
-        session_mod.send_mix(config)
+        routing.send_mix(config)
         device.drain()
     finally:
         device.stop()
@@ -156,7 +158,7 @@ def test_blind_reapply_asks_for_a_dump_then_writes(session_mod, routing_mod,
     config = make_config(session_mod, [make_route(session_mod)], send_port,
                          recv_port)
     try:
-        session_mod.blind_reapply_mix(config)
+        routing.blind_reapply_mix(config)
         device.drain()
     finally:
         device.stop()

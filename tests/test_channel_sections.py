@@ -12,7 +12,7 @@ and independently agrees with upstream's own device table.
 
 import pytest
 
-from oscmix_desk import devices, reconcile, registers, verify
+from oscmix_desk import constants, devices, reconcile, registers, verify
 
 
 def write(tmp_path, text):
@@ -218,7 +218,7 @@ def test_a_quantity_carries_its_own_bounds_and_unit(session_mod):
     volume = by_path["/output/{ch}/volume"]
     assert volume.domain == NUMBER
     assert (volume.lo, volume.hi, volume.unit) == (
-        session_mod.LEVEL_MIN, session_mod.LEVEL_MAX, "dB")
+        constants.LEVEL_MIN, constants.LEVEL_MAX, "dB")
 
     # Gain has three rows, so a template lookup is ambiguous by design:
     # the two mic preamps reach 75 dB, the two instrument channels 24,

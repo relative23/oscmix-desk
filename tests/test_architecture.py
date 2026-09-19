@@ -156,10 +156,12 @@ ALLOWED_IMPORTS = {
     # reports, as a config and as its text. As pure as the reconciler,
     # whose message shapes and policy it reads.
     "dump": {"constants", "model", "osc", "reconcile", "registers"},
-    "__init__": {"config", "constants", "discovery", "errors", "launcher",
-                 "locking", "log", "marker", "model", "notify", "osc",
-                 "outcome", "paths", "pipewire", "process", "profiles",
-                 "reconcile", "registers", "routing", "session", "verify"},
+    # The supported surface and nothing else since 0.7.0: what it imports
+    # is what it re-exports, and the leaves it used to pull in for the
+    # sake of their internals are reached through their own modules.
+    "__init__": {"config", "constants", "errors", "launcher", "marker",
+                 "model", "outcome", "paths", "pipewire", "profiles",
+                 "routing", "session", "verify"},
 
 }
 
@@ -476,3 +478,35 @@ def test_a_patch_that_nothing_reads_fails_the_test(monkeypatch):
                              "nothing"):
         monkeypatch.setattr(oscmix_desk, "load_config", None)
     assert oscmix_desk.load_config is not None, "and nothing was replaced"
+
+
+def test_the_supported_surface_is_this_and_grows_by_decision(session_mod):
+    """78 names until 0.7.0, most of them internals, each one something a
+    caller could come to depend on (third outside review). What is left is
+    what somebody scripting their desk needs: read a config, apply and
+    verify it, switch profiles, the errors and outcomes those produce, the
+    two entry points. A name more is a decision, made here."""
+    assert set(session_mod.__all__) == {
+        # a desk, read
+        "load_config", "Config", "Route", "ChannelSetting", "GlobalSetting",
+        "CommandLine", "Machine", "discover_config_path", "list_profiles",
+        "profile_path",
+        # applied and verified
+        "apply_routing", "verify_routing", "verify_and_repair", "VerifyResult",
+        "expected_registers", "generate_pipewire_conf",
+        # profiles
+        "switch_profile", "restore_main", "load_profile", "effective_config",
+        "active_profile", "describe_profiles", "Outcome", "APPLIED_VERIFIED",
+        "APPLIED_UNVERIFIED", "REFUSED", "WRITTEN_IN_PART",
+        # what goes wrong
+        "ConfigError", "DeviceAmbiguous", "DeviceLockUnavailable",
+        "ReceivePortError", "WriteFailed",
+        # entry points and their contract
+        "run_session", "launch_mixer", "EXIT_OK", "EXIT_FAILURE",
+        "EXIT_CONFIG", "__version__",
+    }
+    # Gone from the root, reachable through their modules as they always
+    # were (`oscmix_desk.log` and the rest still exist: they are modules).
+    for internal in ("encode_osc", "link_messages", "select_seq_client",
+                     "find_stale_backends", "sd_notify", "policy_for"):
+        assert not hasattr(session_mod, internal), internal

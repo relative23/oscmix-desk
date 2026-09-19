@@ -5,6 +5,7 @@ import oracle
 import pytest
 from support import repo_file, routing_conf
 
+from oscmix_desk import constants
 from oscmix_desk import paths as paths_mod
 
 
@@ -205,15 +206,15 @@ def test_the_documented_defaults_are_the_actual_defaults(session_mod):
     # These are the values the README and routing.conf.example promise.
     # A silent change would move a UDP port or a channel limit under
     # users who never wrote them down.
-    assert session_mod.DEFAULT_DEVICE_NAME == "Fireface UCX II"
-    assert session_mod.DEFAULT_USB_ID == "2a39:3fd9"
-    assert session_mod.DEFAULT_OSC_PORT == 7222
-    assert session_mod.DEFAULT_OSC_RECV_PORT == 8222
-    assert session_mod.DEFAULT_DEVICE_TIMEOUT == 30.0
-    assert (session_mod.LEVEL_MIN, session_mod.LEVEL_MAX) == (-65.0, 6.0)
-    assert (session_mod.CHANNEL_MIN, session_mod.CHANNEL_MAX) == (1, 64)
+    assert constants.DEFAULT_DEVICE_NAME == "Fireface UCX II"
+    assert constants.DEFAULT_USB_ID == "2a39:3fd9"
+    assert constants.DEFAULT_OSC_PORT == 7222
+    assert constants.DEFAULT_OSC_RECV_PORT == 8222
+    assert constants.DEFAULT_DEVICE_TIMEOUT == 30.0
+    assert (constants.LEVEL_MIN, constants.LEVEL_MAX) == (-65.0, 6.0)
+    assert (constants.CHANNEL_MIN, constants.CHANNEL_MAX) == (1, 64)
     # The compensation for oscmix halving the gain on the unlinked path.
-    assert abs(session_mod.UNLINKED_GAIN_OFFSET - 6.0206) < 0.001
+    assert abs(constants.UNLINKED_GAIN_OFFSET - 6.0206) < 0.001
     assert session_mod.__version__.count(".") == 2
 
 

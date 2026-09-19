@@ -20,6 +20,8 @@ from pathlib import Path
 import pytest
 from support import free_udp_port, read_until_ready
 
+from oscmix_desk import osc
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SESSION_BIN = PROJECT_ROOT / "bin" / "oscmix-session"
 LAUNCH_BIN = PROJECT_ROOT / "bin" / "oscmix-launch"
@@ -312,14 +314,14 @@ def test_full_startup_verification_notify_and_shutdown(tmp_path, session_mod):
         # reported the link state back. The links must not be repeated; a
         # second link write would restart the race it repairs.
         mix = [
-            session_mod.encode_osc("/mix/5/playback/1", "fi", 0.0, 0),
-            session_mod.encode_osc("/output/5/volume", "f", 0.0),
-            session_mod.encode_osc("/output/6/volume", "f", 0.0),
+            osc.encode_osc("/mix/5/playback/1", "fi", 0.0, 0),
+            osc.encode_osc("/output/5/volume", "f", 0.0),
+            osc.encode_osc("/output/6/volume", "f", 0.0),
         ]
         expected = [
-            session_mod.encode_osc("/playback/1/stereo", "i", 1),
-            session_mod.encode_osc("/output/5/stereo", "i", 1),
-        ] + mix + [session_mod.encode_osc("/refresh")] + mix
+            osc.encode_osc("/playback/1/stereo", "i", 1),
+            osc.encode_osc("/output/5/stereo", "i", 1),
+        ] + mix + [osc.encode_osc("/refresh")] + mix
         received = [bytes.fromhex(line)
                     for line in datagram_log.read_text().splitlines()]
         assert received[:9] == expected
@@ -387,10 +389,10 @@ def test_a_config_with_no_routes_is_applied_at_start(tmp_path, session_mod):
         # No links and no mix: the three settings, in file order, then
         # the verification's state request.
         assert received[:4] == [
-            session_mod.encode_osc("/input/3/gain", "f", 12.0),
-            session_mod.encode_osc("/input/3/hi-z", "i", 1),
-            session_mod.encode_osc("/clock/source", "i", 0),
-            session_mod.encode_osc("/refresh"),
+            osc.encode_osc("/input/3/gain", "f", 12.0),
+            osc.encode_osc("/input/3/hi-z", "i", 1),
+            osc.encode_osc("/clock/source", "i", 0),
+            osc.encode_osc("/refresh"),
         ]
         assert wait_for_line(journal, "routing verified against device state")
         proc.send_signal(signal.SIGTERM)
@@ -430,9 +432,9 @@ def test_a_remembered_profile_is_applied_at_start(tmp_path, session_mod):
         received = [bytes.fromhex(line)
                     for line in datagram_log.read_text().splitlines()]
         assert received[:3] == [
-            session_mod.encode_osc("/playback/5/stereo", "i", 1),
-            session_mod.encode_osc("/output/5/stereo", "i", 1),
-            session_mod.encode_osc("/mix/5/playback/5", "fi", 0.0, 0),
+            osc.encode_osc("/playback/5/stereo", "i", 1),
+            osc.encode_osc("/output/5/stereo", "i", 1),
+            osc.encode_osc("/mix/5/playback/5", "fi", 0.0, 0),
         ]
         proc.send_signal(signal.SIGTERM)
         assert proc.wait(timeout=10) == 0

@@ -73,7 +73,7 @@ def test_a_register_the_dump_never_reports_is_never_called_prompt(
     reported = set(dump["registers"])
     for path in ROUTED:
         if path not in reported:
-            assert not session_mod.register_promptly_reported(path), (
+            assert not verify.register_promptly_reported(path), (
                 "%s is not in the recorded dump, so classifying it as "
                 "promptly reported makes every run warn and re-send"
                 % path)
@@ -91,7 +91,7 @@ def test_a_register_called_prompt_really_does_arrive_in_the_window(
 
     registers = dump["registers"]
     for path in ROUTED:
-        if path in registers and session_mod.register_promptly_reported(path):
+        if path in registers and verify.register_promptly_reported(path):
             _tags, first_seen = registers[path]
             assert first_seen < constants.VERIFY_TIMEOUT, (
                 "%s is classified prompt but arrived %.1fs into the dump, "
@@ -197,7 +197,7 @@ def test_the_measured_dump_disagrees_with_the_prose_and_says_so(
     # What the old classification cost: a lost /playback/<n>/stereo was
     # never counted as a problem and so never re-sent, on precisely the
     # register family the two-phase apply exists to get right.
-    assert session_mod.register_promptly_reported("/playback/1/stereo") is True
+    assert verify.register_promptly_reported("/playback/1/stereo") is True
 
 
 # --------------------------------------------------------------------------
