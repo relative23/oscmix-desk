@@ -100,6 +100,15 @@ behaviour: modules a person can read.
   0.6.11 warning and `cli._override_device` are gone; `Config.loaded`
   is what the file said and `Config.overrides` what the command line
   put over it.
+- **Two real processes switching at once are held to the lock.** The
+  one test of two concurrent switches ran them as threads, which share
+  an environment and an interpreter; the lock path, the lock and the
+  marker's temporary file are each computed by the process that uses
+  them. `tests/test_two_processes.py` starts two `oscmix-session
+  --profile` together against one recorded port: every register of both
+  arrives once, neither switch's registers sit inside the other's, and
+  the marker names whichever wrote last with no temporary file left.
+  With the lock disabled it fails every time (second outside review).
 - **The package root exports what is supported, and 40 names left it.**
   `oscmix_desk.__all__` listed 78 names, most of them internals -- the
   OSC codec, the message shapes, the sequencer search, the process scan,

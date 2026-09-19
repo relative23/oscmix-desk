@@ -199,8 +199,9 @@ nothing is added to what a `routing.conf` can declare.
    a device stay unchecked out loud (ADR 0006). `[project]` metadata --
    a `pip install` that half works would install a package without its
    unit, udev rule, lock directory and launcher and look installed (ADR
-   0004). *Still ahead:* multi-process tests over the marker, SIGHUP and
-   SIGTERM and fsync faults.
+   0004). The multi-process test the second review asked for exists:
+   two real `--profile` processes against one recorded port, which
+   fails every time with the lock disabled.
 
 Considered and not planned: an apply journal. Every start is a full
 apply already, so a dirty flag adds nothing there; the one gap is a
