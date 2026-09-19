@@ -62,6 +62,13 @@ behaviour: modules a person can read.
   `Register`. With the real types mypy asked two questions the ignores
   had answered for it -- whether the device can be `None` where its
   channels and its name are read -- and both now say so in the code.
+- **A phase and a write reason are enums.** `reconcile.Phase` (an
+  `IntEnum`, so its order is still the order of an apply) and
+  `reconcile.WriteReason`; `PHASE_LINK`, `MISSING` and the rest are the
+  same objects under their old names, and compare as the numbers and
+  strings they were. `--diff` prints a reason by its `.value`, because
+  what `str()` makes of a string enum differs between the Python
+  versions this runs on (first outside review).
 - **The oracle builds its own messages, and both sides are held to
   literals.** `tests/oracle.py`, which the reconciler is compared
   against, imported `link_messages` and `mix_messages` from the

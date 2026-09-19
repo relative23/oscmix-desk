@@ -205,7 +205,7 @@ def _diff_line(write: Write, seen: Dict[str, Args]) -> str:
     """One write as `path  config-value  device-value  reason`."""
     return "%-34s %-14s device %-14s %s" % (
         write.path, _values(write.args), _values(seen.get(write.path)),
-        write.reason)
+        write.reason.value)
 
 
 def _values(args: Optional[Args]) -> str:

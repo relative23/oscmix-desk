@@ -273,3 +273,22 @@ def test_a_channel_setting_resolves_to_its_own_channels_register():
     assert option_register(UCX2, "input", "gain", 1).hi == 75.0
     assert option_register(UCX2, "input", "gain", 3).hi == 24.0
     assert option_register(UCX2, "input", "gain", 5).hi == 24.0
+
+
+def test_a_phase_and_a_reason_are_closed_sets():
+    """Enums since 0.7.0: a phase was an int and a reason a string, and
+    nothing stopped a fourth value or a swapped argument. The order of the
+    phases is the order of an apply, the old names are the same objects,
+    and a reason prints as the word it always was -- by `.value`, since
+    what `str()` makes of a string enum differs between Python versions."""
+    assert [(p.name, int(p)) for p in reconcile.Phase] == [
+        ("LINK", 0), ("MIX", 1), ("CHANNEL", 2)]
+    assert sorted(reconcile.Phase) == list(reconcile.Phase)
+    assert tuple(reconcile.Phase) == (reconcile.PHASE_LINK, reconcile.PHASE_MIX,
+            reconcile.PHASE_CHANNEL)
+    assert {r.value for r in reconcile.WriteReason} == {
+        "missing", "mismatched", "re-established", "unconditional"}
+    assert reconcile.REWRITE is reconcile.WriteReason.REWRITE
+    assert reconcile.MISSING == "missing", "and compares as the string it was"
+    with pytest.raises(ValueError, match="3 is not a valid Phase"):
+        reconcile.Phase(3)

@@ -52,6 +52,7 @@ stops being true, or it belongs nowhere.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum, IntEnum
 from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .constants import LEVEL_MIN, UNLINKED_GAIN_OFFSET
@@ -153,24 +154,43 @@ def mix_messages(route: Route) -> List[Message]:
     return messages
 
 
-#: The two phases of an apply. The link barrier sits between them: every
-#: link of every route goes out, the device reports back, and only then
-#: is the mix matrix written. Phase is a property of the register, not of
-#: the route it came from -- which is exactly what walking route by route
-#: got wrong.
-PHASE_LINK = 0
-PHASE_MIX = 1
-#: Channel state -- `[input:N]` / `[output:N]`. After the mix because it
-#: does not depend on the link barrier, and because a fader or a
-#: reference level landing before the routing exists would be audible
-#: for the width of the barrier.
-PHASE_CHANNEL = 2
+class Phase(IntEnum):
+    """When a register is written, which is also the order of an apply.
 
-#: Why a write is in the plan.
-MISSING = "missing"            # observed nothing for it
-MISMATCHED = "mismatched"      # observed a different value
-REWRITE = "re-established"     # unverifiable and link-dependent; always written
-UNCONDITIONAL = "unconditional"  # nothing was observed at all (a blind apply)
+    The link barrier sits between the first two: every link of every
+    route goes out, the device reports back, and only then is the mix
+    matrix written. Phase is a property of the register, not of the route
+    it came from -- which is exactly what walking route by route got
+    wrong. Channel state -- `[input:N]` / `[output:N]` -- comes after the
+    mix because it does not depend on the barrier, and because a fader or
+    a reference level landing before the routing exists would be audible
+    for the width of it.
+
+    An enum since 0.7.0 (first outside review): a phase was an ``int``,
+    and nothing stopped a fourth value or a swapped argument.
+    """
+
+    LINK = 0
+    MIX = 1
+    CHANNEL = 2
+
+
+PHASE_LINK, PHASE_MIX, PHASE_CHANNEL = Phase.LINK, Phase.MIX, Phase.CHANNEL
+
+
+class WriteReason(str, Enum):
+    """Why a write is in the plan. Printed by its ``.value``: what
+    ``str()`` and ``format()`` make of a string enum differs between the
+    Python versions this runs on."""
+
+    MISSING = "missing"              # observed nothing for it
+    MISMATCHED = "mismatched"        # observed a different value
+    REWRITE = "re-established"       # unverifiable, link-dependent: always
+    UNCONDITIONAL = "unconditional"  # nothing was observed (a blind apply)
+
+
+MISSING, MISMATCHED = WriteReason.MISSING, WriteReason.MISMATCHED
+REWRITE, UNCONDITIONAL = WriteReason.REWRITE, WriteReason.UNCONDITIONAL
 
 
 @dataclass(frozen=True)
@@ -180,7 +200,7 @@ class Entry:
     path: str
     tags: str
     args: Args
-    phase: int
+    phase: Phase
 
 
 @dataclass(frozen=True)
@@ -190,8 +210,8 @@ class Write:
     path: str
     tags: str
     args: Args
-    phase: int
-    reason: str
+    phase: Phase
+    reason: WriteReason
 
     def message(self) -> Tuple[str, str, Args]:
         """The shape the OSC encoder and the dry run both consume."""
