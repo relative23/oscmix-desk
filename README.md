@@ -25,7 +25,7 @@ makes the desktop integration disappear.
 | `--diff` | what an apply would change, without changing it |
 | `--dump-config` | the desk you have, as the file that reproduces it |
 | `--snapshot` | every register the device reports, for comparing two moments |
-| profiles | named alternatives, switched as a transaction |
+| profiles | named alternatives, switched under one lock with a stated outcome |
 | `[pin]` | which settings the file owns and which the device keeps |
 | udev rule | starts the backend on hotplug, disables Fireface USB autosuspend, and keeps affected ASM4242 host controllers awake |
 | systemd user service | supervises the backend (`Type=notify`: "started" means "audio works") |
@@ -60,7 +60,7 @@ since.
   invisible in it.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
-- Twenty-six [decision records](docs/decisions/) carry the reasoning and the
+- Twenty-seven [decision records](docs/decisions/) carry the reasoning and the
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work

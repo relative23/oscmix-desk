@@ -67,6 +67,7 @@ from .errors import (
                         DeviceAmbiguous,
                         DeviceLockUnavailable,
                         ReceivePortError,
+                        WriteFailed,
 )
 from .launcher import main as launch_mixer
 from .locking import take_device_lock
@@ -75,7 +76,13 @@ from .marker import active_profile
 from .model import ChannelSetting, CommandLine, Config, Machine, Route
 from .notify import sd_notify
 from .osc import decode_osc, encode_osc, iter_osc_messages
-from .outcome import APPLIED_UNVERIFIED, APPLIED_VERIFIED, REFUSED, Outcome
+from .outcome import (
+                        APPLIED_UNVERIFIED,
+                        APPLIED_VERIFIED,
+                        REFUSED,
+                        WRITTEN_IN_PART,
+                        Outcome,
+)
 from .paths import discover_config_path, list_profiles, profile_path
 from .pipewire import generate_pipewire_conf, pipewire_positions, pw_sink_info
 from .process import find_stale_backends, port_holder, supervise
@@ -123,6 +130,7 @@ __all__ = [
                         "REFUSED",
                         "REMEMBER",
                         "UNLINKED_GAIN_OFFSET",
+                        "WRITTEN_IN_PART",
                         "ChannelSetting",
                         "CommandLine",
                         "Config",
@@ -135,6 +143,7 @@ __all__ = [
                         "ReceivePortError",
                         "Route",
                         "VerifyResult",
+                        "WriteFailed",
                         "__version__",
                         "active_profile",
                         "apply_routing",

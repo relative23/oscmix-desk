@@ -94,6 +94,15 @@ Common findings in the journal:
   oscmix.service`) -- a restart would move the unit off its interface.
   The line names `--no-profile` as well where that can work, and a
   restart instead of the reload where `routing.conf` needs one.
+- `wrote N of M register(s) of '<profile>' and then could not: cannot
+  write to the backend on UDP ...` with exit 1 -- the socket gave out
+  part of the way through a switch, so some of the profile is on the
+  device and the rest is not; the line lists both. The marker was left
+  alone, so the desk in effect is still the previous one: the command
+  asks the unit to reload, and its reconcile writes that desk back. If
+  the backend could not be reached then either, `systemctl --user reload
+  oscmix.service` once it can does the same. With nothing written at all
+  the line reads `refused ..., nothing written` and the exit code is 2.
 - `this profile names another backend or interface than its
   routing.conf` -- works for the switch in 0.6.x and is refused from
   0.7.0 (ADR 0026). A profile made with `--dump-config` restates the

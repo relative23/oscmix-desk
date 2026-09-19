@@ -108,3 +108,12 @@ it states them" stays true in 0.6.x, and ends for a profile that states
 Restating the main config's own values, as a dumped profile does, stays
 accepted.
 
+## Amended in 0.7.0
+
+Three states became four. "Partly applied" was to be unrepresentable,
+and a wire that gives out half-way represented it anyway, as a traceback
+out of a function that promises an outcome:
+[ADR 0027](0027-a-write-that-fails-part-of-the-way-is-a-state.md) names
+it `WRITTEN_IN_PART`, with the registers that went out and the ones that
+did not. The rejection of a rollback above stands.
+

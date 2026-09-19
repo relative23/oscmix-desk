@@ -194,12 +194,15 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
         % len(outcome.unverified))
 
 
-def test_the_three_states_are_the_only_three(tmp_path):
-    # A fourth state would be the "partly, and here is a traceback" the
-    # roadmap forbids, arriving by accretion.
+def test_the_four_states_are_the_only_four(tmp_path):
+    # Three, until 0.7.0: "partly, and here is a traceback" was the state
+    # the roadmap forbade, and a wire that gives out half-way produced it
+    # all the same -- as the traceback. The fourth is that state with a
+    # name and both lists (ADR 0027). A fifth arrives by decision too.
     assert set(outcome_mod.STATES) == {outcome_mod.APPLIED_VERIFIED,
-                                    outcome_mod.APPLIED_UNVERIFIED,
-                                    outcome_mod.REFUSED}
+                                       outcome_mod.APPLIED_UNVERIFIED,
+                                       outcome_mod.REFUSED,
+                                       outcome_mod.WRITTEN_IN_PART}
 
 
 def test_every_outcome_answers_whether_the_device_was_written_to(tmp_path):

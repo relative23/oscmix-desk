@@ -39,7 +39,12 @@ from .discovery import (
     udp_port_listening,
     usb_device_present,
 )
-from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
+from .errors import (
+    ConfigError,
+    DeviceAmbiguous,
+    ReceivePortError,
+    WriteFailed,
+)
 from .locking import _switch_lock, held_elsewhere
 from .log import log
 from .marker import (
@@ -54,6 +59,7 @@ from .outcome import (
     APPLIED_VERIFIED,
     NOT_CHECKED,
     REFUSED,
+    WRITTEN_IN_PART,
     Outcome,
 )
 from .paths import list_profiles, profile_path
@@ -316,7 +322,9 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
             return _refused_for_the_device(name, changed)
         device = backend if backend is not None else loopback(
             config.osc_port, config.osc_recv_port)
-        _write(config, device)
+        gave_out = _written(name, config, device)
+        if gave_out is not None:
+            return gave_out
         # Applied, so remembered: from here on every start and reload is
         # this profile's, until --no-profile (ADR 0018). A marker that
         # could not be written travels in the outcome rather than only
@@ -368,7 +376,9 @@ def restore_main(config_path: Optional[Path] = None,
             return _refused_for_the_device("routing.conf", changed)
         device = backend if backend is not None else loopback(
             config.osc_port, config.osc_recv_port)
-        _write(config, device)
+        gave_out = _written("routing.conf", config, device)
+        if gave_out is not None:
+            return gave_out
         marked = forget_active_profile(config_path)
         if not verify:
             outcome = Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
@@ -379,6 +389,37 @@ def restore_main(config_path: Optional[Path] = None,
             outcome = _check("routing.conf", config, device)
         return replace(outcome, persisted=marked.in_effect,
                        durable=marked.durable)
+
+
+def _written(name: str, config: Config, device: Backend
+             ) -> Optional[Outcome]:
+    """Write the desk. None when all of it went out; else how far it came.
+
+    A switch promises an outcome and never an exception (ADR 0011), and
+    until 0.7.0 a socket error part of the way broke that promise as a
+    traceback, with some of the profile on the device and nothing said
+    about which part (third outside review). Nothing gone out is a
+    refusal like any other: the desk is untouched. Some of it gone out is
+    its own state, with both lists, and the marker is left alone -- the
+    desk in effect is still the one a reload or a start writes back,
+    which is the repair (ADR 0027).
+    """
+    try:
+        _write(config, device)
+    except WriteFailed as exc:
+        cause = "cannot write to the backend on UDP %d (%s)" % (
+            config.osc_port, exc.strerror)
+        if not exc.written:
+            log.error("%r refused, nothing written: %s", name, cause)
+            return Outcome(state=REFUSED, name=name, reason=cause)
+        log.error("%r written in part -- %d of %d register(s): %s", name,
+                  len(exc.written), len(exc.written) + len(exc.unwritten),
+                  cause)
+        return Outcome(state=WRITTEN_IN_PART, name=name, reason=cause,
+                       written=list(exc.written),
+                       unwritten=list(exc.unwritten), persisted=False,
+                       read_back=False)
+    return None
 
 
 def _write(config: Config, device: Backend) -> None:
@@ -420,10 +461,12 @@ def _check(name: str, config: Config, device: Backend) -> Outcome:
         result = verify_routing(registers, config.osc_port,
                                 config.osc_recv_port, VERIFY_TIMEOUT,
                                 device_model=model, backend=device)
-    except ReceivePortError as exc:
+    except (ReceivePortError, WriteFailed) as exc:
         # Applied -- the barrier waited blind -- and unverifiable for a
-        # reason that is not the mixer GUI. The outcome carries it, where
-        # it used to read "receive port in use" (0.6.11).
+        # reason that is not the mixer GUI: the receive port cannot be
+        # bound, or the request for the state could not be sent. The
+        # outcome carries it, where the first used to read "receive port
+        # in use" (0.6.11) and the second was a traceback (0.7.0).
         log.error("profile %r applied; it cannot be verified: %s", name, exc)
         return Outcome(state=APPLIED_UNVERIFIED, name=name,
                        reason=exc.strerror or str(exc),

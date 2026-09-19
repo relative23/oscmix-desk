@@ -1,6 +1,6 @@
 """What a switch did, as a value.
 
-Three states, and only three:
+Four states:
 
 ``APPLIED_VERIFIED``
     Written, and the device reported the values back.
@@ -13,7 +13,13 @@ Three states, and only three:
 
 ``REFUSED``
     Nothing was written. The config did not parse, the profile does not
-    exist, or the name was not a name.
+    exist, the name was not a name, or the backend could not be written
+    to at all.
+
+``WRITTEN_IN_PART``
+    Some registers went out and then the wire gave out. Carries both
+    lists; the marker is left alone, so the desk in effect is still the
+    one a reload or a start writes back (ADR 0027).
 
 A value rather than an exception or an exit code: what it means for a
 process is the CLI's business, and a caller that switches from code can
@@ -38,6 +44,9 @@ APPLIED_VERIFIED = "applied-verified"
 APPLIED_UNVERIFIED = "applied-unverified"
 #: Nothing was written. ``reason`` says why.
 REFUSED = "refused"
+#: Some of it was written and then the wire gave out. ``written`` and
+#: ``unwritten`` say which; the marker was left alone (ADR 0027).
+WRITTEN_IN_PART = "written-in-part"
 
 #: The ``reason`` on an outcome where the read-back was never attempted,
 #: because the caller asked for none. Distinct wording from a read-back
@@ -45,10 +54,13 @@ REFUSED = "refused"
 #: and "looked for and absent" there, and the state cannot say so.
 NOT_CHECKED = "verification not requested"
 
-#: The complete set. A fourth member is a design change, and
+#: The complete set. A member more is a design change, and
 #: ``tests/test_profiles.py`` asserts this is exhaustive so it cannot
-#: arrive by accretion.
-STATES = (APPLIED_VERIFIED, APPLIED_UNVERIFIED, REFUSED)
+#: arrive by accretion. The fourth arrived in 0.7.0 as one: "partly
+#: applied" was the state this value was meant to make unrepresentable,
+#: and a wire that fails half-way made it real all the same -- as a
+#: traceback (ADR 0027).
+STATES = (APPLIED_VERIFIED, APPLIED_UNVERIFIED, REFUSED, WRITTEN_IN_PART)
 
 
 @dataclass(frozen=True)
@@ -85,6 +97,11 @@ class Outcome:
     #: 0.6.11 a held port was worded "N register(s) unconfirmed", which
     #: is what a read-back that ran and came up short says.
     read_back: bool = True
+    #: For ``WRITTEN_IN_PART``: the registers that had gone out when the
+    #: wire gave out, in order, and the ones that had not. Handed to the
+    #: kernel is what "gone out" means; a datagram socket knows no more.
+    written: List[str] = field(default_factory=list)
+    unwritten: List[str] = field(default_factory=list)
 
     @property
     def applied(self) -> bool:
@@ -99,6 +116,9 @@ class Outcome:
     def describe(self) -> str:
         """One line, for a person."""
         line = self._describe_state()
+        if self.state == WRITTEN_IN_PART:
+            return line + ("; the desk in effect has not changed, and a "
+                           "reload or start writes it back")
         if not self.persisted:
             return line + ("; not remembered, so the next reload or start "
                            "undoes it")
@@ -109,6 +129,13 @@ class Outcome:
     def _describe_state(self) -> str:
         if self.state == REFUSED:
             return "refused %r, nothing written: %s" % (self.name, self.reason)
+        if self.state == WRITTEN_IN_PART:
+            return ("wrote %d of %d register(s) of %r and then could not: %s "
+                    "-- written: %s; not written: %s"
+                    % (len(self.written),
+                       len(self.written) + len(self.unwritten), self.name,
+                       self.reason, _short(self.written),
+                       _short(self.unwritten)))
         if self.state == APPLIED_VERIFIED:
             return "applied %r and verified it at the device" % self.name
         if self.reason == NOT_CHECKED:

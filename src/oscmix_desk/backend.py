@@ -41,7 +41,7 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Iterable, Iterator, Optional, Sequence, Tuple, Type
 
-from .errors import ReceivePortError
+from .errors import ReceivePortError, WriteFailed
 from .osc import decode_osc, encode_osc, iter_osc_messages
 
 Message = Tuple[str, str, Tuple[object, ...]]
@@ -164,13 +164,26 @@ class Backend:
         """Put a burst of registers on the wire, in the order given.
 
         One socket for the burst: the order is the caller's, and this
-        must not reorder or coalesce it.
+        must not reorder or coalesce it. A socket error part of the way is
+        a ``WriteFailed`` naming what had gone out and what had not.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        burst = list(messages)
         try:
-            for path, tags, args in messages:
-                sock.sendto(encode_osc(path, tags, *args),
-                            (self.host, self.send_port))
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        except OSError as exc:
+            raise WriteFailed(exc, [], [m[0] for m in burst]) from exc
+        try:
+            for index, (path, tags, args) in enumerate(burst):
+                try:
+                    sock.sendto(encode_osc(path, tags, *args),
+                                (self.host, self.send_port))
+                except OSError as exc:
+                    # How far it came is the caller's to report: until
+                    # 0.7.0 the bare OSError said only that something
+                    # failed, and a switch let it out as a traceback.
+                    paths = [message[0] for message in burst]
+                    raise WriteFailed(exc, paths[:index],
+                                      paths[index:]) from exc
         finally:
             sock.close()
 

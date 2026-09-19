@@ -15,14 +15,10 @@ from .constants import (
     LINK_SETTLE,
     LINK_SYNC_BLIND_DELAY,
 )
-from .errors import ReceivePortError
+from .errors import ReceivePortError, WriteFailed
 from .log import log
 from .model import Config, Route
-from .reconcile import (
-    desired,
-    link_messages,
-    plan,
-)
+from .reconcile import Plan, desired, link_messages, plan
 
 # Asked before every write and between every phase of the background
 # verifier. See docs/decisions/0009-verifier-stop-contract.md: the
@@ -203,15 +199,7 @@ def apply_routing(config: Config, port: int,
     # through setinputstereo(), which updates oscmix's state right away,
     # while /output/<n>/stereo relies on the device report -- see
     # backend.Traits.reports_link_state_on_write.
-    device.send(w.message() for w in wanted.links())
-
-    _cross_the_barrier(config, recv_port, device)
-
-    device.send(w.message() for w in wanted.mix())
-    # Channel state last: it does not depend on the barrier, and a fader
-    # or a reference level landing before the routing exists would be
-    # audible for the width of it.
-    device.send(w.message() for w in wanted.channel())
+    _send_in_order(wanted, config, recv_port, device)
     for route in config.routes:
         kind, source = route.source
         log.info(
@@ -234,6 +222,29 @@ def apply_routing(config: Config, port: int,
     elif skip:
         log.info("channel state: nothing to write; %d setting(s) left to "
                  "the device", len(skip))
+
+
+def _send_in_order(wanted: Plan, config: Config, recv_port: int,
+                   device: Backend) -> None:
+    """Links, the barrier, the mix, then channel state.
+
+    Channel state last: it does not depend on the barrier, and a fader or
+    a reference level landing before the routing exists would be audible
+    for the width of it. A burst that fails part of the way is reported
+    for the whole apply: the backend knows how far its burst came, and how
+    far the *apply* came is that plus the bursts on either side.
+    """
+    bursts = (wanted.links(), wanted.mix(), wanted.channel())
+    for index, burst in enumerate(bursts):
+        if index == 1:
+            _cross_the_barrier(config, recv_port, device)
+        try:
+            device.send(w.message() for w in burst)
+        except WriteFailed as exc:
+            before = [w.path for done in bursts[:index] for w in done]
+            after = [w.path for rest in bursts[index + 1:] for w in rest]
+            raise WriteFailed(exc, before + list(exc.written),
+                              list(exc.unwritten) + after) from exc
 
 
 def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:

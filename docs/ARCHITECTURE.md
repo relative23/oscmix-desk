@@ -102,7 +102,7 @@ acyclic graph.
 | `pipewire` | generate named virtual sinks from the same config |
 | `locking` | the lock every writer of one interface holds: where it lives, how it is opened, how long it is waited for |
 | `marker` | which profile is in effect, remembered beside the config: read, written through a rename, removed |
-| `outcome` | what a switch did, as a value: applied and verified, applied and unverified, refused |
+| `outcome` | what a switch did, as a value: applied and verified, applied and unverified, refused, or written in part with both lists |
 | `profiles` | switch to `profiles/<name>.conf` under that lock, in one fixed order -- validate, write, remember, check -- reporting an outcome rather than raising |
 | `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` -- kept for the machine the session runs on, or refused as a desk for somewhere else |
 | `session` | the service lifecycle: wait for the device, start the backend, apply, signal ready, verify, shut down |
@@ -172,7 +172,7 @@ channel map and no registers, because oscmix cannot drive it.
 | Code | Meaning | systemd reaction |
 |---|---|---|
 | 0 | device absent, clean shutdown, or clean backend exit | none |
-| 1 | runtime failure | restart after 3 s (max 5 per 2 min) |
+| 1 | runtime failure; from the command line also a switch whose write gave out part of the way | restart after 3 s (max 5 per 2 min) |
 | 2 | a configuration the unit cannot run: a routing.conf error, two interfaces and no `[device] serial`, a session already running on the port; from the command line also a usage error or a refused switch | **no** restart (`RestartPreventExitStatus=2`) |
 | 3 | `--diff` only: the device and the config disagree | never seen; the service runs no flag |
 | 4 | a switch reached the device but could not be recorded | never seen; flags only |

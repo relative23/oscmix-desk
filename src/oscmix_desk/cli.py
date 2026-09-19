@@ -17,6 +17,7 @@ from .config import load_config
 from .constants import (
     DEFAULT_DEVICE_TIMEOUT,
     EXIT_CONFIG,
+    EXIT_FAILURE,
     EXIT_NOT_PERSISTED,
     EXIT_OK,
     EXIT_RELOAD_FAILED,
@@ -27,7 +28,7 @@ from .errors import ConfigError
 from .log import log
 from .model import Config
 from .notices import log_desk_notices
-from .outcome import REFUSED, Outcome
+from .outcome import REFUSED, WRITTEN_IN_PART, Outcome
 from .paths import discover_config_path, profile_path
 from .pipewire import find_sink, generate_pipewire_conf, pw_dump_objects
 from .process import (
@@ -344,6 +345,13 @@ def _report_outcome(outcome: "Outcome",
     sys.stdout.write(outcome.describe() + "\n")
     if outcome.state == REFUSED:
         return EXIT_CONFIG
+    if outcome.state == WRITTEN_IN_PART:
+        # The marker was left alone, so the unit's reconcile writes the
+        # desk in effect back over the part that went out -- the one
+        # repair there is, if the backend can be reached again by then.
+        # Exit 1 whatever the reload says: the switch did not happen.
+        _hand_over_to_the_unit(config_path)
+        return EXIT_FAILURE
     if not outcome.persisted:
         # Measured on the desk: with the marker unwritten, the reload's
         # reconcile re-read routing.conf and undid the switch two
@@ -352,14 +360,21 @@ def _report_outcome(outcome: "Outcome",
                     "reconcile would undo what was just applied",
                     SERVICE_UNIT)
         return EXIT_NOT_PERSISTED
-    # The unit's own state has to follow, or its start-up verifier may
-    # still be re-applying the desk it started with (process.reload_service).
-    # Only when it is the unit's desk that changed: a reload after a
-    # switch of some other file -- named by --config, or by OSCMIX_CONFIG
-    # in this shell -- made the unit re-apply its own routing.conf over
-    # that switch (0.6.9). The unit's desk is what the unit resolved --
-    # its own --config, else its own environment -- not what this
-    # process would.
+    return _hand_over_to_the_unit(config_path)
+
+
+def _hand_over_to_the_unit(config_path: Optional[Path]) -> int:
+    """Reload the unit when it is the unit's desk that changed.
+
+    The unit's own state has to follow, or its start-up verifier may
+    still be re-applying the desk it started with
+    (process.reload_service). Only when it is the unit's desk that
+    changed: a reload after a switch of some other file -- named by
+    --config, or by OSCMIX_CONFIG in this shell -- made the unit re-apply
+    its own routing.conf over that switch (0.6.9). The unit's desk is
+    what the unit resolved -- its own --config, else its own environment
+    -- not what this process would.
+    """
     told, unit_desk = _unit_desk()
     if config_path is not None and unit_desk is not None \
             and not _same_file(config_path, unit_desk):

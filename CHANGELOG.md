@@ -5,6 +5,26 @@
 0.7.0 in progress. The first step, alone and with no change in
 behaviour: modules a person can read.
 
+### Fixed
+
+- **A switch whose write gives out part of the way says how far it
+  came.** A third outside review asked what a switch reports when the
+  wire fails half-way. Measured: nothing -- `OSError` went out of
+  `switch_profile` as a traceback from `--profile`, with some of the
+  profile on the device and no word on which part, from the one function
+  whose contract is "an outcome, never an exception". The backend now
+  accounts for every burst (`WriteFailed`, an `OSError` carrying what was
+  handed to the kernel and what was not), the apply extends that to its
+  whole plan, and a switch turns it into an outcome: nothing written is
+  a refusal and exit 2; something written is a fourth state,
+  `written-in-part`, with both lists, the marker left alone, exit 1, and
+  the unit asked to reload -- its reconcile writes the desk in effect
+  back, which is the repair. A read-back whose request cannot be sent is
+  "applied, not read back" with the cause. A start, a verifier and a
+  reconcile stand down as before. ADR 0027. "Switched as a transaction"
+  is gone from the README and the architecture page: there is none on
+  this wire, and ADR 0011 always said so.
+
 ### Changed
 
 - **No source module is over 600 lines.** Six were, up to 1038. Split at
