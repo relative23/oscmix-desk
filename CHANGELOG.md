@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+0.7.0 in progress. The first step, alone and with no change in
+behaviour: modules a person can read.
+
+### Changed
+
+- **No source module is over 600 lines.** Six were, up to 1038. Split at
+  seams that were already there: `devices` (the register tables, with
+  their mutation exemption, ADR 0015) out of `registers`; `locking`,
+  `marker` and `outcome` out of `profiles`, which keeps the order of a
+  switch and nothing else; `model`, `paths`, `sections` and `notices`
+  out of `config`, which keeps the loader; `dump` out of `reconcile`;
+  `reload` out of `session`; `reads` out of `cli`. The import graph got
+  simpler with it -- the reconciler, the router, the verifier and the
+  sink generator depended on the parser only for the dataclasses and
+  depend on `model` now. Nothing a `routing.conf` means changes, and
+  the package root exports the names it did.
+- **A test's patch that nothing reads fails the test.** The suite
+  isolates itself from the machine, and steers the code under test, by
+  replacing module attributes, some three hundred times. A function
+  that moves takes its reads with it while the patch on the old module
+  still succeeds and changes nothing, which is how tests reached the
+  machine's lock directory and user manager before. `monkeypatch.setattr`
+  on one of this project's modules now fails when no code in that module
+  reads the name. It found no inert patch in 0.6.11 and caught the
+  suite's own lock-directory isolation the moment the lock moved; the
+  socket guard of 0.6.11 caught the one case it cannot see, a name two
+  modules read.
+
 ## 0.6.11 (2026-09-19)
 
 What two outside reviews of 0.6.10 named, checked against the tree

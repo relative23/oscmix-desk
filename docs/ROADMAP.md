@@ -128,8 +128,10 @@ coverage 97%.
 Decided, and recorded so that none of it is found twice. No new surface:
 nothing is added to what a `routing.conf` can declare.
 
-1. **Modules a person can read, first and alone.** Six source modules
-   are over 600 lines (`registers` 1038, `config` 1037, `profiles` 1002,
+1. **Modules a person can read, first and alone.** *Source done: none
+   is over 600 lines, the largest is `verify` at 576; the test files,
+   this file and the changelog are next.* Six source modules
+   were over 600 lines (`registers` 1038, `config` 1037, `profiles` 1002,
    `reconcile` 843, `session` 743, `cli` 710) and four test files over
    900. Split at seams that exist -- in `profiles`: the device lock, the
    marker's persistence, the switch transaction, which are the three
