@@ -9,7 +9,7 @@ else reads them.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, NamedTuple, Optional, Tuple, Union
+from typing import Mapping, NamedTuple, Optional, Tuple, Union
 
 from .constants import (
     DEFAULT_DEVICE_NAME,
@@ -148,8 +148,19 @@ class Machine(NamedTuple):
         return mine.differs_from(live)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Config:
+    """A desk, parsed and validated, and not changed after that.
+
+    Frozen since 0.7.0 (first outside review). It was built by assignment
+    and then assigned to from four more places -- the command line's
+    overrides, the serial a start pins, a running session keeping its
+    machine settings, a profile's base -- so "the config" was whatever
+    the last of them had left in it, and a function handed one could not
+    know whether its caller's copy moved with it. Each of those makes a
+    new one now (``dataclasses.replace``).
+    """
+
     device_name: str = DEFAULT_DEVICE_NAME
     usb_id: str = DEFAULT_USB_ID
     #: Which box, when the machine has more than one of the same
@@ -158,13 +169,13 @@ class Config:
     serial: str = ""
     osc_port: int = DEFAULT_OSC_PORT
     osc_recv_port: int = DEFAULT_OSC_RECV_PORT
-    routes: List[Route] = field(default_factory=list)
-    channels: List[ChannelSetting] = field(default_factory=list)
+    routes: Tuple[Route, ...] = ()
+    channels: Tuple[ChannelSetting, ...] = ()
     #: Settings from `[<family>]` sections -- families with no channel.
-    globals: List[GlobalSetting] = field(default_factory=list)
+    globals: Tuple[GlobalSetting, ...] = ()
     #: ``(family, option) -> "pin" | "remember"`` from a ``[pin]``
     #: section, overriding the register table's default for that option.
-    policies: Dict[Tuple[str, str], Policy] = field(default_factory=dict)
+    policies: Mapping[Tuple[str, str], Policy] = field(default_factory=dict)
     #: The machine settings as the *file* resolved them, set by
     #: ``load_config`` and never changed. The five attributes above can be
     #: replaced afterwards -- by ``--device`` and ``--osc-port``, by the

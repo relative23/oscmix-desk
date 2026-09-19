@@ -232,6 +232,6 @@ def test_a_childless_option_cannot_be_written_as_a_section(tmp_path, caplog):
     """`[gain:input:3]` is not a thing, and has to warn rather than parse."""
     with caplog.at_level("WARNING"):
         config = load_config(_conf(tmp_path, "[gain:input:3]\nenabled = 12\n"))
-    assert config.channels == []
+    assert config.channels == ()
     assert any("ignoring unknown section" in record.getMessage()
                for record in caplog.records)

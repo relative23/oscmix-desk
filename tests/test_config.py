@@ -14,7 +14,7 @@ def test_defaults_without_file(session_mod):
     assert config.usb_id == "2a39:3fd9"
     assert config.osc_port == 7222
     assert config.osc_recv_port == 8222
-    assert config.routes == []
+    assert config.routes == ()
 
 
 def test_recv_port_option(session_mod, tmp_path):
@@ -288,3 +288,36 @@ def test_config_discovery_returns_none_when_there_is_nothing(session_mod,
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "empty"))
     monkeypatch.setattr(config_mod.Path, "is_file", lambda self: False)
     assert session_mod.discover_config_path() is None
+
+
+def test_a_config_is_not_changed_after_it_is_read(session_mod, tmp_path):
+    """Frozen since 0.7.0. It was assigned to from four places after the
+    parser -- the command line, the serial a start pins, a running session
+    keeping its machine settings, a profile's base -- so "the config" was
+    whatever the last of them had left in it. Each makes a new one."""
+    import dataclasses
+
+    from oscmix_desk import cli, profiles
+
+    config = session_mod.load_config(routing_conf(
+        tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        config.osc_port = 9000
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        config.routes = ()
+    assert isinstance(config.routes, tuple)
+    assert (config.channels, config.globals) == ((), ())
+
+    said = cli._override_device(config, "Some Box")
+    assert (said.device_name, said.overrides.device_name) == ("Some Box",
+                                                              "Some Box")
+    assert (config.device_name, config.overrides.device_name) == (
+        "Fireface UCX II", None), "the one it was given is as it was"
+
+    running = dataclasses.replace(config, osc_port=9000, serial="24216011")
+    fresh = session_mod.load_config(routing_conf(
+        tmp_path, "[route:y]\nplayback = 3/4\noutput = 3/4\n"))
+    kept = profiles.keep_machine_settings(fresh, running)
+    assert (kept.osc_port, kept.serial) == (9000, "24216011")
+    assert [r.name for r in kept.routes] == ["y"]
+    assert (fresh.osc_port, fresh.serial) == (7222, ""), "nor is this one"

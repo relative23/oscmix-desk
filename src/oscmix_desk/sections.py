@@ -18,7 +18,6 @@ from .errors import ConfigError
 from .log import log
 from .model import (
     ChannelSetting,
-    Config,
     GlobalSetting,
     SettingValue,
 )
@@ -48,7 +47,7 @@ def _parse_bool(raw: str, section: str, option: str) -> bool:
     raise ConfigError("[%s] %s: %r is not a boolean" % (section, option, raw))
 
 
-def _has_register_model(config: "Config") -> bool:
+def _has_register_model(device_name: str) -> bool:
     """Whether the configured device comes with a register table.
 
     Two things answer "no": a name the model has never heard of, and a
@@ -57,11 +56,11 @@ def _has_register_model(config: "Config") -> bool:
     opinion on routes (ADR 0006). Both must *say so* when a section asks
     for registers they cannot supply, rather than stay silent.
     """
-    device = device_for_name(config.device_name)
+    device = device_for_name(device_name)
     return device is not None and bool(device.registers)
 
 
-def _warn_unknown_section(section: str, config: "Config") -> None:
+def _warn_unknown_section(section: str, device_name: str) -> None:
     """Say that a section is ignored, and say the right why.
 
     A warning, not an error. See
@@ -79,19 +78,19 @@ def _warn_unknown_section(section: str, config: "Config") -> None:
     changelog when the cause was the device table. Nothing was newer;
     the model has no rows for that device, and the warning says so.
     """
-    if not _has_register_model(config):
+    if not _has_register_model(device_name):
         log.warning(
             "ignoring [%s]: no register model for %r declares it, so "
             "nothing in it could reach the device (modelled: %s)",
-            section, config.device_name, modelled_names())
+            section, device_name, modelled_names())
         return
     log.warning(
         "ignoring unknown section [%s] -- this config may have been "
         "written by a newer version of oscmix-desk (known: %s)",
-        section, _known_sections(config))
+        section, _known_sections(device_name))
 
 
-def _known_sections(config: "Config") -> str:
+def _known_sections(device_name: str) -> str:
     """The section names this version understands, for the warning.
 
     Derived rather than spelled out. The hand-written list went stale
@@ -99,7 +98,7 @@ def _known_sections(config: "Config") -> str:
     diagnostic that lists the wrong alternatives is worse than one that
     lists none -- it reads as authoritative.
     """
-    device = device_for_name(config.device_name)
+    device = device_for_name(device_name)
     names = ["[device]", "[osc]", "[pin]", "[route:<name>]",
              "[input:<n>]", "[output:<n>]"]
     names += ["[%s]" % family for family in global_families(device)]
@@ -109,7 +108,7 @@ def _known_sections(config: "Config") -> str:
     return ", ".join(names)
 
 
-def _is_nested_section(section: str, config: "Config") -> bool:
+def _is_nested_section(section: str, device_name: str) -> bool:
     """Whether ``[<sub>:<family>:<n>]`` names something the model carries.
 
     Checked before the section is parsed so an unknown sub-family still
@@ -121,7 +120,7 @@ def _is_nested_section(section: str, config: "Config") -> bool:
     if len(parts) != 3 or not parts[2].strip().isdigit():
         return False
     sub, family = parts[0], parts[1]
-    device = device_for_name(config.device_name)
+    device = device_for_name(device_name)
     return family in ("input", "output") and sub in nested_families(device,
                                                                     family)
 

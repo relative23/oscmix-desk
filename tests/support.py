@@ -183,3 +183,21 @@ def routing_conf(tmp_path, text):
     path.write_text(text)
     return path
 
+
+def started_with(config, device=None, osc_port=None, serial=None):
+    """``config`` as a start leaves it: the command line over the file --
+    each override in the setting and in ``overrides`` -- and the serial the
+    start pinned. A new one; a ``Config`` is frozen."""
+    from dataclasses import replace
+
+    said = config.overrides
+    if device is not None:
+        config = replace(config, device_name=device)
+        said = said._replace(device_name=device)
+    if osc_port is not None:
+        config = replace(config, osc_port=osc_port)
+        said = said._replace(osc_port=osc_port)
+    if serial is not None:
+        config = replace(config, serial=serial)
+    return replace(config, overrides=said)
+

@@ -100,4 +100,4 @@ def test_an_unmodelled_device_still_gets_no_opinion(tmp_path):
     path = tmp_path / "routing.conf"
     path.write_text("[device]\nname = Some Other Interface\n\n"
                     "[roomeq:output:5]\nband1gain = -6.0\n")
-    assert load_config(path).channels == []
+    assert load_config(path).channels == ()

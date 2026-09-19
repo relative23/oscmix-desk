@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 
 from .backend import (
     Backend,
@@ -408,7 +417,7 @@ def _report(result: VerifyResult, config: Config, device: Optional[Device],
 
 
 def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
-                 overrides: Optional[Dict[Tuple[str, str], Policy]] = None
+                 overrides: Optional[Mapping[Tuple[str, str], Policy]] = None
                  ) -> List[str]:
     """The registers that count as a problem worth re-sending for.
 
@@ -431,7 +440,7 @@ def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
 
 def _kept_by_the_device(result: VerifyResult,
                         device: Optional[Device] = None,
-                        overrides: Optional[Dict[Tuple[str, str], Policy]] = None
+                        overrides: Optional[Mapping[Tuple[str, str], Policy]] = None
                         ) -> List[str]:
     """Mismatches this session is deliberately letting the device keep."""
     return sorted(path for path in result.mismatched

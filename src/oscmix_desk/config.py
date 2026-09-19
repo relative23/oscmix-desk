@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import configparser
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -22,7 +23,14 @@ from .constants import (
 )
 from .devices import device_for_name
 from .errors import ConfigError
-from .model import Config, Machine, Route
+from .model import (
+    ChannelSetting,
+    CommandLine,
+    Config,
+    GlobalSetting,
+    Machine,
+    Route,
+)
 from .registers import POLICIES, Policy, global_families, settable_options
 from .sections import (
     _is_nested_section,
@@ -95,7 +103,7 @@ _KNOWN_OPTIONS = {
 
 
 def _parse_pin(parser: "configparser.ConfigParser", section: str,
-               config: "Config") -> None:
+               config: _Draft) -> None:
     """Read ``[pin]``: per-option overrides of the register table default.
 
     Keys are ``<family>.<option>``; values are ``pin`` or ``remember``.
@@ -182,7 +190,7 @@ def _parse_route(parser: configparser.ConfigParser, section: str) -> Route:
 
 
 def _parse_osc(parser: configparser.ConfigParser, section: str,
-               config: Config) -> None:
+               config: _Draft) -> None:
     """The [osc] section: two ports, both bounded."""
     _check_options(section, "osc", parser.options(section))
     for option, attr in (("port", "osc_port"), ("recv-port", "osc_recv_port")):
@@ -198,6 +206,36 @@ def _parse_osc(parser: configparser.ConfigParser, section: str,
         setattr(config, attr, port)
 
 
+@dataclass
+class _Draft:
+    """A config while it is being read: what ``Config`` is, not yet frozen.
+
+    The parser fills this in section by section and ``load_config`` turns
+    it into a ``Config`` once everything in it has been checked. Nothing
+    outside this module sees one.
+    """
+
+    device_name: str
+    usb_id: str
+    serial: str
+    osc_port: int
+    osc_recv_port: int
+    routes: List[Route] = field(default_factory=list)
+    channels: List[ChannelSetting] = field(default_factory=list)
+    globals: List[GlobalSetting] = field(default_factory=list)
+    policies: Dict[Tuple[str, str], Policy] = field(default_factory=dict)
+
+    def machine(self) -> Machine:
+        return Machine(self.device_name, self.usb_id, self.serial,
+                       self.osc_port, self.osc_recv_port)
+
+    def frozen(self, overrides: CommandLine) -> Config:
+        return Config(self.device_name, self.usb_id, self.serial,
+                      self.osc_port, self.osc_recv_port, tuple(self.routes),
+                      tuple(self.channels), tuple(self.globals),
+                      dict(self.policies), self.machine(), overrides)
+
+
 def load_config(path: Optional[Path],
                 base: Optional[Config] = None) -> Config:
     """Load routing.conf. ``path=None`` returns built-in defaults.
@@ -208,12 +246,13 @@ def load_config(path: Optional[Path],
     validated: read onto the defaults and patched afterwards, a profile
     was checked against the UCX II whatever the desk was for (0.6.11).
     """
-    config = Config() if base is None else base
+    onto = Config() if base is None else base
+    config = _Draft(onto.device_name, onto.usb_id, onto.serial, onto.osc_port,
+                    onto.osc_recv_port)
     if path is None:
         # No file resolves to the defaults, and that is a record like any
         # other: which interface the (empty) desk was checked for.
-        config.loaded = _machine_of(config)
-        return config
+        return config.frozen(onto.overrides)
     if not path.is_file():
         raise ConfigError("config file not found: %s" % path)
 
@@ -246,16 +285,10 @@ def load_config(path: Optional[Path],
 
     _check_device_channels(config)
     _check_link_agreement(config.routes)
-    config.loaded = _machine_of(config)
-    return config
+    return config.frozen(onto.overrides)
 
 
-def _machine_of(config: Config) -> Machine:
-    return Machine(config.device_name, config.usb_id, config.serial,
-                   config.osc_port, config.osc_recv_port)
-
-
-def _dispatch(parser: "configparser.ConfigParser", config: "Config",
+def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
               pending: List[str], pending_globals: List[str],
               pending_nested: List[str]) -> None:
     """Route each section to its parser, or warn that we do not know it.
@@ -313,13 +346,13 @@ def _dispatch(parser: "configparser.ConfigParser", config: "Config",
             _parse_pin(parser, section, config)
         elif section in global_families(device_for_name(config.device_name)):
             pending_globals.append(section)
-        elif _is_nested_section(section, config):
+        elif _is_nested_section(section, config.device_name):
             pending_nested.append(section)
         else:
-            _warn_unknown_section(section, config)
+            _warn_unknown_section(section, config.device_name)
 
 
-def _check_device_channels(config: Config) -> None:
+def _check_device_channels(config: _Draft) -> None:
     """Reject channels the configured device does not have.
 
     ``CHANNEL_MIN..CHANNEL_MAX`` is 1..64 and says nothing about any

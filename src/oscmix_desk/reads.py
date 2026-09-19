@@ -304,9 +304,9 @@ def _dump_config(config: Config) -> int:
     dumped = Config(device_name=config.device_name, usb_id=config.usb_id,
                     osc_port=config.osc_port,
                     osc_recv_port=config.osc_recv_port,
-                    routes=list(routes_from_observed(observed(seen))),
-                    channels=list(channels_from_observed(seen, model)),
-                    globals=list(globals_from_observed(seen, model)))
+                    routes=tuple(routes_from_observed(observed(seen))),
+                    channels=tuple(channels_from_observed(seen, model)),
+                    globals=tuple(globals_from_observed(seen, model)))
     log.info("read %d registers; %d input route(s), %d channel setting(s) "
              "and %d global setting(s) reconstructed",
              len(seen), len(dumped.routes), len(dumped.channels),

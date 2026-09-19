@@ -12,6 +12,7 @@ import signal
 import subprocess
 import threading
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -24,6 +25,7 @@ from .constants import (
     VERIFIER_STOP_GRACE,
     VERIFY_SETTLE,
 )
+from .discovery import Device as Interface
 from .discovery import (
     device_serials,
     lock_key,
@@ -315,19 +317,22 @@ def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
 
 
 def _find_client(args: argparse.Namespace, config: Config, proc_root: Path,
-                 sysfs_usb: Path) -> Tuple[Optional[int], int]:
-    """The sequencer client of this desk's interface, with its serial pinned.
+                 sysfs_usb: Path) -> Tuple[Optional[Interface], int]:
+    """The interface this desk is for: its sequencer client and its serial.
 
-    Returns the client, or None and the exit code the start ends with.
+    Returns it, or None and the exit code the start ends with.
     Client and serial come from one resolution: `[device] serial` selects
     the box among identical ones, and without it more than one candidate
     is a configuration error, exit 2, which `RestartPreventExitStatus=2`
     keeps from becoming a restart loop. Until 0.6.9 the first matching
     client was bound and the serial worked out separately (ADR 0024).
 
-    The serial is pinned because it is read again on every write, and the
-    card list empties the moment the interface is unplugged: a reconcile
-    in that window would otherwise take a different lock (ADR 0023).
+    The start pins the serial it is given here, because it is read again
+    on every write, and the card list empties the moment the interface is
+    unplugged: a reconcile in that window would otherwise take a
+    different lock (ADR 0023). Until 0.7.0 this function wrote it into
+    its argument, which is how the caller's config came to change under
+    it.
     """
     log.info("waiting for %r (ALSA sequencer, timeout %.0fs)",
              config.device_name, args.timeout)
@@ -339,10 +344,9 @@ def _find_client(args: argparse.Namespace, config: Config, proc_root: Path,
         return None, EXIT_CONFIG
     if device is None:
         return None, _no_client(args, config, proc_root, sysfs_usb)
-    config.serial = device.serial
     log.info("found %r as ALSA sequencer client %d", config.device_name,
              device.client)
-    return device.client, EXIT_OK
+    return device, EXIT_OK
 
 
 def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
@@ -418,9 +422,10 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
 
-    client, code = _find_client(args, config, proc_root, sysfs_usb)
-    if client is None:
+    interface, code = _find_client(args, config, proc_root, sysfs_usb)
+    if interface is None or interface.client is None:
         return code
+    client, config = interface.client, replace(config, serial=interface.serial)
 
     if args.dry_run:
         _print_dry_run(client, config)

@@ -5,7 +5,7 @@ on, or refused as a desk for somewhere else (ADR 0024, ADR 0026).
 import argparse
 
 import pytest
-from support import write_config
+from support import started_with, write_config
 from two_boxes import DESK, lock_dir
 
 from oscmix_desk import cli, profiles
@@ -43,12 +43,11 @@ def test_a_re_read_desk_keeps_every_machine_setting_of_the_process(
     a setting added to it is kept by both without anybody remembering."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 3/4\n")
-    running = profiles.load_config(path)
     # What a start replaces, replaced -- the command line's two and the
     # serial it pins. The file says none of it.
-    cli._override_device(running, "Fireface UCX II (live)")
-    running.osc_port, running.serial = 9000, "24216011"
-    running.overrides = running.overrides._replace(osc_port=9000)
+    running = started_with(profiles.load_config(path),
+                           device="Fireface UCX II (live)", osc_port=9000,
+                           serial="24216011")
     args = (running, path) if reread == "_reloaded_desk" else (path, running)
     fresh = getattr(reload_mod, reread)(*args)
     assert fresh is not running
@@ -132,13 +131,12 @@ def test_the_box_a_start_pinned_is_not_another_box_when_the_file_names_it(
     is also this one; naming another is elsewhere."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    running = profiles.load_config(path)
-    running.serial = "24216011"                     # pinned by the start
+    running = started_with(profiles.load_config(path), serial="24216011")
     route = "[route:main]\nplayback = 1/2\noutput = 1/2\n"
     path.write_text("[device]\nserial = 24216011\n" + route)
     assert _reread("_reloaded_desk", running, path) is not None
     started_named = profiles.load_config(path)      # a start that named it
-    started_named.serial = "24216011"
+    assert started_named.serial == "24216011"
     path.write_text(route)
     assert _reread("_reloaded_desk", started_named, path) is not None
     path.write_text("[device]\nserial = 99887766\n" + route)
@@ -154,11 +152,7 @@ def test_a_file_that_appears_is_resolved_like_the_one_a_start_reads(
     file present at its start is applied. One for a box with 42 outputs on
     another port is not; it used to be, pinned to this session, without a
     word (both found by review)."""
-    from oscmix_desk import CommandLine
-
-    running = profiles.load_config(None)
-    running.osc_port = 9000
-    running.overrides = CommandLine(osc_port=9000)
+    running = started_with(profiles.load_config(None), osc_port=9000)
     path = tmp_path / "routing.conf"
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
     fresh = _reread("_reloaded_desk", running, path)
@@ -179,9 +173,7 @@ def test_a_file_under_an_override_is_not_a_desk_for_elsewhere(tmp_path,
     stays on 9000 (found by review)."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    running = profiles.load_config(path)
-    running.osc_port = 9000
-    running.overrides = running.overrides._replace(osc_port=9000)
+    running = started_with(profiles.load_config(path), osc_port=9000)
     path.write_text("[osc]\nport = 9500\n"
                     "[route:main]\nplayback = 1/2\noutput = 3/4\n")
     with caplog.at_level("ERROR"):
@@ -199,8 +191,8 @@ def test_a_reload_names_a_desk_checked_for_another_interface(tmp_path,
     restart would have said so, and so does the reload (found by review)."""
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Fireface 802\n")
-    running = profiles.load_config(path)
-    cli._override_device(running, "Fireface UCX II")
+    running = cli._override_device(profiles.load_config(path),
+                                   "Fireface UCX II")
     assert notices_mod.replaced_device_warning(running) is None, \
         "nothing in it was checked for a device"
     path.write_text("[device]\nname = Fireface 802\n"
@@ -248,10 +240,8 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
     `--device` start its own desk at every SIGHUP."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    running = profiles.load_config(path)
-    cli._override_device(running, "Some Box")
-    running.osc_port, running.serial = 9000, "24216011"
-    running.overrides = running.overrides._replace(osc_port=9000)
+    running = started_with(profiles.load_config(path), device="Some Box",
+                           osc_port=9000, serial="24216011")
     with caplog.at_level("WARNING"):
         fresh = _reread(reread, running, path)
     assert fresh is not None
@@ -313,8 +303,8 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     is not spoken about twice (found by review)."""
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Fireface 802\n")
-    started = profiles.load_config(path)
-    cli._override_device(started, "Fireface UCX II")
+    started = cli._override_device(profiles.load_config(path),
+                                   "Fireface UCX II")
     applied = []
     monkeypatch.setattr(session_module, "apply_routing",
                         lambda config, *a, **k: applied.append(config))
@@ -338,8 +328,8 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     assert caplog.text.count(notice) == 1
     # The same file, read by a start that already said so: not twice.
     caplog.clear()
-    restarted = profiles.load_config(path)
-    cli._override_device(restarted, "Fireface UCX II")
+    restarted = cli._override_device(profiles.load_config(path),
+                                     "Fireface UCX II")
     with caplog.at_level("WARNING"):
         notices_mod.log_desk_notices(restarted)
         session_module._apply_and_verify(Running(), restarted,

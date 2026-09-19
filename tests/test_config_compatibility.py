@@ -91,7 +91,7 @@ def test_a_misspelled_section_name_is_a_warning_not_a_correction(
     path = routing_conf(tmp_path, "[routes:x]\nplayback = 1/2\noutput = 5/6\n")
     with caplog.at_level("WARNING"):
         config = session_mod.load_config(path)
-    assert config.routes == []
+    assert config.routes == ()
     assert "[routes:x]" in caplog.text
 
 def test_todays_config_keeps_meaning_what_it_means(session_mod, tmp_path):

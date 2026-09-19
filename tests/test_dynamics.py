@@ -14,6 +14,7 @@ pinned revision, quoted below with the scale arithmetic shown, because
 """
 
 import json
+from dataclasses import replace
 
 import pytest
 from support import repo_file
@@ -198,8 +199,8 @@ def test_the_dump_round_trips_a_pinned_dynamics_section(tmp_path):
     seen = {"/input/3/dynamics": (1,),
             "/input/3/dynamics/compthres": (-18.0,),
             "/input/3/dynamics/attack": (5,)}
-    config = load_config(write(tmp_path, ""))
-    config.channels.extend(dump.channels_from_observed(seen, UCX2))
+    config = replace(load_config(write(tmp_path, "")),
+                     channels=tuple(dump.channels_from_observed(seen, UCX2)))
     text = dump.render_config(config, UCX2)
     assert "[dynamics:input:3]" in text
     assert "# compthres = -18.0" in text

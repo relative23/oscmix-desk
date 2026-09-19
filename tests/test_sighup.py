@@ -7,7 +7,7 @@ desk, and what is re-read keeps the machine the session runs on.
 
 
 from reconcile_desk import CONF, routes_file
-from support import repo_file
+from support import repo_file, started_with
 
 from oscmix_desk import reload as reload_mod
 
@@ -348,11 +348,9 @@ def test_a_reload_keeps_the_ports_the_backend_is_bound_to(
     path.write_text(CONF)
     # What the start replaced: --osc-port, --device, and the serial it
     # pinned. The file says none of it and is this session's all the same.
-    running = session_mod.load_config(path)
-    running.osc_port, running.device_name = 9000, "Fireface UCX II (24216011)"
-    running.overrides = session_mod.CommandLine(
-        "Fireface UCX II (24216011)", 9000)
-    running.serial = "24216011"
+    running = started_with(session_mod.load_config(path),
+                           device="Fireface UCX II (24216011)",
+                           osc_port=9000, serial="24216011")
 
     fresh = _reconciled(monkeypatch, argparse.Namespace(config=path), running)
     assert fresh is not running, "the file was not re-read at all"

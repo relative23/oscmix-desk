@@ -151,12 +151,11 @@ def keep_machine_settings(desk: Config, running: Config) -> Config:
     ``running`` and an empty ``Config`` as the desk: what a profile is
     read onto.
     """
-    for _section, _option, attr in MACHINE_SETTINGS:
-        setattr(desk, attr, getattr(running, attr))
+    kept = {attr: getattr(running, attr)
+            for _section, _option, attr in MACHINE_SETTINGS}
     # Where two of those came from goes with them: the kept desk is
     # resolved for this command line as much as the running one is.
-    desk.overrides = running.overrides
-    return desk
+    return replace(desk, overrides=running.overrides, **kept)
 
 
 class _Refused(Exception):

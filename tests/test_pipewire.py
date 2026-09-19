@@ -6,9 +6,7 @@ import pytest
 
 
 def make_config(session_mod, routes):
-    config = session_mod.Config()
-    config.routes = routes
-    return config
+    return session_mod.Config(routes=tuple(routes))
 
 
 def test_position_fallback_mapping(session_mod):

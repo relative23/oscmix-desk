@@ -488,8 +488,19 @@ def lifecycle(session_module, monkeypatch):
 
         monkeypatch.setattr(session_module, "supervise", fake_supervise)
 
+        # A Config is frozen, so the serial a start pins is in the config
+        # the session goes on with, not in the one it was given: that is
+        # what `run.config` is from the moment there is a backend to start.
+        start_backend = session_module._start_backend
+
+        def start(client, running):
+            run.config = running
+            return start_backend(client, running)
+
+        monkeypatch.setattr(session_module, "_start_backend", start)
+
         from oscmix_desk import Config
-        config = Config(routes=list(routes), **config_fields)
+        config = Config(routes=tuple(routes), **config_fields)
         run.config = config
         return session_module.run_session(make_args(**args), config)
 

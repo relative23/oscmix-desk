@@ -143,17 +143,17 @@ def test_everything_the_config_asks_for_reaches_the_wire(session_mod,
     from oscmix_desk import routing as routing_mod
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
 
+    send_port, recv_port = free_udp_port(), free_udp_port()
     config = session_mod.Config(
         device_name="Fireface UCX II",
-        routes=[make_route(session_mod, volume=-6.0),
-                session_mod.Route(name="mon", input=(1, 2), output=(7, 8))],
-        channels=[
+        osc_port=send_port, osc_recv_port=recv_port,
+        routes=(make_route(session_mod, volume=-6.0),
+                session_mod.Route(name="mon", input=(1, 2), output=(7, 8))),
+        channels=(
             session_mod.ChannelSetting("output", 5, "mute", 0),
             session_mod.ChannelSetting("input", 3, "gain", 12.0),
             session_mod.ChannelSetting("output", 5, "reflevel", "+4dBu"),
-        ])
-    send_port, recv_port = free_udp_port(), free_udp_port()
-    config.osc_port, config.osc_recv_port = send_port, recv_port
+        ))
 
     device = CapturingBackend(session_mod, send_port)
     device.start()

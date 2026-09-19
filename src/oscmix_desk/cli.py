@@ -10,6 +10,7 @@ import math
 import os
 import sys
 from argparse import ArgumentParser
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
@@ -109,7 +110,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 130
 
 
-def _override_device(config: Config, name: str) -> None:
+def _override_device(config: Config, name: str) -> Config:
     """``--device``: the ALSA client to wait for, and the model from here on.
 
     It arrives after the file was validated, so the channels and sections
@@ -120,8 +121,8 @@ def _override_device(config: Config, name: str) -> None:
     override, like ``--osc-port``: a desk this process reads again is
     resolved the way a restart would resolve it.
     """
-    config.device_name = name
-    config.overrides = config.overrides._replace(device_name=name)
+    return replace(config, device_name=name,
+                   overrides=config.overrides._replace(device_name=name))
 
 
 def _desk_in_effect(config_path: Optional[Path]) -> Optional[Config]:
@@ -167,7 +168,7 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     if args.device:
         # Stripped like `[device] name` is: the client search compares
         # the name as given, and padding matched nothing.
-        _override_device(config, args.device.strip())
+        config = _override_device(config, args.device.strip())
     if args.osc_port is not None:
         # Bounded like `[osc] port` in the file. A port outside the range
         # used to pass straight through: nothing bound it, and the first
@@ -176,8 +177,9 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
             log.error("configuration error: --osc-port %d out of range 1..65535",
                       args.osc_port)
             return EXIT_CONFIG
-        config.osc_port = args.osc_port
-        config.overrides = config.overrides._replace(osc_port=args.osc_port)
+        config = replace(config, osc_port=args.osc_port,
+                         overrides=config.overrides._replace(
+                             osc_port=args.osc_port))
 
     if args.dry_run and (args.profile is not None or args.no_profile):
         return _dry_run_desk(args, config_path)

@@ -62,6 +62,16 @@ behaviour: modules a person can read.
   `Register`. With the real types mypy asked two questions the ignores
   had answered for it -- whether the device can be `None` where its
   channels and its name are read -- and both now say so in the code.
+- **A `Config` is frozen.** The parser builds a private draft and returns
+  a `Config` that is not assigned to again: its routes and settings are
+  tuples, and the four places that changed one after the fact -- the
+  command line's overrides, the serial a start pins, a running session
+  keeping its machine settings, a profile's base -- make a new one
+  (`dataclasses.replace`). `session._find_client` wrote the pinned
+  serial into its argument, which is how a caller's config came to
+  change under it; it returns the interface now. Code that built a
+  `Config` and then set fields on it has to pass them in (first outside
+  review).
 - **The closed sets are enums.** `reconcile.Phase` (an `IntEnum`, so
   its order is still the order of an apply) and `reconcile.WriteReason`;
   `registers.VerifyClass`, `Policy` and `Domain`, which every row of the

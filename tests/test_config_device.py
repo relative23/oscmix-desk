@@ -5,6 +5,8 @@ device without a table saying so rather than swallowing sections.
 """
 
 
+from dataclasses import replace
+
 import pytest
 from support import repo_file, routing_conf
 
@@ -108,7 +110,7 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
                   "[osc]\nport = 9001\n"))
     assert named.loaded == model_mod.Machine(
         "Fireface 802", "2a39:3fd9", "11223344", 9001, 8222)
-    named.device_name, named.osc_port, named.serial = "X", 7, "9"
+    named = replace(named, device_name="X", osc_port=7, serial="9")
     assert named.loaded.device_name == "Fireface 802"
     assert named.loaded.differs_from(model_mod.Machine(
         "Fireface 802", "2a39:3fd9", "5", 9001, 9)) == (
@@ -116,11 +118,11 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
     # Without a record there is nothing to compare, and nothing is said.
     routed = session_mod.load_config(routing_conf(
         tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
-    routed.device_name = "X"
+    routed = replace(routed, device_name="X")
     assert "checked for 'Fireface UCX II' and is used for 'X'" in \
         notices_mod.replaced_device_warning(routed)
-    routed.loaded = None
-    assert notices_mod.replaced_device_warning(routed) is None
+    assert notices_mod.replaced_device_warning(
+        replace(routed, loaded=None)) is None
     # Routes, channel sections, global sections: each alone was checked
     # for a device, and a file with none of them was not.
     for text, checked in (("[input:1]\ngain = 10\n", True),
@@ -128,7 +130,7 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
                           ("[osc]\nport = 9001\n", False)):
         desk = session_mod.load_config(routing_conf(tmp_path, text))
         assert bool(desk.channels or desk.globals) is checked, text
-        desk.device_name = "X"
+        desk = replace(desk, device_name="X")
         assert (notices_mod.replaced_device_warning(desk) is not None) \
             is checked, text
 
@@ -230,7 +232,7 @@ def test_a_channel_section_for_a_device_without_registers_is_named_ignored(
     with caplog.at_level("WARNING"):
         config = session_mod.load_config(path)
     assert len(config.routes) == 1
-    assert config.channels == []
+    assert config.channels == ()
     messages = _warnings(caplog)
     assert len(messages) == 1
     assert "[input:3]" in messages[0]
@@ -248,8 +250,8 @@ def test_a_nested_or_global_section_on_the_802_is_not_blamed_on_a_newer_version(
                            "[%s]\nsource = Internal\n" % section)
     with caplog.at_level("WARNING"):
         config = session_mod.load_config(path)
-    assert config.channels == []
-    assert config.globals == []
+    assert config.channels == ()
+    assert config.globals == ()
     (message,) = _warnings(caplog)
     assert "[%s]" % section in message
     assert "Fireface 802" in message

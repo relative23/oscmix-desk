@@ -150,7 +150,7 @@ def test_a_profile_is_validated_for_the_desk_s_device_not_the_default(
     assert [route.output for route in far.routes] == [(25, 26)]
     with caplog.at_level("WARNING"):
         vol = profiles.load_profile("vol", path)
-    assert vol.channels == [], "nothing of it may reach a device nobody modelled"
+    assert vol.channels == (), "nothing of it may reach a device nobody modelled"
     assert "ignoring [output:1]: no register model for 'Some Box'" in caplog.text
 
 def test_a_profile_on_an_802_desk_is_held_to_the_802_s_channels(tmp_path):
