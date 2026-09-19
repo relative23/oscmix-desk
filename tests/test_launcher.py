@@ -541,3 +541,13 @@ def test_the_backend_poll_asks_the_given_proc(launch_mod, clean_env, tmp_path):
     clean_env.setattr(launch_mod, "BACKEND_WAIT", 0.0)
     assert launch_mod.ensure_backend((9100, 9001), tmp_path) is False
     assert asked == [(9100, tmp_path), (9001, tmp_path)]
+
+
+def test_the_launcher_and_the_session_agree_on_what_a_profile_name_is():
+    import inspect
+
+    from oscmix_desk import launcher
+
+    rule = 'r"[A-Za-z0-9][A-Za-z0-9._-]*"'
+    assert rule in inspect.getsource(paths_mod.profile_path)
+    assert rule in inspect.getsource(launcher._active_profile_port)

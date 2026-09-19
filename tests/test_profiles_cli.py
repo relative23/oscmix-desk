@@ -11,6 +11,7 @@ landed at 53% on cli.py and was found by the gate, on a push.
 
 import pytest
 from conftest import free_udp_port, proc_with_ports, write_config
+from two_boxes import DESK
 
 from oscmix_desk import cli
 from oscmix_desk import outcome as outcome_mod
@@ -229,7 +230,7 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     # the unit re-read the desk in effect (ADR 0018).
     # Which desk the unit runs cannot be told here (no unit process), and
     # "cannot be told" reloads as before; the rule itself has its own
-    # tests in test_device_identity.
+    # tests in test_whose_backend.
     _quick_wire(monkeypatch)
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
@@ -375,3 +376,16 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
         cli._report_outcome(applied, tmp_path / "routing.conf")
     assert "could not tell" not in caplog.text
 
+
+def test_an_empty_profile_name_is_a_refused_switch_not_a_start(
+        tmp_path, monkeypatch, capsys):
+    """`--profile ''` was falsy, fell through every action, and started
+    the service; with --list-profiles it listed (0.6.9)."""
+    started = []
+    monkeypatch.setattr(cli, "run_session", lambda *a: started.append(1) or 0)
+    path = write_config(tmp_path / "routing.conf", DESK)
+    assert cli.main(["--config", str(path), "--profile", ""]) == cli.EXIT_CONFIG
+    assert started == []
+    assert "is not a profile name" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        cli.main(["--config", str(path), "--profile", "", "--list-profiles"])

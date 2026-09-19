@@ -11,12 +11,15 @@ do with the answer.
 """
 
 import socket
+from pathlib import Path
 
-from conftest import free_udp_port, osc_bundle
+from conftest import fake_proc, free_udp_port, osc_bundle
 from test_dump_config_cli import FakeBackend, dump_of
+from two_boxes import A, B
 
 from oscmix_desk import cli
 from oscmix_desk import reads as reads_mod
+from oscmix_desk.discovery import Device
 
 CONFIG = ("[device]\nname = Fireface UCX II\n\n"
           "[route:main]\nplayback = 1/2\noutput = 5/6\nlevel = 0.0\n\n"
@@ -311,3 +314,39 @@ def test_two_port_draws_never_collide():
 
     for _ in range(500):
         assert free_udp_port() != free_udp_port()
+
+
+def test_a_snapshot_names_the_resolved_box(tmp_path, monkeypatch):
+    from oscmix_desk import Config
+
+    one = fake_proc(tmp_path / "one", boxes=[B])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(one))
+    assert reads_mod._snapshot_serial(Config()) == B[1]
+    two = fake_proc(tmp_path / "two", boxes=[A, B])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(two))
+    assert reads_mod._snapshot_serial(Config()) == "ambiguous"
+    assert reads_mod._snapshot_serial(Config(serial=A[1])) == A[1]
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(tmp_path / "none")))
+    assert reads_mod._snapshot_serial(Config()) == "?"
+
+def test_a_snapshot_names_the_box_its_backend_drives(tmp_path, monkeypatch):
+    from oscmix_desk import Config
+
+    port = free_udp_port()
+    proc = fake_proc(tmp_path, boxes=[A, B], bound=[(port, "oscmix", A[0])])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    assert reads_mod._snapshot_serial(Config(serial=B[1], osc_port=port)) == A[1]
+
+def test_a_snapshot_reads_the_real_proc_by_default(monkeypatch):
+
+    from oscmix_desk import Config
+
+    seen = []
+    monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
+    monkeypatch.setattr(reads_mod, "port_holder",
+                        lambda port, proc: seen.append(proc) or None)
+    monkeypatch.setattr(reads_mod, "resolve_device",
+                        lambda usb, name, serial, proc: seen.append(proc)
+                        or Device(usb, B[1], B[0]))
+    assert reads_mod._snapshot_serial(Config()) == B[1]
+    assert seen == [Path("/proc"), Path("/proc")]
