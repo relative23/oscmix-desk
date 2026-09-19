@@ -13,8 +13,11 @@ import threading
 import time
 
 import oracle
+import pytest
 from oscmix_fakes import DumpingOscmix, make_config, make_route
 from support import free_udp_port
+
+from oscmix_desk.routing import LinkEcho
 
 
 class FakeOscmix(threading.Thread):
@@ -308,12 +311,14 @@ def test_await_link_echo_reports_port_unavailable(session_mod):
                                              recv_port, timeout=0.1)
     finally:
         blocker.close()
-    assert result is None
+    assert result is LinkEcho.UNOBSERVABLE
+    assert not result, "truthy only when confirmed"
 
 
 def test_await_link_echo_times_out_without_echo(session_mod):
     assert session_mod.await_link_echo({"/output/5/stereo": 1},
-                                       free_udp_port(), timeout=0.1) is False
+                                       free_udp_port(),
+                                       timeout=0.1) is LinkEcho.SILENT
 
 
 def report_after(session_mod, recv_port, value, delay=0.1):
@@ -345,7 +350,8 @@ def test_await_link_echo_rejects_the_opposite_value(session_mod):
         timer = report_after(session_mod, recv_port, stale)
         try:
             assert session_mod.await_link_echo({"/output/5/stereo": want},
-                                               recv_port, timeout=0.4) is False
+                                               recv_port,
+                                               timeout=0.4) is LinkEcho.SILENT
         finally:
             timer.cancel()
 
@@ -358,13 +364,16 @@ def test_await_link_echo_accepts_either_link_value(session_mod):
         timer = report_after(session_mod, recv_port, want)
         try:
             assert session_mod.await_link_echo({"/output/5/stereo": want},
-                                               recv_port, timeout=2.0) is True
+                                               recv_port,
+                                               timeout=2.0) is LinkEcho.CONFIRMED
         finally:
             timer.cancel()
 
 
 def test_await_link_echo_without_paths_is_immediate(session_mod):
-    assert session_mod.await_link_echo({}, free_udp_port()) is True
+    echo = session_mod.await_link_echo({}, free_udp_port())
+    assert echo is LinkEcho.CONFIRMED
+    assert echo, "and `if await_link_echo(...)` still means confirmed"
 
 
 def test_output_link_state_carries_the_expected_value(session_mod):
@@ -434,6 +443,33 @@ def test_a_backend_that_updates_link_state_on_write_needs_no_barrier(
     assert paths.index("/output/5/stereo") < paths.index("/mix/5/playback/1")
 
 
+@pytest.mark.parametrize(("echo", "slept", "said"), [
+    (LinkEcho.UNOBSERVABLE, [0.01],
+     "link echo unobservable (UDP 9123 in use); waiting 0.0s"),
+    (LinkEcho.SILENT, [],
+     ("no link change reported within 1.5s; mix matrix will be re-applied "
+      "after the register sync")),
+    (LinkEcho.CONFIRMED, [],
+     "channel pairs linked and confirmed by the device"),
+])
+def test_each_answer_of_the_echo_wait_has_its_own_consequence(
+        session_mod, silent_backend, routing_mod, monkeypatch, caplog,
+        echo, slept, said):
+    """The three were one `Optional[bool]` until 0.7.0, told apart by an
+    `is None` and a `not`; the mutation run swapped them and no test
+    noticed. Only an unobservable echo is waited out blind."""
+    waited = []
+    monkeypatch.setattr(routing_mod, "await_link_echo", lambda *a, **k: echo)
+    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.01)
+    monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 1.5)
+    monkeypatch.setattr(routing_mod.time, "sleep", waited.append)
+    config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
+    with caplog.at_level("INFO"):
+        routing_mod._cross_the_barrier(config, 9123, silent_backend)
+    assert waited == slept
+    assert [r.getMessage() for r in caplog.records] == [said]
+
+
 def test_the_barrier_waits_for_the_echo_on_the_port_it_was_given(
         session_mod, silent_backend, routing_mod, monkeypatch):
     """Extracted from `apply_routing` in 0.6.11, and its call of the echo
@@ -441,7 +477,8 @@ def test_the_barrier_waits_for_the_echo_on_the_port_it_was_given(
     timeout could be dropped from it in silence (survivors)."""
     asked = []
     monkeypatch.setattr(routing_mod, "await_link_echo",
-                        lambda *a, **k: asked.append((a, k)) or True)
+                        lambda *a, **k: asked.append((a, k))
+                        or LinkEcho.CONFIRMED)
     config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
     routing_mod._cross_the_barrier(config, 9123, silent_backend)
     assert asked == [((routing_mod.output_link_state(config.routes), 9123,

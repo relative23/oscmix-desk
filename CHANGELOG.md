@@ -69,6 +69,15 @@ behaviour: modules a person can read.
   strings they were. `--diff` prints a reason by its `.value`, because
   what `str()` makes of a string enum differs between the Python
   versions this runs on (first outside review).
+- **The wait for the link echo answers with a name.** `await_link_echo`
+  returned `True`, `False` or `None` -- arrived, timed out, port held --
+  told apart by an `is None` and a `not` that the mutation run had
+  swapped without a test noticing. It returns `routing.LinkEcho`
+  (`CONFIRMED`, `SILENT`, `UNOBSERVABLE`), truthy only when confirmed,
+  so `if await_link_echo(...)` means what it meant; a caller that
+  compared with `None` or `False` has to compare with the member. Each
+  answer's consequence at the barrier has its own test (first outside
+  review).
 - **The oracle builds its own messages, and both sides are held to
   literals.** `tests/oracle.py`, which the reconciler is compared
   against, imported `link_messages` and `mix_messages` from the

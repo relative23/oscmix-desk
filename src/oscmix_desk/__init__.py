@@ -96,6 +96,7 @@ from .profiles import (
 from .reconcile import link_messages, mix_messages, policy_for
 from .registers import PIN, REMEMBER
 from .routing import (
+                        LinkEcho,
                         apply_routing,
                         await_link_echo,
                         blind_reapply_mix,
@@ -138,6 +139,7 @@ __all__ = [
                         "Device",
                         "DeviceAmbiguous",
                         "DeviceLockUnavailable",
+                        "LinkEcho",
                         "Machine",
                         "Outcome",
                         "ReceivePortError",

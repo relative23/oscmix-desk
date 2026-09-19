@@ -6,6 +6,7 @@ See docs/OSC-PROTOCOL.md for why."""
 from __future__ import annotations
 
 import time
+from enum import Enum
 from typing import Callable, Dict, Mapping, Optional, Sequence
 
 from .backend import Backend, loopback
@@ -58,9 +59,27 @@ def wait_unless_stopped(seconds: float, should_stop: StopCheck) -> bool:
         time.sleep(min(0.1, remaining))
 
 
+class LinkEcho(Enum):
+    """What the wait for the link echo came to.
+
+    Three answers, each normal, and until 0.7.0 one ``Optional[bool]``:
+    ``True``, ``False`` and ``None``, told apart by an ``is None`` and a
+    ``not`` that were easy to swap (first outside review; the mutation run
+    had already shown that swapping them went unnoticed). Truthy only when
+    confirmed, so ``if await_link_echo(...)`` still means what it meant.
+    """
+
+    CONFIRMED = "confirmed"          # every register arrived at its value
+    SILENT = "silent"                # the wait ran out
+    UNOBSERVABLE = "unobservable"    # the mixer GUI holds the receive port
+
+    def __bool__(self) -> bool:
+        return self is LinkEcho.CONFIRMED
+
+
 def await_link_echo(expected: Mapping[str, int], recv_port: int,
                     timeout: Optional[float] = None, *,
-                    backend: Optional[Backend] = None) -> Optional[bool]:
+                    backend: Optional[Backend] = None) -> LinkEcho:
     """Wait until oscmix reports every register in ``expected`` at its value.
 
     ``expected`` maps an OSC path to the integer the device has to report
@@ -70,10 +89,10 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
     0 just as a linked one waits for 1, and a stale report of the opposite
     value must not end the wait.
 
-    Returns True when everything arrived, False on timeout, and None when
-    the receive port is unavailable (the mixer GUI holds it), in which
+    ``CONFIRMED`` when everything arrived, ``SILENT`` on timeout, and
+    ``UNOBSERVABLE`` when the mixer GUI holds the receive port, in which
     case the caller falls back to a plain wait. A port that cannot be
-    bound for any other reason raises ``ReceivePortError``.
+    bound or read for any other reason raises ``ReceivePortError``.
 
     ``backend`` is the caller's, when it has one. Without it this built
     its own from ``recv_port`` and ignored the one ``apply_routing`` had
@@ -84,20 +103,20 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
     waiting for an echo no double could send.
     """
     if not expected:
-        return True
+        return LinkEcho.CONFIRMED
     if timeout is None:
         timeout = LINK_ECHO_TIMEOUT
     device = backend if backend is not None else loopback(0, recv_port)
     listener = device.listen()
     if listener is None:
-        return None
+        return LinkEcho.UNOBSERVABLE
     pending = dict(expected)
     deadline = time.monotonic() + timeout
     try:
         while pending:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                return False
+                return LinkEcho.SILENT
             heard = False
             for path, _tags, args in listener.messages(remaining):
                 heard = True
@@ -112,8 +131,8 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
             if not heard and pending:
                 # The listener yields nothing on a socket timeout, which
                 # is the only way this loop ends without the registers.
-                return False
-        return True
+                return LinkEcho.SILENT
+        return LinkEcho.CONFIRMED
     finally:
         listener.close()
 
@@ -149,11 +168,11 @@ def _cross_the_barrier(config: Config, recv_port: int,
                   LINK_SETTLE)
         time.sleep(LINK_SETTLE)
         return
-    if echoed is None:
+    if echoed is LinkEcho.UNOBSERVABLE:
         log.info("link echo unobservable (UDP %d in use); waiting %.1fs",
                  recv_port, LINK_SETTLE)
         time.sleep(LINK_SETTLE)
-    elif not echoed:
+    elif echoed is LinkEcho.SILENT:
         # Normal when the pairs were already linked: no change, no echo.
         log.info("no link change reported within %.1fs; mix matrix will "
                  "be re-applied after the register sync", timeout)
