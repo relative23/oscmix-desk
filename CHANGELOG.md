@@ -25,6 +25,15 @@ behaviour: modules a person can read.
   is gone from the README and the architecture page: there is none on
   this wire, and ADR 0011 always said so.
 
+- **A stale backend is never signalled by its number.** The cleanup
+  signals through a pidfd, so that a process which exited in between is
+  not mistaken for whatever got its number. Where no pidfd could be had
+  -- a seccomp policy, a system without `pidfd_open` -- it fell back to
+  `os.kill`, the race the pidfd exists to avoid, and it took that
+  fallback for a process that had merely exited as well. Nothing is
+  signalled then: the start says so, names the process to stop by hand,
+  and exits 2, since a restart cannot change what the machine allows
+  (second outside review).
 - **A receive port that cannot be read is not a quiet backend.** The
   listener treated every socket error like a timeout and yielded
   nothing; since an error returns at once where a timeout waits, every

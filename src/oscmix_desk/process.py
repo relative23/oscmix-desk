@@ -234,7 +234,11 @@ def _cleanup_stale_backend(port: int, proc_root: Path) -> Optional[int]:
         return session
     log.warning("UDP port %d already in use; terminating the stale oscmix "
                 "that holds it (pid %d)", port, owner)
-    _terminate(owner)
+    if not _terminate(owner):
+        # Not signalled, so the port stays held and a backend started now
+        # could not bind it. Exit 2 like a session in the way: a restart
+        # cannot change what this machine lets a process do.
+        return owner
     # Part of the startup budget; see constants.startup_budget.
     time.sleep(STALE_BACKEND_SETTLE)
     return None
@@ -260,8 +264,8 @@ def _supervising_session(entry: Path, proc_root: Path) -> Optional[int]:
     return int(parent) if "oscmix-session" in names else None
 
 
-def _terminate(pid: int) -> None:
-    """Send SIGTERM to a PID that was identified a moment ago.
+def _terminate(pid: int) -> bool:
+    """SIGTERM to a process that was identified a moment ago, by pidfd.
 
     Between scanning /proc and signalling, that process may exit and the
     kernel may hand its number to something else; a plain os.kill would
@@ -269,24 +273,33 @@ def _terminate(pid: int) -> None:
     than to the number, so the race cannot be lost -- signalling a dead
     one fails instead of hitting its successor.
 
-    os.pidfd_open landed in 3.9, the oldest interpreter supported here,
-    but it is Linux-only and can be blocked by a seccomp policy, so a
-    failure to obtain one falls back rather than skipping the cleanup.
+    True when it was signalled or is already gone. False when no pidfd
+    can be had -- os.pidfd_open is Linux-only and a seccomp policy can
+    block it -- and then nothing is signalled. Until 0.7.0 that case fell
+    back to os.kill, which is the race this function exists to avoid, and
+    it took the fallback for a process that had merely exited as well
+    (second outside review).
     """
     try:
         fd = os.pidfd_open(pid)
-    except (AttributeError, OSError):
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except OSError:
-            pass
-        return
+    except ProcessLookupError:
+        return True                 # gone already: the ordinary race
+    except (AttributeError, OSError) as exc:
+        log.error("the stale oscmix (pid %d) was not signalled: this system "
+                  "gives no pidfd (%s), and a plain kill could hit whatever "
+                  "has that number by now -- stop it by hand", pid, exc)
+        return False
     try:
         signal.pidfd_send_signal(fd, signal.SIGTERM)
-    except (AttributeError, OSError):
-        pass
+    except ProcessLookupError:
+        pass                        # exited between the two calls
+    except (AttributeError, OSError) as exc:
+        log.error("the stale oscmix (pid %d) was not signalled (%s) -- stop "
+                  "it by hand", pid, exc)
+        return False
     finally:
         os.close(fd)
+    return True
 
 
 def supervise(child: "subprocess.Popen[bytes]",

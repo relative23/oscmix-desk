@@ -81,7 +81,8 @@ def test_an_oscmix_that_does_not_hold_the_port_is_left_alone(
     terminated that one, and left the actual holder running.
     """
     signalled = []
-    monkeypatch.setattr(process_mod, "_terminate", signalled.append)
+    monkeypatch.setattr(process_mod, "_terminate",
+                        lambda pid: signalled.append(pid) or True)
     proc = fake_proc(tmp_path, {"200": ("sshd", "/usr/sbin/sshd"),
                                 "201": ("oscmix", "/home/u/.local/bin/oscmix")},
                      listening_port=7222, owner="200")
@@ -96,7 +97,8 @@ def test_a_holder_that_cannot_be_identified_is_left_alone(
     # No fd links to read: nobody can be shown to hold the port, so
     # nobody is signalled, and the start fails on the port wait instead.
     signalled = []
-    monkeypatch.setattr(process_mod, "_terminate", signalled.append)
+    monkeypatch.setattr(process_mod, "_terminate",
+                        lambda pid: signalled.append(pid) or True)
     proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
                      listening_port=7222)
     with caplog.at_level("WARNING"):
@@ -108,11 +110,13 @@ def test_a_holder_that_cannot_be_identified_is_left_alone(
 def test_a_stale_backend_is_terminated(process_mod, tmp_path, monkeypatch):
     signalled = []
     monkeypatch.setattr(process_mod, "_terminate",
-                        lambda pid: signalled.append((pid, signal.SIGTERM)))
+                        lambda pid: signalled.append((pid, signal.SIGTERM))
+                        or True)
     monkeypatch.setattr(process_mod.time, "sleep", lambda _s: None)
     proc = fake_proc(tmp_path, {"201": ("oscmix", "/home/u/.local/bin/oscmix")},
                      listening_port=7222, owner="201")
-    process_mod._cleanup_stale_backend(7222, proc)
+    assert process_mod._cleanup_stale_backend(7222, proc) is None, \
+        "signalled, so the start goes on"
     assert signalled == [(201, signal.SIGTERM)]
 
 
@@ -153,20 +157,42 @@ def test_termination_uses_a_pidfd_so_pid_reuse_cannot_bite(process_mod,
     assert killed == [], "os.kill must not run when a pidfd was obtained"
 
 
-def test_termination_falls_back_when_pidfds_are_unavailable(process_mod,
-                                                            monkeypatch):
-    # Blocked by seccomp, or a kernel without it: still clean up, just
-    # with the older race.
+def test_without_a_pidfd_nothing_is_signalled_and_the_start_says_so(
+        process_mod, tmp_path, monkeypatch, caplog):
+    """Blocked by seccomp, or a system without it. It fell back to
+    `os.kill` until 0.7.0 -- the race by number that the pidfd exists to
+    avoid -- and took that fallback for a process that had merely exited
+    too. Nothing is signalled now, the start is refused with exit 2's
+    answer (the holder's pid), and the journal says what to do."""
     killed = []
 
     def refuse(pid):
-        raise OSError("no pidfd here")
+        raise PermissionError(1, "Operation not permitted")
 
     monkeypatch.setattr(process_mod.os, "pidfd_open", refuse, raising=False)
     monkeypatch.setattr(process_mod.os, "kill",
                         lambda pid, sig: killed.append((pid, sig)))
-    process_mod._terminate(4321)
-    assert killed == [(4321, signal.SIGTERM)]
+    monkeypatch.setattr(process_mod.time, "sleep", killed.append)
+    with caplog.at_level("ERROR"):
+        assert process_mod._terminate(4321) is False
+    assert "the stale oscmix (pid 4321) was not signalled" in caplog.text
+    assert "Operation not permitted" in caplog.text
+    proc = fake_proc(tmp_path, {"202": ("oscmix", "oscmix")},
+                     listening_port=7222, owner="202")
+    assert process_mod._cleanup_stale_backend(7222, proc) == 202
+    assert killed == [], "no kill by number, and no settle for nothing"
+
+
+def test_a_process_that_exited_needs_no_signal(process_mod, monkeypatch):
+    def gone(pid):
+        raise ProcessLookupError(3, "No such process")
+
+    killed = []
+    monkeypatch.setattr(process_mod.os, "pidfd_open", gone, raising=False)
+    monkeypatch.setattr(process_mod.os, "kill",
+                        lambda pid, sig: killed.append(pid))
+    assert process_mod._terminate(4321) is True
+    assert killed == []
 
 
 class Child:
