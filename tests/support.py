@@ -175,3 +175,11 @@ def device_key(path):
     config = load_config(path)
     return resolve_device(config.usb_id, config.device_name, config.serial,
                           Path(os.environ["OSCMIX_PROC_ROOT"])).key
+
+
+def routing_conf(tmp_path, text):
+    """``routing.conf`` with this text, in the test's own directory."""
+    path = tmp_path / "routing.conf"
+    path.write_text(text)
+    return path
+
