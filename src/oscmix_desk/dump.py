@@ -16,8 +16,15 @@ from __future__ import annotations
 from typing import Dict, List, Mapping, Optional, Tuple
 
 from .constants import LEVEL_MIN, UNLINKED_GAIN_OFFSET
-from .model import ChannelSetting, Config, GlobalSetting, Route
-from .reconcile import Args, policy_for
+from .model import (
+    ChannelSetting,
+    Config,
+    GlobalSetting,
+    Route,
+    SettingValue,
+)
+from .osc import Args
+from .reconcile import policy_for
 from .registers import (
     BOOL,
     ENABLE_OPTION,
@@ -118,7 +125,7 @@ def globals_from_observed(seen: Mapping[str, Args],
     return tuple(found)
 
 
-def _unnameable(register: "Register", value: object) -> bool:
+def _unnameable(register: "Register", value: SettingValue) -> bool:
     """Whether an enum value is one this backend cannot put a name to.
 
     Written for `/controlroom/mainout`, which reported -1 for "no main
@@ -138,7 +145,7 @@ def _unnameable(register: "Register", value: object) -> bool:
     return register.domain == ENUM and value not in register.choices
 
 
-def _config_value(register: "Register", args: Args) -> object:
+def _config_value(register: "Register", args: Args) -> SettingValue:
     """One reported register as the value a config would carry.
 
     Enums report ``(index, name)`` and a config writes the name; booleans
@@ -173,8 +180,8 @@ def routes_from_observed(seen: Mapping[str, Args]) -> Tuple[Route, ...]:
         # Args is a tuple of `object`; the filter in _mix_entries already
         # established that the first is a float, and the pan is written
         # as an int by everything that produces these registers.
-        level = float(cell[0])          # type: ignore[arg-type]
-        pan = int(cell[1]) if len(cell) > 1 else 0   # type: ignore[call-overload]
+        level = float(cell[0])
+        pan = int(cell[1]) if len(cell) > 1 else 0
         out_linked = _linked(seen, "output", out)
 
         if out_linked and out % 2 == 1:
@@ -337,7 +344,7 @@ def _global_sections(config: Config, device: Optional[Device]) -> List[str]:
     return lines
 
 
-def _setting_line(name: str, value: object, path: str,
+def _setting_line(name: str, value: SettingValue, path: str,
                   device: Optional[Device]) -> str:
     """One config line, live or commented, with the reason for commenting."""
     register = register_at(device, path)
@@ -350,7 +357,8 @@ def _setting_line(name: str, value: object, path: str,
     return "# %s   # remembered: the device's value wins" % entry
 
 
-def _render_value(value: object, register: "Optional[Register]" = None) -> str:
+def _render_value(value: SettingValue,
+                  register: "Optional[Register]" = None) -> str:
     """A value as the config file spells it.
 
     Keyed off the declared domain rather than the Python type, for the

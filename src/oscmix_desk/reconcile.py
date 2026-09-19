@@ -56,7 +56,16 @@ from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .constants import LEVEL_MIN, UNLINKED_GAIN_OFFSET
 from .devices import device_for_name
-from .model import Config, Route
+from .model import (
+    Config,
+    Route,
+    SettingValue,
+)
+from .osc import (
+    Args,
+    Message,
+    Value,
+)
 from .registers import (
     ENUM,
     REESTABLISHED,
@@ -69,11 +78,8 @@ from .registers import (
     verify_class,
 )
 
-Args = Tuple[object, ...]
-Message = Tuple[str, str, Args]
 
-
-def link_messages(route: Route) -> List[Tuple[str, str, Tuple[object, ...]]]:
+def link_messages(route: Route) -> List[Message]:
     """The channel-pair link state a route needs before its mix is written.
 
     These must reach the device -- and be reported back to oscmix -- before
@@ -95,7 +101,7 @@ def link_messages(route: Route) -> List[Tuple[str, str, Tuple[object, ...]]]:
     ]
 
 
-def mix_messages(route: Route) -> List[Tuple[str, str, Tuple[object, ...]]]:
+def mix_messages(route: Route) -> List[Message]:
     """The mix-matrix and volume writes of a route.
 
     oscmix folds stereo-linked channels onto the odd (left) channel of a
@@ -108,7 +114,7 @@ def mix_messages(route: Route) -> List[Tuple[str, str, Tuple[object, ...]]]:
     the single pair register with pan 0 (= plain stereo pass-through at
     ``level`` dB).
     """
-    messages: List[Tuple[str, str, Tuple[object, ...]]] = []
+    messages: List[Message] = []
     kind, source = route.source
     if len(route.output) == 2:
         left, right = route.output
@@ -301,7 +307,7 @@ def global_entries(config: Config) -> Tuple[Entry, ...]:
     return tuple(out)
 
 
-def _enum_value(register: "Register", value: object) -> int:
+def _enum_value(register: "Register", value: SettingValue) -> int:
     """The wire value for an enum name.
 
     Its position, unless the register declares otherwise. Upstream's
@@ -316,7 +322,8 @@ def _enum_value(register: "Register", value: object) -> int:
     return position
 
 
-def _encode(path: str, register: "Register", value: object) -> Entry:
+def _encode(path: str, register: "Register",
+            value: SettingValue) -> Entry:
     """One setting as the entry that writes it.
 
     The **declared** tag decides the wire type, not the Python one.
@@ -334,9 +341,9 @@ def _encode(path: str, register: "Register", value: object) -> Entry:
         return Entry(path, "i", (_enum_value(register, value),),
                      PHASE_CHANNEL)
     if register.tags.startswith("f"):
-        return Entry(path, "f", (float(value),),  # type: ignore[arg-type]
+        return Entry(path, "f", (float(value),),
                      PHASE_CHANNEL)
-    return Entry(path, "i", (int(value),), PHASE_CHANNEL)  # type: ignore[call-overload]
+    return Entry(path, "i", (int(value),), PHASE_CHANNEL)
 
 
 def _send_order(config: Config) -> Callable[[Entry], int]:
@@ -352,7 +359,7 @@ def _send_order(config: Config) -> Callable[[Entry], int]:
     return lambda entry: position[entry.path]
 
 
-def observed(reports: Mapping[str, Sequence[object]]) -> Dict[str, Args]:
+def observed(reports: Mapping[str, Sequence[Value]]) -> Dict[str, Args]:
     """The device's own view, as the dump reported it.
 
     A plain projection. It is a named step because
@@ -452,11 +459,11 @@ def matches(tags: str, want: Args, got: Args,
     for tag, wanted, reported in zip(tags, want, got):
         try:
             if tag == "f":
-                if _both_muted(float(wanted), float(reported)):  # type: ignore[arg-type]
+                if _both_muted(float(wanted), float(reported)):
                     continue
-                if abs(float(wanted) - float(reported)) > tolerance:  # type: ignore[arg-type]
+                if abs(float(wanted) - float(reported)) > tolerance:
                     return False
-            elif int(wanted) != int(reported):  # type: ignore[call-overload]
+            elif int(wanted) != int(reported):
                 return False
         except (TypeError, ValueError):
             return False

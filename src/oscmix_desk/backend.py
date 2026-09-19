@@ -39,12 +39,10 @@ import socket
 import struct
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Iterable, Iterator, Optional, Sequence, Tuple, Type
+from typing import Iterable, Iterator, Optional, Type
 
 from .errors import ReceivePortError, WriteFailed
-from .osc import decode_osc, encode_osc, iter_osc_messages
-
-Message = Tuple[str, str, Tuple[object, ...]]
+from .osc import Message, decode_osc, encode_osc, iter_osc_messages
 
 #: Datagrams larger than this are not produced by anything upstream
 #: sends; the size is the socket read buffer, not a protocol limit.
@@ -118,8 +116,7 @@ class Listener:
         self._sock = sock
         self._port = port
 
-    def messages(self, timeout: float) -> Iterator[Tuple[str, str,
-                                                         Sequence[object]]]:
+    def messages(self, timeout: float) -> Iterator[Message]:
         """Decoded messages from one datagram, or nothing on timeout.
 
         Malformed messages are skipped rather than raised on: this reads

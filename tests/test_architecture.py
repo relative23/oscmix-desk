@@ -66,7 +66,7 @@ ALLOWED_IMPORTS = {
     # because `__init__` is the only module that re-exports.
     "routing": {"backend", "constants", "errors", "log", "model", "reconcile"},
     "verify": {"backend", "constants", "devices", "errors", "log", "model",
-               "reconcile", "registers", "routing"},
+               "osc", "reconcile", "registers", "routing"},
     "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "log"},
     # `locking` since 0.7.0: the unit takes the device lock itself around
@@ -97,7 +97,7 @@ ALLOWED_IMPORTS = {
     # whose backend holds the port, `dump` for the device's state as a
     # config.
     "reads": {"backend", "constants", "devices", "discovery", "dump", "errors",
-              "log", "model", "process", "reconcile"},
+              "log", "model", "osc", "process", "reconcile"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
@@ -146,11 +146,14 @@ ALLOWED_IMPORTS = {
     # Pure: config + the message shapes + the register table. No
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.
-    "reconcile": {"constants", "devices", "model", "registers"},
+    # `osc` since 0.7.0, here and in whatever handles a register's value:
+    # the leaf names what a value on this wire is, so that it is not an
+    # `object` each reader casts past the type checker.
+    "reconcile": {"constants", "devices", "model", "osc", "registers"},
     # The other direction, split out of reconcile in 0.7.0: what the device
     # reports, as a config and as its text. As pure as the reconciler,
     # whose message shapes and policy it reads.
-    "dump": {"constants", "model", "reconcile", "registers"},
+    "dump": {"constants", "model", "osc", "reconcile", "registers"},
     "__init__": {"config", "constants", "discovery", "errors", "launcher",
                  "locking", "log", "marker", "model", "notify", "osc",
                  "outcome", "paths", "pipewire", "process", "profiles",

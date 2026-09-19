@@ -11,17 +11,24 @@ sections; they are passed over with a warning that says what is modelled
 from __future__ import annotations
 
 import configparser
-from typing import List
+from typing import List, Optional
 
 from .devices import device_for_name, modelled_names
 from .errors import ConfigError
 from .log import log
-from .model import ChannelSetting, Config, GlobalSetting
+from .model import (
+    ChannelSetting,
+    Config,
+    GlobalSetting,
+    SettingValue,
+)
 from .registers import (
     BOOL,
     ENABLE_OPTION,
     ENUM,
     NUMBER,
+    Device,
+    Register,
     global_families,
     nested_families,
     option_channels,
@@ -120,7 +127,7 @@ def _is_nested_section(section: str, config: "Config") -> bool:
 
 
 def _parse_nested_section(parser: "configparser.ConfigParser", section: str,
-                          device: object) -> List[ChannelSetting]:
+                          device: Optional[Device]) -> List[ChannelSetting]:
     """Parse ``[eq:input:3]`` and the families that follow it.
 
     Produces ``ChannelSetting`` like a flat section does, with the option
@@ -131,7 +138,7 @@ def _parse_nested_section(parser: "configparser.ConfigParser", section: str,
     """
     sub, family, raw = section.split(":")
     channel = int(raw)
-    known = settable_nested(device, sub, family)  # type: ignore[arg-type]
+    known = settable_nested(device, sub, family)
     if not known:
         # Two different situations produce an empty set, and they call
         # for opposite answers. An unmodelled device has no opinion, so
@@ -143,7 +150,7 @@ def _parse_nested_section(parser: "configparser.ConfigParser", section: str,
         # table says so -- which is why the rule reads the table rather
         # than naming families here.
         if device is not None and sub in nested_families(
-                device, family):  # type: ignore[arg-type]
+                device, family):
             raise ConfigError(
                 "[%s]: %s is reported by the device but cannot be set -- "
                 "oscmix accepts the write and the register does not change"
@@ -168,17 +175,18 @@ def _parse_nested_section(parser: "configparser.ConfigParser", section: str,
     return found
 
 
-def _has_channel(device: object, family: str, sub: str, channel: int) -> bool:
+def _has_channel(device: Optional[Device], family: str, sub: str,
+                 channel: int) -> bool:
     """Whether this device has that channel in that sub-family."""
-    known = settable_nested(device, sub, family)  # type: ignore[arg-type]
-    for register in known.values():
-        return channel in device.channels_for(  # type: ignore[attr-defined]
-            register.channels)
+    if device is None:
+        return False
+    for register in settable_nested(device, sub, family).values():
+        return channel in device.channels_for(register.channels)
     return False
 
 
 def _parse_global_section(parser: "configparser.ConfigParser", section: str,
-                          device: object) -> List[GlobalSetting]:
+                          device: Optional[Device]) -> List[GlobalSetting]:
     """Parse ``[echo]`` and the other channel-less families.
 
     Same rule as a channel section and for the same reason: which
@@ -186,7 +194,7 @@ def _parse_global_section(parser: "configparser.ConfigParser", section: str,
     model, not from a list kept here. A second list is a second place to
     disagree with the device.
     """
-    known = settable_globals(device, section)  # type: ignore[arg-type]
+    known = settable_globals(device, section)
     if not known:
         # Only reachable for a family the model lists with no settable
         # row. The UCX II has none as of 0.6.2, and the branch used to
@@ -210,7 +218,7 @@ def _parse_global_section(parser: "configparser.ConfigParser", section: str,
 
 
 def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
-                           family: str, device: object,
+                           family: str, device: Optional[Device],
                            device_name: str) -> List[ChannelSetting]:
     """Parse ``[input:N]`` / ``[output:N]``.
 
@@ -226,8 +234,8 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
         raise ConfigError(
             "[%s]: %r is not a channel number" % (section, raw)) from None
 
-    known = settable_options(device, family)  # type: ignore[arg-type]
-    if not known:
+    known = settable_options(device, family)
+    if device is None or not known:
         # No rows for this device: an unmodelled name, or the 802, which
         # lists channels and no registers. Routes still get no opinion
         # (ADR 0006). A section that asks for registers the model cannot
@@ -258,15 +266,15 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
         # By channel, not by name: an option can have several rows when
         # the device's limits differ per channel, and the wrong row
         # validates against the wrong ceiling. See `option_register`.
-        register = option_register(device, family, option,  # type: ignore[arg-type]
+        register = option_register(device, family, option,
                                    channel)
         if register is None:
-            valid = option_channels(device, family, option)  # type: ignore[arg-type]
+            valid = option_channels(device, family, option)
             raise ConfigError(
                 "[%s] %s: channel %d does not have it on a %s (it has %s "
                 "on %d..%d)"
                 % (section, option, channel,
-                   device.name, option, min(valid), max(valid)))  # type: ignore[attr-defined]
+                   device.name, option, min(valid), max(valid)))
         settings.append(ChannelSetting(
             family, channel, option,
             _parse_domain(parser.get(section, option), section, option,
@@ -275,13 +283,13 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
 
 
 def _parse_domain(raw: str, section: str, option: str,
-                  register: object) -> object:
+                  register: Register) -> SettingValue:
     """Read a value according to the register's declared domain."""
-    domain = register.domain           # type: ignore[attr-defined]
+    domain = register.domain
     if domain == BOOL:
         return 1 if _parse_bool(raw, section, option) else 0
     if domain == ENUM:
-        choices = register.choices     # type: ignore[attr-defined]
+        choices = register.choices
         value = raw.strip()
         if value not in choices:
             raise ConfigError(
@@ -295,7 +303,7 @@ def _parse_domain(raw: str, section: str, option: str,
 
 
 def _parse_number(raw: str, section: str, option: str,
-                  register: object) -> float:
+                  register: Register) -> float:
     """A quantity, checked against the bounds the register declares.
 
     The bounds come from upstream's node table -- and upstream does not

@@ -53,6 +53,15 @@ behaviour: modules a person can read.
   of a refused reload: only `routing.conf` can name another machine
   now, and a restart follows it. A desk that really is for another
   backend needs its own directory and `--config`.
+- **A register value has a type, and no `type: ignore` is left.** A
+  value on the wire was `object`, and so was the device handed to the
+  section parsers; 24 `type: ignore` marked the places that cast past
+  the checker (first outside review). `osc.Value`, `Args` and `Message`
+  name what oscmix's `,i` `,f` `,s` carry, `model.SettingValue` what a
+  setting may hold, and the parsers take `Optional[Device]` and
+  `Register`. With the real types mypy asked two questions the ignores
+  had answered for it -- whether the device can be `None` where its
+  channels and its name are read -- and both now say so in the code.
 - **The oracle builds its own messages, and both sides are held to
   literals.** `tests/oracle.py`, which the reconciler is compared
   against, imported `link_messages` and `mix_messages` from the

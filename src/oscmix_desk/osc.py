@@ -3,7 +3,16 @@
 from __future__ import annotations
 
 import struct
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Tuple, Union
+
+#: What an argument is on this wire: oscmix speaks ``,i``, ``,f`` and
+#: ``,s``, and nothing else is encoded or decoded here. Named once, so
+#: that a register value is not an ``object`` every reader has to cast
+#: past the type checker (0.7.0; it was, and 13 ``type: ignore`` said so).
+Value = Union[int, float, str]
+Args = Tuple[Value, ...]
+#: One register write or report: path, type tags, arguments.
+Message = Tuple[str, str, Args]
 
 
 def _osc_string(value: str) -> bytes:
@@ -12,7 +21,7 @@ def _osc_string(value: str) -> bytes:
     return raw + b"\x00" * (-len(raw) % 4)
 
 
-def encode_osc(path: str, types: str = "", *args: object) -> bytes:
+def encode_osc(path: str, types: str = "", *args: Value) -> bytes:
     """Encode a single OSC message.
 
     Supported type tags: ``f`` (float32), ``i`` (int32), ``s`` (string).
@@ -24,9 +33,9 @@ def encode_osc(path: str, types: str = "", *args: object) -> bytes:
     data = _osc_string(path) + _osc_string("," + types)
     for tag, value in zip(types, args):
         if tag == "f":
-            data += struct.pack(">f", float(value))  # type: ignore[arg-type]
+            data += struct.pack(">f", float(value))
         elif tag == "i":
-            data += struct.pack(">i", int(value))  # type: ignore[call-overload]
+            data += struct.pack(">i", int(value))
         elif tag == "s":
             data += _osc_string(str(value))
         else:
@@ -41,7 +50,7 @@ def _decode_string(data: bytes, offset: int) -> Tuple[str, int]:
     return value, end + (-end % 4)
 
 
-def decode_osc(data: bytes) -> Tuple[str, str, Tuple[object, ...]]:
+def decode_osc(data: bytes) -> Message:
     """Decode a single OSC message (type tags ``f``, ``i``, ``s``)."""
     try:
         path, offset = _decode_string(data, 0)
@@ -50,9 +59,10 @@ def decode_osc(data: bytes) -> Tuple[str, str, Tuple[object, ...]]:
         raise ValueError("truncated OSC message") from None
     if not tags.startswith(","):
         raise ValueError("missing OSC type tag string")
-    args: List[object] = []
+    args: List[Value] = []
     try:
         for tag in tags[1:]:
+            value: Value
             if tag == "f":
                 (value,) = struct.unpack_from(">f", data, offset)
                 offset += 4

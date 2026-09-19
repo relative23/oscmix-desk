@@ -104,7 +104,7 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
                 if path not in pending or not args:
                     continue
                 try:
-                    reported = int(args[0])  # type: ignore[call-overload]
+                    reported = int(args[0])
                 except (TypeError, ValueError):
                     continue
                 if reported == pending[path]:
@@ -259,7 +259,7 @@ def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
     for route in routes:
         for path, _types, args in link_messages(route):
             if path.startswith("/output/"):
-                state[path] = int(args[0])  # type: ignore[call-overload]
+                state[path] = int(args[0])
     return state
 
 

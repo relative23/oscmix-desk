@@ -9,7 +9,7 @@ else reads them.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
 from .constants import (
     DEFAULT_DEVICE_NAME,
@@ -18,6 +18,10 @@ from .constants import (
     DEFAULT_USB_ID,
 )
 from .registers import ENABLE_OPTION
+
+#: What a channel or global setting may hold once it is parsed: a switch,
+#: a number, or an enum's name as the device spells it.
+SettingValue = Union[bool, int, float, str]
 
 
 @dataclass(frozen=True)
@@ -66,7 +70,7 @@ class ChannelSetting:
     family: str
     channel: int
     option: str
-    value: object
+    value: SettingValue
 
 
 @dataclass(frozen=True)
@@ -82,7 +86,7 @@ class GlobalSetting:
 
     family: str
     option: str
-    value: object
+    value: SettingValue
 
     @property
     def path(self) -> str:

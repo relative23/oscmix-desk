@@ -14,7 +14,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 from .backend import loopback
 from .constants import (
@@ -34,6 +34,10 @@ from .dump import (
 from .errors import DeviceAmbiguous, ReceivePortError
 from .log import log
 from .model import Config
+from .osc import (
+    Args,
+    Value,
+)
 from .process import port_holder
 from .reconcile import (
     PHASE_CHANNEL,
@@ -197,14 +201,14 @@ def _diff(config: Config) -> int:
     return EXIT_DIFFERS if differing else EXIT_OK
 
 
-def _diff_line(write: Write, seen: Dict[str, Tuple[object, ...]]) -> str:
+def _diff_line(write: Write, seen: Dict[str, Args]) -> str:
     """One write as `path  config-value  device-value  reason`."""
     return "%-34s %-14s device %-14s %s" % (
         write.path, _values(write.args), _values(seen.get(write.path)),
         write.reason)
 
 
-def _values(args: Optional[Tuple[object, ...]]) -> str:
+def _values(args: Optional[Args]) -> str:
     """OSC arguments as a config would read them, or a dash for absent.
 
     A missing register and a register holding an empty value are
@@ -216,13 +220,13 @@ def _values(args: Optional[Tuple[object, ...]]) -> str:
     return ", ".join(_one_value(value) for value in args)
 
 
-def _one_value(value: object) -> str:
+def _one_value(value: Value) -> str:
     if isinstance(value, float):
         return "%.1f" % value
     return str(value)
 
 
-def _read_device(config: Config) -> Optional[Dict[str, Tuple[object, ...]]]:
+def _read_device(config: Config) -> Optional[Dict[str, Args]]:
     """Every register the running backend reports, or None with a reason.
 
     Shared by `--dump-config` and `--diff`, which ask the device the same
@@ -243,7 +247,7 @@ def _read_device(config: Config) -> Optional[Dict[str, Tuple[object, ...]]]:
                   config.osc_recv_port)
         return None
 
-    seen: Dict[str, Tuple[object, ...]] = {}
+    seen: Dict[str, Args] = {}
     try:
         # The same settle the verifier takes, and for the same reason.
         # `setrefresh` answers with `/playback/N/stereo` synchronously,
