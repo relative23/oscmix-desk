@@ -52,8 +52,13 @@ from .routing import apply_routing, wait_unless_stopped
 from .verify import verify_and_repair
 
 
-def _print_dry_run(client: int, config: Config) -> None:
+def _print_dry_run(client: Optional[int], config: Config) -> None:
     """Show what would be started and sent, in the order it would happen.
+
+    Without the interface too (``client`` is None): what would be sent
+    does not depend on it, and until 0.7.0 a dry run on a machine whose
+    box was switched off printed nothing at all -- on the machine where
+    one writes a config before plugging anything in.
 
     Reads the same plan ``apply_routing`` sends, so the printed sequence
     *is* the sent sequence. It used to walk route by route and print
@@ -64,7 +69,8 @@ def _print_dry_run(client: int, config: Config) -> None:
     reason: the guarantee is that they read one source, not that they
     read a particular one.
     """
-    print("would run: alsaseqio %d:1 oscmix" % client)
+    print("would run: alsaseqio %s:1 oscmix"
+          % ("<client>" if client is None else client))
     for path, types, values in plan(desired(config)).messages():
         print("would send: %s ,%s %s"
               % (path, types, " ".join(map(str, values))))
@@ -424,6 +430,11 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
 
     interface, code = _find_client(args, config, proc_root, sysfs_usb)
     if interface is None or interface.client is None:
+        if args.dry_run and code != EXIT_CONFIG:
+            # Which interface is a question a dry run cannot answer here;
+            # what would be written to it is one it can. The exit code
+            # stays the one a start would have ended with.
+            _print_dry_run(None, config)
         return code
     client, config = interface.client, replace(config, serial=interface.serial)
 

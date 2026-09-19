@@ -82,6 +82,33 @@ def test_a_dry_run_starts_nothing(session_mod, lifecycle, capsys):
         "a dry run is not a started service")
 
 
+@pytest.mark.parametrize(("usb_present", "code"), [(False, 0), (True, 1)])
+def test_a_dry_run_shows_its_plan_without_the_interface(
+        session_mod, lifecycle, capsys, usb_present, code):
+    """What would be sent does not depend on the box being switched on, and
+    the machine a config is written on is often one where it is not. Until
+    0.7.0 such a dry run printed nothing. The exit code is still the one a
+    start would have ended with: 0 for an interface that is not connected,
+    1 for one that is and shows no sequencer client."""
+    route = session_mod.Route(name="m", playback=(1, 2), output=(5, 6))
+    assert lifecycle(dry_run=True, routes=[route], seq_client=None,
+                     usb_present=usb_present) == code
+    printed = capsys.readouterr().out
+    assert "would run: alsaseqio <client>:1 oscmix" in printed
+    assert "would send: /output/5/stereo ,i 1" in printed
+    assert lifecycle.children == [], "and still starts nothing"
+
+
+def test_a_dry_run_of_an_ambiguous_desk_shows_no_plan(session_mod, lifecycle,
+                                                      capsys):
+    """Two boxes and no serial is a configuration error: which desk this
+    is for is the question, and a plan would answer another one."""
+    route = session_mod.Route(name="m", playback=(1, 2), output=(5, 6))
+    assert lifecycle(dry_run=True, routes=[route], ambiguous=True) == \
+        session_mod.EXIT_CONFIG
+    assert "would" not in capsys.readouterr().out
+
+
 def test_a_config_error_exits_two_without_restarting(session_mod, tmp_path):
     # RestartPreventExitStatus=2: a broken routing.conf must stop the unit
     # rather than loop, because no restart can fix a typo.

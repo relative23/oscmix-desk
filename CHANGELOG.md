@@ -71,6 +71,13 @@ behaviour: modules a person can read.
   `Register`. With the real types mypy asked two questions the ignores
   had answered for it -- whether the device can be `None` where its
   channels and its name are read -- and both now say so in the code.
+- **A dry run shows its plan without the interface.** What would be sent
+  does not depend on the box being switched on, and a config is often
+  written on a machine where it is not; such a dry run printed nothing.
+  It prints `would run: alsaseqio <client>:1 oscmix` and every write,
+  and exits as a start would have: 0 for an interface that is not
+  connected, 1 for one that shows no sequencer client. Two boxes and no
+  serial stay a configuration error with no plan.
 - **A desk is validated for the interface `--device` names. A
   combination that loaded in 0.6.x now does not.** The override arrived
   after the file had been checked for the device *it* names, so outputs
