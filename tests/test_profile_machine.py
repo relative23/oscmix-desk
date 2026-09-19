@@ -2,7 +2,7 @@
 
 A profile is the desk, not the machine: it inherits `[osc]` and
 `[device]` from its `routing.conf`, is validated for the device that
-names, and is told when it names another one.
+names, and is refused when it names another one.
 """
 
 
@@ -10,7 +10,6 @@ import pytest
 from profile_desk import GOOD, TRACKING, desk, retargeting_desk
 from support import write_config
 
-from oscmix_desk import notices as notices_mod
 from oscmix_desk import profiles
 
 
@@ -37,55 +36,60 @@ def test_a_profile_without_an_osc_section_uses_the_main_config_port(tmp_path):
     assert config.osc_recv_port == 9002
     assert config.device_name == "Fireface UFX III"
 
-def test_a_profile_that_states_a_port_keeps_its_own(tmp_path):
-    # The machine with two backends is exactly the machine whose
-    # profiles are per-backend, so stating it has to win.
-    write_config(tmp_path / "routing.conf", "[osc]\nport = 9001\n")
-    write_config(tmp_path / "profiles" / "other.conf",
-                 "[osc]\nport = 9500\n" + GOOD)
-    assert profiles.load_profile("other", tmp_path / "routing.conf"
-                                 ).osc_port == 9500
-
 #: A value for each machine setting that is neither the default nor main's.
 _STATED = {"port": "9500", "recv-port": "9600", "name": "Fireface 802",
            "usb-id": "2a39:3fb0", "serial": "11223344"}
 
+_MAIN = ("[device]\nname = Some Box\nusb-id = 1111:2222\n"
+         "serial = 99887766\n\n[osc]\nport = 9001\nrecv-port = 9002\n")
+
+
 @pytest.mark.parametrize(("section", "option", "attr"),
                          profiles.MACHINE_SETTINGS)
-def test_a_profile_states_one_machine_setting_and_inherits_the_other_four(
+def test_a_profile_that_states_another_machine_setting_is_refused(
         tmp_path, section, option, attr):
-    """Option by option, not section by section: a profile that states
-    `[device] serial` keeps the main config's `usb-id`, which sits in the
-    same section. Since 0.6.11 that rests on the parser's fallbacks
-    rather than on a second look at the file, so it is held here for
-    every row of the table, against a main config whose five values are
-    all non-default."""
-    path = write_config(tmp_path / "routing.conf",
-                        "[device]\nname = Some Box\nusb-id = 1111:2222\n"
-                        "serial = 99887766\n\n"
-                        "[osc]\nport = 9001\nrecv-port = 9002\n")
-    write_config(tmp_path / "profiles" / "one.conf",
-                 "[%s]\n%s = %s\n\n[route:x]\nplayback = 1/2\noutput = 1/2\n"
-                 % (section, option, _STATED[option]))
+    """Option by option: until 0.7.0 the stated one won and the other four
+    were inherited, which made one persisted profile three targets -- its
+    own backend for the switch, the running session's for the reload the
+    switch sent, its own again after a restart (ADR 0026). The refusal
+    names the profile, the file it disagrees with, the one setting that
+    differs and what to do."""
+    path = write_config(tmp_path / "routing.conf", _MAIN)
+    other = write_config(
+        tmp_path / "profiles" / "one.conf",
+        "[%s]\n%s = %s\n\n[route:x]\nplayback = 1/2\noutput = 1/2\n"
+        % (section, option, _STATED[option]))
     main = profiles.load_config(path)
-    profile = profiles.load_profile("one", path)
     stated = int(_STATED[option]) if section == "osc" else _STATED[option]
-    assert getattr(profile, attr) == stated
-    for _section, _option, other in profiles.MACHINE_SETTINGS:
-        if other != attr:
-            assert getattr(profile, other) == getattr(main, other), other
+    with pytest.raises(profiles.ConfigError) as refused:
+        profiles.load_profile("one", path)
+    assert str(refused.value) == (
+        "profile 'one' names another backend or interface than %s -- %s %r "
+        "(not %r). A profile is the desk, not the machine (ADR 0026): take "
+        "[osc] and [device] out of %s"
+        % (path, attr.replace("_", " "), stated, getattr(main, attr), other))
 
-def test_stating_the_default_explicitly_still_counts_as_stating_it(tmp_path):
-    # "equals the default" cannot distinguish "said 7222" from "said
-    # nothing". The parser can: it takes what the file says, and falls
-    # back to what it was read onto only when the file says nothing.
+
+def test_restating_what_routing_conf_says_is_not_naming_another_machine(
+        tmp_path):
+    """`--dump-config > profiles/x.conf`, the documented way to make a
+    profile, writes `[device]` and `[osc]` into every one: the sections
+    cannot be the rule, only what they resolve to. Stating the compiled-in
+    default is naming another machine when routing.conf says otherwise --
+    "equals the default" cannot tell "said 7222" from "said nothing", and
+    the parser can."""
     from oscmix_desk.constants import DEFAULT_OSC_PORT
 
-    write_config(tmp_path / "routing.conf", "[osc]\nport = 9001\n")
-    write_config(tmp_path / "profiles" / "pinned.conf",
+    path = write_config(tmp_path / "routing.conf", _MAIN)
+    write_config(tmp_path / "profiles" / "same.conf", _MAIN + GOOD)
+    same = profiles.load_profile("same", path)
+    assert (same.osc_port, same.serial) == (9001, "99887766")
+    write_config(tmp_path / "profiles" / "default.conf",
                  "[osc]\nport = %d\n" % DEFAULT_OSC_PORT + GOOD)
-    assert profiles.load_profile("pinned", tmp_path / "routing.conf"
-                                 ).osc_port == DEFAULT_OSC_PORT
+    with pytest.raises(profiles.ConfigError,
+                       match=r"osc port 7222 \(not 9001\)"):
+        profiles.load_profile("default", path)
+
 
 def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     """The table cannot silently miss one.
@@ -108,10 +112,10 @@ def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     # the box it runs on.
     desk = {"routes", "channels", "policies", "globals"}
     # Neither: `loaded` records the machine settings the file resolved to,
-    # `main` what a profile's routing.conf resolved to, and `overrides`
-    # what the command line replaced -- no file's to state, and carried
-    # along by `keep_machine_settings` beside the table (0.6.11).
-    record = {"loaded", "main", "overrides"}
+    # and `overrides` what the command line replaced -- no file's to
+    # state, and carried along by `keep_machine_settings` beside the
+    # table (0.6.11).
+    record = {"loaded", "overrides"}
     machine = {f.name for f in dataclasses.fields(Config)} - desk - record
     covered = {attr for _section, _option, attr in profiles.MACHINE_SETTINGS}
     assert machine == covered, (
@@ -185,33 +189,39 @@ def test_the_serial_is_inherited_like_the_usb_id(tmp_path):
     profile = profiles.load_profile("tracking", path)
     assert profile.serial == "24216011"
 
-def test_a_profile_that_names_another_machine_is_told_what_0_7_0_does(
+def test_a_profile_that_names_another_machine_changes_nothing_anywhere(
         tmp_path, caplog, recording_backend):
-    """It still wins in 0.6.x (ADR 0011). ADR 0026 ends that: one persisted
-    profile meant three targets, and two such profiles hold two device
-    locks over one marker. Said where the desk is written, once.
-
-    A profile that *restates* routing.conf's values is not told anything:
-    `--dump-config > profiles/x.conf`, the documented way to make one,
-    writes `[device]` and `[osc]` into every profile. The first cut
-    warned about the sections and would have refused them all."""
+    """Refused where it is loaded, so every path that loads one agrees: a
+    switch writes nothing and moves no marker, a listing names it as
+    broken, and a marker that already points at one -- written by 0.6.x,
+    where such a profile still won -- falls back to routing.conf with a
+    warning, as for any active profile that no longer loads (ADR 0018)."""
+    from oscmix_desk import marker as marker_mod
+    from oscmix_desk import outcome as outcome_mod
 
     path = retargeting_desk(tmp_path)
     for name in ("here", "same"):
-        assert notices_mod.other_machine_warning(
-            profiles.load_profile(name, path)) is None, name
-    assert notices_mod.other_machine_warning(profiles.load_config(path)) is None
-    there = notices_mod.other_machine_warning(profiles.load_profile("there", path))
-    assert there.startswith(
-        "this profile names another backend or interface than its "
-        "routing.conf -- serial '99887766' (not ''), osc port 9500 (not 9001)")
-    assert "from 0.7.0 it is refused (ADR 0026)" in there
-    with caplog.at_level("WARNING"):
-        profiles.switch_profile("there", config_path=path,
-                                backend=recording_backend, verify=False)
-    assert caplog.text.count("from 0.7.0 it is refused") == 1
+        assert profiles.load_profile(name, path).osc_port == 9001, name
+    outcome = profiles.switch_profile("there", config_path=path,
+                                      backend=recording_backend, verify=False)
+    assert outcome.state == outcome_mod.REFUSED
+    assert "serial '99887766' (not ''), osc port 9500 (not 9001)" \
+        in outcome.reason
+    assert recording_backend.sent == []
+    assert marker_mod.active_profile(path) is None
+    listed = "\n".join(profiles.describe_profiles(path))
+    assert "there" in listed
+    assert "ADR 0026" in listed
 
-def test_a_dumped_config_makes_a_profile_nobody_is_warned_about(tmp_path):
+    (tmp_path / "active-profile").write_text("there\n")
+    with caplog.at_level("WARNING"):
+        config, active = profiles.effective_config(path)
+    assert active is None
+    assert config.osc_port == 9001, "the desk in effect is routing.conf"
+    assert "profile 'there' names another backend or interface" in caplog.text
+
+
+def test_a_dumped_profile_is_accepted_until_routing_conf_moves(tmp_path):
     from oscmix_desk.dump import render_config
 
     path = write_config(tmp_path / "routing.conf", GOOD)
@@ -219,5 +229,9 @@ def test_a_dumped_config_makes_a_profile_nobody_is_warned_about(tmp_path):
     assert "[device]" in dumped, "which is why the sections cannot be the rule"
     assert "[osc]" in dumped
     write_config(tmp_path / "profiles" / "dumped.conf", dumped)
-    assert notices_mod.other_machine_warning(
-        profiles.load_profile("dumped", path)) is None
+    assert profiles.load_profile("dumped", path).routes
+    # routing.conf moves to another port; the dump still names the old one.
+    write_config(tmp_path / "routing.conf", "[osc]\nport = 9100\n" + GOOD)
+    with pytest.raises(profiles.ConfigError,
+                       match=r"osc port 7222 \(not 9100\)"):
+        profiles.load_profile("dumped", path)

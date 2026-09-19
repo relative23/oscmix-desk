@@ -412,8 +412,8 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
 def run_session(args: argparse.Namespace, config: Config) -> int:
     """Discover the device, run the backend, and supervise it."""
     # The desk a start looks for an interface with, or a dry run shows --
-    # after --device. Before the search, since a profile that names
-    # another machine is why that search may end elsewhere, or nowhere.
+    # after --device. Before the search: a dry run ends there, and a start
+    # that finds no interface is no reason to say less.
     log_desk_notices(config)
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))

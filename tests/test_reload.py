@@ -109,16 +109,19 @@ def test_a_re_read_desk_for_somewhere_else_is_not_applied_here(
     assert "SIGHUP: reloaded" not in caplog.text, "it was not"
     assert "--no-profile" not in caplog.text
 
-    # ... and as an active profile over an untouched routing.conf.
+    # As an active profile over an untouched routing.conf it is not a desk
+    # at all since 0.7.0: the profile is refused where it is loaded (ADR
+    # 0026), and the desk in effect is routing.conf's, with a warning.
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
     write_config(tmp_path / "profiles" / "far.conf", elsewhere
                  + "[route:far]\nplayback = 1/2\noutput = 3/4\n")
     (tmp_path / "active-profile").write_text("far\n")
     caplog.clear()
-    with caplog.at_level("ERROR"):
-        assert _reread(reread, running, path) is None
-    assert "take [osc] and [device] out of profile 'far'" in caplog.text, \
-        "a start is told which profile as much as a reload is"
+    with caplog.at_level("WARNING"):
+        applied = _reread(reread, running, path)
+    assert [route.output for route in applied.routes] == [(1, 2)]
+    assert "profile 'far' names another backend or interface" in caplog.text
+    assert "is for another backend" not in caplog.text
 
 def test_the_box_a_start_pinned_is_not_another_box_when_the_file_names_it(
         tmp_path, caplog):
@@ -208,36 +211,19 @@ def test_a_reload_names_a_desk_checked_for_another_interface(tmp_path,
             "was checked for 'Fireface 802' and is used for 'Fireface UCX II'"
             ) in caplog.text
 
-def test_the_advice_fits_the_cause(tmp_path, caplog):
-    """A routing.conf that moved is followed by a restart. A profile would be
-    followed too -- off this interface, leaving it unmanaged -- so that
-    case is sent to the profile instead (ADR 0026, found by review)."""
+def test_a_routing_conf_that_moved_is_followed_by_a_restart_whatever_is_active(
+        tmp_path, caplog):
+    """Only routing.conf can name another machine since 0.7.0, so there is
+    one cause and one remedy. In 0.6.11 a profile could be the cause, and
+    the advice had three forms to keep up with it (ADR 0026)."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     running = profiles.load_config(path)
-    write_config(tmp_path / "profiles" / "far.conf", "[osc]\nport = 9500\n"
-                 "[route:far]\nplayback = 1/2\noutput = 3/4\n")
-    (tmp_path / "active-profile").write_text("far\n")
-    with caplog.at_level("ERROR"):
-        assert _reread("_reloaded_desk", running, path) is None
-    assert ("take [osc] and [device] out of profile 'far', then reload the "
-            "session, or --no-profile") in caplog.text
-    assert "restart" not in caplog.text
-    # routing.conf moved, with or without a profile active: an ordinary
-    # profile states nothing, so neither of its remedies could work, and
-    # `--no-profile` would be refused for a port nobody listens on.
     write_config(tmp_path / "profiles" / "plain.conf",
                  "[route:p]\nplayback = 1/2\noutput = 3/4\n")
     path.write_text("[osc]\nport = 9500\n"
                     "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    # The same for a profile that states a setting which did *not* move --
-    # here the very serial the start pinned: comparing whole machines
-    # blamed it, and named two remedies that could not work.
-    running.serial = "24216011"
-    write_config(tmp_path / "profiles" / "pinned.conf",
-                 "[device]\nserial = 24216011\n"
-                 "[route:p]\nplayback = 1/2\noutput = 3/4\n")
-    for marker in ("plain\n", "pinned\n", None):
+    for marker in ("plain\n", None):
         caplog.clear()
         if marker:
             (tmp_path / "active-profile").write_text(marker)
@@ -245,59 +231,12 @@ def test_the_advice_fits_the_cause(tmp_path, caplog):
             (tmp_path / "active-profile").unlink()
         with caplog.at_level("ERROR"):
             assert _reread("_reloaded_desk", running, path) is None
-        assert ("restart the session to follow it (systemctl --user restart "
+        assert ("osc port 9500 (not 7222) -- and a running session keeps the "
+                "one it was started for, so it was not applied; restart the "
+                "session to follow it (systemctl --user restart "
                 "oscmix.service)") in caplog.text
         assert "profile" not in caplog.text
-    # Both at once: the profile first, and `--no-profile` is not offered --
-    # it writes where routing.conf says, and nothing listens there yet.
-    write_config(tmp_path / "profiles" / "far.conf", "[osc]\nport = 9100\n"
-                 "[route:far]\nplayback = 1/2\noutput = 3/4\n")
-    (tmp_path / "active-profile").write_text("far\n")
-    caplog.clear()
-    with caplog.at_level("ERROR"):
-        assert _reread("_reloaded_desk", running, path) is None
-    assert ("osc port 9100 (not 7222) -- and a running session keeps the one "
-            "it was started for, so it was not applied; take [osc] and "
-            "[device] out of profile 'far', then restart the session to "
-            "follow routing.conf (systemctl --user restart oscmix.service)"
-            ) in caplog.text
-    assert "--no-profile" not in caplog.text
 
-def test_no_profile_is_named_only_where_it_can_work(tmp_path, caplog):
-    """`--no-profile` writes where the bare routing.conf says: it never saw
-    `--osc-port`, is refused together with it, and is refused for a port
-    nobody listens on. It was offered to a session running under an
-    override (found by review). What is left is the edit, and the reload
-    that applies it -- another switch would go to the file's port too."""
-    path = write_config(tmp_path / "routing.conf",
-                        "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    write_config(tmp_path / "profiles" / "p.conf", "[osc]\nrecv-port = 8333\n"
-                 "[route:p]\nplayback = 1/2\noutput = 3/4\n")
-    (tmp_path / "active-profile").write_text("p\n")
-    under_an_override = profiles.load_config(path)
-    under_an_override.osc_port = 9000
-    under_an_override.overrides = under_an_override.overrides._replace(
-        osc_port=9000)
-    with caplog.at_level("ERROR"):
-        assert _reread("_reloaded_desk", under_an_override, path) is None
-    assert caplog.text.rstrip().endswith(
-        "so it was not applied; take [osc] and [device] out of profile 'p', "
-        "then reload the session")
-
-    # Started under a profile that named port 9000, which now names 9001:
-    # routing.conf never moved, and is still not where this session runs,
-    # so the edit alone would leave a desk for 7222 -- a restart follows.
-    write_config(tmp_path / "profiles" / "p.conf", "[osc]\nport = 9001\n"
-                 "[route:p]\nplayback = 1/2\noutput = 3/4\n")
-    started_under_it = profiles.load_config(path)
-    started_under_it.osc_port = 9000
-    caplog.clear()
-    with caplog.at_level("ERROR"):
-        assert _reread("_reloaded_desk", started_under_it, path) is None
-    assert "osc port 9001 (not 9000)" in caplog.text
-    assert ("out of profile 'p', then restart the session to follow "
-            "routing.conf") in caplog.text
-    assert "--no-profile" not in caplog.text
 
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
 def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
@@ -325,48 +264,45 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
 
 def test_another_desk_under_the_lock_is_spoken_about_even_in_the_same_words(
         tmp_path, caplog):
-    """The notice about a profile for another machine does not name the
-    profile. Compared by their text, a switch from one such profile to
-    another during the start left the second unannounced; it is the desk
-    that is compared (found by review)."""
+    """The notice about unchecked routes names their number, not the desk.
+    Compared by their text, a switch between two profiles of one route each
+    during the start left the second unannounced; it is the desk that is
+    compared (found by review)."""
     path = write_config(tmp_path / "routing.conf",
+                        "[device]\nname = Some Box\n"
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    for name, output in (("far", "3/4"), ("far2", "5/6")):
+    for name, output in (("one", "3/4"), ("other", "5/6")):
         write_config(tmp_path / "profiles" / ("%s.conf" % name),
-                     "[osc]\nrecv-port = 8333\n"
                      "[route:x]\nplayback = 1/2\noutput = %s\n" % output)
-    (tmp_path / "active-profile").write_text("far\n")
+    (tmp_path / "active-profile").write_text("one\n")
     started, _active = profiles.effective_config(path)
     with caplog.at_level("WARNING"):
         assert reload_mod._desk_under_the_lock(path, started) == started
     assert caplog.text == "", "the same desk, spoken about at the top"
-    (tmp_path / "active-profile").write_text("far2\n")
+    (tmp_path / "active-profile").write_text("other\n")
     with caplog.at_level("WARNING"):
         applied = reload_mod._desk_under_the_lock(path, started)
     assert [route.output for route in applied.routes] == [(5, 6)]
-    assert caplog.text.count("this profile names another backend") == 1
+    assert caplog.text.count("no register model for 'Some Box': its 1 "
+                             "route(s)") == 1
 
-def test_a_start_that_finds_no_interface_has_said_why_it_looked_elsewhere(
+
+def test_a_start_that_finds_no_interface_has_said_what_there_is_to_say(
         tmp_path, caplog, monkeypatch):
-    """A profile that names another machine is what sends a start looking
-    for another box, or into exit 2 beside the session holding that port:
-    the starts that never reach the lock. Told only under the lock, those
-    were the ones that were not told (found by review)."""
+    """The notices come before the search for the interface, so a start
+    that ends there has given them: a dry run needs them there, and a
+    start that finds nothing is no reason to say less."""
     path = write_config(tmp_path / "routing.conf",
+                        "[device]\nname = Some Box\n"
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    write_config(tmp_path / "profiles" / "far.conf",
-                 "[device]\nserial = 99887766\n"
-                 "[route:far]\nplayback = 1/2\noutput = 3/4\n")
-    (tmp_path / "active-profile").write_text("far\n")
-    config, active = profiles.effective_config(path)
-    assert active == "far"
+    config = profiles.load_config(path)
     monkeypatch.setattr(session_module, "_find_client",
                         lambda *a: (None, 0))
     with caplog.at_level("WARNING"):
         assert session_module.run_session(
             argparse.Namespace(dry_run=False, config=path), config) == 0
-    assert ("this profile names another backend or interface than its "
-            "routing.conf -- serial '99887766' (not '')") in caplog.text
+    assert "no register model for 'Some Box': its 1 route(s)" in caplog.text
+
 
 def test_a_start_gives_its_notices_about_the_desk_it_applies(
         tmp_path, caplog, monkeypatch):

@@ -418,14 +418,13 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
     assert seen == [("start", "Fireface UCX II", 7222, CommandLine())]
 
 
-def test_a_dry_run_shows_the_profile_for_the_interface_the_profile_names(
+def test_a_dry_run_shows_the_desk_as_the_switch_loads_it(
         tmp_path, caplog, monkeypatch):
     """The desk in effect's ports and device name were written over the
-    profile before it was shown. The name is what a dry run acts on -- it
-    looks for that interface and warns about it -- so a profile naming its
-    own was shown as the active desk's. The ports are not printed; they
-    are asserted because "the desk as the switch loads it" is the rule
-    (0.6.11)."""
+    profile before it was shown (0.6.11). A dry run loads the profile the
+    way the switch does -- so since 0.7.0 one that names another machine is
+    the same configuration error in both, exit 2, and a marker that still
+    points at one does not leak into what another profile inherits."""
     from oscmix_desk import cli
 
     shown = []
@@ -444,9 +443,11 @@ def test_a_dry_run_shows_the_profile_for_the_interface_the_profile_names(
     assert cli.main(["--config", str(path), "--dry-run",
                      "--profile", "near"]) == 0
     assert cli.main(["--config", str(path), "--dry-run", "--no-profile"]) == 0
-    assert cli.main(["--config", str(path), "--dry-run",
-                     "--profile", "far"]) == 0
+    with caplog.at_level("ERROR"):
+        assert cli.main(["--config", str(path), "--dry-run",
+                         "--profile", "far"]) == 2
+    assert ("configuration error: profile 'far' names another backend or "
+            "interface") in caplog.text
     assert [(d.device_name, d.osc_port) for d in shown] == [
         ("Fireface UCX II", 9001),      # near inherits routing.conf, not far
-        ("Fireface UCX II", 9001),
-        ("Some Box", 9100)]
+        ("Fireface UCX II", 9001)]

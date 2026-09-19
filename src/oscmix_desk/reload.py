@@ -46,12 +46,12 @@ def _desk_under_the_lock(config_path: Optional[Path],
     if config_path is None:
         return running
     try:
-        fresh, active = effective_config(config_path)
+        fresh, _active = effective_config(config_path)
     except ConfigError as exc:
         log.error("%s is no longer usable (%s); applying the desk this "
                   "process started with", config_path, exc)
         return running
-    kept = _kept_for_this_process(fresh, running, active)
+    kept = _kept_for_this_process(fresh, running)
     if kept is None:
         return running
     # The start spoke about the desk as it read it, before the wait for
@@ -63,27 +63,30 @@ def _desk_under_the_lock(config_path: Optional[Path],
     return kept
 
 
-def _kept_for_this_process(fresh: Config, running: Config,
-                           active: Optional[str]) -> Optional[Config]:
+def _kept_for_this_process(fresh: Config, running: Config
+                           ) -> Optional[Config]:
     """``fresh`` with this process's machine settings, or None when it is a
     desk for somewhere else.
 
     The lock was taken and the backend bound for this process's ports,
     usb id and pinned serial, and nothing re-read under it moves them
     (ADR 0024). Until 0.6.11 that meant the re-read desk was applied
-    *here* whatever it named: a profile stating another port and serial
-    was written to its own interface by the switch, and then to this one
-    by the reload the switch sent; a `routing.conf` edited to name a box
-    with 42 outputs reached a UCX II, which has twenty (ADR 0026).
+    *here* whatever it named: a `routing.conf` edited to name a box with
+    42 outputs reached a UCX II, which has twenty (ADR 0026).
 
     The re-read file is resolved the way a restart would resolve it --
     the command line's overrides over it, as at the start -- and then held
     against what this session runs (``Machine.elsewhere``, which also
     says where the two still differ). So a reload applies what a restart
     would apply here, and refuses what a restart would take somewhere
-    else. The first cuts compared the bare file: they
-    refused the session's own desk under ``--osc-port``, with advice to
-    restart that a restart did not follow (found by review, 0.6.11).
+    else. The first cuts compared the bare file: they refused the
+    session's own desk under ``--osc-port``, with advice to restart that
+    a restart did not follow (found by review, 0.6.11).
+
+    Only ``routing.conf`` can name another machine since 0.7.0 -- a
+    profile that does is refused where it is loaded, and the desk in
+    effect falls back to ``routing.conf`` (ADR 0018) -- so the advice is
+    the one a moved ``routing.conf`` gets: a restart follows it.
     """
     live = Machine(running.device_name, running.usb_id, running.serial,
                    running.osc_port, running.osc_recv_port)
@@ -92,38 +95,11 @@ def _kept_for_this_process(fresh: Config, running: Config,
         said.under(running.overrides).elsewhere(live)
     if said is None or not moved:
         return keep_machine_settings(fresh, running)
-    main = fresh.main or said                   # routing.conf alone
-    home = main.under(running.overrides).elsewhere(live)
     log.error("the desk now in effect is for another backend or interface "
               "-- %s -- and a running session keeps the one it was started "
-              "for, so it was not applied; %s", moved,
-              _advice(active if home != moved else None, bool(home),
-                      not main.elsewhere(live)))
+              "for, so it was not applied; restart the session to follow it "
+              "(systemctl --user restart %s)", moved, SERVICE_UNIT)
     return None
-
-
-def _advice(profile: Optional[str], follow: bool, restorable: bool) -> str:
-    """What to do about a desk for elsewhere, by its cause (ADR 0026).
-
-    ``profile`` is the active profile when *it* is the cause: routing.conf
-    alone says something else about where. A restart would follow such a
-    profile off this interface, which nothing would then manage, so that
-    case is sent to the profile -- and on to a restart (``follow``) when
-    routing.conf alone is not this session's machine either. Only while
-    it is, bare, can ``--no-profile`` be the other way out
-    (``restorable``): that writes where the file says, never saw
-    ``--device`` or ``--osc-port``, and is refused for a port nobody
-    listens on. Everything else is a routing.conf that a restart follows.
-    """
-    restart = "restart the session to follow %s (systemctl --user restart " \
-        + SERVICE_UNIT + ")"
-    if profile is None:
-        return restart % "it"
-    edit = "take [osc] and [device] out of profile %r, then " % profile
-    if follow:
-        return edit + restart % "routing.conf"
-    return edit + "reload the session" + (", or --no-profile" if restorable
-                                          else "")
 
 
 def _verifier_finished(verifier: Optional[threading.Thread],
@@ -248,7 +224,7 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
     # interface belong to the process that is running, and changing them
     # here would mean writing to a port nobody is listening on -- with no
     # error, because OSC over UDP has no delivery guarantee (ADR 0024).
-    kept = _kept_for_this_process(fresh, running, active)
+    kept = _kept_for_this_process(fresh, running)
     if kept is None:
         return None
     # Name what was actually reloaded. On the first live run this line

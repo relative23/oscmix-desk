@@ -110,10 +110,10 @@ def test_a_backend_that_never_binds_its_port_fails_the_start(session_mod,
 
 _LATER = "[route:y]\nplayback = 5/6\noutput = 5/6\n"
 
-# A profile that names another box is a desk for somewhere else. Until
-# 0.6.11 it was pinned to this process's interface and applied here (ADR
-# 0024 kept the machine settings; ADR 0026 is why the desk does not
-# follow): the start applies the desk it was started with.
+# A profile that names another box was pinned to this process's interface
+# and applied here until 0.6.11, and not applied in 0.6.11. Since 0.7.0
+# it is no desk at all -- refused where it is loaded (ADR 0026) -- so the
+# desk in effect under the lock is routing.conf's.
 @pytest.mark.parametrize(("profile", "applied_output"), [
     (_LATER, (5, 6)),
     ("[device]\nusb-id = 1234:5678\nserial = 99887766\n" + _LATER, (1, 2)),

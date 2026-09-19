@@ -1,9 +1,8 @@
 """What there is to say about a desk before it is written or shown.
 
-Routes on a device nobody modelled, a profile that names another machine
-than its ``routing.conf``, a desk checked for one interface and used for
-another. None of them refuses anything; each is said once, by whoever
-has the desk in hand.
+Routes on a device nobody modelled, a desk checked for one interface and
+used for another. Neither refuses anything; each is said once, by
+whoever has the desk in hand.
 """
 
 from __future__ import annotations
@@ -45,27 +44,9 @@ def log_desk_notices(config: "Config") -> None:
     re-read there is another one (``reload._desk_under_the_lock``).
     """
     for message in (unchecked_routes_warning(config),
-                    other_machine_warning(config),
                     replaced_device_warning(config)):
         if message:
             log.warning("%s", message)
-
-
-def other_machine_warning(config: "Config") -> Optional[str]:
-    """What to say about a profile that names another machine, or None.
-
-    Restating routing.conf's own values is not that: ``--dump-config >
-    profiles/x.conf``, the documented way to make a profile, writes
-    ``[device]`` and ``[osc]`` into every one. What ADR 0026 ends is a
-    profile that resolves somewhere *else*.
-    """
-    mine, home = config.loaded, config.main
-    if mine is None or home is None or mine == home:
-        return None
-    return ("this profile names another backend or interface than its "
-            "routing.conf -- %s. It still wins in 0.6.x; from 0.7.0 it is "
-            "refused (ADR 0026): take [osc] and [device] out of the profile"
-            % mine.differs_from(home))
 
 
 def replaced_device_warning(config: "Config") -> Optional[str]:

@@ -94,11 +94,6 @@ Common findings in the journal:
   line would go there; the line says which, and what to do. A running
   session keeps its backend, so the desk was **not** applied. For
   `routing.conf`: `systemctl --user restart oscmix.service` follows it.
-  For a profile that itself names another machine: take `[osc]` and
-  `[device]` out of it and reload (`systemctl --user reload
-  oscmix.service`) -- a restart would move the unit off its interface.
-  The line names `--no-profile` as well where that can work, and a
-  restart instead of the reload where `routing.conf` needs one.
 - `wrote N of M register(s) of '<profile>' and then could not: cannot
   write to the backend on UDP ...` with exit 1 -- the socket gave out
   part of the way through a switch, so some of the profile is on the
@@ -108,12 +103,18 @@ Common findings in the journal:
   the backend could not be reached then either, `systemctl --user reload
   oscmix.service` once it can does the same. With nothing written at all
   the line reads `refused ..., nothing written` and the exit code is 2.
-- `this profile names another backend or interface than its
-  routing.conf` -- works for the switch in 0.6.x and is refused from
-  0.7.0 (ADR 0026). A profile made with `--dump-config` restates the
-  main config's values and is not meant -- until `routing.conf`'s port
-  or device changes, after which the dump names the old one. Taking
-  `[osc]` and `[device]` out of the profile is the remedy either way.
+- `profile '<name>' names another backend or interface than
+  .../routing.conf -- <what differs>` -- a profile is the desk, not the
+  machine (ADR 0026), so one whose `[osc]` or `[device]` resolve to
+  something else than `routing.conf`'s is refused: a switch to it exits
+  2 and writes nothing, a listing shows it as broken, and if it was
+  still the active profile from 0.6.x -- where it won -- the start and
+  every reload apply `routing.conf` and say `ignoring ...` with this
+  reason. A profile made with `--dump-config` restates the main config's
+  values and is not meant -- until `routing.conf`'s port or device
+  changes, after which the dump names the old one. Taking `[osc]` and
+  `[device]` out of the profile is the remedy either way; a desk that
+  really is for another backend needs its own directory and `--config`.
 - `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
   GUI was listening on the state port, so the read-back was not possible.
 - `unconfirmed after retry: ...` -- the device never reported the listed

@@ -38,6 +38,21 @@ behaviour: modules a person can read.
 
 ### Changed
 
+- **A profile that names another machine is refused. A file that loaded
+  in 0.6.x now does not.** A profile is the desk, not the machine (ADR
+  0026; 0.6.11 warned): one whose `[osc]` or `[device]` resolve to
+  another port, receive port, device name, usb id or serial than its
+  `routing.conf` raises a `ConfigError` naming the profile, the setting
+  that differs and the remedy -- take the two sections out. A switch to
+  it exits 2 and writes nothing; a marker that still points at one
+  falls back to `routing.conf` with a warning at the next start or
+  reload, as for any active profile that no longer loads (ADR 0018).
+  Restating `routing.conf`'s own values stays accepted, since
+  `--dump-config > profiles/x.conf` writes them into every profile.
+  With it go the 0.6.11 warning, `Config.main` and the advice by cause
+  of a refused reload: only `routing.conf` can name another machine
+  now, and a restart follows it. A desk that really is for another
+  backend needs its own directory and `--config`.
 - **The oracle builds its own messages, and both sides are held to
   literals.** `tests/oracle.py`, which the reconciler is compared
   against, imported `link_messages` and `mix_messages` from the

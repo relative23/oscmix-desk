@@ -169,10 +169,6 @@ class Config:
     #: and which backend it names (0.6.11). None only for a ``Config``
     #: that ``load_config`` never saw; no file resolves to the defaults.
     loaded: Optional[Machine] = None
-    #: For a profile: what its routing.conf resolved to, set by
-    #: ``profiles.load_profile``. A profile whose own record differs names
-    #: another machine than its config tree (ADR 0026).
-    main: Optional[Machine] = None
     #: What the command line put in place of the file's settings. No file
     #: this process reads again has a say in these, exactly as at its start.
     overrides: CommandLine = field(default_factory=CommandLine)

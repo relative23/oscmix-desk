@@ -214,8 +214,9 @@ Leave `[osc]` and `[device]` out of a profile. Those describe the
 machine, not the desk, and are taken from your main config. A dumped
 profile restates them, which is harmless until `routing.conf`'s own
 change -- it then names the old ones. A profile that names *another*
-port or interface still wins in 0.6.x, is told so, and is not applied by
-a running session to its own interface; from 0.7.0 it is refused
+port or interface is refused: a switch to it writes nothing, and one
+that was still active from 0.6.x falls back to `routing.conf` with a
+warning
 ([ADR 0026](docs/decisions/0026-a-profile-is-the-desk-not-the-machine.md)).
 One main config per directory: the profiles and the record of the
 active one belong to the directory.

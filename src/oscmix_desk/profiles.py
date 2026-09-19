@@ -84,12 +84,14 @@ def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
     the compiled-in default 7222 during development and wrote to a live
     Fireface from a unit test, because the default happened to match.
 
-    A profile that states them still wins in 0.6.x. The reason once given
-    here -- a machine with a second backend, whose profiles would be
-    per-backend -- is withdrawn by ADR 0026: one marker per directory
-    cannot say which backend "the active profile" is for. Such a profile
-    is told so where it is written (``notices.other_machine_warning``),
-    and a running session does not apply it to its own interface.
+    **A profile that names another machine is refused** (ADR 0026, since
+    0.7.0; 0.6.11 warned). Until then it won, and one persisted profile
+    meant three targets: its own backend for the switch, the running
+    session's for the reload the switch sent, its own again after a
+    restart -- with two device locks over one marker. Restating
+    ``routing.conf``'s own values is not that: ``--dump-config >
+    profiles/x.conf``, the documented way to make a profile, writes
+    ``[device]`` and ``[osc]`` into every one.
     """
     path = profile_path(name, config_path)
     if not path.is_file():
@@ -106,7 +108,13 @@ def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
         return load_config(path)
     main = load_config(config_path)
     profile = load_config(path, keep_machine_settings(Config(), main))
-    profile.main = main.loaded
+    theirs, ours = profile.loaded, main.loaded
+    if theirs is not None and ours is not None and theirs != ours:
+        raise ConfigError(
+            "profile %r names another backend or interface than %s -- %s. A "
+            "profile is the desk, not the machine (ADR 0026): take [osc] "
+            "and [device] out of %s"
+            % (name, config_path, theirs.differs_from(ours), path))
     return profile
 
 
