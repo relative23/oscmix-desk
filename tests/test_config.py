@@ -582,6 +582,16 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
         config_mod.replaced_device_warning(routed)
     routed.loaded = None
     assert config_mod.replaced_device_warning(routed) is None
+    # Routes, channel sections, global sections: each alone was checked
+    # for a device, and a file with none of them was not.
+    for text, checked in (("[input:1]\ngain = 10\n", True),
+                          ("[reverb]\nenabled = on\n", True),
+                          ("[osc]\nport = 9001\n", False)):
+        desk = session_mod.load_config(write(tmp_path, text))
+        assert bool(desk.channels or desk.globals) is checked, text
+        desk.device_name = "X"
+        assert (config_mod.replaced_device_warning(desk) is not None) \
+            is checked, text
 
 
 def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():

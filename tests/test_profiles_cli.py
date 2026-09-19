@@ -316,6 +316,29 @@ def test_no_profile_that_cannot_forget_the_marker_does_not_reload(
     assert "oscmix.service not reloaded" in caplog.text
 
 
+def test_a_restore_reloads_the_unit_that_runs_its_desk(tmp_path, monkeypatch):
+    """`--no-profile` was only ever driven with a unit nobody could read,
+    which reloads whatever the switch was for: handing the reload decision
+    no config at all went unnoticed (a survivor of `_main`, 0.6.11)."""
+    from oscmix_desk import profiles
+
+    path = tmp_path / "routing.conf"
+    path.write_text(GOOD)
+    reloads = []
+    monkeypatch.setattr(cli, "reload_service",
+                        lambda: reloads.append(1) or cli.RELOAD_DONE)
+    monkeypatch.setattr(cli, "restore_main", lambda _path: profiles.Outcome(
+        state=profiles.APPLIED_UNVERIFIED, name="routing.conf",
+        reason=profiles.NOT_CHECKED))
+    monkeypatch.setattr(cli, "_unit_desk", lambda: (True, path))
+    assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
+    assert reloads == [1]
+    monkeypatch.setattr(cli, "_unit_desk",
+                        lambda: (True, tmp_path / "another.conf"))
+    assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
+    assert reloads == [1], "the unit runs another desk"
+
+
 def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
         tmp_path, monkeypatch, caplog):
     """Unknown is still a reload: nearly every switch is for the unit's own

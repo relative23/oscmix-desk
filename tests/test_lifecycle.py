@@ -733,7 +733,9 @@ def test_a_config_that_stopped_parsing_keeps_the_desk_of_this_process(
     with caplog.at_level("ERROR"):
         applied = session_module._desk_under_the_lock(path, started)
     assert applied is started
-    assert "no longer usable" in caplog.text
+    assert "%s is no longer usable (" % path in caplog.text
+    assert "); applying the desk this process started with" in caplog.text
+    assert "[route:x]" in caplog.text, "the reason is the parser's"
 
 
 def test_a_backend_that_ignores_the_stop_is_killed(session_module,

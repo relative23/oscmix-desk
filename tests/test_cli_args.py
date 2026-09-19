@@ -13,9 +13,22 @@ def test_an_out_of_range_osc_port_on_the_command_line_is_a_config_error(
 
     path = tmp_path / "routing.conf"
     path.write_text("[route:x]\nplayback = 1/2\noutput = 1/2\n")
-    for port in ("70000", "0", "-1"):
+    for port in ("70000", "65536", "0", "-1"):
         assert cli.main(["--config", str(path), "--osc-port", port]) \
             == session_mod.EXIT_CONFIG, port
+
+
+def test_the_ends_of_the_port_range_are_ports(tmp_path, monkeypatch):
+    from oscmix_desk import cli
+
+    seen = []
+    monkeypatch.setattr(cli, "run_session",
+                        lambda _args, config: seen.append(config.osc_port) or 0)
+    path = tmp_path / "routing.conf"
+    path.write_text("[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    for port in ("1", "65535"):
+        assert cli.main(["--config", str(path), "--osc-port", port]) == 0
+    assert seen == [1, 65535]
 
 
 # --------------------------------------------------------------------------

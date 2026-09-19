@@ -1371,7 +1371,8 @@ def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
     with caplog.at_level("ERROR"):
         session_module._reconcile(argparse.Namespace(config=path), Config(),
                                   {"stop": False})
-    assert "reconcile skipped" in caplog.text
+    assert ("SIGHUP: cannot reach the backend on UDP 7222 ([Errno 101] "
+            "Network is unreachable); reconcile skipped") in caplog.text
     assert statuses[-1].startswith("STATUS=running; reconcile skipped")
 
 
@@ -1547,7 +1548,11 @@ def test_a_re_read_desk_for_somewhere_else_is_not_applied_here(
     write_config(tmp_path / "profiles" / "far.conf", elsewhere
                  + "[route:far]\nplayback = 1/2\noutput = 3/4\n")
     (tmp_path / "active-profile").write_text("far\n")
-    assert _reread(reread, running, path) is None
+    caplog.clear()
+    with caplog.at_level("ERROR"):
+        assert _reread(reread, running, path) is None
+    assert "take [osc] and [device] out of profile 'far'" in caplog.text, \
+        "a start is told which profile as much as a reload is"
 
 
 def test_the_box_a_start_pinned_is_not_another_box_when_the_file_names_it(

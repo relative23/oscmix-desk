@@ -305,10 +305,12 @@ def test_a_backend_on_any_of_the_ports_is_found(launch_mod, clean_env,
     polled = []
     clean_env.setattr(launch_mod, "systemctl_user", lambda *_v: 0)
     clean_env.setattr(launch_mod, "udp_port_listening",
-                      lambda port, _root: polled.append(port) or port == 9001)
+                      lambda port, root: polled.append((port, root))
+                      or port == 9001)
     clean_env.setattr(launch_mod.time, "sleep", lambda _s: None)
     assert launch_mod.ensure_backend((9100, 9001), tmp_path) is True
-    assert polled[:2] == [9100, 9001]
+    assert polled[:2] == [(9100, tmp_path), (9001, tmp_path)], \
+        "each port, in the proc tree it was given"
 
 
 # --------------------------------------------------------------------------

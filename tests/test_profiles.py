@@ -673,13 +673,15 @@ def test_the_marker_functions_answer_nothing_without_a_config(tmp_path):
     # never an AttributeError on a path that does not exist.
     assert profiles.active_profile_path(None) is None
     assert profiles.active_profile(None) is None
-    assert profiles.remember_active_profile("tracking", None).in_effect is False
-    profiles.forget_active_profile(None)          # nothing to forget
+    # In effect and durable, both, each time: `durable` alone went
+    # unasserted outside a switch (survivors, 0.6.11).
+    assert profiles.remember_active_profile("tracking", None) == (False, False)
+    assert profiles.forget_active_profile(None) == (True, True)
     path = _desk(tmp_path, tracking=TRACKING)
-    assert profiles.remember_active_profile("tracking", path).in_effect is True
+    assert profiles.remember_active_profile("tracking", path) == (True, True)
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
-    profiles.forget_active_profile(path)
-    profiles.forget_active_profile(path)          # twice is fine
+    assert profiles.forget_active_profile(path) == (True, True)
+    assert profiles.forget_active_profile(path) == (True, True), "twice is fine"
     assert not (tmp_path / "active-profile").exists()
 
 
@@ -699,7 +701,8 @@ def test_a_marker_write_that_fails_leaves_the_old_marker_whole(tmp_path,
 
     monkeypatch.setattr(profiles.os, "replace", refuse)
     with caplog.at_level("WARNING"):
-        assert profiles.remember_active_profile("mixdown", path).in_effect is False
+        assert profiles.remember_active_profile("mixdown", path) == (False,
+                                                                     False)
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
     assert list(tmp_path.glob("*.tmp")) == []
     assert "not remembered" in caplog.text
@@ -714,6 +717,8 @@ def test_the_marker_goes_through_a_temporary_file_and_a_rename(tmp_path,
     real_replace = profiles.os.replace
 
     def record(src, dst):
+        assert os.path.dirname(src) == str(tmp_path), \
+            "beside the marker: a rename does not cross file systems"
         renames.append((os.path.basename(src), os.path.basename(dst)))
         real_replace(src, dst)
 
@@ -852,8 +857,22 @@ def test_a_marker_that_cannot_be_removed_is_a_warning_not_a_crash(tmp_path,
     marker.mkdir()
     (marker / "child").write_text("")               # unlink raises
     with caplog.at_level("WARNING"):
-        profiles.forget_active_profile(path)
-    assert "cannot remove" in caplog.text
+        assert profiles.forget_active_profile(path) == (False, False)
+    assert "cannot remove %s (" % marker in caplog.text
+
+
+def test_a_marker_change_that_could_not_be_synced_names_the_directory(
+        tmp_path, monkeypatch, caplog):
+    path = _desk(tmp_path, tracking=TRACKING)
+    monkeypatch.setattr(profiles, "_fsync_directory", lambda _d: False)
+    with caplog.at_level("WARNING"):
+        assert profiles.remember_active_profile("tracking", path) == (True,
+                                                                      False)
+        assert profiles.forget_active_profile(path) == (True, False)
+    assert ("profile 'tracking' remembered, but %s could not be synced"
+            % tmp_path) in caplog.text
+    assert ("marker removed, but %s could not be synced" % tmp_path) \
+        in caplog.text
 
 
 def test_fsync_of_the_directory_reports_what_it_did(tmp_path, monkeypatch):

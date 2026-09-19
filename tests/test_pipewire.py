@@ -250,3 +250,29 @@ def test_objects_without_usable_properties_are_passed_over():
     assert pipewire.pw_sink_info("Fireface UCX II",
                                  dump_text=json.dumps([*odd, sink])) == (
         "alsa_output.fireface", None)
+
+
+def test_the_sink_is_found_by_the_desks_name_past_what_is_not_it():
+    """Every sink in the tests was a Fireface, which the search accepts
+    whatever the desk is called: the name itself could be compared in the
+    wrong case, and a sink that is passed over could end the search
+    (survivors of `find_sink`, 0.6.11)."""
+    from oscmix_desk import pipewire
+
+    def sink(name, description):
+        return {"info": {"props": {"media.class": "Audio/Sink",
+                                   "node.name": name,
+                                   "node.description": description}}}
+
+    nameless = {"info": {"props": {"media.class": "Audio/Sink",
+                                   "node.description": "Babyface Pro"}}}
+    source = {"info": {"props": {"media.class": "Audio/Source",
+                                 "node.name": "in.babyface",
+                                 "node.description": "Babyface Pro"}}}
+    objects = [nameless, source, sink("out.hdmi", "Built-in Audio"),
+               sink("out.babyface", "BABYFACE Pro")]
+    assert pipewire.find_sink(objects, "Babyface Pro") == ("out.babyface",
+                                                           None)
+    assert pipewire.find_sink(objects, "Fireface UCX II") is None
+    assert pipewire.find_sink(objects, "nobody", "out.hdmi") == ("out.hdmi",
+                                                                 None)

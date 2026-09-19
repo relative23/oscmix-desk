@@ -620,6 +620,21 @@ def test_a_backend_that_updates_link_state_on_write_needs_no_barrier(
     assert paths.index("/output/5/stereo") < paths.index("/mix/5/playback/1")
 
 
+def test_the_barrier_waits_for_the_echo_on_the_port_it_was_given(
+        session_mod, silent_backend, routing_mod, monkeypatch):
+    """Extracted from `apply_routing` in 0.6.11, and its call of the echo
+    wait was stubbed wherever it was reached: the receive port and the
+    timeout could be dropped from it in silence (survivors)."""
+    asked = []
+    monkeypatch.setattr(routing_mod, "await_link_echo",
+                        lambda *a, **k: asked.append((a, k)) or True)
+    config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
+    routing_mod._cross_the_barrier(config, 9123, silent_backend)
+    assert asked == [((routing_mod.output_link_state(config.routes), 9123,
+                       routing_mod.LINK_ECHO_TIMEOUT),
+                      {"backend": silent_backend})]
+
+
 def test_send_mix_writes_a_register_two_routes_share_once(session_mod):
     """The re-apply goes through the planner now, so it deduplicates.
 

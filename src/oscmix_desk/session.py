@@ -356,12 +356,12 @@ def _kept_for_this_process(fresh: Config, running: Config,
     """
     live = Machine(running.device_name, running.usb_id, running.serial,
                    running.osc_port, running.osc_recv_port)
-    if fresh.loaded is None:
+    said = fresh.loaded
+    moved = "" if said is None else \
+        said.under(running.overrides).elsewhere(live)
+    if said is None or not moved:
         return keep_machine_settings(fresh, running)
-    moved = fresh.loaded.under(running.overrides).elsewhere(live)
-    if not moved:
-        return keep_machine_settings(fresh, running)
-    main = fresh.main or fresh.loaded           # routing.conf alone
+    main = fresh.main or said                   # routing.conf alone
     home = main.under(running.overrides).elsewhere(live)
     log.error("the desk now in effect is for another backend or interface "
               "-- %s -- and a running session keeps the one it was started "
