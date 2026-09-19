@@ -166,7 +166,18 @@ nothing is added to what a `routing.conf` can declare.
    into its argument.
 5. **Outcome as a result type**: `durable`, whether the unit was told,
    whether the target was confirmed -- fields today, states then.
-6. **Smaller, each with its reason:** refuse the stale-backend cleanup
+6. **What a third outside review of 0.6.11 named**, checked against the
+   tree first. *Done:* a switch whose write gives out part of the way
+   says how far it came instead of raising (ADR 0027, a fourth outcome);
+   a receive port that cannot be read is an error and not a quiet
+   backend, which also ends a busy loop nobody had seen (ADR 0025,
+   amended); the oracle builds its own messages and both sides are held
+   to literals. One finding was already fixed at the release it
+   reviewed (the reconciler's stale module note). *Still ahead, and last
+   on purpose:* the package root exports 77 names, most of them
+   internals; the supported surface is declared once the types below
+   have changed the names it would list, so that it is touched once.
+7. **Smaller, each with its reason:** refuse the stale-backend cleanup
    when `pidfd_open` is unavailable instead of falling back to
    `os.kill`; one retry of a reconcile that was skipped because the GUI
    held the port, on the next trigger and never on a timer (ADR 0013);
