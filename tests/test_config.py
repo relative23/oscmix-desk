@@ -297,7 +297,7 @@ def test_a_config_is_not_changed_after_it_is_read(session_mod, tmp_path):
     whatever the last of them had left in it. Each makes a new one."""
     import dataclasses
 
-    from oscmix_desk import cli, profiles
+    from oscmix_desk import profiles
 
     config = session_mod.load_config(routing_conf(
         tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
@@ -308,11 +308,13 @@ def test_a_config_is_not_changed_after_it_is_read(session_mod, tmp_path):
     assert isinstance(config.routes, tuple)
     assert (config.channels, config.globals) == ((), ())
 
-    said = cli._override_device(config, "Some Box")
-    assert (said.device_name, said.overrides.device_name) == ("Some Box",
-                                                              "Some Box")
+    under = session_mod.load_config(
+        routing_conf(tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"),
+        said=session_mod.CommandLine(device_name="Some Box"))
+    assert (under.device_name, under.overrides.device_name) == ("Some Box",
+                                                                "Some Box")
     assert (config.device_name, config.overrides.device_name) == (
-        "Fireface UCX II", None), "the one it was given is as it was"
+        "Fireface UCX II", None), "and the one read without it is as it was"
 
     running = dataclasses.replace(config, osc_port=9000, serial="24216011")
     fresh = session_mod.load_config(routing_conf(

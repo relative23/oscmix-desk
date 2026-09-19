@@ -112,7 +112,7 @@ def _parse_pin(parser: "configparser.ConfigParser", section: str,
     routing still applies, and the only symptom is a fader that does or
     does not come back weeks later.
     """
-    device = device_for_name(config.device_name)
+    device = device_for_name(config.used)
     for key in parser.options(section):
         raw = parser.get(section, key).strip().lower()
         if raw not in POLICIES:
@@ -220,25 +220,43 @@ class _Draft:
     serial: str
     osc_port: int
     osc_recv_port: int
+    #: What the command line puts over the file. The five fields above
+    #: stay what the *file* says; everything that is checked against a
+    #: device is checked against ``used``, the one the desk goes to.
+    said: CommandLine = field(default_factory=CommandLine)
     routes: List[Route] = field(default_factory=list)
     channels: List[ChannelSetting] = field(default_factory=list)
     globals: List[GlobalSetting] = field(default_factory=list)
     policies: Dict[Tuple[str, str], Policy] = field(default_factory=dict)
 
-    def machine(self) -> Machine:
-        return Machine(self.device_name, self.usb_id, self.serial,
+    @property
+    def used(self) -> str:
+        """The device name the desk is for: ``--device``, else the file's."""
+        return self.said.device_name or self.device_name
+
+    def frozen(self) -> Config:
+        file = Machine(self.device_name, self.usb_id, self.serial,
                        self.osc_port, self.osc_recv_port)
-
-    def frozen(self, overrides: CommandLine) -> Config:
-        return Config(self.device_name, self.usb_id, self.serial,
-                      self.osc_port, self.osc_recv_port, tuple(self.routes),
+        run = file.under(self.said)
+        return Config(run.device_name, run.usb_id, run.serial, run.osc_port,
+                      run.osc_recv_port, tuple(self.routes),
                       tuple(self.channels), tuple(self.globals),
-                      dict(self.policies), self.machine(), overrides)
+                      dict(self.policies), file, self.said)
 
 
-def load_config(path: Optional[Path],
-                base: Optional[Config] = None) -> Config:
+def load_config(path: Optional[Path], base: Optional[Config] = None,
+                said: Optional[CommandLine] = None) -> Config:
     """Load routing.conf. ``path=None`` returns built-in defaults.
+
+    ``said`` is what the command line puts over the file: ``--device`` and
+    ``--osc-port``. The parser knows it since 0.7.0, so a desk is
+    validated *for* the interface it goes to. Until then the override was
+    applied to a finished ``Config`` that had been checked for the device
+    its file named, and the most that could be done about outputs 41/42
+    reaching a box with twenty was a warning (0.6.11). The file's own
+    values are kept as ``Config.loaded``, the command line as
+    ``Config.overrides``; a running session resolves what it reads again
+    with the same one.
 
     ``base`` is what the file is read onto, a fresh ``Config`` by
     default. A profile is read onto the machine settings of its main
@@ -248,11 +266,11 @@ def load_config(path: Optional[Path],
     """
     onto = Config() if base is None else base
     config = _Draft(onto.device_name, onto.usb_id, onto.serial, onto.osc_port,
-                    onto.osc_recv_port)
+                    onto.osc_recv_port, said or CommandLine())
     if path is None:
         # No file resolves to the defaults, and that is a record like any
         # other: which interface the (empty) desk was checked for.
-        return config.frozen(onto.overrides)
+        return config.frozen()
     if not path.is_file():
         raise ConfigError("config file not found: %s" % path)
 
@@ -272,7 +290,7 @@ def load_config(path: Optional[Path],
     pending_globals: List[str] = []
     pending_nested: List[str] = []
     _dispatch(parser, config, pending, pending_globals, pending_nested)
-    device = device_for_name(config.device_name)
+    device = device_for_name(config.used)
     for section in pending_globals:
         config.globals.extend(_parse_global_section(parser, section, device))
     for section in pending_nested:
@@ -281,11 +299,11 @@ def load_config(path: Optional[Path],
         family = section.split(":", 1)[0]
         config.channels.extend(
             _parse_channel_section(parser, section, family, device,
-                                   config.device_name))
+                                   config.used))
 
     _check_device_channels(config)
     _check_link_agreement(config.routes)
-    return config.frozen(onto.overrides)
+    return config.frozen()
 
 
 def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
@@ -344,12 +362,12 @@ def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
             pending.append(section)
         elif section == "pin":
             _parse_pin(parser, section, config)
-        elif section in global_families(device_for_name(config.device_name)):
+        elif section in global_families(device_for_name(config.used)):
             pending_globals.append(section)
-        elif _is_nested_section(section, config.device_name):
+        elif _is_nested_section(section, config.used):
             pending_nested.append(section)
         else:
-            _warn_unknown_section(section, config.device_name)
+            _warn_unknown_section(section, config.used)
 
 
 def _check_device_channels(config: _Draft) -> None:
@@ -371,7 +389,7 @@ def _check_device_channels(config: _Draft) -> None:
     been tested here, and a model that rejected its channels would be
     guessing at hardware nobody can check.
     """
-    device = device_for_name(config.device_name)
+    device = device_for_name(config.used)
     if device is None:
         return
     for route in config.routes:

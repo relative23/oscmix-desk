@@ -8,7 +8,7 @@ import pytest
 from support import started_with, write_config
 from two_boxes import DESK, lock_dir
 
-from oscmix_desk import cli, profiles
+from oscmix_desk import CommandLine, profiles
 from oscmix_desk import notices as notices_mod
 from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
@@ -183,25 +183,34 @@ def test_a_file_under_an_override_is_not_a_desk_for_elsewhere(tmp_path,
     assert [route.output for route in fresh.routes] == [(3, 4)]
     assert caplog.text == ""
 
-def test_a_reload_names_a_desk_checked_for_another_interface(tmp_path,
-                                                             caplog):
-    """The start's notice covers the desk of that moment. A file with nothing
-    in it to check, given routes later, reached the `--device` interface
-    unannounced: outputs 29/30 of an 802 desk, on a box with twenty. A
-    restart would have said so, and so does the reload (found by review)."""
+def test_a_re_read_desk_is_validated_for_the_device_the_session_runs(
+        tmp_path, caplog):
+    """A file with nothing in it to check, given routes later, reached the
+    `--device` interface: outputs 29/30 of an 802 desk, on a box with
+    twenty. 0.6.11 could only say so afterwards. The re-read file is
+    parsed under the command line the start was given, as a restart would
+    parse it, so it is refused where the start would refuse it -- and the
+    running desk stays."""
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Fireface 802\n")
-    running = cli._override_device(profiles.load_config(path),
-                                   "Fireface UCX II")
-    assert notices_mod.replaced_device_warning(running) is None, \
-        "nothing in it was checked for a device"
+    running = profiles.load_config(
+        path, said=CommandLine(device_name="Fireface UCX II"))
+    assert running.device_name == "Fireface UCX II"
+    assert running.loaded.device_name == "Fireface 802"
     path.write_text("[device]\nname = Fireface 802\n"
                     "[route:x]\nplayback = 1/2\noutput = 29/30\n")
-    with caplog.at_level("WARNING"):
-        assert _reread("_reloaded_desk", running, path) is not None
-    assert ("--device replaces [device] name after validation: this config "
-            "was checked for 'Fireface 802' and is used for 'Fireface UCX II'"
-            ) in caplog.text
+    with caplog.at_level("ERROR"):
+        assert _reread("_reloaded_desk", running, path) is None
+    assert ("is not usable ([route:x] output: channel 29 does not exist on a "
+            "Fireface UCX II (it has output 1..20)); keeping the running "
+            "configuration") in caplog.text
+    # The same routes on channels the interface it runs on does have.
+    path.write_text("[device]\nname = Fireface 802\n"
+                    "[route:x]\nplayback = 1/2\noutput = 19/20\n")
+    kept = _reread("_reloaded_desk", running, path)
+    assert [route.output for route in kept.routes] == [(19, 20)]
+    assert kept.device_name == "Fireface UCX II"
+
 
 def test_a_routing_conf_that_moved_is_followed_by_a_restart_whatever_is_active(
         tmp_path, caplog):
@@ -248,9 +257,11 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
     assert (fresh.device_name, fresh.osc_port, fresh.serial) == (
         "Some Box", 9000, "24216011")
     assert "another backend" not in caplog.text
-    # The reload says what its desk is used for. The start said so before
-    # it looked for the interface, and under the lock repeats nothing.
-    assert caplog.text.count("checked for") == (reread == "_reloaded_desk")
+    # 'Some Box' is nobody's model, so its routes go out unchecked, and a
+    # reload says so about the desk it read. The start said so before it
+    # looked for the interface, and under the lock repeats nothing.
+    assert caplog.text.count("no register model for 'Some Box'") == (
+        reread == "_reloaded_desk")
 
 def test_another_desk_under_the_lock_is_spoken_about_even_in_the_same_words(
         tmp_path, caplog):
@@ -297,21 +308,20 @@ def test_a_start_that_finds_no_interface_has_said_what_there_is_to_say(
 def test_a_start_gives_its_notices_about_the_desk_it_applies(
         tmp_path, caplog, monkeypatch):
     """The top of a start speaks about the file as read before the wait for
-    the device and the lock. A file with nothing in it to check, given
-    routes in that time, reached the `--device` interface unannounced:
-    another desk under the lock is spoken about there, and the same one
-    is not spoken about twice (found by review)."""
+    the device and the lock. A file with no routes in it, given some in
+    that time, went to an interface nobody modelled unannounced: another
+    desk under the lock is spoken about there, and the same one is not
+    spoken about twice (found by review)."""
     path = write_config(tmp_path / "routing.conf",
-                        "[device]\nname = Fireface 802\n")
-    started = cli._override_device(profiles.load_config(path),
-                                   "Fireface UCX II")
+                        "[device]\nname = Some Box\n")
+    started = profiles.load_config(path)
     applied = []
     monkeypatch.setattr(session_module, "apply_routing",
                         lambda config, *a, **k: applied.append(config))
     monkeypatch.setattr(session_module, "verify_and_repair",
                         lambda *a, **k: None)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
-    path.write_text("[device]\nname = Fireface 802\n"
+    path.write_text("[device]\nname = Some Box\n"
                     "[route:x]\nplayback = 1/2\noutput = 29/30\n")
 
     class Running:
@@ -324,12 +334,11 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     assert verifier is not None
     verifier.join(timeout=5)
     assert [route.output for route in applied[0].routes] == [(29, 30)]
-    notice = "was checked for 'Fireface 802' and is used for 'Fireface UCX II'"
+    notice = "no register model for 'Some Box': its 1 route(s)"
     assert caplog.text.count(notice) == 1
     # The same file, read by a start that already said so: not twice.
     caplog.clear()
-    restarted = cli._override_device(profiles.load_config(path),
-                                     "Fireface UCX II")
+    restarted = profiles.load_config(path)
     with caplog.at_level("WARNING"):
         notices_mod.log_desk_notices(restarted)
         session_module._apply_and_verify(Running(), restarted,

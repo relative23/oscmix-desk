@@ -62,6 +62,20 @@ behaviour: modules a person can read.
   `Register`. With the real types mypy asked two questions the ignores
   had answered for it -- whether the device can be `None` where its
   channels and its name are read -- and both now say so in the code.
+- **A desk is validated for the interface `--device` names. A
+  combination that loaded in 0.6.x now does not.** The override arrived
+  after the file had been checked for the device *it* names, so outputs
+  29/30 of an 802 desk reached a UCX II, which has twenty, and 0.6.11
+  could only warn. The parser takes the command line now
+  (`load_config(path, base=None, said=None)`, and the same through
+  `effective_config` and `load_profile`): routes, channel sections and
+  pins are held to the device the desk goes to, a desk that does not fit
+  is a configuration error, exit 2, and a running session reads a file
+  again under the command line it was started with -- so a reload
+  refuses what a restart would refuse and keeps the running desk. The
+  0.6.11 warning and `cli._override_device` are gone; `Config.loaded`
+  is what the file said and `Config.overrides` what the command line
+  put over it.
 - **A `Config` is frozen.** The parser builds a private draft and returns
   a `Config` that is not assigned to again: its routes and settings are
   tuples, and the four places that changed one after the fact -- the

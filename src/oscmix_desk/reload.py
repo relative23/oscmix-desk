@@ -46,7 +46,7 @@ def _desk_under_the_lock(config_path: Optional[Path],
     if config_path is None:
         return running
     try:
-        fresh, _active = effective_config(config_path)
+        fresh, _active = effective_config(config_path, running.overrides)
     except ConfigError as exc:
         log.error("%s is no longer usable (%s); applying the desk this "
                   "process started with", config_path, exc)
@@ -75,9 +75,10 @@ def _kept_for_this_process(fresh: Config, running: Config
     42 outputs reached a UCX II, which has twenty (ADR 0026).
 
     The re-read file is resolved the way a restart would resolve it --
-    the command line's overrides over it, as at the start -- and then held
-    against what this session runs (``Machine.elsewhere``, which also
-    says where the two still differ). So a reload applies what a restart
+    read and validated under the command line the start was given
+    (``running.overrides``) -- and then held against what this session
+    runs (``Machine.elsewhere``, which also says where the two still
+    differ). So a reload applies what a restart
     would apply here, and refuses what a restart would take somewhere
     else. The first cuts compared the bare file: they refused the
     session's own desk under ``--osc-port``, with advice to restart that
@@ -214,7 +215,7 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
     if path is None:
         return running
     try:
-        fresh, active = effective_config(path)
+        fresh, active = effective_config(path, running.overrides)
     except ConfigError as exc:
         log.error("SIGHUP: %s is not usable (%s); keeping the running "
                   "configuration", path, exc)

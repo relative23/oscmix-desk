@@ -52,7 +52,7 @@ from .marker import (
     forget_active_profile,
     remember_active_profile,
 )
-from .model import Config
+from .model import CommandLine, Config, Machine
 from .notices import log_desk_notices
 from .outcome import (
     APPLIED_UNVERIFIED,
@@ -68,7 +68,8 @@ from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
 
 
-def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
+def load_profile(name: str, config_path: Optional[Path] = None,
+                 said: Optional[CommandLine] = None) -> Config:
     """Parse a profile, or raise ``ConfigError``.
 
     Separate from :func:`switch_profile` so the refusal path can be
@@ -105,9 +106,15 @@ def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
     # every machine setting with the value it finds as the fallback, so a
     # profile that states one still wins.
     if config_path is None or not Path(config_path).is_file():
-        return load_config(path)
-    main = load_config(config_path)
-    profile = load_config(path, keep_machine_settings(Config(), main))
+        return load_config(path, said=said)
+    main = load_config(config_path, said=said)
+    # Onto what routing.conf itself says, not onto what the command line
+    # made of it: the comparison below is between the two files, and the
+    # command line is put over both alike.
+    onto = replace(Config(), **(main.loaded or Machine(
+        main.device_name, main.usb_id, main.serial, main.osc_port,
+        main.osc_recv_port))._asdict())
+    profile = load_config(path, onto, said)
     theirs, ours = profile.loaded, main.loaded
     if theirs is not None and ours is not None and theirs != ours:
         raise ConfigError(
@@ -264,7 +271,9 @@ def _refused_for_the_lock(name: str) -> Outcome:
     return Outcome(state=REFUSED, name=name, reason=reason)
 
 
-def effective_config(config_path: Optional[Path]) -> Tuple[Config, Optional[str]]:
+def effective_config(config_path: Optional[Path],
+                     said: Optional[CommandLine] = None
+                     ) -> Tuple[Config, Optional[str]]:
     """The desk a start applies, and the profile it came from.
 
     The active profile when one is remembered and loads, `routing.conf`
@@ -279,12 +288,12 @@ def effective_config(config_path: Optional[Path]) -> Tuple[Config, Optional[str]
     prevent; the marker stays, so the warning stays until somebody
     decides (ADR 0018).
     """
-    main = load_config(config_path)
+    main = load_config(config_path, said=said)
     name = active_profile(config_path)
     if name is None:
         return main, None
     try:
-        profile = load_profile(name, config_path)
+        profile = load_profile(name, config_path, said)
     except ConfigError as exc:
         log.warning("active profile %r is not usable (%s); applying %s "
                     "instead -- fix the file, or `--no-profile`",

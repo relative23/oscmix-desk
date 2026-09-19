@@ -5,7 +5,6 @@ device without a table saying so rather than swallowing sections.
 """
 
 
-from dataclasses import replace
 
 import pytest
 from support import repo_file, routing_conf
@@ -96,43 +95,57 @@ def test_an_empty_device_name_is_a_config_error(session_mod, tmp_path, name):
                              "MIDI port"):
         session_mod.load_config(path)
 
-def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
-                                                           tmp_path):
-    """`loaded` is what the file said, and it stays what the file said: the
-    live attributes are replaced by `--device`, `--osc-port`, the serial a
-    start pins and a running session's own -- and both notices that
-    matter (checked for another interface, a desk for another backend)
-    compare against the record, not against those."""
+def test_a_config_records_what_its_file_said_and_what_the_command_line_did(
+        session_mod, tmp_path):
+    """`loaded` is what the file said, `overrides` what the command line put
+    over it, and the five settings are the second over the first. A
+    running session resolves a file it reads again with `overrides` and
+    holds it against those (ADR 0024, ADR 0026)."""
+    from oscmix_desk import CommandLine
 
     assert session_mod.Config().loaded is None, "not loaded, no record"
-    named = session_mod.load_config(routing_conf(
+    path = routing_conf(
         tmp_path, "[device]\nname = Fireface 802\nserial = 11223344\n\n"
-                  "[osc]\nport = 9001\n"))
-    assert named.loaded == model_mod.Machine(
-        "Fireface 802", "2a39:3fd9", "11223344", 9001, 8222)
-    named = replace(named, device_name="X", osc_port=7, serial="9")
-    assert named.loaded.device_name == "Fireface 802"
+                  "[osc]\nport = 9001\n")
+    named = session_mod.load_config(path)
+    file = model_mod.Machine("Fireface 802", "2a39:3fd9", "11223344", 9001,
+                             8222)
+    assert named.loaded == file
+    assert named.overrides == CommandLine()
     assert named.loaded.differs_from(model_mod.Machine(
         "Fireface 802", "2a39:3fd9", "5", 9001, 9)) == (
         "serial '11223344' (not '5'), osc recv port 8222 (not 9)")
-    # Without a record there is nothing to compare, and nothing is said.
-    routed = session_mod.load_config(routing_conf(
-        tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
-    routed = replace(routed, device_name="X")
-    assert "checked for 'Fireface UCX II' and is used for 'X'" in \
-        notices_mod.replaced_device_warning(routed)
-    assert notices_mod.replaced_device_warning(
-        replace(routed, loaded=None)) is None
-    # Routes, channel sections, global sections: each alone was checked
-    # for a device, and a file with none of them was not.
-    for text, checked in (("[input:1]\ngain = 10\n", True),
-                          ("[reverb]\nenabled = on\n", True),
-                          ("[osc]\nport = 9001\n", False)):
-        desk = session_mod.load_config(routing_conf(tmp_path, text))
-        assert bool(desk.channels or desk.globals) is checked, text
-        desk = replace(desk, device_name="X")
-        assert (notices_mod.replaced_device_warning(desk) is not None) \
-            is checked, text
+    said = CommandLine(device_name="Fireface UCX II", osc_port=9000)
+    under = session_mod.load_config(path, said=said)
+    assert (under.loaded, under.overrides) == (file, said)
+    assert (under.device_name, under.osc_port, under.serial) == (
+        "Fireface UCX II", 9000, "11223344")
+
+
+def test_a_desk_is_validated_for_the_device_the_command_line_names(
+        session_mod, tmp_path):
+    """`--device` arrived after the file had been checked for the device it
+    names, so outputs 29/30 of an 802 desk reached a UCX II, which has
+    twenty, with a warning at most (0.6.11). The parser knows the command
+    line since 0.7.0: the routes, the channel sections and the pins are
+    held to the interface the desk goes to."""
+    from oscmix_desk import CommandLine
+
+    ucx2 = CommandLine(device_name="Fireface UCX II")
+    wide = routing_conf(tmp_path, "[device]\nname = Fireface 802\n"
+                                  "[route:x]\nplayback = 1/2\noutput = 29/30\n")
+    assert session_mod.load_config(wide).routes
+    with pytest.raises(session_mod.ConfigError,
+                       match="channel 29 does not exist on a Fireface UCX II"):
+        session_mod.load_config(wide, said=ucx2)
+    # The other way round: a section the file's own device has no model
+    # for is read, not ignored, once the command line names one that has.
+    gain = routing_conf(tmp_path, "[device]\nname = Some Box\n"
+                                  "[input:3]\ngain = 12.0\n")
+    assert session_mod.load_config(gain).channels == ()
+    assert [c.option for c in
+            session_mod.load_config(gain, said=ucx2).channels] == ["gain"]
+
 
 def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():
     """A re-read file is resolved as a restart would resolve it -- the

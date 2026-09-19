@@ -83,10 +83,12 @@ Common findings in the journal:
   checked against the hardware. Expected on an interface this project
   has never seen (the 802 is checked against upstream's channel map and
   does not warn); a typo in the name looks the same.
-- `--device replaces [device] name after validation: this config was
-  checked for '<A>' and is used for '<B>'` -- the file names one model
-  and the override another, so the channel check was made for the wrong
-  interface. Put the name in `routing.conf` instead.
+- `configuration error: ... channel N does not exist on a <B>` with
+  `--device <B>` on the command line -- the desk is validated for the
+  interface it is sent to, and this one does not fit it: the file names
+  another model and routes to channels `<B>` does not have. Exit 2,
+  nothing written. (0.6.11 validated for the file's device and warned
+  that `--device` had replaced the name afterwards.)
 - `the desk now in effect is for another backend or interface -- ...`
   with `Status: running; reconcile skipped` -- `routing.conf`, or the
   active profile, now resolves to another device name, usb id, serial or

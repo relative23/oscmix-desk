@@ -10,7 +10,6 @@ import math
 import os
 import sys
 from argparse import ArgumentParser
-from dataclasses import replace
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
@@ -27,7 +26,7 @@ from .constants import (
 )
 from .errors import ConfigError
 from .log import log
-from .model import Config
+from .model import CommandLine, Config
 from .notices import log_desk_notices
 from .outcome import REFUSED, WRITTEN_IN_PART, Outcome
 from .paths import discover_config_path, profile_path
@@ -110,29 +109,38 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 130
 
 
-def _override_device(config: Config, name: str) -> Config:
-    """``--device``: the ALSA client to wait for, and the model from here on.
+def _command_line(args: "argparse.Namespace") -> Optional[CommandLine]:
+    """``--device`` and ``--osc-port`` as the parser takes them, or None.
 
-    It arrives after the file was validated, so the channels and sections
-    were checked for the device the *file* names; see
-    ``notices.replaced_device_warning``. Refused together with a switch or
-    a restore, which take their interface from the config and never saw
-    the override (``_refuse_conflicting_actions``). Remembered as an
-    override, like ``--osc-port``: a desk this process reads again is
-    resolved the way a restart would resolve it.
+    Handed to the parser rather than put over its result: the desk is then
+    validated for the interface it goes to, where ``--device`` used to
+    arrive after the file had been checked for the one it names (0.7.0).
+    Refused together with a switch or a restore, which take their
+    interface from the config and never saw the override
+    (``_refuse_conflicting_actions``).
     """
-    return replace(config, device_name=name,
-                   overrides=config.overrides._replace(device_name=name))
+    if args.osc_port is not None and not 1 <= args.osc_port <= 65535:
+        # Bounded like `[osc] port` in the file. A port outside the range
+        # used to pass straight through: nothing bound it, and the first
+        # symptom was the backend failing to start.
+        log.error("configuration error: --osc-port %d out of range 1..65535",
+                  args.osc_port)
+        return None
+    # Stripped like `[device] name` is: the client search compares the
+    # name as given, and padding matched nothing.
+    return CommandLine(args.device.strip() if args.device else None,
+                       args.osc_port)
 
 
-def _desk_in_effect(config_path: Optional[Path]) -> Optional[Config]:
+def _desk_in_effect(config_path: Optional[Path],
+                    said: CommandLine) -> Optional[Config]:
     """The desk this invocation is about, named in the log; None if refused.
 
     The active profile if one is remembered, else routing.conf (ADR
     0018); only routing.conf itself can refuse.
     """
     try:
-        config, active = effective_config(config_path)
+        config, active = effective_config(config_path, said)
     except ConfigError as exc:
         log.error("configuration error: %s", exc)
         return None
@@ -161,25 +169,10 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     config_path = args.config or discover_config_path()
-    config = _desk_in_effect(config_path)
+    said = _command_line(args)
+    config = None if said is None else _desk_in_effect(config_path, said)
     if config is None:
         return EXIT_CONFIG
-
-    if args.device:
-        # Stripped like `[device] name` is: the client search compares
-        # the name as given, and padding matched nothing.
-        config = _override_device(config, args.device.strip())
-    if args.osc_port is not None:
-        # Bounded like `[osc] port` in the file. A port outside the range
-        # used to pass straight through: nothing bound it, and the first
-        # symptom was the backend failing to start.
-        if not 1 <= args.osc_port <= 65535:
-            log.error("configuration error: --osc-port %d out of range 1..65535",
-                      args.osc_port)
-            return EXIT_CONFIG
-        config = replace(config, osc_port=args.osc_port,
-                         overrides=config.overrides._replace(
-                             osc_port=args.osc_port))
 
     if args.dry_run and (args.profile is not None or args.no_profile):
         return _dry_run_desk(args, config_path)

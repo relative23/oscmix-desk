@@ -1,8 +1,10 @@
 """What there is to say about a desk before it is written or shown.
 
-Routes on a device nobody modelled, a desk checked for one interface and
-used for another. Neither refuses anything; each is said once, by
-whoever has the desk in hand.
+Routes on a device nobody modelled: they are written as given, and said
+so once, by whoever has the desk in hand. There were three notices in
+0.6.11. A profile for another machine is refused since 0.7.0 (ADR 0026),
+and a desk is validated for the interface ``--device`` names rather than
+warned about afterwards, so this is the one that is left.
 """
 
 from __future__ import annotations
@@ -43,32 +45,6 @@ def log_desk_notices(config: "Config") -> None:
     0.6.11). A start asks again under the device lock when the desk it
     re-read there is another one (``reload._desk_under_the_lock``).
     """
-    for message in (unchecked_routes_warning(config),
-                    replaced_device_warning(config)):
-        if message:
-            log.warning("%s", message)
-
-
-def replaced_device_warning(config: "Config") -> Optional[str]:
-    """What to say about a desk checked for one interface and used for
-    another, or None.
-
-    A config is validated for the device its file names
-    (``loaded.device_name``), and ``--device`` replaces the name
-    afterwards. When the two are different models -- or one is no model
-    at all -- the channel and section checks said nothing about the
-    interface the routes go to: measured, outputs 41/42 reached a UCX
-    II, which has twenty, in silence (0.6.11). Validating for the
-    override itself needs the parser to know it, which is the
-    frozen-config work of 0.7.0; until then this is the notice.
-    """
-    if config.loaded is None or not (config.routes or config.channels
-                                     or config.globals):
-        return None                 # nothing in it was checked for a device
-    if device_for_name(config.loaded.device_name) is device_for_name(
-            config.device_name):
-        return None
-    return ("--device replaces [device] name after validation: this config "
-            "was checked for %r and is used for %r, so its channels and "
-            "sections were validated against the wrong interface"
-            % (config.loaded.device_name, config.device_name))
+    message = unchecked_routes_warning(config)
+    if message:
+        log.warning("%s", message)

@@ -301,36 +301,38 @@ def test_a_reload_warns_about_the_desk_it_re_read(tmp_path, caplog):
     assert "its 3 route(s)" in _unchecked(caplog)[0]
 
 
-def test_a_device_override_that_bypasses_the_validation_is_named(
+def test_a_device_override_is_what_the_desk_is_validated_for(
         tmp_path, caplog, monkeypatch):
-    """`--device` arrives after the file was validated. When it names
-    another model, or none, the channel check said nothing about the
-    interface the routes now go to. Said with the other notices, by what
-    shows or writes this desk: a dump shows the device's, a snapshot and
-    a listing show none -- and the listing said it, while it was said at
-    the override (0.6.11)."""
+    """`--device` arrived after the file had been validated, and 0.6.11
+    could only warn that the check had been made for another interface.
+    It is part of the load since 0.7.0: a desk that does not fit the
+    interface it is sent to is a configuration error, exit 2, from every
+    action that loads it -- and one that fits says nothing at all."""
     from oscmix_desk import cli
 
+    shown = []
+    monkeypatch.setattr(cli, "run_session",
+                        lambda _args, config: shown.append(config) or 0)
     path = tmp_path / "routing.conf"
-    path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    for name in ("_diff", "_snapshot", "_dump_config"):
-        monkeypatch.setattr(cli, name, lambda config: 0)
-    monkeypatch.setattr(cli, "pw_dump_objects", lambda: None)
-    notice = ("--device replaces [device] name after validation: this config "
-              "was checked for 'Fireface UCX II' and is used for 'Some Box'")
-    for action, times in ((["--dry-run", "--timeout", "0"], 1),
-                          (["--diff"], 1), (["--pipewire-sinks"], 1),
-                          (["--dump-config"], 0), (["--snapshot"], 0),
-                          (["--list-profiles"], 0)):
+    path.write_text("[device]\nname = Fireface 802\n"
+                    "[route:main]\nplayback = 1/2\noutput = 29/30\n")
+    assert cli.main(["--config", str(path), "--dry-run"]) == 0
+    for action in (["--dry-run"], ["--diff"], ["--list-profiles"]):
         caplog.clear()
-        with caplog.at_level("WARNING"):
-            cli.main(["--config", str(path), "--device", "Some Box", *action])
-        assert caplog.text.count(notice) == times, action
+        with caplog.at_level("ERROR"):
+            assert cli.main(["--config", str(path), "--device",
+                             "Fireface UCX II", *action]) == 2, action
+        assert ("configuration error: [route:main] output: channel 29 does "
+                "not exist on a Fireface UCX II") in caplog.text
+    path.write_text("[device]\nname = Fireface 802\n"
+                    "[route:main]\nplayback = 1/2\noutput = 19/20\n")
     caplog.clear()
     with caplog.at_level("WARNING"):
-        cli.main(["--config", str(path), "--device", "fireface ucx ii",
-                  "--diff"])
-    assert "--device" not in caplog.text, "the same model, spelled differently"
+        assert cli.main(["--config", str(path), "--device",
+                         " fireface ucx ii ", "--dry-run"]) == 0
+    assert caplog.text == ""
+    assert (shown[-1].device_name, shown[-1].loaded.device_name) == (
+        "fireface ucx ii", "Fireface 802")
 
 
 @pytest.mark.parametrize("action", [["--profile", "one"], ["--no-profile"]])
