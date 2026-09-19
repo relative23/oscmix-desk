@@ -148,24 +148,33 @@ nothing is added to what a `routing.conf` can declare.
    patch: `monkeypatch.setattr` on one of this project's modules now
    fails when nothing in that module reads the name, which caught the
    suite's own lock-directory isolation the moment the lock moved.
-2. **A profile is the desk** (ADR 0026): a profile that resolves to
-   another machine than its `routing.conf` is a `ConfigError`. One that
-   restates the same values, as a dumped profile does until its
-   `routing.conf` changes them, stays accepted.
-3. **Tighter types** (first review): `Phase` as `IntEnum`, `WriteReason`
-   and the register domains, policies and verification classes as enums
-   where they steer control flow; one named result for "the receive port
-   is unavailable" instead of `None` through `listen`,
-   `await_link_echo` and `verify_routing`; `RegisterValue` instead of
-   `value: object` (most of the 24 `type: ignore`). The floor is Python
-   3.9: no `StrEnum`, and `format()` of a `(str, Enum)` changed in 3.12,
-   so output uses `.value`.
-4. **A frozen `Config` from a builder**: parse, validate, freeze. The
-   parser knows the overrides, so `--device` is validated *for* rather
-   than warned about, and `_find_client` stops writing the pinned serial
-   into its argument.
-5. **Outcome as a result type**: `durable`, whether the unit was told,
-   whether the target was confirmed -- fields today, states then.
+2. **A profile is the desk** (ADR 0026). *Done:* a profile that resolves
+   to another machine than its `routing.conf` is a `ConfigError`; one
+   that restates the same values, as a dumped profile does until its
+   `routing.conf` changes them, stays accepted. The 0.6.11 warning, the
+   record of what a profile's `routing.conf` said and the three forms of
+   advice a refused reload chose from went with it.
+3. **Tighter types** (first review). *Done:* `Phase` as `IntEnum`,
+   `WriteReason`, and the register table's verification class, policy
+   and domain as enums that every row is held to; `LinkEcho` instead of
+   the echo wait's `Optional[bool]`; `osc.Value` and `model.SettingValue`
+   instead of `object`, which removed all 24 `type: ignore`. The floor
+   is Python 3.9: no `StrEnum`, and output uses `.value`. `listen()` and
+   `verify_routing` still answer `None` for a held port; that one
+   meaning is documented and tested, and stays.
+4. **A frozen `Config` from a builder.** *Done:* the parser fills a
+   private draft and returns a frozen `Config`; the command line's
+   overrides, the pinned serial, a session's kept machine settings and a
+   profile's base each make a new one. The parser knows the command
+   line, so a desk is validated *for* the interface `--device` names --
+   refused where it does not fit, where 0.6.11 could only warn.
+5. **Outcome as a result type** -- *declined.* Whether the marker moved,
+   whether that is durable and whether a read-back ran are independent
+   facts about an applied switch; as states they multiply (applied and
+   verified and remembered and not durable ...), and a caller would
+   branch on a product it has to take apart again. The one thing that
+   *was* a missing state became one: a write that gave out part of the
+   way (ADR 0027).
 6. **What a third outside review of 0.6.11 named**, checked against the
    tree first. *Done:* a switch whose write gives out part of the way
    says how far it came instead of raising (ADR 0027, a fourth outcome);
@@ -177,17 +186,21 @@ nothing is added to what a `routing.conf` can declare.
    on purpose:* the package root exports 77 names, most of them
    internals; the supported surface is declared once the types below
    have changed the names it would list, so that it is touched once.
-7. **Smaller, each with its reason:** refuse the stale-backend cleanup
-   when `pidfd_open` is unavailable instead of falling back to
-   `os.kill`; one retry of a reconcile that was skipped because the GUI
-   held the port, on the next trigger and never on a timer (ADR 0013);
-   a strict/best-effort policy for unmodelled devices and a firmware
-   range the evidence vouches for (amends ADR 0006); multi-process tests
-   over two targets, the marker, SIGHUP/SIGTERM and fsync faults;
-   `--dry-run` printing the planned writes without the device; optional
-   `[project]` metadata, with `install.sh` staying the installer (ADR
-   0004; `pip install --user` is refused on the target platform, PEP
-   668).
+7. **Smaller, each with its reason.** *Done:* a stale backend is never
+   signalled by its number -- without a pidfd the cleanup refuses and
+   the start exits 2; a dry run prints its plan without the interface; a
+   start says when the interface reports another firmware than the one
+   the register table was recorded on. *Declined:* a retry of a
+   reconcile that was skipped because the GUI held the port -- every
+   trigger reconciles anyway, a retry between triggers is a timer, and
+   ADR 0013 says why there is none; the status line says `reconcile
+   skipped` until the next one. A strict mode for unmodelled devices --
+   it needs an option, and this release adds no surface; routes on such
+   a device stay unchecked out loud (ADR 0006). `[project]` metadata --
+   a `pip install` that half works would install a package without its
+   unit, udev rule, lock directory and launcher and look installed (ADR
+   0004). *Still ahead:* multi-process tests over the marker, SIGHUP and
+   SIGTERM and fsync faults.
 
 Considered and not planned: an apply journal. Every start is a full
 apply already, so a dirty flag adds nothing there; the one gap is a
