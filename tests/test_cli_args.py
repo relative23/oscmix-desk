@@ -4,6 +4,8 @@ from itertools import permutations
 
 import pytest
 
+from oscmix_desk import reload as reload_mod
+
 
 def test_an_out_of_range_osc_port_on_the_command_line_is_a_config_error(
         session_mod, tmp_path):
@@ -290,12 +292,11 @@ def test_a_dry_run_warns_about_the_desk_it_shows(tmp_path, caplog):
 
 def test_a_reload_warns_about_the_desk_it_re_read(tmp_path, caplog):
     from oscmix_desk import Config
-    from oscmix_desk import session as session_module
 
     path = _unmodelled_desk(tmp_path)
     (tmp_path / "active-profile").write_text("one\n")
     with caplog.at_level("WARNING"):
-        session_module._reloaded_desk(Config(device_name="Some Box"), path)
+        reload_mod._reloaded_desk(Config(device_name="Some Box"), path)
     assert len(_unchecked(caplog)) == 1
     assert "its 3 route(s)" in _unchecked(caplog)[0]
 
@@ -406,7 +407,7 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
     for action in ([], ["--diff"], ["--snapshot"]):
         assert cli.main(["--config", str(path), *overrides, *action]) == 0
     # Replaced, and remembered as replaced: what a session resolves a
-    # re-read file with (`session._kept_for_this_process`).
+    # re-read file with (`reload_mod._kept_for_this_process`).
     from oscmix_desk import CommandLine
 
     said = CommandLine(device_name="fireface ucx ii", osc_port=9000)

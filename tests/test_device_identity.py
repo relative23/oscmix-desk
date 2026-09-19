@@ -28,6 +28,7 @@ from oscmix_desk import marker as marker_mod
 from oscmix_desk import notices as notices_mod
 from oscmix_desk import outcome as outcome_mod
 from oscmix_desk import paths as paths_mod
+from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.discovery import (
     Device,
@@ -78,9 +79,9 @@ def _lock_dir(tmp_path, monkeypatch):
 
 
 def _record_keys(monkeypatch, module, keys, who=None):
-    """Record who took the lock with which key. The session calls
-    `take_device_lock` itself; a switch and a restore take it through
-    `locking._switch_lock`, which reads the name in its own module."""
+    """Record who took the lock with which key. The start and the reload
+    each call `take_device_lock` by the name in their own module; a
+    switch and a restore take it through `locking._switch_lock`."""
     real = module.take_device_lock
     who = who or module.__name__.rsplit(".", 1)[1]
 
@@ -95,6 +96,7 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
     """run_session for real, with only the process and the wire replaced."""
     notified = []
     monkeypatch.setattr(session_module, "sd_notify", notified.append)
+    monkeypatch.setattr(reload_mod, "sd_notify", notified.append)
     monkeypatch.setattr(session_module, "usb_device_present", lambda *a: True)
     monkeypatch.setattr(session_module, "_cleanup_stale_backend", lambda *a: None)
     monkeypatch.setattr(session_module, "_install_stop_handlers", lambda *a: None)
@@ -117,7 +119,7 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
         return 0
 
     monkeypatch.setattr(session_module, "_start_backend", start)
-    monkeypatch.setattr(session_module, "reconcile_now", reconcile)
+    monkeypatch.setattr(reload_mod, "reconcile_now", reconcile)
     monkeypatch.setattr(session_module, "supervise", supervise)
     config = profiles.load_config(path)
     args = argparse.Namespace(timeout=0.5, dry_run=False, config=path)
@@ -139,6 +141,7 @@ def test_every_path_takes_b_s_lock_and_reaches_only_b(
     path = _desk(tmp_path, port, serial=B[1])
     keys, started, reconciled, wired = [], [], [], []
     _record_keys(monkeypatch, session_module, keys)
+    _record_keys(monkeypatch, reload_mod, keys)
     _record_keys(monkeypatch, locking, keys, who="switch")
     monkeypatch.setattr(profiles, "loopback",
                         lambda send, recv: wired.append(send) or recording_backend)
@@ -152,7 +155,7 @@ def test_every_path_takes_b_s_lock_and_reaches_only_b(
     assert "READY=1" in notified
     assert started == [B[0]], "the unit bridges B's client, not the first one"
     assert unit.serial == B[1]
-    assert [who for who, _key in keys] == ["session", "session",
+    assert [who for who, _key in keys] == ["session", "reload",
                                            "switch", "switch"], \
         "apply, reconcile, switch and restore each took the lock"
     assert {key for _who, key in keys} == {KEY_B}, keys
@@ -216,6 +219,7 @@ def test_one_box_gives_the_unit_and_a_switch_the_same_key(
     path = _desk(tmp_path, port)
     keys = []
     _record_keys(monkeypatch, session_module, keys)
+    _record_keys(monkeypatch, reload_mod, keys)
     _record_keys(monkeypatch, locking, keys, who="switch")
     monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
 
@@ -1243,7 +1247,7 @@ def test_the_unit_s_desk_is_resolved_in_the_unit_s_environment(tmp_path,
 def test_the_unit_s_desk_is_its_config_argument_before_its_environment(
         tmp_path, monkeypatch):
     """A unit started with `--config /x` runs /x whatever its environment
-    says, as session._config_path reads it; a relative path is against
+    says, as reload_mod._config_path reads it; a relative path is against
     the unit's working directory, not this shell's."""
     environ = {"OSCMIX_CONFIG": str(tmp_path / "env.conf")}
     (tmp_path / "shell").mkdir()
@@ -1370,13 +1374,13 @@ def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
     def unreachable(*_a, **_k):
         raise OSError(101, "Network is unreachable")
 
-    monkeypatch.setattr(session_module, "reconcile_now", unreachable)
+    monkeypatch.setattr(reload_mod, "reconcile_now", unreachable)
     statuses = []
-    monkeypatch.setattr(session_module, "sd_notify", statuses.append)
+    monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
     _lock_dir(tmp_path, monkeypatch)
     path = write_config(tmp_path / "routing.conf", DESK)
     with caplog.at_level("ERROR"):
-        session_module._reconcile(argparse.Namespace(config=path), Config(),
+        reload_mod._reconcile(argparse.Namespace(config=path), Config(),
                                   {"stop": False})
     assert ("SIGHUP: cannot reach the backend on UDP 7222 ([Errno 101] "
             "Network is unreachable); reconcile skipped") in caplog.text
@@ -1488,7 +1492,7 @@ def test_a_re_read_desk_keeps_every_machine_setting_of_the_process(
     running.osc_port, running.serial = 9000, "24216011"
     running.overrides = running.overrides._replace(osc_port=9000)
     args = (running, path) if reread == "_reloaded_desk" else (path, running)
-    fresh = getattr(session_module, reread)(*args)
+    fresh = getattr(reload_mod, reread)(*args)
     assert fresh is not running
     assert [route.output for route in fresh.routes] == [(3, 4)], \
         "the desk itself is the file's"
@@ -1514,7 +1518,7 @@ def _reread(name, running, path):
     """`_desk_under_the_lock` answers with the running desk when it refuses,
     `_reloaded_desk` with None; both mean "not applied"."""
     args = (running, path) if name == "_reloaded_desk" else (path, running)
-    fresh = getattr(session_module, name)(*args)
+    fresh = getattr(reload_mod, name)(*args)
     return None if fresh is running else fresh
 
 
@@ -1787,11 +1791,11 @@ def test_another_desk_under_the_lock_is_spoken_about_even_in_the_same_words(
     (tmp_path / "active-profile").write_text("far\n")
     started, _active = profiles.effective_config(path)
     with caplog.at_level("WARNING"):
-        assert session_module._desk_under_the_lock(path, started) == started
+        assert reload_mod._desk_under_the_lock(path, started) == started
     assert caplog.text == "", "the same desk, spoken about at the top"
     (tmp_path / "active-profile").write_text("far2\n")
     with caplog.at_level("WARNING"):
-        applied = session_module._desk_under_the_lock(path, started)
+        applied = reload_mod._desk_under_the_lock(path, started)
     assert [route.output for route in applied.routes] == [(5, 6)]
     assert caplog.text.count("this profile names another backend") == 1
 

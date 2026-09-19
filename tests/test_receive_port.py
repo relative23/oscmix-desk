@@ -23,6 +23,7 @@ from conftest import free_udp_port, write_config
 
 from oscmix_desk import backend, locking, profiles, routing, verify
 from oscmix_desk import outcome as outcome_mod
+from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.errors import ReceivePortError
 
@@ -240,13 +241,13 @@ def test_a_reconcile_stands_down_and_names_the_port(tmp_path, monkeypatch,
     def cannot_bind(*_a, **_k):
         raise ReceivePortError(errno.EACCES, DENIED)
 
-    monkeypatch.setattr(session_module, "reconcile_now", cannot_bind)
+    monkeypatch.setattr(reload_mod, "reconcile_now", cannot_bind)
     statuses = []
-    monkeypatch.setattr(session_module, "sd_notify", statuses.append)
+    monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
     _shared_locks(tmp_path, monkeypatch)
     path = write_config(tmp_path / "routing.conf", DESK)
     with caplog.at_level("ERROR"):
-        session_module._reconcile(argparse.Namespace(config=path),
+        reload_mod._reconcile(argparse.Namespace(config=path),
                                   session_module.Config(), {"stop": False})
     assert "SIGHUP: %s; reconcile skipped" % DENIED_STR in caplog.text
     assert "cannot reach the backend" not in caplog.text

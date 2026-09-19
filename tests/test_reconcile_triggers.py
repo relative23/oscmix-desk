@@ -25,6 +25,7 @@ import pytest
 from conftest import repo_file
 
 from oscmix_desk import locking
+from oscmix_desk import reload as reload_mod
 
 
 def _key(path):
@@ -289,15 +290,14 @@ def test_a_broken_config_on_reload_keeps_the_running_one(tmp_path, session_mod,
     """
     import argparse
 
-    from oscmix_desk import session as session_module
 
     path = tmp_path / "routing.conf"
     path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
     applied = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a, **k: applied.append(a))
 
-    session_module._reconcile(argparse.Namespace(config=path),
+    reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
     assert applied == [], "a config that does not parse must not be applied"
 
@@ -307,7 +307,7 @@ def _reload_in_background(session_mod, session_module, path, stop, verifier):
     import threading
 
     thread = threading.Thread(
-        target=lambda: session_module._reconcile(
+        target=lambda: reload_mod._reconcile(
             argparse.Namespace(config=path), session_mod.Config(), stop,
             verifier),
         daemon=True)
@@ -340,7 +340,7 @@ def test_a_reload_waits_for_the_startup_verifier(tmp_path, session_mod,
     from oscmix_desk import session as session_module
 
     applied = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a, **k: applied.append(time.monotonic()))
     release = threading.Event()
     verifier = threading.Thread(target=release.wait, daemon=True)
@@ -370,7 +370,7 @@ def test_a_stop_during_the_wait_abandons_the_reload(tmp_path, session_mod,
     from oscmix_desk import session as session_module
 
     applied = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a, **k: applied.append(1))
     release = threading.Event()
     verifier = threading.Thread(target=release.wait, daemon=True)
@@ -399,9 +399,9 @@ def test_a_verifier_that_outlives_the_bound_is_not_waited_for_forever(
     from oscmix_desk import session as session_module
 
     applied = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a, **k: applied.append(1))
-    monkeypatch.setattr(session_module, "RECONCILE_WAIT_FOR_VERIFIER", 0.3)
+    monkeypatch.setattr(reload_mod, "RECONCILE_WAIT_FOR_VERIFIER", 0.3)
     release = threading.Event()
     verifier = threading.Thread(target=release.wait, daemon=True)
     verifier.start()
@@ -423,7 +423,7 @@ def test_a_finished_verifier_does_not_delay_the_reload(tmp_path, session_mod,
     from oscmix_desk import session as session_module
 
     applied = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a, **k: applied.append(1))
     verifier = threading.Thread(target=lambda: None)
     verifier.start()
@@ -447,7 +447,6 @@ def test_a_reload_applies_the_remembered_profile(tmp_path, session_mod,
 
     from conftest import write_config
 
-    from oscmix_desk import session as session_module
 
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\noutput = 1/2\nplayback = 1/2\n")
@@ -455,10 +454,10 @@ def test_a_reload_applies_the_remembered_profile(tmp_path, session_mod,
                  "[route:direct]\noutput = 5/6\nplayback = 5/6\n")
     (tmp_path / "active-profile").write_text("tracking\n")
     applied = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda config, *a, **k: applied.append(config))
     with caplog.at_level("INFO"):
-        session_module._reconcile(argparse.Namespace(config=path),
+        reload_mod._reconcile(argparse.Namespace(config=path),
                                   session_mod.Config(), {"stop": False})
     assert [r.output for r in applied[0].routes] == [(5, 6)]
     # The reload line names the profile that was reloaded, not the file
@@ -732,12 +731,11 @@ def test_the_reconcile_log_does_not_claim_to_be_selective(tmp_path,
 
 def _reconciled(monkeypatch, args, running):
     """Run the SIGHUP path and return the Config it reconciled with."""
-    from oscmix_desk import session as session_module
 
     seen = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda config, *a, **k: seen.append(config))
-    session_module._reconcile(args, running, {"stop": False})
+    reload_mod._reconcile(args, running, {"stop": False})
     return seen[0] if seen else None
 
 
@@ -752,9 +750,8 @@ def test_a_reload_with_no_config_file_reconciles_what_is_running(
     """
     import argparse
 
-    from oscmix_desk import session as session_module
 
-    monkeypatch.setattr(session_module, "discover_config_path", lambda: None)
+    monkeypatch.setattr(reload_mod, "discover_config_path", lambda: None)
     running = session_mod.Config(device_name="Fireface UCX II")
     assert _reconciled(monkeypatch, argparse.Namespace(config=None),
                        running) is running
@@ -860,18 +857,17 @@ def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
     """
     import argparse
 
-    from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
     applied = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a, **k: applied.append(a))
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     held = locking.take_device_lock(path, _key(path))
     assert held is not None
     try:
         with caplog.at_level("WARNING"):
-            session_module._reconcile(argparse.Namespace(config=path),
+            reload_mod._reconcile(argparse.Namespace(config=path),
                                       session_mod.Config(), {"stop": False})
     finally:
         held.release()
@@ -883,15 +879,13 @@ def test_a_reconcile_holds_the_lock_while_it_writes_and_frees_it_after(
         tmp_path, monkeypatch, session_mod):
     import argparse
 
-    from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
     during = []
-    monkeypatch.setattr(
-        session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
         lambda *a, **k: during.append(
             locking.take_device_lock(path, _key(path), wait=0.1)))
-    session_module._reconcile(argparse.Namespace(config=path),
+    reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
     assert during == [None], "a switch must not get in while this writes"
     after = locking.take_device_lock(path, _key(path), wait=0.2)
@@ -909,16 +903,15 @@ def test_a_reconcile_hands_on_the_trigger_the_stop_check_and_its_phases(
     import argparse
     import re
 
-    from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
     seen = []
     notices = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a: seen.append(a) or True)
-    monkeypatch.setattr(session_module, "sd_notify", notices.append)
+    monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
     stop = {"stop": False}
-    session_module._reconcile(argparse.Namespace(config=path),
+    reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), stop)
 
     assert len(seen) == 1
@@ -937,12 +930,11 @@ def test_the_config_path_falls_back_to_discovery(monkeypatch, session_mod):
     # without --config has only the discovery to go on.
     import argparse
 
-    from oscmix_desk import session as session_module
 
-    monkeypatch.setattr(session_module, "discover_config_path",
+    monkeypatch.setattr(reload_mod, "discover_config_path",
                         lambda: "discovered")
-    assert session_module._config_path(argparse.Namespace()) == "discovered"
-    assert session_module._config_path(
+    assert reload_mod._config_path(argparse.Namespace()) == "discovered"
+    assert reload_mod._config_path(
         argparse.Namespace(config="given")) == "given"
 
 
@@ -957,13 +949,12 @@ def test_a_reconcile_that_wrote_nothing_does_not_report_success(
     import argparse
     import re
 
-    from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
     notices = []
-    monkeypatch.setattr(session_module, "reconcile_now", lambda *a: False)
-    monkeypatch.setattr(session_module, "sd_notify", notices.append)
-    session_module._reconcile(argparse.Namespace(config=path),
+    monkeypatch.setattr(reload_mod, "reconcile_now", lambda *a: False)
+    monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
+    reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
     assert re.fullmatch(r"STATUS=running; reconcile skipped at "
                         r"\d\d:\d\d:\d\d", notices[-1]), notices[-1]
@@ -981,27 +972,26 @@ def test_every_reconcile_that_stands_down_says_so(cause, tmp_path, monkeypatch,
     import re
     import threading
 
-    from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
     notices = []
     written = []
-    monkeypatch.setattr(session_module, "sd_notify", notices.append)
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a: written.append(1) or True)
     verifier = None
     release = threading.Event()
     if cause == "lock held":
-        monkeypatch.setattr(session_module, "take_device_lock",
+        monkeypatch.setattr(reload_mod, "take_device_lock",
                             lambda *a: None)
     elif cause == "config broken":
         path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
     else:
-        monkeypatch.setattr(session_module, "RECONCILE_WAIT_FOR_VERIFIER", 0.2)
+        monkeypatch.setattr(reload_mod, "RECONCILE_WAIT_FOR_VERIFIER", 0.2)
         verifier = threading.Thread(target=release.wait, daemon=True)
         verifier.start()
     try:
-        session_module._reconcile(argparse.Namespace(config=path),
+        reload_mod._reconcile(argparse.Namespace(config=path),
                                   session_mod.Config(), {"stop": False},
                                   verifier)
     finally:
@@ -1017,12 +1007,11 @@ def test_a_reconcile_cut_short_by_a_stop_reports_nothing(tmp_path, monkeypatch,
     after it would describe a unit that is going down."""
     import argparse
 
-    from oscmix_desk import session as session_module
 
     notices = []
-    monkeypatch.setattr(session_module, "sd_notify", notices.append)
-    monkeypatch.setattr(session_module, "reconcile_now", lambda *a: True)
-    session_module._reconcile(argparse.Namespace(config=_routes_file(tmp_path)),
+    monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
+    monkeypatch.setattr(reload_mod, "reconcile_now", lambda *a: True)
+    reload_mod._reconcile(argparse.Namespace(config=_routes_file(tmp_path)),
                               session_mod.Config(), {"stop": True})
     assert not any(notice.startswith("STATUS=running") for notice in notices), \
         notices
@@ -1040,13 +1029,12 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
 
     from conftest import write_config
 
-    from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
     write_config(tmp_path / "profiles" / "later.conf",
                  "[route:y]\nplayback = 5/6\noutput = 5/6\n")
     applied = []
-    monkeypatch.setattr(session_module, "reconcile_now",
+    monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda config, *a: applied.append(config) or True)
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
 
@@ -1058,7 +1046,7 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
         held.release()
 
     threading.Timer(0.3, commit_then_release).start()
-    session_module._reconcile(argparse.Namespace(config=path),
+    reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
     assert [r.output for r in applied[0].routes] == [(5, 6)], \
         "the reconcile applied the desk it read before waiting"
@@ -1070,15 +1058,14 @@ def test_the_reconcile_locks_the_desk_it_reloads(tmp_path, monkeypatch,
     it pinned; a None path would key the fallback lock beside nothing."""
     import argparse
 
-    from oscmix_desk import session as session_module
 
     path = _routes_file(tmp_path)
     taken = []
-    monkeypatch.setattr(session_module, "take_device_lock",
+    monkeypatch.setattr(reload_mod, "take_device_lock",
                         lambda where, key: taken.append((where, key)))
-    monkeypatch.setattr(session_module, "sd_notify", lambda *_a: None)
+    monkeypatch.setattr(reload_mod, "sd_notify", lambda *_a: None)
     config = session_mod.Config()
     config.serial = "24216011"
-    session_module._reconcile(argparse.Namespace(config=path), config,
+    reload_mod._reconcile(argparse.Namespace(config=path), config,
                               {"stop": False})
     assert taken == [(path, "2a39-3fd9-24216011")]

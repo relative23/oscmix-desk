@@ -104,6 +104,7 @@ acyclic graph.
 | `marker` | which profile is in effect, remembered beside the config: read, written through a rename, removed |
 | `outcome` | what a switch did, as a value: applied and verified, applied and unverified, refused |
 | `profiles` | switch to `profiles/<name>.conf` under that lock, in one fixed order -- validate, write, remember, check -- reporting an outcome rather than raising |
+| `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` -- kept for the machine the session runs on, or refused as a desk for somewhere else |
 | `session` | the service lifecycle: wait for the device, start the backend, apply, signal ready, verify, shut down |
 | `launcher` | the desktop entry's entry point; deliberately depends on almost nothing |
 | `cli` | argument parsing and the exit-code mapping, and nothing else |

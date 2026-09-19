@@ -15,6 +15,7 @@ import time
 import pytest
 
 from oscmix_desk import locking
+from oscmix_desk import reload as reload_mod
 
 
 def _key(path):
@@ -722,14 +723,13 @@ def test_a_config_that_stopped_parsing_keeps_the_desk_of_this_process(
     """
     from conftest import write_config
 
-    from oscmix_desk import session as session_module
 
     path = write_config(tmp_path / "routing.conf",
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
     started = session_mod.load_config(path)
     path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
     with caplog.at_level("ERROR"):
-        applied = session_module._desk_under_the_lock(path, started)
+        applied = reload_mod._desk_under_the_lock(path, started)
     assert applied is started
     assert "%s is no longer usable (" % path in caplog.text
     assert "); applying the desk this process started with" in caplog.text

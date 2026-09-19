@@ -422,7 +422,7 @@ def _report_outcome(outcome: "Outcome",
     if reloaded == RELOAD_DONE:
         # The unit decides what it does with the desk: it has the facts.
         # One that names another backend is not applied there, and its
-        # journal says so (session._kept_for_this_process).
+        # journal says so (reload._kept_for_this_process).
         log.info("%s reloaded; its own reconcile follows the new desk, or "
                  "says in its journal why it does not", SERVICE_UNIT)
         if config_path is not None and not told:

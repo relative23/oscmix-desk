@@ -69,16 +69,22 @@ ALLOWED_IMPORTS = {
                "reconcile", "registers", "routing"},
     "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "log"},
-    # `profiles` since 0.6.3: a reload has to apply the same desk a
-    # start does, and "the active profile, else routing.conf" is
-    # answered in profiles.effective_config. profiles sits above verify
-    # and imports nothing from session, so no cycle.
-    # `locking` since 0.7.0: the unit takes the device lock itself, around
-    # its apply and around every reconcile, and the lock is a module of
-    # its own now rather than a part of profiles.
+    # `locking` since 0.7.0: the unit takes the device lock itself around
+    # its apply and its verifier, and the lock is a module of its own now
+    # rather than a part of profiles. What the desk in effect is, session
+    # asks reload.
     "session": {"constants", "discovery", "errors", "locking", "log", "model",
-                "notices", "notify", "paths", "process", "profiles",
-                "reconcile", "routing", "verify"},
+                "notices", "notify", "process", "reconcile", "reload",
+                "routing", "verify"},
+    # What a running session does with a desk it reads again, split out
+    # of session in 0.7.0: below session, which starts it and hands it
+    # the SIGHUP. `profiles` because a reload has to apply the same desk
+    # a start does, and "the active profile, else routing.conf" is
+    # answered in profiles.effective_config; profiles sits above verify
+    # and imports nothing from here, so no cycle. `locking` for the lock
+    # around every reconcile.
+    "reload": {"constants", "discovery", "errors", "locking", "log", "model",
+               "notices", "notify", "paths", "profiles", "verify"},
     # `discovery` since 0.6.2: the snapshot header names the device's
     # serial and firmware, which are the leaf's to answer. A leaf with no
     # imports of its own, already below session; cli reading it changes

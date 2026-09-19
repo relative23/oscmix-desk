@@ -42,7 +42,7 @@ def log_desk_notices(config: "Config") -> None:
     effect*, which for ``--profile`` and ``--no-profile`` is not the one
     being written, and a reload never passed it at all (found by review,
     0.6.11). A start asks again under the device lock when the desk it
-    re-read there is another one (``session._desk_under_the_lock``).
+    re-read there is another one (``reload._desk_under_the_lock``).
     """
     for message in (unchecked_routes_warning(config),
                     other_machine_warning(config),
