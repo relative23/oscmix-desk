@@ -23,8 +23,7 @@ from conftest import repo_file
 
 # Aliased: `registers` is already a local name in the fixtures below,
 # for the dict a recording holds.
-from oscmix_desk import registers as model
-from oscmix_desk import verify
+from oscmix_desk import devices, verify
 
 # Registers this project writes, in the families it cares about.
 ROUTED = [
@@ -393,19 +392,19 @@ def test_no_channel_setting_is_called_prompt_unless_the_cold_plug_proves_it(
     """
     arrived = set(cold["first_report_seconds"])
     wrongly_prompt = []
-    for register in model.UCX2.registers:
+    for register in devices.UCX2.registers:
         if register.domain is None:
             continue
         if not register.template.startswith(("/input/{ch}/",
                                              "/output/{ch}/")):
             continue
         paths = [register.template.format(ch=channel)
-                 for channel in model.UCX2.channels[register.channels]]
+                 for channel in devices.UCX2.channels[register.channels]]
         if all(path in arrived for path in paths):
             continue            # complete after a cold plug, so "yes" is right
         wrongly_prompt += [path for path in paths
                            if verify.register_promptly_reported(
-                               path, model.UCX2)]
+                               path, devices.UCX2)]
     assert wrongly_prompt == [], (
         "%d paths a cold plug does not deliver are still called prompt, "
         "so a hotplug re-sends them: %s"

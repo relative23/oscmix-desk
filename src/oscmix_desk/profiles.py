@@ -55,6 +55,7 @@ from .config import (
     profile_path,
 )
 from .constants import SWITCH_LOCK_WAIT, VERIFY_TIMEOUT
+from .devices import device_for_name
 from .discovery import (
     Device,
     resolve_device,
@@ -64,7 +65,6 @@ from .discovery import (
 from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
 from .log import log
 from .process import port_holder
-from .registers import device_for_name
 from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
 

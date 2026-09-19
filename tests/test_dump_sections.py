@@ -21,10 +21,10 @@ import pytest
 
 from oscmix_desk import reconcile
 from oscmix_desk.config import Config, load_config
+from oscmix_desk.devices import device_for_name
 from oscmix_desk.registers import (
     BOOL,
     ENUM,
-    device_for_name,
     global_families,
     nested_families,
     register_policy,

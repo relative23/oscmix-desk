@@ -20,11 +20,11 @@ from conftest import repo_file
 
 from oscmix_desk import reconcile
 from oscmix_desk.config import Config, load_config
+from oscmix_desk.devices import UCX2
 from oscmix_desk.registers import (
     BOOL,
     ENABLE_OPTION,
     NUMBER,
-    UCX2,
     declared_paths,
     nested_families,
     settable_nested,

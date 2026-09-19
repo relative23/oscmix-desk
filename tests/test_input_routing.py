@@ -13,7 +13,7 @@ project can make that promise about anything it routes.
 import pytest
 from conftest import repo_file  # noqa: F401  (parity with sibling modules)
 
-from oscmix_desk import reconcile, registers
+from oscmix_desk import devices, reconcile, registers
 
 
 def write(tmp_path, text):
@@ -174,7 +174,7 @@ def test_an_input_route_writes_only_what_the_model_declares(session_mod,
     written = [p for p, _t, _a in
                reconcile.link_messages(route) + reconcile.mix_messages(route)]
     for path in written:
-        assert registers.verify_class(registers.UCX2, path) is not None, (
+        assert registers.verify_class(devices.UCX2, path) is not None, (
             "%s is not a register the model declares" % path)
 
 
@@ -187,9 +187,9 @@ def test_the_input_matrix_is_verifiable_unlike_the_playback_matrix(session_mod):
     project routes that it can actually verify.
     """
     assert registers.verify_class(
-        registers.UCX2, "/mix/5/input/1") == registers.VERIFIABLE
+        devices.UCX2, "/mix/5/input/1") == registers.VERIFIABLE
     assert registers.verify_class(
-        registers.UCX2, "/mix/5/playback/1") == registers.REESTABLISHED
+        devices.UCX2, "/mix/5/playback/1") == registers.REESTABLISHED
 
 
 def test_an_input_route_is_planned_as_verifiable(session_mod):
@@ -198,7 +198,7 @@ def test_an_input_route_is_planned_as_verifiable(session_mod):
         routes=[session_mod.Route(name="m", input=(1, 2), output=(5, 6))])
     entries = reconcile.desired(config)
     seen = {e.path: e.args for e in entries}
-    result = reconcile.plan(entries, seen, registers.UCX2)
+    result = reconcile.plan(entries, seen, devices.UCX2)
     # Everything confirmed, nothing rewritten -- the playback matrix
     # cannot reach this state at all.
     assert result.writes == ()
@@ -256,8 +256,8 @@ def test_a_muted_input_route_verifies_instead_of_re_sending(session_mod):
     mismatched -> the verifier re-sends the whole routing, every start,
     and logs "unconfirmed after retry" forever.
     """
+    from oscmix_desk import devices
     from oscmix_desk import reconcile as r
-    from oscmix_desk import registers as regs
 
     config = session_mod.Config(
         device_name="Fireface UCX II",
@@ -268,7 +268,7 @@ def test_a_muted_input_route_verifies_instead_of_re_sending(session_mod):
     # read off a UCX II, where all 100 input-matrix registers are -inf.
     seen = {e.path: ((float("-inf"), 0) if "/mix/" in e.path else e.args)
             for e in entries}
-    result = r.plan(entries, seen, regs.UCX2)
+    result = r.plan(entries, seen, devices.UCX2)
     assert result.writes == (), (
         "a muted input route wants re-sending: %s"
         % [w.path for w in result.writes])

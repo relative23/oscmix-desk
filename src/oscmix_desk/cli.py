@@ -34,6 +34,7 @@ from .constants import (
     SERVICE_UNIT,
     __version__,
 )
+from .devices import device_for_name
 from .discovery import device_firmware, resolve_device
 from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
 from .log import log
@@ -68,7 +69,6 @@ from .reconcile import (
     render_config,
     routes_from_observed,
 )
-from .registers import device_for_name
 from .session import run_session
 
 #: How long --dump-config listens for the device's reply. The dump is

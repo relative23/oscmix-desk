@@ -11,8 +11,9 @@ things only this family knows.
 import pytest
 
 from oscmix_desk.config import load_config
+from oscmix_desk.devices import UCX2
 from oscmix_desk.errors import ConfigError
-from oscmix_desk.registers import NUMBER, UCX2, register_policy, settable_nested
+from oscmix_desk.registers import NUMBER, register_policy, settable_nested
 
 
 def test_freq_carries_upstreams_bounds():

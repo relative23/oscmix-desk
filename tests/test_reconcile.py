@@ -17,7 +17,7 @@ the audible path. Until both hold, nothing switches over.
 import oracle
 import pytest
 
-from oscmix_desk import reconcile, registers
+from oscmix_desk import devices, reconcile
 
 
 def make_config(session_mod, *routes, device="Fireface UCX II"):
@@ -140,7 +140,7 @@ def test_a_register_already_at_its_value_is_not_written(session_mod):
     config = make_config(session_mod, route(session_mod, output=(5, 6)))
     entries = reconcile.desired(config)
     seen = {e.path: e.args for e in entries}
-    result = reconcile.plan(entries, seen, registers.UCX2)
+    result = reconcile.plan(entries, seen, devices.UCX2)
     written = {w.path for w in result.writes}
     # The playback matrix is rewritten regardless -- it is unverifiable.
     assert written == {"/mix/5/playback/1"}
@@ -153,7 +153,7 @@ def test_a_mismatched_register_is_written_and_says_so(session_mod):
     entries = reconcile.desired(config)
     seen = {e.path: e.args for e in entries}
     seen["/output/5/stereo"] = (0,)
-    result = reconcile.plan(entries, seen, registers.UCX2)
+    result = reconcile.plan(entries, seen, devices.UCX2)
     reasons = {w.path: w.reason for w in result.writes}
     assert reasons["/output/5/stereo"] == reconcile.MISMATCHED
 
@@ -161,7 +161,7 @@ def test_a_mismatched_register_is_written_and_says_so(session_mod):
 def test_a_register_the_dump_never_mentioned_is_written(session_mod):
     config = make_config(session_mod, route(session_mod, output=(5, 6)))
     entries = reconcile.desired(config)
-    result = reconcile.plan(entries, {}, registers.UCX2)
+    result = reconcile.plan(entries, {}, devices.UCX2)
     reasons = {w.path: w.reason for w in result.writes}
     assert reasons["/output/5/stereo"] == reconcile.MISSING
 
@@ -173,7 +173,7 @@ def test_the_playback_matrix_is_never_confirmed_only_rewritten(session_mod):
     config = make_config(session_mod, route(session_mod, output=(5, 6)))
     entries = reconcile.desired(config)
     seen = {e.path: e.args for e in entries}
-    result = reconcile.plan(entries, seen, registers.UCX2)
+    result = reconcile.plan(entries, seen, devices.UCX2)
     assert "/mix/5/playback/1" not in result.confirmed
     assert [w.reason for w in result.writes
             if w.path == "/mix/5/playback/1"] == [reconcile.REWRITE]
@@ -185,7 +185,7 @@ def test_a_blind_plan_writes_everything(session_mod):
     # case. It must behave exactly like a first apply.
     config = make_config(session_mod, route(session_mod, output=(5, 6)))
     entries = reconcile.desired(config)
-    result = reconcile.plan(entries, None, registers.UCX2)
+    result = reconcile.plan(entries, None, devices.UCX2)
     assert len(result.writes) == len(entries)
     assert {w.reason for w in result.writes} == {reconcile.UNCONDITIONAL}
     assert result.confirmed == ()
@@ -200,10 +200,10 @@ def test_floats_compare_with_the_devices_quantisation(session_mod):
     seen = {e.path: e.args for e in entries}
     seen["/output/5/volume"] = (-10.3,)
     assert "/output/5/volume" in reconcile.plan(
-        entries, seen, registers.UCX2).confirmed
+        entries, seen, devices.UCX2).confirmed
     seen["/output/5/volume"] = (-12.0,)
     assert "/output/5/volume" not in reconcile.plan(
-        entries, seen, registers.UCX2).confirmed
+        entries, seen, devices.UCX2).confirmed
 
 
 def test_an_unmodelled_device_compares_everything(session_mod):
@@ -267,7 +267,8 @@ def test_a_channel_setting_resolves_to_its_own_channels_register():
     fallback turned out to be dead code (17 surviving mutants, all in a
     branch no loadable config can reach).
     """
-    from oscmix_desk.registers import UCX2, option_register
+    from oscmix_desk.devices import UCX2
+    from oscmix_desk.registers import option_register
 
     assert option_register(UCX2, "input", "gain", 1).hi == 75.0
     assert option_register(UCX2, "input", "gain", 3).hi == 24.0

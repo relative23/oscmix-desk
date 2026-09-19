@@ -98,6 +98,16 @@ grows a branch whose effect is not visible in the declared paths, and
 that is the condition under which this ADR should be revisited rather
 than a number adjusted.
 
+## Amended in 0.7.0
+
+The table moved out of `registers.py` into `devices.py` when the large
+modules were split; the region, its markers and what it exempts are
+unchanged. `registers.py` keeps the shape of a row and every function
+that queries a table, and carries no exemption at all -- which the
+architecture test now asserts, where it used to compare line numbers
+inside one file. `device_for_name`, the one query that needs the list of
+devices, lives below the region in `devices.py`.
+
 ## Related
 
 [0005](0005-mutation-testing-scope.md) is the same kind of decision one

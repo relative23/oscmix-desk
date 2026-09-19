@@ -14,8 +14,9 @@ way would declare 0..180 dB of automatic gain.
 import pytest
 
 from oscmix_desk.config import load_config
+from oscmix_desk.devices import UCX2
 from oscmix_desk.errors import ConfigError
-from oscmix_desk.registers import NUMBER, UCX2, register_policy, settable_nested
+from oscmix_desk.registers import NUMBER, register_policy, settable_nested
 
 #: upstream `autoleveltree`, oscmix.c at 55802a6. Raw `.min`/`.max`;
 #: `setfixed` divides the OSC value by `.scale` on the way in, so a

@@ -14,7 +14,7 @@ stayed quiet about that would lose half a config on the first use.
 
 import pytest
 
-from oscmix_desk import reconcile, registers
+from oscmix_desk import devices, reconcile
 
 
 def observed_from(config, session_mod, *, linked=True):
@@ -108,7 +108,7 @@ def test_the_rendered_file_parses_back(session_mod, tmp_path):
               level=-3.0, stereo=False))
     recovered = config_of(session_mod, *reconcile.routes_from_observed(
         observed_from(original, session_mod)))
-    text = reconcile.render_config(recovered, registers.UCX2)
+    text = reconcile.render_config(recovered, devices.UCX2)
 
     path = tmp_path / "routing.conf"
     path.write_text(text)
@@ -148,9 +148,9 @@ def test_the_order_is_deterministic(session_mod):
 # --------------------------------------------------------------------------
 
 def test_the_playback_matrix_is_named_as_unrecoverable(session_mod):
-    assert reconcile.unrecoverable(registers.UCX2) == \
+    assert reconcile.unrecoverable(devices.UCX2) == \
         ("/mix/{out}/playback/{pb}",)
-    text = reconcile.render_config(config_of(session_mod), registers.UCX2)
+    text = reconcile.render_config(config_of(session_mod), devices.UCX2)
     assert "does not report" in text
     assert "/mix/{out}/playback/{pb}" in text
     assert "Merge, do not replace" in text
@@ -182,7 +182,7 @@ def test_volume_is_not_pinned_by_a_dump(session_mod):
         observed_from(original, session_mod))
     assert recovered.volume is None
     text = reconcile.render_config(config_of(session_mod, recovered),
-                                   registers.UCX2)
+                                   devices.UCX2)
     assert "volume" not in text.split("[route:")[1]
     # The header now states the general rule rather than singling volume
     # out: pinned options are emitted as config, remembered ones as
@@ -192,6 +192,6 @@ def test_volume_is_not_pinned_by_a_dump(session_mod):
 
 
 def test_an_empty_device_says_so_rather_than_looking_broken(session_mod):
-    text = reconcile.render_config(config_of(session_mod), registers.UCX2)
+    text = reconcile.render_config(config_of(session_mod), devices.UCX2)
     assert "No input routing was reported" in text
     assert "not an error" in text

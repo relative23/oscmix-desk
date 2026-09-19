@@ -15,10 +15,10 @@ from conftest import repo_file
 
 from oscmix_desk import ConfigError
 from oscmix_desk.config import load_config
+from oscmix_desk.devices import device_for_name
 from oscmix_desk.reconcile import desired
 from oscmix_desk.registers import (
     ENABLE_OPTION,
-    device_for_name,
     nested_families,
     settable_nested,
     settable_options,

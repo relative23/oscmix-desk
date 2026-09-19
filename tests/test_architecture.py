@@ -50,9 +50,11 @@ ALLOWED_IMPORTS = {
     # warning of ADR 0006 -- a warning has to reach the journal, and
     # returning it up the call chain would be a second error channel
     # beside ConfigError for no benefit.
-    # registers is a leaf like constants: pure data about devices,
-    # importing nothing from the package.
-    "config": {"constants", "errors", "log", "registers"},
+    # registers and devices are near-leaves like constants: the shape of
+    # a register row, and the rows. devices sits on registers, since a
+    # table is made of rows, and everything that asks which device a
+    # config names reads devices.
+    "config": {"constants", "devices", "errors", "log", "registers"},
     # link_messages/mix_messages moved down into reconcile: they are
     # pure message shapes, and keeping them here made reconcile sit
     # above routing while routing wanted to call it -- a cycle.
@@ -62,7 +64,7 @@ ALLOWED_IMPORTS = {
     # because `__init__` is the only module that re-exports.
     "routing": {"backend", "config", "constants", "errors", "log",
                 "reconcile"},
-    "verify": {"backend", "config", "constants", "errors", "log",
+    "verify": {"backend", "config", "constants", "devices", "errors", "log",
                "reconcile", "registers", "routing"},
     "pipewire": {"config", "errors"},
     "process": {"constants", "discovery", "log"},
@@ -80,8 +82,8 @@ ALLOWED_IMPORTS = {
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
-    "cli": {"backend", "config", "constants", "discovery", "errors", "log",
-            "pipewire", "process", "profiles", "reconcile", "registers",
+    "cli": {"backend", "config", "constants", "devices", "discovery",
+            "errors", "log", "pipewire", "process", "profiles", "reconcile",
             "session"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
@@ -93,15 +95,17 @@ ALLOWED_IMPORTS = {
     # the question the start's stale cleanup already asks through
     # process.socket_owner (ADR 0024). process imports nothing above
     # discovery, so no cycle.
-    "profiles": {"backend", "config", "constants", "discovery", "errors",
-                 "log", "process", "registers", "routing", "verify"},
+    "profiles": {"backend", "config", "constants", "devices", "discovery",
+                 "errors", "log", "process", "routing", "verify"},
     "launcher": {"constants", "discovery"},
-    # constants only, and only for the fader range: the register table
-    # declares the device's bounds, and writing -65.0/6.0 here as well
-    # would be the same fact in two files -- which is how a validator and
-    # a register table come to disagree. constants imports nothing
-    # itself, so the graph stays acyclic.
-    "registers": {"constants"},
+    # A leaf: the shape of a row and of a device, and the questions asked
+    # of a table somebody hands it.
+    "registers": set(),
+    # constants only for the fader range: the register table declares the
+    # device's bounds, and writing -65.0/6.0 here as well would be the
+    # same fact in two files -- which is how a validator and a register
+    # table come to disagree.
+    "devices": {"constants", "registers"},
     # The one place that opens a socket to the device. Its Traits name
     # the upstream behaviour the timing constants work around.
     # `errors` since 0.6.11: a receive port that cannot be bound for a
@@ -111,7 +115,7 @@ ALLOWED_IMPORTS = {
     # Pure: config + the message shapes + the register table. No
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.
-    "reconcile": {"config", "constants", "registers"},
+    "reconcile": {"config", "constants", "devices", "registers"},
     "__init__": {"config", "constants", "discovery", "errors", "launcher",
                  "log", "notify", "osc", "pipewire", "process", "profiles",
                  "reconcile", "registers", "routing", "session", "verify"},
@@ -304,8 +308,8 @@ def test_every_public_name_is_exercised_by_some_test(session_mod):
 # --------------------------------------------------------------------------
 
 def _exempt_lines():
-    """(first, last) line of the `no mutate` region in registers.py."""
-    source = (PACKAGE / "registers.py").read_text().splitlines()
+    """(first, last) line of the `no mutate` region in devices.py."""
+    source = (PACKAGE / "devices.py").read_text().splitlines()
     starts = [i for i, line in enumerate(source, 1)
               if line.strip() == "# pragma: no mutate start"]
     ends = [i for i, line in enumerate(source, 1)
@@ -316,9 +320,9 @@ def _exempt_lines():
     return starts[0], ends[0]
 
 
-def _defined_at(name):
-    """The line a top-level name is bound on in registers.py."""
-    for node in ast.walk(parse(PACKAGE / "registers.py")):
+def _defined_at(name, module="devices"):
+    """The line a top-level name is bound on in that module."""
+    for node in ast.walk(parse(PACKAGE / ("%s.py" % module))):
         if isinstance(node, ast.FunctionDef) and node.name == name:
             return node.lineno
         if isinstance(node, ast.Assign):
@@ -329,7 +333,7 @@ def _defined_at(name):
                 and isinstance(node.target, ast.Name)
                 and node.target.id == name):
             return node.lineno
-    raise AssertionError("registers.py defines no %s" % name)
+    raise AssertionError("%s.py defines no %s" % (module, name))
 
 
 @pytest.mark.parametrize("name", ["_seq", "_EQ_BANDS", "_ROOMEQ_BANDS", "_HIGH_SHELF",
@@ -354,10 +358,16 @@ def test_everything_that_queries_the_table_stays_under_mutation(name):
 
     Exempting data is defensible because the recordings check it harder.
     Exempting the functions that read that data would not be -- a wrong
-    answer there is behaviour, and nothing else is measuring it.
+    answer there is behaviour, and nothing else is measuring it. One of
+    them lives beside the table, below the region; the rest in
+    `registers`, which has no such region at all.
     """
-    _, last = _exempt_lines()
-    assert _defined_at(name) > last
+    if name == "device_for_name":
+        _, last = _exempt_lines()
+        assert _defined_at(name) > last
+    else:
+        assert _defined_at(name, "registers") > 0
+        assert "pragma: no mutate" not in (PACKAGE / "registers.py").read_text()
 
 
 # --------------------------------------------------------------------------

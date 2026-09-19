@@ -56,6 +56,7 @@ from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .config import ChannelSetting, Config, GlobalSetting, Route
 from .constants import LEVEL_MIN, UNLINKED_GAIN_OFFSET
+from .devices import device_for_name
 from .registers import (
     BOOL,
     ENABLE_OPTION,
@@ -65,7 +66,6 @@ from .registers import (
     VERIFIABLE,
     Device,
     Register,
-    device_for_name,
     global_families,
     nested_families,
     option_register,

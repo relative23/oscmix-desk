@@ -12,7 +12,7 @@ and independently agrees with upstream's own device table.
 
 import pytest
 
-from oscmix_desk import reconcile, registers, verify
+from oscmix_desk import devices, reconcile, registers, verify
 
 
 def write(tmp_path, text):
@@ -29,11 +29,11 @@ DEVICE = "[device]\nname = Fireface UCX II\n\n"
 # --------------------------------------------------------------------------
 
 def test_the_options_come_from_the_register_model():
-    assert set(registers.settable_options(registers.UCX2, "input")) == {
+    assert set(registers.settable_options(devices.UCX2, "input")) == {
         "gain", "hi-z", "mute", "phase", "reflevel"}
     # `phase` joined with the f2fdd5e pin: this project's PR #36,
     # merged upstream. See test_output_phase_is_settable_since_the_pin_moved.
-    assert set(registers.settable_options(registers.UCX2, "output")) == {
+    assert set(registers.settable_options(devices.UCX2, "output")) == {
         "crossfeed", "mute", "phase", "reflevel", "volume"}
 
 
@@ -46,10 +46,10 @@ def test_phantom_power_is_modelled_but_not_settable():
     An off-by-one in a silent output is a bug; an off-by-one in phantom
     power is a damaged ribbon microphone.
     """
-    assert "48v" not in registers.settable_options(registers.UCX2, "input")
+    assert "48v" not in registers.settable_options(devices.UCX2, "input")
     assert registers.verify_class(
-        registers.UCX2, "/input/1/48v") == registers.VERIFIABLE
-    assert registers.UCX2.channels_for("48v") == (1, 2)
+        devices.UCX2, "/input/1/48v") == registers.VERIFIABLE
+    assert devices.UCX2.channels_for("48v") == (1, 2)
 
 
 def test_asking_for_phantom_power_says_why_it_is_refused(session_mod, tmp_path):
@@ -164,11 +164,11 @@ def test_channel_state_missing_after_a_hotplug_is_a_note_not_a_problem():
     channels 1, 2, 3, 8, 9 and 10 and not for 4-7 or 11-20.
     """
     assert not verify.register_promptly_reported("/output/5/mute",
-                                                 registers.UCX2)
+                                                 devices.UCX2)
     assert not verify.register_promptly_reported("/output/5/reflevel",
-                                                 registers.UCX2)
+                                                 devices.UCX2)
     assert not verify.register_promptly_reported("/input/3/gain",
-                                                 registers.UCX2)
+                                                 devices.UCX2)
 
 
 def test_what_0_2_0_verified_is_still_treated_as_promptly_reported():
@@ -176,7 +176,7 @@ def test_what_0_2_0_verified_is_still_treated_as_promptly_reported():
     # is why this release works. They must keep counting as lost when
     # absent, or a genuinely dropped datagram stops being re-sent.
     assert verify.register_promptly_reported("/output/5/stereo",
-                                             registers.UCX2)
+                                             devices.UCX2)
 
 
 def test_an_unmodelled_device_keeps_the_old_classification():
@@ -188,9 +188,9 @@ def test_an_unmodelled_device_keeps_the_old_classification():
 
 def test_write_only_registers_are_never_expected_back():
     assert not verify.register_promptly_reported("/output/1/name",
-                                                 registers.UCX2)
+                                                 devices.UCX2)
     assert not verify.register_promptly_reported("/output/1/loopback",
-                                                 registers.UCX2)
+                                                 devices.UCX2)
 
 
 # --------------------------------------------------------------------------
@@ -209,7 +209,8 @@ def test_a_quantity_carries_its_own_bounds_and_unit(session_mod):
     The bounds come from upstream's node table, so a value this rejects
     is one the device would reject too.
     """
-    from oscmix_desk.registers import NUMBER, device_for_name, register_at
+    from oscmix_desk.devices import device_for_name
+    from oscmix_desk.registers import NUMBER, register_at
 
     device = device_for_name("Fireface UCX II")
     by_path = {r.template: r for r in device.registers}
@@ -271,7 +272,7 @@ def test_output_phase_is_settable_since_the_pin_moved(session_mod, tmp_path):
     Measured on all 20 outputs before this test changed sides: phase
     reaches the device and reads back, analog and digital alike.
     """
-    by_path = {r.template: r for r in registers.UCX2.registers}
+    by_path = {r.template: r for r in devices.UCX2.registers}
     assert by_path["/output/{ch}/phase"].domain is not None
     assert by_path["/input/{ch}/phase"].domain is not None
 

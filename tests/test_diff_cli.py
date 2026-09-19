@@ -131,8 +131,8 @@ def test_the_playback_matrix_is_counted_apart_from_real_differences():
     difference would answer "has the desk drifted?" with a number that
     is never zero.
     """
+    from oscmix_desk.devices import UCX2
     from oscmix_desk.reconcile import REWRITE, desired, plan
-    from oscmix_desk.registers import UCX2
 
     config_paths = {"/mix/5/playback/1"}
     entries = [e for e in desired(_config()) if e.path in config_paths]

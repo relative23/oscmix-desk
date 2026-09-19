@@ -22,11 +22,11 @@ took, which is nobody's decision.
 import pytest
 
 from oscmix_desk import verify
+from oscmix_desk.devices import device_for_name
 from oscmix_desk.registers import (
     PIN,
     POLICIES,
     REMEMBER,
-    device_for_name,
     register_policy,
     settable_options,
 )

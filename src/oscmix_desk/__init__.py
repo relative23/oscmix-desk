@@ -9,9 +9,10 @@ enforces that, along with the layering the modules are arranged in:
 
     constants, errors, log, osc no internal imports
     notify, discovery, registers the leaves above, nothing else
-    config                      constants, errors, log, registers
+    devices                     constants, registers
+    config                      constants, errors, log, registers, devices
     backend                     errors, osc
-    reconcile                   config, constants, registers
+    reconcile                   config, constants, registers, devices
     routing                     backend, config, reconcile, ...
     verify                      routing, ...
     pipewire, process, launcher leaves plus config/discovery

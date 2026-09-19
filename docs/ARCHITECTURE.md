@@ -84,7 +84,8 @@ acyclic graph.
 | `errors` | `ConfigError`, the one exception a user ever sees; the two refusals that are not config text, an ambiguous interface and an unavailable device lock; and `ReceivePortError`, a receive port that cannot be bound for a reason other than a holder (ADR 0025) |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
-| `registers` | the register model as data: paths, tags, bounds, verification class, policy, per-device channel maps |
+| `registers` | what a register row and a device are -- path, tags, bounds, verification class, policy -- and the questions the parser, the reconciler and the verifier ask of a device's table |
+| `devices` | the tables themselves: the UCX II's rows and channel map, the 802's channel map, and which of them a config names |
 | `config` | parse `routing.conf` into a `Config`, refusing what the model declares unsettable and warning about what it does not model at all |
 | `discovery` | find the device and resolve which interface a desk is for: serial, sequencer client and lock key from one answer; USB presence; whether a UDP port is bound |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
@@ -102,7 +103,8 @@ acyclic graph.
 
 ## The register model is data
 
-`registers.py` declares every register as a row: path template, OSC type
+`devices.py` declares every register as a row of the shape `registers.py`
+defines: path template, OSC type
 tags, which channels have it on which device, how it verifies, what a
 config may set it to, its bounds and unit, and who wins after the first
 write.
@@ -150,9 +152,9 @@ port is held by the mixer GUI and the echo cannot be observed.
 takes a `Backend` argument, which is what lets the whole apply and verify
 path be driven by a fake in tests.
 
-**`registers.Device`** is the only place that knows a device exists. The
-model is indexed by device from the first line, so a second interface is
-a table rather than a rewrite. Only the UCX II has one; the 802 has its
+**`devices`** is the only place that knows a device exists. The model is
+indexed by device from the first line (`registers.Device`), so a second
+interface is a table rather than a rewrite. Only the UCX II has one; the 802 has its
 channel map and no registers, because oscmix cannot drive it.
 
 ### Exit codes

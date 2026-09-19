@@ -23,16 +23,15 @@ from .constants import (
     LEVEL_MAX,
     LEVEL_MIN,
 )
+from .devices import DEVICES, device_for_name
 from .errors import ConfigError
 from .log import log
 from .registers import (
     BOOL,
-    DEVICES,
     ENABLE_OPTION,
     ENUM,
     NUMBER,
     POLICIES,
-    device_for_name,
     global_families,
     nested_families,
     option_channels,

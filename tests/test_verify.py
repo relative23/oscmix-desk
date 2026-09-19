@@ -249,7 +249,7 @@ def test_never_reported_agrees_with_the_recorded_dump(session_mod):
     """
     import json
 
-    from oscmix_desk.registers import device_for_name
+    from oscmix_desk.devices import device_for_name
     from oscmix_desk.verify import register_ever_reported
 
     dump = json.loads(repo_file("tests", "data", "refresh-dump.json"
@@ -283,9 +283,9 @@ def test_the_register_table_decides_what_is_ever_reported(verify_mod):
     table decides for every class; the rule is only for a device
     without one.
     """
-    from oscmix_desk import registers
+    from oscmix_desk import devices
 
-    ucx2 = registers.UCX2
+    ucx2 = devices.UCX2
     assert verify_mod.register_ever_reported("/mix/5/playback/1", ucx2) is False
     assert verify_mod.register_ever_reported("/output/1/loopback", ucx2) is False
     assert verify_mod.register_ever_reported("/output/1/volume", ucx2) is True
