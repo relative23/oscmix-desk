@@ -38,6 +38,17 @@ behaviour: modules a person can read.
 
 ### Changed
 
+- **The oracle builds its own messages, and both sides are held to
+  literals.** `tests/oracle.py`, which the reconciler is compared
+  against, imported `link_messages` and `mix_messages` from the
+  reconciler: a wrong register there was wrong on both sides and the
+  comparison green (third outside review). It is written from what the
+  device and upstream do now, and `tests/test_golden_messages.py` spells
+  out registers, type tags, values and order for a desk of every route
+  shape -- a linked pair, two routes into one pair, unlinked pairs below
+  and above unity, a mono route, an input source, channel and global
+  state. Panning the left half of an unlinked pair right fails three
+  tests where it failed none that did not share the mistake.
 - **No source module is over 600 lines.** Six were, up to 1038. Split at
   seams that were already there: `devices` (the register tables, with
   their mutation exemption, ADR 0015) out of `registers`; `locking`,
