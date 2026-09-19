@@ -90,7 +90,7 @@ it" -- which is the same answer TotalMix gives, minus the snapshot.
 
 ## Where we are (0.6.11)
 
-**0.6.11 (unreleased)** is what an outside review of 0.6.10 named,
+**0.6.11 (2026-09-19)** is what two outside reviews of 0.6.10 named,
 measured before anything changed. One finding was a defect: the receive
 port's `listen()` reported every failure to bind as "the mixer GUI has
 it", so a port that could never be bound -- `recv-port = 80`, `EACCES`
@@ -117,7 +117,11 @@ same desk to its own -- one persisted profile, three targets, and two
 device locks over one marker. 0.6.11 stops the wrong writes -- a
 running session does not apply a re-read desk that is for somewhere
 else -- and decides the question: a profile is the desk, not the
-machine (ADR 0026).
+machine (ADR 0026). What "for somewhere else" means took the longest:
+a re-read file is resolved the way a restart would resolve it, the
+command line's overrides included, and only then held against what the
+session runs. Mutation 0.794 on 7485 mutants with the floor at 0.78,
+coverage 97%.
 
 ### Planned: 0.7.0
 

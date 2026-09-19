@@ -276,3 +276,5 @@ def test_the_sink_is_found_by_the_desks_name_past_what_is_not_it():
     assert pipewire.find_sink(objects, "Fireface UCX II") is None
     assert pipewire.find_sink(objects, "nobody", "out.hdmi") == ("out.hdmi",
                                                                  None)
+    assert pipewire.find_sink(objects, "nobody", "out.babyface") == (
+        "out.babyface", None), "past a sink of another name"

@@ -208,8 +208,8 @@ jobs:
     # this job exists to report was not reported for five nights, and
     # the run is `continue-on-error`, so nothing turned red. 7118 mutants
     # took 129 minutes locally on four children in 0.6.10; 180 is twice
-    # the last run that finished here (80.9) and is re-measured from the
-    # nights that follow.
+    # the last run that finished here (80.9). Re-measured: the first
+    # night after, 2026-09-18, finished in 112 minutes; 0.6.11 has 7485.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     continue-on-error: true
     runs-on: ubuntu-latest

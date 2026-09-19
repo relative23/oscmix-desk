@@ -1,13 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.6.11 (2026-09-19)
 
-What an outside review of 0.6.10 named, checked against the tree before
-anything changed, and cut in two: the defects and the small repairs
-here, the tighter types -- enums for phases and write reasons, a named
-result instead of `Optional[bool]`, a frozen `Config` -- in 0.7.0,
-because they change public names. The pin does not move and the
-register table has no new row.
+What two outside reviews of 0.6.10 named, checked against the tree
+before anything changed, and cut in two: the defects and the small
+repairs here, the tighter types -- enums for phases and write reasons, a
+named result instead of `Optional[bool]`, a frozen `Config`, modules a
+person can read -- in 0.7.0, because they change public names. The pin
+does not move and the register table has no new row.
 
 ### Fixed
 
@@ -160,6 +160,16 @@ register table has no new row.
   `await_link_echo` raise where `None` used to cover every failure to
   bind, `load_config` refuses an empty `[device] name`, and
   `load_profile` validates for the desk's device.
+- **The mutation run's survivors were read.** They showed missing
+  assertions and no defect, among them both halves of what the marker
+  functions answer and the temporary file beside the marker, the port
+  and timeout the link barrier hands the echo wait, the two ends of the
+  `--osc-port` range, the config `--no-profile` hands the reload
+  decision, and a sink found by the desk's own name rather than because
+  every sink in the tests was a Fireface. Score 0.794 on 7485 mutants,
+  the not-covered bucket still empty, `min_score` 0.77 -> 0.79. The full
+  run used a mutant tree removed beforehand; ten functions were
+  re-judged by name afterwards.
 - **No test opens the machine's `/dev/snd/seq`.** The device wait opens
   it to make the kernel load `snd-seq`; read-only and harmless, and
   still the machine's. The suite points `OSCMIX_SEQ_DEV` at nothing.

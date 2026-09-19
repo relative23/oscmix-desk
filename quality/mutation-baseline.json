@@ -1,5 +1,5 @@
 {
-  "recorded": "2026-09-17",
+  "recorded": "2026-09-19",
   "note": [
     "A ratio, not a count. Absolute survivor counts rise with every",
     "line added -- new code means new mutants, so a healthy change",
@@ -354,31 +354,63 @@
     "name with mutmut-stats.json cleared, because those tests were written",
     "after the full run had taken its copy, and two functions changed",
     "after it were judged in full the same way. The full run took 129",
-    "minutes on a machine at a load of 5 to 6."
+    "minutes on a machine at a load of 5 to 6.",
+    "",
+    "0.6.11 (2026-09-19): 0.777 -> 0.794 on 7118 -> 7485 mutants, for",
+    "what two outside reviews of 0.6.10 named: a receive port that cannot",
+    "be bound told apart from a busy one, a profile validated for the",
+    "desk's device, a re-read desk for another machine refused rather",
+    "than pinned and written, what there is to say about a desk said",
+    "where it is written, and an empty device name refused.",
+    "",
+    "Reading the survivors of the new code found no defect and missing",
+    "assertions, all added: a desk of channel or global sections alone",
+    "counted as checked for a device; the profile named to a start as to",
+    "a reload; the file a start could not re-read, and why; the port,",
+    "timeout and backend the link barrier hands the echo wait; the cause",
+    "in a reconcile that cannot reach the backend; both halves of what",
+    "the marker functions answer, and the temporary file beside the",
+    "marker; the two ends of the --osc-port range; the config --no-",
+    "profile hands the reload decision; a sink found by the desk's own",
+    "name past a nameless sink, a source and a sink of another name; and",
+    "the proc tree the launcher polls. One branch that only a hand-built",
+    "Config reached was folded away.",
+    "",
+    "What survives there is log text and its arguments, < against <= on a",
+    "monotonic deadline, the poll interval, and equivalents: str(None)",
+    "holds no device name, and an echo that did not come differs from one",
+    "that did only in the line it logs. The full run took 105 minutes",
+    "with mutants/ removed before it and measured 0.788 (5886 / 1583 /",
+    "0). Ten functions were then re-judged by name with mutmut-stats.json",
+    "cleared, because their tests were written after the run had taken",
+    "its copy; one of them had changed after it.",
+    "",
+    "min_score 0.77 -> 0.79, by floor_note's rule: the measured score",
+    "rounded down to the hundredth."
   ],
   "measured": {
+    "total": 7485,
+    "killed": 5934,
+    "survived": 1535,
+    "not_covered": 0,
+    "timeout": 16,
+    "score": 0.794,
+    "run_minutes": 105,
+    "cache": "mutants/ removed before the full run; ten functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
+    "scope": "register table exempt (ADR 0015)",
+    "note": [
+      "The 0.6.11 release measurement."
+    ]
+  },
+  "previous": {
+    "recorded": "2026-09-17",
     "total": 7118,
     "killed": 5517,
     "survived": 1587,
     "not_covered": 0,
-    "timeout": 14,
     "score": 0.777,
-    "run_minutes": 129,
-    "cache": "mutants/ removed before the full run; the survivors of eighteen functions and two changed functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
-    "scope": "register table exempt (ADR 0015)",
-    "note": [
-      "The 0.6.10 release measurement."
-    ]
-  },
-  "previous": {
-    "recorded": "2026-09-14",
-    "total": 6649,
-    "killed": 5059,
-    "survived": 1580,
-    "not_covered": 0,
-    "score": 0.762,
     "why_it_moved": [
-      "The 0.6.9 release measurement; min_score 0.76."
+      "The 0.6.10 release measurement; min_score 0.77."
     ]
   },
   "confirmed_by_ci": {
@@ -399,16 +431,16 @@
       "round-trip tests, the local 0.685 did not."
     ]
   },
-  "min_score": 0.77,
+  "min_score": 0.79,
   "tolerance": 0.01,
   "floor_note": [
-    "The gate is min_score - tolerance = 0.76. That is the number that",
+    "The gate is min_score - tolerance = 0.78. That is the number that",
     "matters: the score may not fall below it. min_score is set at the",
     "measured score rounded down to the hundredth, so the policy neither",
     "fails nor nags on the run it was recorded from -- a baseline that",
     "prints 'raise me' on every CI run teaches people to ignore it.",
     "",
-    "0.017 of headroom on the measured 0.777, the same order as every",
+    "0.014 of headroom on the measured 0.794, the same order as every",
     "raise before it. What eats headroom stayed the same: assertions",
     "getting better or worse, because register rows land inside the",
     "ADR 0015 exemption."
