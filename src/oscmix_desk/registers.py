@@ -221,6 +221,11 @@ class Device:
     #: fail a verification over it.
     complete_after_cold_plug: Tuple[str, ...] = ()
     evidence: Optional[str] = None
+    #: The USB release (``bcdDevice``) the table, the hardware evidence and
+    #: the write sweep were recorded on. A start says so when the
+    #: interface reports another one: what was measured was measured on
+    #: this firmware, and nothing else is claimed.
+    firmware: Optional[str] = None
 
     def channels_for(self, capability: str) -> Tuple[int, ...]:
         return self.channels.get(capability, ())

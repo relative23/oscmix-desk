@@ -483,6 +483,7 @@ UCX2 = Device(
     # is a list of what IS complete rather than a flag on what is not.
     complete_after_cold_plug=("/output/{ch}/stereo", "/playback/{ch}/stereo"),
     evidence="hardware-evidence.json attached to v0.2.0",
+    firmware="3.01",
 )
 
 

@@ -73,9 +73,11 @@ ALLOWED_IMPORTS = {
     # its apply and its verifier, and the lock is a module of its own now
     # rather than a part of profiles. What the desk in effect is, session
     # asks reload.
-    "session": {"constants", "discovery", "errors", "locking", "log", "model",
-                "notices", "notify", "process", "reconcile", "reload",
-                "routing", "verify"},
+    # `devices` since 0.7.0: a start says when the interface reports
+    # another firmware than the one its register table was recorded on.
+    "session": {"constants", "devices", "discovery", "errors", "locking",
+                "log", "model", "notices", "notify", "process", "reconcile",
+                "reload", "routing", "verify"},
     # What a running session does with a desk it reads again, split out
     # of session in 0.7.0: below session, which starts it and hands it
     # the SIGHUP. `profiles` because a reload has to apply the same desk

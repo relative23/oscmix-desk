@@ -25,6 +25,7 @@ from .constants import (
     VERIFIER_STOP_GRACE,
     VERIFY_SETTLE,
 )
+from .devices import device_for_name
 from .discovery import Device as Interface
 from .discovery import (
     device_serials,
@@ -33,6 +34,7 @@ from .discovery import (
     udp_port_listening,
     usb_device_authorized,
     usb_device_present,
+    usb_revision,
     wait_for_device,
 )
 from .errors import (
@@ -355,6 +357,27 @@ def _find_client(args: argparse.Namespace, config: Config, proc_root: Path,
     return device, EXIT_OK
 
 
+def _firmware_notice(config: Config, sysfs_usb: Path) -> None:
+    """Say so when the interface runs another firmware than was measured.
+
+    The register table, the hardware evidence and the write sweep were
+    recorded on one USB release. A newer firmware may move or add
+    registers, and until 0.7.0 nothing anywhere said that the box on the
+    desk was not the box that was measured (second outside review). A
+    notice and not a refusal: the read-back still verifies every register
+    it can, and a firmware update must not take the desk down.
+    """
+    model = device_for_name(config.device_name)
+    measured = None if model is None else model.firmware
+    reported = usb_revision(config.usb_id, sysfs_usb)
+    if measured and reported and reported != measured:
+        log.warning("the interface reports USB release %s, and the register "
+                    "table for %r was recorded on %s: every register is "
+                    "still read back, but what this firmware moved or "
+                    "added is not known here", reported, config.device_name,
+                    measured)
+
+
 def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
                sysfs_usb: Path) -> int:
     """The exit code for a start whose interface never showed a client.
@@ -437,6 +460,7 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
             _print_dry_run(None, config)
         return code
     client, config = interface.client, replace(config, serial=interface.serial)
+    _firmware_notice(config, sysfs_usb)
 
     if args.dry_run:
         _print_dry_run(client, config)

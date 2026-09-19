@@ -83,6 +83,12 @@ Common findings in the journal:
   checked against the hardware. Expected on an interface this project
   has never seen (the 802 is checked against upstream's channel map and
   does not warn); a typo in the name looks the same.
+- `the interface reports USB release X, and the register table for
+  '<name>' was recorded on 3.01` -- the firmware on the box is not the
+  one this project was measured against. Nothing is refused and every
+  register is still read back; if something that used to verify stops
+  doing so after a firmware update, this line is the first thing to
+  mention in a report, with `oscmix-session --snapshot`.
 - `configuration error: ... channel N does not exist on a <B>` with
   `--device <B>` on the command line -- the desk is validated for the
   interface it is sent to, and this one does not fit it: the file names

@@ -71,6 +71,14 @@ behaviour: modules a person can read.
   `Register`. With the real types mypy asked two questions the ignores
   had answered for it -- whether the device can be `None` where its
   channels and its name are read -- and both now say so in the code.
+- **A start says when the firmware is not the one that was measured.**
+  The register table, the hardware evidence and the write sweep were
+  recorded on USB release 3.01, and nothing anywhere said that the box
+  on a desk was not the box that was measured. `registers.Device` records
+  it (`firmware`), and a start warns once when the interface reports
+  another release. A notice and not a refusal: every register is still
+  read back, and a firmware update must not take the desk down (second
+  outside review).
 - **A dry run shows its plan without the interface.** What would be sent
   does not depend on the box being switched on, and a config is often
   written on a machine where it is not; such a dry run printed nothing.
