@@ -16,7 +16,7 @@ import json
 import re
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 from oscmix_desk import dump, reconcile
 from oscmix_desk.config import load_config

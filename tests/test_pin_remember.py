@@ -423,7 +423,7 @@ def test_the_dump_command_passes_channel_state_to_the_renderer():
     """
     import ast
 
-    from conftest import repo_file
+    from support import repo_file
 
     source = repo_file("src", "oscmix_desk", "reads.py").read_text()
     tree = ast.parse(source)

@@ -14,7 +14,7 @@ oscmix's invention while the addresses are the device's.
 import re
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 #: The offsets upstream's `ctltoreg` assigns, for the controls measured.
 #: Transcribed from `device_ffucxii.c`, confirmed on the wire, and

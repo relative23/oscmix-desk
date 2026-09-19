@@ -11,7 +11,7 @@ project can make that promise about anything it routes.
 """
 
 import pytest
-from conftest import repo_file  # noqa: F401  (parity with sibling modules)
+from support import repo_file  # noqa: F401  (parity with sibling modules)
 
 from oscmix_desk import devices, reconcile, registers
 

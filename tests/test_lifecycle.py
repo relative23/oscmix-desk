@@ -195,7 +195,7 @@ def test_an_empty_config_leaves_the_desk_alone(session_module, monkeypatch,
 
 
 def _machine(tmp_path, monkeypatch, boxes):
-    from conftest import fake_proc
+    from support import fake_proc
 
     proc = fake_proc(tmp_path / "proc", boxes=boxes)
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))

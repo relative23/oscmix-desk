@@ -4,7 +4,7 @@ import json
 
 import oracle
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 from oscmix_desk import model as model_mod
 from oscmix_desk import notices as notices_mod

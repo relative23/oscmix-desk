@@ -13,7 +13,7 @@ do with the answer.
 import socket
 from pathlib import Path
 
-from conftest import fake_proc, free_udp_port, osc_bundle
+from support import fake_proc, free_udp_port, osc_bundle
 from test_dump_config_cli import FakeBackend, dump_of
 from two_boxes import A, B
 
@@ -310,7 +310,7 @@ def test_two_port_draws_never_collide():
     """send == recv is a backend answering itself and a CLI reading
     silence; free_udp_port now remembers its recent draws, and this
     holds it to that."""
-    from conftest import free_udp_port
+    from support import free_udp_port
 
     for _ in range(500):
         assert free_udp_port() != free_udp_port()

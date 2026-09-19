@@ -14,7 +14,7 @@ against upstream's node table, never against what looked plausible.
 import json
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 from oscmix_desk.config import load_config
 from oscmix_desk.devices import device_for_name

@@ -21,7 +21,7 @@ no user-level sleep.target to hang a unit on.
 
 import re
 
-from conftest import repo_file
+from support import repo_file
 
 
 def unit_text():

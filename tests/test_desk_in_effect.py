@@ -7,8 +7,8 @@ what a switch says when it could not remember or forget.
 
 
 import pytest
-from conftest import write_config
 from profile_desk import GOOD, TRACKING, desk, retargeting_desk, shared_lock_dir
+from support import write_config
 
 from oscmix_desk import marker as marker_mod
 from oscmix_desk import outcome as outcome_mod

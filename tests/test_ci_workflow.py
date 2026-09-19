@@ -14,7 +14,7 @@ would turn this into a test that always succeeds.
 
 import re
 
-from conftest import repo_file
+from support import repo_file
 
 WORKFLOW = ("quality", "test", "coverage", "flake", "mutation",
             "build-oscmix")

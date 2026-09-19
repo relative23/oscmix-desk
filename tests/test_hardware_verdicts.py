@@ -16,7 +16,7 @@ confident 3.4 dB "failure" on a route that was working perfectly.
 import importlib.util
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 
 def load_harness():

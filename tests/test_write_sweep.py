@@ -15,7 +15,7 @@ starts rather than the work it completes.
 import importlib.util
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 from oscmix_desk import registers as R
 from oscmix_desk.errors import DeviceAmbiguous
@@ -196,7 +196,7 @@ def test_the_artifact_covers_every_settable_register(sweep):
     """
     import json
 
-    from conftest import repo_file
+    from support import repo_file
 
     artifact = json.loads(
         repo_file("docs", "evidence", "write-sweep-ucx2.json").read_text())
@@ -217,7 +217,7 @@ def test_the_artifact_names_the_device_and_the_pin(sweep):
     """
     import json
 
-    from conftest import repo_file
+    from support import repo_file
 
     artifact = json.loads(
         repo_file("docs", "evidence", "write-sweep-ucx2.json").read_text())

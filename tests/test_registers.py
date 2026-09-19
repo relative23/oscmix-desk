@@ -17,7 +17,7 @@ import json
 import re
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 from oscmix_desk import devices, registers
 

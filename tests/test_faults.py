@@ -20,7 +20,7 @@ import time
 
 import oracle
 import pytest
-from conftest import free_udp_port, osc_bundle
+from support import free_udp_port, osc_bundle
 
 
 class LossyDevice(threading.Thread):

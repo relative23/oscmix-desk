@@ -10,7 +10,7 @@ import stat
 import subprocess
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 PROJECT_ROOT = repo_file("install.sh").parent
 

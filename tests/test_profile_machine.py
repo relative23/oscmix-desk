@@ -7,8 +7,8 @@ names, and is told when it names another one.
 
 
 import pytest
-from conftest import write_config
 from profile_desk import GOOD, TRACKING, desk, retargeting_desk
+from support import write_config
 
 from oscmix_desk import notices as notices_mod
 from oscmix_desk import profiles

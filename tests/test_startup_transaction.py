@@ -7,8 +7,8 @@ applied here (ADR 0026).
 
 
 import pytest
-from conftest import device_key
 from session_doubles import FakeChild, RunningChild, ready_count
+from support import device_key
 
 from oscmix_desk import locking
 from oscmix_desk import reload as reload_mod
@@ -27,7 +27,7 @@ def test_the_start_holds_the_device_lock_until_the_verifier_is_done(
     defect 0.6.3 measured. Holding the lock across both makes the switch
     wait for the whole transaction instead.
     """
-    from conftest import write_config
+    from support import write_config
 
     from oscmix_desk import session as session_module
 
@@ -63,7 +63,7 @@ def test_a_start_that_cannot_take_the_lock_writes_nothing(
     guarantee conditional: a write nobody serialised is the one thing
     the lock exists to prevent, and systemd can restart a unit.
     """
-    from conftest import write_config
+    from support import write_config
 
     from oscmix_desk import session as session_module
 
@@ -129,7 +129,7 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
     """
     import threading
 
-    from conftest import write_config
+    from support import write_config
 
     from oscmix_desk import session as session_module
 
@@ -173,7 +173,7 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
     # whole routing on the way out is the opposite of what was asked.
     import threading
 
-    from conftest import write_config
+    from support import write_config
 
     from oscmix_desk import session as session_module
 
@@ -208,7 +208,7 @@ def test_a_config_that_stopped_parsing_keeps_the_desk_of_this_process(
     would leave the desk unrouted. It applies what this process came up
     with, and says which file it could not read.
     """
-    from conftest import write_config
+    from support import write_config
 
 
     path = write_config(tmp_path / "routing.conf",

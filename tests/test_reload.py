@@ -5,7 +5,7 @@ on, or refused as a desk for somewhere else (ADR 0024, ADR 0026).
 import argparse
 
 import pytest
-from conftest import write_config
+from support import write_config
 from two_boxes import DESK, lock_dir
 
 from oscmix_desk import cli, profiles

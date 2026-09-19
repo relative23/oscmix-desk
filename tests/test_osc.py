@@ -105,7 +105,7 @@ def test_plain_datagram_yields_itself(session_mod):
 
 
 def test_deeply_nested_bundles_do_not_exhaust_the_python_stack(session_mod):
-    from conftest import osc_bundle
+    from support import osc_bundle
 
     message = session_mod.encode_osc("/output/1/volume", "f", -30.0)
     nested = message

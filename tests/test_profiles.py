@@ -21,8 +21,8 @@ a live desk is that a typo costs you a message, not your monitoring.
 
 
 import pytest
-from conftest import write_config
 from profile_desk import GOOD, TRACKING, desk
+from support import write_config
 
 from oscmix_desk import outcome as outcome_mod
 from oscmix_desk import paths as paths_mod
@@ -437,7 +437,7 @@ def test_two_switches_do_not_interleave_on_the_wire(tmp_path, routing_mod,
 # --------------------------------------------------------------------------
 
 def test_the_device_key_names_the_box_not_the_file(tmp_path):
-    from conftest import fake_proc
+    from support import fake_proc
 
     from oscmix_desk.discovery import resolve_device
 

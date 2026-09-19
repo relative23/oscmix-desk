@@ -8,8 +8,8 @@ and says so.
 import re
 
 import pytest
-from conftest import device_key
 from reconcile_desk import routes_file
+from support import device_key
 
 from oscmix_desk import locking
 from oscmix_desk import reload as reload_mod
@@ -186,7 +186,7 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
     import argparse
     import threading
 
-    from conftest import write_config
+    from support import write_config
 
 
     path = routes_file(tmp_path)

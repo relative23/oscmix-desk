@@ -243,7 +243,7 @@ def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, monkeypatch):
     monkeypatch.setenv("OSCMIX_SYSFS_USB", str(sysfs))
     # A /proc where the interface is visible to ALSA and nothing is bound:
     # the interface is there, the backend is not.
-    from conftest import fake_proc
+    from support import fake_proc
 
     proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))

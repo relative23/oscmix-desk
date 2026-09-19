@@ -88,7 +88,7 @@ def test_find_stale_backends_skips_unreadable_entries(session_mod, tmp_path):
 
 
 def test_wait_for_device_returns_the_resolved_interface(session_mod, tmp_path):
-    from conftest import fake_proc
+    from support import fake_proc
 
     proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
     found = session_mod.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
@@ -101,7 +101,7 @@ def test_wait_for_device_gives_up_and_says_so(session_mod, tmp_path):
     # "driver problem" (exit 1), so it has to actually expire.
     import time
 
-    from conftest import fake_proc
+    from support import fake_proc
 
     proc = fake_proc(tmp_path / "proc")
     started = time.monotonic()

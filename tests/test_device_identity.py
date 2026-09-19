@@ -17,7 +17,7 @@ import socket
 import threading
 
 import pytest
-from conftest import fake_proc, free_udp_port, repo_file, write_config
+from support import fake_proc, free_udp_port, repo_file, write_config
 from two_boxes import DESK, A, B, add_clients, lock_dir
 
 from oscmix_desk import locking, profiles

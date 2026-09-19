@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 import pytest
-from conftest import free_udp_port, read_until_ready
+from support import free_udp_port, read_until_ready
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SESSION_BIN = PROJECT_ROOT / "bin" / "oscmix-session"

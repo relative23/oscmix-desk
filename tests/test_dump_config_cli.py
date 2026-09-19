@@ -14,7 +14,7 @@ import socket
 import threading
 import time
 
-from conftest import free_udp_port, osc_bundle
+from support import free_udp_port, osc_bundle
 
 from oscmix_desk import cli
 from oscmix_desk import reads as reads_mod

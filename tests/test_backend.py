@@ -12,7 +12,7 @@ import json
 import socket
 
 import pytest
-from conftest import free_udp_port, repo_file
+from support import free_udp_port, repo_file
 
 from oscmix_desk import backend
 

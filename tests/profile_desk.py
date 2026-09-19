@@ -2,7 +2,7 @@
 and the marker -- which were one file until the modules they test were
 three."""
 
-from conftest import free_udp_port, write_config
+from support import free_udp_port, write_config
 
 GOOD = """
 [route:main]

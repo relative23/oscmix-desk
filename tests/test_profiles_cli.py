@@ -10,7 +10,7 @@ landed at 53% on cli.py and was found by the gate, on a push.
 """
 
 import pytest
-from conftest import free_udp_port, proc_with_ports, write_config
+from support import free_udp_port, proc_with_ports, write_config
 from two_boxes import DESK
 
 from oscmix_desk import cli

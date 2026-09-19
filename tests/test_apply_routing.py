@@ -13,7 +13,7 @@ import threading
 import time
 
 import oracle
-from conftest import free_udp_port, osc_bundle, repo_file
+from support import free_udp_port, osc_bundle, repo_file
 
 
 def make_route(session_mod, **kwargs):

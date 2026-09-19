@@ -8,8 +8,8 @@ real session loads the checked-out source and never a mutant (ADR 0005).
 import time
 
 import pytest
-from conftest import device_key
 from session_doubles import RunningChild
+from support import device_key
 
 
 class PollingChild:
@@ -44,7 +44,7 @@ def test_a_strangers_port_is_not_backend_readiness(
 
 def test_a_failed_apply_releases_the_device_lock(
         session_module, session_mod, monkeypatch, tmp_path):
-    from conftest import write_config
+    from support import write_config
 
     from oscmix_desk.locking import take_device_lock
 

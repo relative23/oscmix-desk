@@ -12,7 +12,7 @@ So the forbidden list below is not style. Each entry breaks the service.
 """
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 # Applied and verified by starting the unit, not by reading the manual.
 REQUIRED = [
@@ -310,7 +310,7 @@ def test_systemd_analyze_accepts_the_unit():
     """
     import subprocess
 
-    from conftest import repo_file
+    from support import repo_file
 
     script = repo_file("scripts", "verify-unit.sh")
     result = subprocess.run(["sh", str(script)], capture_output=True,
@@ -327,7 +327,7 @@ def test_the_verify_script_fails_on_an_unknown_directive(tmp_path):
     import shutil
     import subprocess
 
-    from conftest import repo_file
+    from support import repo_file
 
     if shutil.which("systemd-analyze") is None:
         pytest.skip("systemd-analyze is not installed")
@@ -359,7 +359,7 @@ def test_the_verify_script_tolerates_an_uninstalled_execstart(tmp_path):
     import shutil
     import subprocess
 
-    from conftest import repo_file
+    from support import repo_file
 
     if shutil.which("systemd-analyze") is None:
         pytest.skip("systemd-analyze is not installed")

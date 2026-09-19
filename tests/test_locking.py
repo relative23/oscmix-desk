@@ -10,8 +10,8 @@ import shutil
 import stat
 
 import pytest
-from conftest import device_key
 from profile_desk import GOOD, TRACKING, desk, shared_lock_dir
+from support import device_key
 
 from oscmix_desk import locking, profiles
 from oscmix_desk import outcome as outcome_mod

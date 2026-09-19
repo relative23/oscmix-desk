@@ -4,7 +4,7 @@ import socket
 import threading
 
 import oracle
-from conftest import free_udp_port, repo_file
+from support import free_udp_port, repo_file
 
 
 def make_route(session_mod, **kwargs):

@@ -19,7 +19,7 @@ import socket
 from pathlib import Path
 
 import pytest
-from conftest import free_udp_port, write_config
+from support import free_udp_port, write_config
 
 from oscmix_desk import backend, locking, profiles, routing, verify
 from oscmix_desk import outcome as outcome_mod
@@ -296,8 +296,8 @@ def test_a_read_fails_with_the_reason_and_not_with_a_traceback(
 
 
 def _unbindable():
-    from conftest import _UnbindableBackend
-    return _UnbindableBackend()
+    from backend_doubles import UnbindableBackend
+    return UnbindableBackend()
 
 
 def test_a_real_listener_still_binds_and_releases():
@@ -318,7 +318,7 @@ def test_a_real_listener_still_binds_and_releases():
 def _script(name):
     import importlib.util
 
-    from conftest import repo_file
+    from support import repo_file
 
     spec = importlib.util.spec_from_file_location(
         name.replace("-", "_"), repo_file("scripts", name + ".py"))
@@ -355,7 +355,7 @@ def test_the_evidence_tool_tells_a_held_port_from_an_unbindable_one():
     """`verify-hardware.py` builds its reader deep inside main(), behind a
     device and a sink, so the rule is held structurally: the skip is
     guarded by EADDRINUSE and the other branch returns 1."""
-    from conftest import repo_file
+    from support import repo_file
 
     source = repo_file("scripts", "verify-hardware.py").read_text()
     guard = source.index("reader = LevelReader(config.osc_recv_port)")

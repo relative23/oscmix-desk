@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = PROJECT_ROOT / "src" / "oscmix_desk"

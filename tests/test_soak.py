@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 import pytest
-from conftest import free_udp_port, read_until_ready
+from support import free_udp_port, read_until_ready
 from test_session_integration import (
     ROUTING_CONF,
     SESSION_BIN,

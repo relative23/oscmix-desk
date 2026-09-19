@@ -19,7 +19,7 @@ the prose, so the disagreement cannot quietly become folklore again.
 import json
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 # Aliased: `registers` is already a local name in the fixtures below,
 # for the dict a recording holds.

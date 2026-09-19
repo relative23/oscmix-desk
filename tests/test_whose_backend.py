@@ -7,7 +7,7 @@ import io
 import os
 from pathlib import Path
 
-from conftest import fake_proc, free_udp_port
+from support import fake_proc, free_udp_port
 from two_boxes import DESK, B, unit
 
 from oscmix_desk import cli

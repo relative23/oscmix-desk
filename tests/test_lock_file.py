@@ -11,7 +11,7 @@ import stat
 import threading
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 from two_boxes import lock_dir
 
 from oscmix_desk import locking, profiles

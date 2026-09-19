@@ -5,7 +5,7 @@ the card list, from one resolution that never guesses (ADR 0024).
 import threading
 
 import pytest
-from conftest import fake_proc, free_udp_port, write_config
+from support import fake_proc, free_udp_port, write_config
 from two_boxes import DESK, A, B, add_clients
 
 from oscmix_desk import profiles

@@ -6,8 +6,8 @@ desk, and what is re-read keeps the machine the session runs on.
 """
 
 
-from conftest import repo_file
 from reconcile_desk import CONF, routes_file
+from support import repo_file
 
 from oscmix_desk import reload as reload_mod
 
@@ -262,7 +262,7 @@ def test_a_reload_applies_the_remembered_profile(tmp_path, session_mod,
     """
     import argparse
 
-    from conftest import write_config
+    from support import write_config
 
 
     path = write_config(tmp_path / "routing.conf",
