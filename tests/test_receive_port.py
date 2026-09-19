@@ -363,3 +363,127 @@ def test_the_evidence_tool_tells_a_held_port_from_an_unbindable_one():
     assert "exc.errno != errno.EADDRINUSE" in block
     assert block.index("return 1") < block.index("return EXIT_SKIP")
     assert "cannot bind the receive port UDP" in block
+
+
+# --------------------------------------------------------------------------
+# 0.7.0: a port that was bound and then cannot be read (third outside
+# review). A timeout is how a wait ends; any other socket error read as
+# "nothing arrived" too, returned at once, and every reader then spun --
+# measured, 1.3 million reads in half a second -- until its window closed
+# and it reported silence from a backend that was never asked.
+# --------------------------------------------------------------------------
+
+DOWN = "cannot read the receive port UDP 8333: Network is down"
+
+
+class _DeadSocket:
+    """Bound, and then the network under it went away."""
+
+    def __init__(self):
+        self.reads = 0
+
+    def settimeout(self, _timeout):
+        pass
+
+    def recvfrom(self, _size):
+        self.reads += 1
+        raise OSError(errno.ENETDOWN, "Network is down")
+
+    def close(self):
+        pass
+
+
+class _DeafBackend:
+    """Sends go out; the receive port binds and then cannot be read."""
+
+    traits = backend.OSCMIX
+
+    def __init__(self):
+        self.sent = []
+        self.socket = _DeadSocket()
+
+    def send(self, messages):
+        self.sent.extend(message[0] for message in messages)
+
+    def request_dump(self):
+        self.sent.append("/refresh")
+
+    def listen(self):
+        return backend.Listener(self.socket, 8333)
+
+
+def test_a_timeout_is_nothing_and_any_other_error_is_named():
+    listener = backend.Listener(_DeadSocket(), 8333)
+    with pytest.raises(ReceivePortError) as failed:
+        list(listener.messages(0.25))
+    assert (failed.value.errno, failed.value.strerror) == (errno.ENETDOWN, DOWN)
+    with pytest.raises(ReceivePortError, match="cannot read the receive "
+                                               "port: Network is down"):
+        list(backend.Listener(_DeadSocket()).messages(0.25))
+
+    class Quiet(_DeadSocket):
+        def recvfrom(self, _size):
+            raise socket.timeout("timed out")
+
+    assert list(backend.Listener(Quiet(), 8333).messages(0.25)) == []
+
+
+def test_a_socket_closed_under_the_listener_is_the_same_error():
+    """`settimeout` on a closed socket raised a bare OSError, past every
+    handler that knows what to do about a receive port."""
+    real = backend.loopback(free_udp_port(), free_udp_port()).listen()
+    real.close()
+    with pytest.raises(ReceivePortError, match="cannot read the receive port"):
+        list(real.messages(0.05))
+
+
+def test_the_barrier_waits_blind_for_a_port_it_cannot_read(tmp_path,
+                                                          monkeypatch, caplog):
+    slept = []
+    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
+    monkeypatch.setattr(routing.time, "sleep", slept.append)
+    config = profiles.load_config(write_config(tmp_path / "routing.conf", DESK))
+    device = _DeafBackend()
+    with caplog.at_level("INFO"):
+        routing.apply_routing(config, 7222, 8333, backend=device)
+    assert device.sent.index("/output/1/stereo") \
+        < device.sent.index("/mix/1/playback/1"), "the apply finished"
+    assert slept == [0.01]
+    assert device.socket.reads == 1, "one read, not a loop of them"
+    assert "link echo unobservable: [Errno 100] " + DOWN in caplog.text
+
+
+@pytest.mark.parametrize("flag", ["--diff", "--snapshot", "--dump-config"])
+def test_a_read_that_cannot_read_says_so_at_once(tmp_path, monkeypatch,
+                                                 caplog, flag):
+    """It spun for the whole window and then asked whether oscmix runs."""
+    from oscmix_desk import cli
+
+    device = _DeafBackend()
+    monkeypatch.setattr(reads_mod, "loopback", lambda *_a: device)
+    monkeypatch.setattr(reads_mod, "DUMP_LISTEN_SETTLE", 0.0)
+    path = write_config(tmp_path / "routing.conf", DESK)
+    with caplog.at_level("ERROR"):
+        assert cli.main(["--config", str(path), flag]) == EXIT_FAILURE
+    assert DOWN in caplog.text
+    assert "is oscmix running" not in caplog.text
+    assert device.socket.reads == 1
+
+
+def test_a_switch_that_cannot_read_back_says_why(tmp_path, monkeypatch):
+    monkeypatch.setattr(routing, "LINK_SETTLE", 0.0)
+    path = write_config(tmp_path / "routing.conf", DESK)
+    write_config(tmp_path / "profiles" / "p.conf", DESK)
+    outcome = profiles.switch_profile("p", config_path=path,
+                                      backend=_DeafBackend())
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
+    assert (outcome.read_back, outcome.reason) == (False, DOWN)
+
+
+def test_the_read_back_raises_instead_of_spinning_out_its_window(monkeypatch):
+    monkeypatch.setattr(verify, "VERIFY_SETTLE", 0.0)
+    device = _DeafBackend()
+    with pytest.raises(ReceivePortError, match="Network is down"):
+        verify.verify_routing({"/output/1/volume": ("f", (-10.0,))}, 7222,
+                              8333, 5.0, backend=device)
+    assert device.socket.reads == 1

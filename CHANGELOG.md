@@ -25,6 +25,17 @@ behaviour: modules a person can read.
   is gone from the README and the architecture page: there is none on
   this wire, and ADR 0011 always said so.
 
+- **A receive port that cannot be read is not a quiet backend.** The
+  listener treated every socket error like a timeout and yielded
+  nothing; since an error returns at once where a timeout waits, every
+  reader then spun -- measured, 1.3 million reads in half a second --
+  for the 8 s of a `--dump-config` or the 10 s of a read-back, and ended
+  by asking whether oscmix was running. A timeout is still how a wait
+  ends; any other error is a `ReceivePortError` naming the port and the
+  cause, which the barrier, the verifier, the reconcile, the switch and
+  the three reads already handle (ADR 0025, amended). Found by the same
+  review.
+
 ### Changed
 
 - **No source module is over 600 lines.** Six were, up to 1038. Split at

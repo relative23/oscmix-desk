@@ -113,8 +113,10 @@ class Listener:
     ``ReceivePortError`` for every other reason the port cannot be had.
     """
 
-    def __init__(self, sock: "socket.socket") -> None:
+    def __init__(self, sock: "socket.socket",
+                 port: Optional[int] = None) -> None:
         self._sock = sock
+        self._port = port
 
     def messages(self, timeout: float) -> Iterator[Tuple[str, str,
                                                          Sequence[object]]]:
@@ -123,12 +125,24 @@ class Listener:
         Malformed messages are skipped rather than raised on: this reads
         off a socket, and one bad message must not end a dump that is
         otherwise confirming registers.
+
+        A timeout is the normal way a wait ends. Any other socket error
+        is a ``ReceivePortError``: until 0.7.0 it read as "nothing
+        arrived" too, returned at once, and every reader then spun --
+        measured, 1.3 million reads in half a second -- until its window
+        closed and it reported silence from a backend that was never
+        asked (third outside review).
         """
-        self._sock.settimeout(timeout)
         try:
+            self._sock.settimeout(timeout)
             datagram, _ = self._sock.recvfrom(READ_SIZE)
-        except (socket.timeout, OSError):
+        except socket.timeout:
             return
+        except OSError as exc:
+            raise ReceivePortError(
+                exc.errno, "cannot read the receive port%s: %s"
+                % ("" if self._port is None else " UDP %d" % self._port,
+                   exc.strerror or exc)) from exc
         for raw in iter_osc_messages(datagram):
             try:
                 path, tags, args = decode_osc(raw)
@@ -216,7 +230,7 @@ class Backend:
             raise ReceivePortError(
                 exc.errno, "cannot bind the receive port UDP %d: %s"
                 % (self.recv_port, exc.strerror or exc)) from exc
-        return Listener(sock)
+        return Listener(sock, self.recv_port)
 
 
 def loopback(send_port: int, recv_port: int) -> Backend:

@@ -275,6 +275,11 @@ def _read_device(config: Config) -> Optional[Dict[str, Tuple[object, ...]]]:
                 quiet_after = time.monotonic() + DUMP_QUIET_SECONDS
             elif seen and time.monotonic() > quiet_after:
                 break
+    except ReceivePortError as exc:
+        # The port was had and then could not be read. Not silence from
+        # the backend, which is what an empty read is taken for below.
+        log.error("%s", exc.strerror)
+        return None
     finally:
         listener.close()
 

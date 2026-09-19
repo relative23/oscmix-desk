@@ -72,6 +72,11 @@ Common findings in the journal:
   applied; it cannot be read back until the cause is gone. `Permission
   denied` is a `[osc] recv-port` below 1024. Until 0.6.11 this was
   reported as "in use", which sent the reader to a GUI that was closed.
+- `cannot read the receive port UDP N: <reason>` -- the port was bound
+  and then could not be read: the loopback interface went down, or the
+  socket was taken away. Same consequences as above -- the routing is
+  applied, a read exits 1 -- and the same remedy: remove the cause, then
+  `systemctl --user reload oscmix.service`.
 - `no register model for '<name>': its N route(s) are written as given`
   -- `[device] name` is not an interface this project has a register
   table or channel map for, so the routes' channel numbers are not
