@@ -86,7 +86,11 @@ acyclic graph.
 | `osc` | encode and decode OSC messages; no I/O |
 | `registers` | what a register row and a device are -- path, tags, bounds, verification class, policy -- and the questions the parser, the reconciler and the verifier ask of a device's table |
 | `devices` | the tables themselves: the UCX II's rows and channel map, the 802's channel map, and which of them a config names |
-| `config` | parse `routing.conf` into a `Config`, refusing what the model declares unsettable and warning about what it does not model at all |
+| `model` | a desk as data: routes, channel and global settings, and the five settings that say where it goes |
+| `paths` | where a desk is looked for: the config, `profiles/` beside it, and what a profile name is |
+| `sections` | the sections the register table declares -- channels, families, globals -- refusing what it declares unsettable and warning about what it does not model at all |
+| `config` | parse `routing.conf` into a `Config`: `[device]`, `[osc]`, routes and pins here, the rest through `sections`; total, so every input is a `Config` or a `ConfigError` |
+| `notices` | what there is to say about a desk before it is written or shown |
 | `discovery` | find the device and resolve which interface a desk is for: serial, sequencer client and lock key from one answer; USB presence; whether a UDP port is bound |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
 | `reconcile` | `desired` / `observed` / `plan`, and rendering a `Config` back to text |

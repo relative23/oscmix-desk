@@ -10,10 +10,12 @@ enforces that, along with the layering the modules are arranged in:
     constants, errors, log, osc no internal imports
     notify, discovery, registers the leaves above, nothing else
     devices                     constants, registers
-    config                      constants, errors, log, registers, devices
+    model, paths                constants, registers; errors
+    sections, notices           model, devices, registers, log
+    config                      model, sections, devices, ...
     backend                     errors, osc
-    reconcile                   config, constants, registers, devices
-    routing                     backend, config, reconcile, ...
+    reconcile                   model, constants, registers, devices
+    routing                     backend, model, reconcile, ...
     verify                      routing, ...
     pipewire, process, launcher leaves plus config/discovery
     locking, marker, outcome    near-leaves: constants, config, log
@@ -29,17 +31,7 @@ both directions.
 
 from __future__ import annotations
 
-from .config import (
-                        ChannelSetting,
-                        CommandLine,
-                        Config,
-                        Machine,
-                        Route,
-                        discover_config_path,
-                        list_profiles,
-                        load_config,
-                        profile_path,
-)
+from .config import load_config
 from .constants import (
                         CHANNEL_MAX,
                         CHANNEL_MIN,
@@ -77,9 +69,11 @@ from .launcher import main as launch_mixer
 from .locking import take_device_lock
 from .log import log
 from .marker import active_profile
+from .model import ChannelSetting, CommandLine, Config, Machine, Route
 from .notify import sd_notify
 from .osc import decode_osc, encode_osc, iter_osc_messages
 from .outcome import APPLIED_UNVERIFIED, APPLIED_VERIFIED, REFUSED, Outcome
+from .paths import discover_config_path, list_profiles, profile_path
 from .pipewire import generate_pipewire_conf, pipewire_positions, pw_sink_info
 from .process import find_stale_backends, port_holder, supervise
 from .profiles import (

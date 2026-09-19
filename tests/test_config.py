@@ -6,6 +6,10 @@ import oracle
 import pytest
 from conftest import repo_file
 
+from oscmix_desk import model as model_mod
+from oscmix_desk import notices as notices_mod
+from oscmix_desk import paths as paths_mod
+
 
 def write(tmp_path, text):
     path = tmp_path / "routing.conf"
@@ -245,7 +249,6 @@ def test_config_discovery_resolves_in_the_environment_it_is_given(
         session_mod, tmp_path, monkeypatch):
     """The unit's environment, not this process's (0.6.10); with no
     HOME in it, the password database, which is what `~` expands to."""
-    from oscmix_desk import config as config_mod
 
     home = tmp_path / "home"
     (home / ".config" / "oscmix").mkdir(parents=True)
@@ -255,9 +258,9 @@ def test_config_discovery_resolves_in_the_environment_it_is_given(
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "shell-xdg"))
     monkeypatch.setenv("HOME", str(tmp_path / "shell-home"))
     assert session_mod.discover_config_path({"HOME": str(home)}) == expected
-    monkeypatch.setattr(config_mod.pwd, "getpwuid",
+    monkeypatch.setattr(paths_mod.pwd, "getpwuid",
                         lambda uid: type("pw", (), {"pw_dir": str(home)})()
-                        if uid == config_mod.os.getuid() else None)
+                        if uid == paths_mod.os.getuid() else None)
     assert session_mod.discover_config_path({}) == expected
     assert session_mod.discover_config_path(
         {"OSCMIX_CONFIG": str(tmp_path / "named.conf")}) \
@@ -275,7 +278,7 @@ def test_config_discovery_resolves_in_the_environment_it_is_given(
     # through here), and the system location is still searched.
     def no_entry(uid):
         raise KeyError(uid)
-    monkeypatch.setattr(config_mod.pwd, "getpwuid", no_entry)
+    monkeypatch.setattr(paths_mod.pwd, "getpwuid", no_entry)
     assert session_mod.discover_config_path({}) is None
     system = tmp_path / "etc" / "routing.conf"
     system.parent.mkdir()
@@ -506,7 +509,6 @@ def test_routes_on_an_unmodelled_device_have_a_warning_for_the_caller(
     start and about the wrong file while a profile was active. The paths
     that write or show a desk ask about the desk they have in hand
     (`log_desk_notices`, 0.6.11)."""
-    from oscmix_desk import config as config_mod
 
     with caplog.at_level("WARNING"):
         unmodelled = session_mod.load_config(write(
@@ -514,7 +516,7 @@ def test_routes_on_an_unmodelled_device_have_a_warning_for_the_caller(
                       "[route:x]\nplayback = 1/2\noutput = 40/41\n"
                       "[route:y]\nplayback = 3/4\noutput = 3/4\n"))
     assert caplog.text == "", "the parser itself says nothing"
-    assert config_mod.unchecked_routes_warning(unmodelled) == (
+    assert notices_mod.unchecked_routes_warning(unmodelled) == (
         "no register model for 'Fireface UFX III': its 2 route(s) are "
         "written as given, with no check that the device has those "
         "channels (modelled: Fireface UCX II)")
@@ -524,7 +526,7 @@ def test_routes_on_an_unmodelled_device_have_a_warning_for_the_caller(
     for text in (route % "1/2",
                  "[device]\nname = Fireface 802\n\n" + route % "29/30",
                  "[device]\nname = Fireface UFX III\n"):
-        assert config_mod.unchecked_routes_warning(
+        assert notices_mod.unchecked_routes_warning(
             session_mod.load_config(write(tmp_path, text))) is None, text
 
 
@@ -561,17 +563,16 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
     start pins and a running session's own -- and both notices that
     matter (checked for another interface, a desk for another backend)
     compare against the record, not against those."""
-    from oscmix_desk import config as config_mod
 
     assert session_mod.Config().loaded is None, "not loaded, no record"
     named = session_mod.load_config(write(
         tmp_path, "[device]\nname = Fireface 802\nserial = 11223344\n\n"
                   "[osc]\nport = 9001\n"))
-    assert named.loaded == config_mod.Machine(
+    assert named.loaded == model_mod.Machine(
         "Fireface 802", "2a39:3fd9", "11223344", 9001, 8222)
     named.device_name, named.osc_port, named.serial = "X", 7, "9"
     assert named.loaded.device_name == "Fireface 802"
-    assert named.loaded.differs_from(config_mod.Machine(
+    assert named.loaded.differs_from(model_mod.Machine(
         "Fireface 802", "2a39:3fd9", "5", 9001, 9)) == (
         "serial '11223344' (not '5'), osc recv port 8222 (not 9)")
     # Without a record there is nothing to compare, and nothing is said.
@@ -579,9 +580,9 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
         tmp_path, "[route:x]\nplayback = 1/2\noutput = 1/2\n"))
     routed.device_name = "X"
     assert "checked for 'Fireface UCX II' and is used for 'X'" in \
-        config_mod.replaced_device_warning(routed)
+        notices_mod.replaced_device_warning(routed)
     routed.loaded = None
-    assert config_mod.replaced_device_warning(routed) is None
+    assert notices_mod.replaced_device_warning(routed) is None
     # Routes, channel sections, global sections: each alone was checked
     # for a device, and a file with none of them was not.
     for text, checked in (("[input:1]\ngain = 10\n", True),
@@ -590,7 +591,7 @@ def test_a_config_records_the_machine_its_file_resolved_to(session_mod,
         desk = session_mod.load_config(write(tmp_path, text))
         assert bool(desk.channels or desk.globals) is checked, text
         desk.device_name = "X"
-        assert (config_mod.replaced_device_warning(desk) is not None) \
+        assert (notices_mod.replaced_device_warning(desk) is not None) \
             is checked, text
 
 
@@ -603,7 +604,7 @@ def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():
     `--osc-port`, with advice to restart that a restart would not have
     followed (all found by review)."""
     from oscmix_desk import CommandLine
-    from oscmix_desk.config import Machine
+    from oscmix_desk.model import Machine
 
     file = Machine("Fireface UCX II", "2a39:3fd9", "", 7222, 8222)
     said = CommandLine(device_name="Some Box", osc_port=9000)
@@ -628,7 +629,7 @@ def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():
 
 
 def test_no_file_resolves_to_the_defaults_and_that_is_a_record(session_mod):
-    from oscmix_desk.config import Machine
+    from oscmix_desk.model import Machine
 
     assert session_mod.load_config(None).loaded == Machine(
         "Fireface UCX II", "2a39:3fd9", "", 7222, 8222)

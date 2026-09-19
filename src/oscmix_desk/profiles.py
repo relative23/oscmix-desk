@@ -30,13 +30,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
 from .backend import Backend, loopback
-from .config import (
-    Config,
-    list_profiles,
-    load_config,
-    log_desk_notices,
-    profile_path,
-)
+from .config import load_config
 from .constants import VERIFY_TIMEOUT
 from .devices import device_for_name
 from .discovery import (
@@ -53,6 +47,8 @@ from .marker import (
     forget_active_profile,
     remember_active_profile,
 )
+from .model import Config
+from .notices import log_desk_notices
 from .outcome import (
     APPLIED_UNVERIFIED,
     APPLIED_VERIFIED,
@@ -60,6 +56,7 @@ from .outcome import (
     REFUSED,
     Outcome,
 )
+from .paths import list_profiles, profile_path
 from .process import port_holder
 from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
@@ -85,7 +82,7 @@ def load_profile(name: str, config_path: Optional[Path] = None) -> Config:
     here -- a machine with a second backend, whose profiles would be
     per-backend -- is withdrawn by ADR 0026: one marker per directory
     cannot say which backend "the active profile" is for. Such a profile
-    is told so where it is written (``config.other_machine_warning``),
+    is told so where it is written (``notices.other_machine_warning``),
     and a running session does not apply it to its own interface.
     """
     path = profile_path(name, config_path)

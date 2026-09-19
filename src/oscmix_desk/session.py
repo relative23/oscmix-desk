@@ -15,13 +15,6 @@ import time
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from .config import (
-    Config,
-    Machine,
-    discover_config_path,
-    log_desk_notices,
-    profile_path,
-)
 from .constants import (
     CHILD_STOP_GRACE,
     EXIT_CONFIG,
@@ -50,7 +43,10 @@ from .errors import (
 )
 from .locking import DeviceLock, take_device_lock
 from .log import log
+from .model import Config, Machine
+from .notices import log_desk_notices
 from .notify import sd_notify
+from .paths import discover_config_path, profile_path
 from .process import _cleanup_stale_backend, socket_owner, supervise
 from .profiles import effective_config, keep_machine_settings
 from .reconcile import desired, plan

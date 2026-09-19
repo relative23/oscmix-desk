@@ -8,8 +8,8 @@ import shutil
 import subprocess
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from .config import Config, Route
 from .errors import ConfigError
+from .model import Config, Route
 
 # Fallback mapping when the sink's real channel layout is unknown: how
 # PipeWire labels the device playback channels in the surround profile.

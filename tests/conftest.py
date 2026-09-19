@@ -391,14 +391,15 @@ def _no_real_config(tmp_path_factory, monkeypatch):
     defaults, which a mutant renaming the variable falls back to.
     A test that wants a desk sets its own.
     """
-    from oscmix_desk import config, launcher
+    from oscmix_desk import launcher
+    from oscmix_desk import paths as paths_mod
 
     empty = tmp_path_factory.mktemp("xdg-config")
     monkeypatch.delenv("OSCMIX_CONFIG", raising=False)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(empty))
     nowhere = empty / "etc-oscmix-routing.conf"
     monkeypatch.setenv("OSCMIX_SYSTEM_CONFIG", str(nowhere))
-    monkeypatch.setattr(config, "SYSTEM_CONFIG", nowhere)
+    monkeypatch.setattr(paths_mod, "SYSTEM_CONFIG", nowhere)
     monkeypatch.setattr(launcher, "SYSTEM_CONFIG", nowhere)
 
 

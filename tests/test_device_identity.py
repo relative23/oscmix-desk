@@ -24,9 +24,10 @@ import pytest
 from conftest import fake_proc, free_udp_port, repo_file, write_config
 
 from oscmix_desk import cli, locking, profiles
-from oscmix_desk import config as config_module
 from oscmix_desk import marker as marker_mod
+from oscmix_desk import notices as notices_mod
 from oscmix_desk import outcome as outcome_mod
+from oscmix_desk import paths as paths_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.discovery import (
     Device,
@@ -1385,10 +1386,10 @@ def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
 def test_the_launcher_and_the_session_agree_on_what_a_profile_name_is():
     import inspect
 
-    from oscmix_desk import config, launcher
+    from oscmix_desk import launcher
 
     rule = 'r"[A-Za-z0-9][A-Za-z0-9._-]*"'
-    assert rule in inspect.getsource(config.profile_path)
+    assert rule in inspect.getsource(paths_mod.profile_path)
     assert rule in inspect.getsource(launcher._active_profile_port)
 
 
@@ -1642,7 +1643,7 @@ def test_a_reload_names_a_desk_checked_for_another_interface(tmp_path,
                         "[device]\nname = Fireface 802\n")
     running = profiles.load_config(path)
     cli._override_device(running, "Fireface UCX II")
-    assert config_module.replaced_device_warning(running) is None, \
+    assert notices_mod.replaced_device_warning(running) is None, \
         "nothing in it was checked for a device"
     path.write_text("[device]\nname = Fireface 802\n"
                     "[route:x]\nplayback = 1/2\noutput = 29/30\n")
@@ -1855,7 +1856,7 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     restarted = profiles.load_config(path)
     cli._override_device(restarted, "Fireface UCX II")
     with caplog.at_level("WARNING"):
-        config_module.log_desk_notices(restarted)
+        notices_mod.log_desk_notices(restarted)
         session_module._apply_and_verify(Running(), restarted,
                                          {"stop": False}, path).join(timeout=5)
     assert caplog.text.count(notice) == 1

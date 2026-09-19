@@ -54,9 +54,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
-from .config import ChannelSetting, Config, GlobalSetting, Route
 from .constants import LEVEL_MIN, UNLINKED_GAIN_OFFSET
 from .devices import device_for_name
+from .model import ChannelSetting, Config, GlobalSetting, Route
 from .registers import (
     BOOL,
     ENABLE_OPTION,

@@ -16,8 +16,9 @@ import json
 import pytest
 from conftest import repo_file
 
-from oscmix_desk.config import GlobalSetting, load_config
+from oscmix_desk.config import load_config
 from oscmix_desk.devices import device_for_name
+from oscmix_desk.model import GlobalSetting
 from oscmix_desk.registers import (
     ENABLE_OPTION,
     GLOBAL,

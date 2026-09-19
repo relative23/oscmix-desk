@@ -16,9 +16,9 @@ import tempfile
 from pathlib import Path
 from typing import NamedTuple, Optional
 
-from .config import profile_path
 from .errors import ConfigError
 from .log import log
+from .paths import profile_path
 
 #: Where the active profile's name is kept: one line, beside
 #: routing.conf. Written by the CLI after an applied switch, removed by

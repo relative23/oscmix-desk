@@ -285,7 +285,7 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
     them looked at.
     """
     from oscmix_desk import ChannelSetting, Config
-    from oscmix_desk.config import GlobalSetting
+    from oscmix_desk.model import GlobalSetting
 
     applied = []
     verified = []

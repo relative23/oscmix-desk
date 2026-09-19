@@ -12,7 +12,7 @@ here, next to the tests that are their only reason to exist.
 
 from typing import List, NamedTuple, Sequence, Tuple
 
-from oscmix_desk.config import Route
+from oscmix_desk.model import Route
 from oscmix_desk.reconcile import link_messages, mix_messages
 
 Message = Tuple[str, str, Tuple[object, ...]]

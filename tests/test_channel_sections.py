@@ -257,8 +257,8 @@ def test_an_unbounded_quantity_is_only_checked_for_being_a_number():
     A range invented here would reject values the device accepts, and a
     config that will not load is worse than an error the device reports.
     """
-    from oscmix_desk.config import _parse_number
     from oscmix_desk.registers import NUMBER, Register
+    from oscmix_desk.sections import _parse_number
 
     free = Register("/x", "i", "verifiable", "global", NUMBER)
     assert free.lo is None

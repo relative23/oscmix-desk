@@ -9,7 +9,6 @@ import time
 from typing import Callable, Dict, Mapping, Optional, Sequence
 
 from .backend import Backend, loopback
-from .config import Config, Route
 from .constants import (
     DEFAULT_OSC_RECV_PORT,
     LINK_ECHO_TIMEOUT,
@@ -18,6 +17,7 @@ from .constants import (
 )
 from .errors import ReceivePortError
 from .log import log
+from .model import Config, Route
 from .reconcile import (
     desired,
     link_messages,

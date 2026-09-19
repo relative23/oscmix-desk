@@ -164,7 +164,7 @@ def _roomeq_registers() -> Tuple["Register", ...]:
 #: `setfixed` divides the OSC value by the scale on the way in, so a node
 #: with min=-300 max=300 scale=0.1 is -30.0..30.0 to a config. Getting
 #: that backwards would declare every range ten times too wide, and
-#: upstream enforces none of them -- see `config._parse_number`.
+#: upstream enforces none of them -- see `sections._parse_number`.
 _DYNAMICS_OPTIONS = (
     ("gain", "f", -30.0, 30.0, "dB"),
     ("attack", "i", 0.0, 200.0, "ms"),
@@ -555,3 +555,9 @@ def device_for_name(name: str) -> Optional[Device]:
         if device.name.lower() == name.strip().lower():
             return device
     return None
+
+
+def modelled_names() -> str:
+    """The devices whose register table has rows, for the warnings."""
+    return ", ".join(d.name for d in DEVICES if d.registers)
+

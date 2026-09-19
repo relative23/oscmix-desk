@@ -15,13 +15,7 @@ from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
 
 from .backend import loopback
-from .config import (
-    Config,
-    discover_config_path,
-    load_config,
-    log_desk_notices,
-    profile_path,
-)
+from .config import load_config
 from .constants import (
     DEFAULT_DEVICE_TIMEOUT,
     DUMP_LISTEN_SETTLE,
@@ -38,7 +32,10 @@ from .devices import device_for_name
 from .discovery import device_firmware, resolve_device
 from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
 from .log import log
+from .model import Config
+from .notices import log_desk_notices
 from .outcome import REFUSED, Outcome
+from .paths import discover_config_path, profile_path
 from .pipewire import find_sink, generate_pipewire_conf, pw_dump_objects
 from .process import (
     RELOAD_DONE,
@@ -166,7 +163,7 @@ def _override_device(config: Config, name: str) -> None:
 
     It arrives after the file was validated, so the channels and sections
     were checked for the device the *file* names; see
-    ``config.replaced_device_warning``. Refused together with a switch or
+    ``notices.replaced_device_warning``. Refused together with a switch or
     a restore, which take their interface from the config and never saw
     the override (``_refuse_conflicting_actions``). Remembered as an
     override, like ``--osc-port``: a desk this process reads again is

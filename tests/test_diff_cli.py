@@ -142,7 +142,7 @@ def test_the_playback_matrix_is_counted_apart_from_real_differences():
 
 
 def _config():
-    from oscmix_desk.config import Config, Route
+    from oscmix_desk.model import Config, Route
     return Config(device_name="Fireface UCX II",
                   routes=[Route(name="main", playback=(1, 2), output=(5, 6),
                                 level=0.0)])

@@ -28,7 +28,9 @@ from conftest import write_config
 
 from oscmix_desk import locking, profiles
 from oscmix_desk import marker as marker_mod
+from oscmix_desk import notices as notices_mod
 from oscmix_desk import outcome as outcome_mod
+from oscmix_desk import paths as paths_mod
 
 
 def _key(path):
@@ -249,14 +251,12 @@ def test_every_outcome_answers_whether_the_device_was_written_to(tmp_path):
 def test_profiles_are_listed_by_name_sorted(tmp_path):
     for name in ("mixdown", "tracking", "podcast"):
         write_config(tmp_path / "profiles" / ("%s.conf" % name), GOOD)
-    from oscmix_desk import config as config_mod
-    assert config_mod.list_profiles(tmp_path / "routing.conf") == [
+    assert paths_mod.list_profiles(tmp_path / "routing.conf") == [
         "mixdown", "podcast", "tracking"]
 
 
 def test_no_profiles_directory_is_empty_not_an_error(tmp_path):
-    from oscmix_desk import config as config_mod
-    assert config_mod.list_profiles(tmp_path / "routing.conf") == []
+    assert paths_mod.list_profiles(tmp_path / "routing.conf") == []
 
 
 # --------------------------------------------------------------------------
@@ -311,9 +311,8 @@ def test_describe_profiles_reports_a_broken_one_instead_of_raising(tmp_path):
 
 
 def test_profile_path_maps_a_name_to_a_file(tmp_path):
-    from oscmix_desk import config as config_mod
 
-    path = config_mod.profile_path("tracking", tmp_path / "routing.conf")
+    path = paths_mod.profile_path("tracking", tmp_path / "routing.conf")
     assert path == tmp_path / "profiles" / "tracking.conf"
 
 
@@ -454,7 +453,7 @@ def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     """
     import dataclasses
 
-    from oscmix_desk.config import Config
+    from oscmix_desk.model import Config
 
     # `policies` is the desk's, not the machine's: "should my monitor
     # faders come back after a restart" is a statement about how this
@@ -1605,14 +1604,13 @@ def test_a_profile_that_names_another_machine_is_told_what_0_7_0_does(
     `--dump-config > profiles/x.conf`, the documented way to make one,
     writes `[device]` and `[osc]` into every profile. The first cut
     warned about the sections and would have refused them all."""
-    from oscmix_desk import config as config_mod
 
     path = _retargeting_desk(tmp_path)
     for name in ("here", "same"):
-        assert config_mod.other_machine_warning(
+        assert notices_mod.other_machine_warning(
             profiles.load_profile(name, path)) is None, name
-    assert config_mod.other_machine_warning(profiles.load_config(path)) is None
-    there = config_mod.other_machine_warning(profiles.load_profile("there", path))
+    assert notices_mod.other_machine_warning(profiles.load_config(path)) is None
+    there = notices_mod.other_machine_warning(profiles.load_profile("there", path))
     assert there.startswith(
         "this profile names another backend or interface than its "
         "routing.conf -- serial '99887766' (not ''), osc port 9500 (not 9001)")
@@ -1624,7 +1622,6 @@ def test_a_profile_that_names_another_machine_is_told_what_0_7_0_does(
 
 
 def test_a_dumped_config_makes_a_profile_nobody_is_warned_about(tmp_path):
-    from oscmix_desk import config as config_mod
     from oscmix_desk.reconcile import render_config
 
     path = write_config(tmp_path / "routing.conf", GOOD)
@@ -1632,7 +1629,7 @@ def test_a_dumped_config_makes_a_profile_nobody_is_warned_about(tmp_path):
     assert "[device]" in dumped, "which is why the sections cannot be the rule"
     assert "[osc]" in dumped
     write_config(tmp_path / "profiles" / "dumped.conf", dumped)
-    assert config_mod.other_machine_warning(
+    assert notices_mod.other_machine_warning(
         profiles.load_profile("dumped", path)) is None
 
 

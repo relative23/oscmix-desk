@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from .backend import Backend, loopback
-from .config import Config
 from .constants import DUMP_LISTEN_SETTLE, VERIFY_SETTLE, VERIFY_TIMEOUT
 from .devices import device_for_name
 from .errors import ReceivePortError
 from .log import log
+from .model import Config
 from .reconcile import desired, matches, policy_for
 from .registers import (
     PIN,

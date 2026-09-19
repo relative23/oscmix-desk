@@ -271,7 +271,7 @@ def test_a_dump_emits_pinned_options_and_comments_out_remembered_ones():
     answer comes from the same column rather than from a rule inside the
     writer.
     """
-    from oscmix_desk.config import ChannelSetting, Config
+    from oscmix_desk.model import ChannelSetting, Config
     from oscmix_desk.reconcile import render_config
 
     config = Config(device_name="Fireface UCX II", channels=[
@@ -295,7 +295,7 @@ def test_a_dumped_remembered_value_is_still_shown():
     Omitting remembered options would make a channel with a hand-set
     fader look like a channel with no state at all.
     """
-    from oscmix_desk.config import ChannelSetting, Config
+    from oscmix_desk.model import ChannelSetting, Config
     from oscmix_desk.reconcile import render_config
 
     text = render_config(Config(device_name="Fireface UCX II", channels=[
@@ -311,7 +311,8 @@ def test_a_dumped_config_round_trips_through_the_parser(tmp_path):
     value rendered in a format the parser rejects, turns a dump into a
     file that fails at the next boot -- and the person finds out then.
     """
-    from oscmix_desk.config import ChannelSetting, Config, load_config
+    from oscmix_desk.config import load_config
+    from oscmix_desk.model import ChannelSetting, Config
     from oscmix_desk.reconcile import render_config
 
     config = Config(device_name="Fireface UCX II", channels=[

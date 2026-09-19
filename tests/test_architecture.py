@@ -46,15 +46,17 @@ ALLOWED_IMPORTS = {
     # errors is itself a leaf, so no direction in the graph changes.
     "discovery": {"errors", "log"},
     # log is a leaf: one named logger, configured by the CLI entry point
-    # before load_config runs. config gained it for the unknown-section
-    # warning of ADR 0006 -- a warning has to reach the journal, and
-    # returning it up the call chain would be a second error channel
-    # beside ConfigError for no benefit.
+    # before load_config runs. The section parsers have it for the
+    # unknown-section warning of ADR 0006 -- a warning has to reach the
+    # journal, and returning it up the call chain would be a second error
+    # channel beside ConfigError for no benefit. The loader itself logs
+    # nothing.
     # registers and devices are near-leaves like constants: the shape of
     # a register row, and the rows. devices sits on registers, since a
     # table is made of rows, and everything that asks which device a
     # config names reads devices.
-    "config": {"constants", "devices", "errors", "log", "registers"},
+    "config": {"constants", "devices", "errors", "model", "registers",
+               "sections"},
     # link_messages/mix_messages moved down into reconcile: they are
     # pure message shapes, and keeping them here made reconcile sit
     # above routing while routing wanted to call it -- a cycle.
@@ -62,11 +64,10 @@ ALLOWED_IMPORTS = {
     # receive port that cannot be bound from one that is held (ADR 0025),
     # and the leaf is where that exception lives -- imported from there,
     # because `__init__` is the only module that re-exports.
-    "routing": {"backend", "config", "constants", "errors", "log",
-                "reconcile"},
-    "verify": {"backend", "config", "constants", "devices", "errors", "log",
+    "routing": {"backend", "constants", "errors", "log", "model", "reconcile"},
+    "verify": {"backend", "constants", "devices", "errors", "log", "model",
                "reconcile", "registers", "routing"},
-    "pipewire": {"config", "errors"},
+    "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "log"},
     # `profiles` since 0.6.3: a reload has to apply the same desk a
     # start does, and "the active profile, else routing.conf" is
@@ -75,9 +76,9 @@ ALLOWED_IMPORTS = {
     # `locking` since 0.7.0: the unit takes the device lock itself, around
     # its apply and around every reconcile, and the lock is a module of
     # its own now rather than a part of profiles.
-    "session": {"config", "constants", "discovery", "errors", "locking",
-                "log", "notify", "process", "profiles", "reconcile",
-                "routing", "verify"},
+    "session": {"constants", "discovery", "errors", "locking", "log", "model",
+                "notices", "notify", "paths", "process", "profiles",
+                "reconcile", "routing", "verify"},
     # `discovery` since 0.6.2: the snapshot header names the device's
     # serial and firmware, which are the leaf's to answer. A leaf with no
     # imports of its own, already below session; cli reading it changes
@@ -85,9 +86,9 @@ ALLOWED_IMPORTS = {
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
-    "cli": {"backend", "config", "constants", "devices", "discovery",
-            "errors", "log", "outcome", "pipewire", "process", "profiles",
-            "reconcile", "session"},
+    "cli": {"backend", "config", "constants", "devices", "discovery", "errors",
+            "log", "model", "notices", "outcome", "paths", "pipewire",
+            "process", "profiles", "reconcile", "session"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
@@ -99,16 +100,26 @@ ALLOWED_IMPORTS = {
     # process.socket_owner (ADR 0024). process imports nothing above
     # discovery, so no cycle.
     "profiles": {"backend", "config", "constants", "devices", "discovery",
-                 "errors", "locking", "log", "marker", "outcome", "process",
-                 "routing", "verify"},
+                 "errors", "locking", "log", "marker", "model", "notices",
+                 "outcome", "paths", "process", "routing", "verify"},
     # The three things a switch is made of besides its order, split out of
     # profiles in 0.7.0. Each is a near-leaf: the lock knows its wait and
     # the journal, the marker knows what a profile name is, and an outcome
     # is a value that imports nothing.
     "locking": {"constants", "log"},
-    "marker": {"config", "errors", "log"},
+    "marker": {"errors", "log", "paths"},
     "outcome": set(),
     "launcher": {"constants", "discovery"},
+    # What config.py was until 0.7.0, by what each part is. `model` is the
+    # desk as data and what nearly everything reads -- the reconciler, the
+    # router, the verifier and the sink generator stopped depending on
+    # the parser the day it moved out. `paths` is where a desk is looked
+    # for, `sections` the parsers the register table drives, `notices`
+    # what there is to say about a desk; `config` is the loader on top.
+    "model": {"constants", "registers"},
+    "paths": {"errors"},
+    "sections": {"devices", "errors", "log", "model", "registers"},
+    "notices": {"devices", "log", "model"},
     # A leaf: the shape of a row and of a device, and the questions asked
     # of a table somebody hands it.
     "registers": set(),
@@ -126,11 +137,11 @@ ALLOWED_IMPORTS = {
     # Pure: config + the message shapes + the register table. No
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.
-    "reconcile": {"config", "constants", "devices", "registers"},
+    "reconcile": {"constants", "devices", "model", "registers"},
     "__init__": {"config", "constants", "discovery", "errors", "launcher",
-                 "locking", "log", "marker", "notify", "osc", "outcome",
-                 "pipewire", "process", "profiles", "reconcile", "registers",
-                 "routing", "session", "verify"},
+                 "locking", "log", "marker", "model", "notify", "osc",
+                 "outcome", "paths", "pipewire", "process", "profiles",
+                 "reconcile", "registers", "routing", "session", "verify"},
 
 }
 

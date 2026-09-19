@@ -29,14 +29,14 @@ SERVICE = SERVICE_UNIT
 log = logging.getLogger("oscmix-launch")
 
 
-#: The last place a desk is looked for; config.SYSTEM_CONFIG, kept in
+#: The last place a desk is looked for; paths.SYSTEM_CONFIG, kept in
 #: step by a test like the rest of the search order below, and
 #: overridable the same way.
 SYSTEM_CONFIG = Path("/etc/oscmix/routing.conf")
 
 
 def config_file() -> Optional[Path]:
-    """The routing.conf a start would read: config.discover_config_path's
+    """The routing.conf a start would read: paths.discover_config_path's
     rule, repeated here because the launcher imports no config module.
 
     OSCMIX_CONFIG alone when it is set, existing or not -- the backend
@@ -119,7 +119,7 @@ def _active_profile_port(config_path: Path, port: int) -> int:
         name = marker.read_text(encoding="utf-8").strip()
     except (OSError, UnicodeDecodeError):
         return port
-    # The same rule as config.profile_path, kept in step by a test.
+    # The same rule as paths.profile_path, kept in step by a test.
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name):
         return port
     profile = config_path.with_name("profiles") / ("%s.conf" % name)
