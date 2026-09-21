@@ -2,10 +2,27 @@
 
 ## Unreleased
 
-0.7.0 in progress. The first step, alone and with no change in
-behaviour: modules a person can read.
+0.7.0 release candidate. Module boundaries, explicit write outcomes and
+configuration invariants, followed by installation and hardware qualification.
 
 ### Fixed
+
+- **A pidfd is followed by another identity check.** The PID could be
+  recycled before the handle was opened. The port holder, process and
+  supervising session are now checked after opening it; a changed target
+  is left alone. Regression cases cover a replaced program, lost socket
+  and newly supervising session.
+- **Frozen config policies cannot be mutated through a dict alias.** The
+  config copies its policy mapping and exposes it read-only.
+- **An interrupted installation can be completed by rerunning it.** The
+  package is staged before the service stops, installers for one home
+  are serialised, and activation retains the previous package until the
+  installation succeeds. Tests cover a failed copy, SIGKILL between
+  renames and the real 0.6.11 → 0.7.0 → 0.6.11 transition in both layouts.
+  This does not make the whole installation atomic. See
+  [upgrade and recovery](docs/UPGRADING.md).
+- **Unit verification fails when its verifier fails.** A systemd-analyze
+  failure without the unit's filename used to produce a false pass.
 
 - **A switch whose write gives out part of the way says how far it
   came.** A third outside review asked what a switch reports when the
@@ -46,6 +63,13 @@ behaviour: modules a person can read.
   review.
 
 ### Changed
+
+- A reproducible source archive, SHA-256 manifest and GitHub build
+  attestation workflow accompany the installer. Verification includes
+  the source commit and pinned backend. This is not a binary package.
+- The coverage ratchet rises from 96% to 97%. Hardware and support
+  descriptions distinguish confirmed, skipped and unverifiable state,
+  and local UDP reachability from user authentication.
 
 - **A profile that names another machine is refused. A file that loaded
   in 0.6.x now does not.** A profile is the desk, not the machine (ADR

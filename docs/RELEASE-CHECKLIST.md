@@ -5,9 +5,10 @@ none of them had a defined place in a release, so `make verify-hardware`
 existed, its verdict arithmetic was under test, and no measured artifact
 had ever been attached to anything.
 
-This is the list that closes that. Nothing here is a new gate; it is the
-existing gates, plus the rule that their output has to be *in* the
-release rather than merely producible.
+This is the list that closes that. 0.7.0 adds the operational checks from
+the [readiness review](reviews/0.7.0-readiness.md): actual upgrade and
+rollback, interrupted installation and a verifiable source bundle. Gate
+results belong in the release rather than merely being producible.
 
 The ordering matters in one place only: the hardware measurement comes
 after the upstream pin is final, because it is evidence about a
@@ -30,6 +31,10 @@ particular binary (ADR 0008).
 ## 2. The automated gates, on this exact revision
 
 - [ ] `make check` -- lint, `mypy --strict`, vulture, the suite.
+- [ ] Python 3.9–3.14 all pass with the property-test dependencies
+      present. Record environmental skips and investigate failures before
+      counting a retry. The install transition tests require the actual
+      0.6.11 commit; use a full checkout, as CI does.
 - [ ] `make coverage` -- must pass the ratchet in `pyproject.toml`
       **and** be re-read: if the measured number is more than a point
       above the gate, raise the gate now rather than next release.
@@ -51,6 +56,16 @@ particular binary (ADR 0008).
       time).
 - [ ] The scheduled soak has run green on this revision, or run it by
       hand: `make soak SOAK_CYCLES=200`.
+- [ ] Repeat `tests/test_faults.py`, `tests/test_apply_routing.py` and
+      `tests/test_verify.py` fifteen times, matching the scheduled fault
+      soak. Record durations for the full gates and any retries.
+- [ ] Record the device/writer review against the candidate: two simulated
+      identical devices, backend replacement during lock wait, concurrent
+      CLI writers, refused start and interrupted phase writes. Existing
+      tests provide these cases; only add tests for uncovered findings.
+      A refusal sends nothing; partial sends, kernel submission and
+      hardware confirmation remain distinct. Two real interfaces are
+      still outside the measured hardware scope.
 - [ ] CI is green on `main` at this commit, including the
       `build-oscmix` job -- that is what proves the pinned SHA still
       resolves and still compiles.
@@ -80,14 +95,16 @@ one that found all three defects in 0.1.3.
       there, and the 0.2.0 release run got three convincing FAILs that
       way with nothing wrong at all. The tool now *skips* (77) rather
       than failing in that case, and records the sink in the artifact.
-- [ ] The artifact's `sink_channels` reads `["FL", "FR"]`. If it does
-      not, the measurement is not one.
+- [ ] The artifact's `sink_channels` maps every used sink to
+      `["FL", "FR"]`. Otherwise the measurement is not one.
 - [ ] The artifact's `firmware` names the USB revision and the DSP
       version (`/hardware/dspvers`). Compare both with the previous
       release's artifact: if either moved, the device is not the one the
       earlier measurements describe, and every "the device does X" this
       release carries forward has to be re-measured rather than kept.
-      The sweep artifact and the recorded dump carry the same field.
+      New sweep artifacts and recorded dumps must carry the same field.
+      The retained 2026-08-27 fixtures predate it; state that provenance
+      gap explicitly, and never backfill it from a newer observation.
 - [ ] `hardware-evidence.json` is attached to the release.
 - [ ] `complete` is **true** and `unmeasured` is empty. A five-route
       config used to produce a three-route artifact -- the tool played
@@ -120,6 +137,13 @@ one that found all three defects in 0.1.3.
       --dry-run` from the installed tree. The 0.2.0 release moved the
       runtime from `lib/` to `src/` and rewrote that path in three
       places; nothing ran the installer end to end at the time.
+- [ ] The real 0.6.11 → candidate → 0.6.11 tests pass in rootless and
+      redirected system-file layouts. Config, profiles and marker survive;
+      installed entry points and module inventory match the selected
+      version. Failed staging and an interrupted activation recover by
+      rerunning the installer, with the service stopped during replacement.
+- [ ] [Upgrade instructions](UPGRADING.md) describe the config/API changes,
+      full backup and software rollback limits for this version.
 - [ ] `systemctl --user daemon-reload && systemctl --user start
       oscmix.service` reaches `READY=1`, and the user running it is in the
       group `audio`: since 0.6.9 the lock directory `/run/oscmix-desk` is
@@ -168,6 +192,29 @@ one that found all three defects in 0.1.3.
   - the coverage percentage,
   - whether the hardware evidence is attached, and against which device
     serial.
+  - the date, backend pin and firmware (or explicit historical gap) of
+    each hardware artifact; the tested desk commit and gate durations;
+  - measured UCX II support, simulated multi-device cases, the unsupported
+    802 backend and unverifiable playback writes.
+
+## 7. The installation artifact
+
+- [ ] `scripts/build-release.py` builds twice from the selected commit
+      with identical archive and manifest bytes. The archive's extracted
+      installer tests pass. This measures source archive reproducibility,
+      not C binary reproducibility.
+- [ ] The release workflow attaches the source archive,
+      `release-manifest.json`, `SHA256SUMS` and `attestation.jsonl` to the
+      release; its version agrees with the tag. Hardware evidence is
+      attached separately and named in the release notes.
+- [ ] Follow [the verification recipe](RELEASE-ARTIFACTS.md) as a user:
+      authenticate the checksum manifest for the expected repository,
+      workflow and tag, then verify its artifact digests. Tampering with
+      a local copy must fail. A branch workflow or local checksum file
+      alone does not satisfy the published-tag attestation gate.
+- [ ] Installation instructions name the released tag. A build
+      attestation for this project does not authenticate upstream's
+      unsigned history.
 
 ---
 

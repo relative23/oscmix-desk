@@ -130,18 +130,21 @@ coverage 97%.
 ### Planned: 0.7.0
 
 Decided, and recorded so that none of it is found twice. No new surface:
-nothing is added to what a `routing.conf` can declare.
+nothing is added to what a `routing.conf` can declare. The structural
+work below is implemented on the 0.7.0 branch; that is not yet a released
+or fully qualified 0.7.0. The remaining release work is listed under
+[Release readiness](#release-readiness-for-070).
 
 1. **Files a person can read, first and alone.** *Done, with no change
    in behaviour.* Six source modules were over 600 lines, up to 1038;
-   none is now, the largest being `verify` at 576. Split at seams that
+   none is now, the largest being `verify` at 595. Split at seams that
    were there: `devices` out of `registers`; `locking`, `marker` and
    `outcome` out of `profiles`, which keeps the order of a switch;
    `model`, `paths`, `sections` and `notices` out of `config`; `dump`
    out of `reconcile`; `reload` out of `session`; `reads` out of `cli`.
    The test files follow their subjects instead of the order the
    reviews arrived in -- the largest was 1869 lines, the largest now is
-   the subprocess integration suite at 632 -- and this file and the
+   the subprocess integration suite at 634 -- and this file and the
    changelog keep what is ahead and what changed lately, with the rest
    in `docs/history/`. Alone, because the suite isolates itself by
    patching module attributes and a moved function silently unhooks a
@@ -182,10 +185,11 @@ nothing is added to what a `routing.conf` can declare.
    backend, which also ends a busy loop nobody had seen (ADR 0025,
    amended); the oracle builds its own messages and both sides are held
    to literals. One finding was already fixed at the release it
-   reviewed (the reconciler's stale module note). *Still ahead, and last
-   on purpose:* the package root exports 77 names, most of them
-   internals; the supported surface is declared once the types below
-   have changed the names it would list, so that it is touched once.
+   reviewed (the reconciler's stale module note). *Also done, after the
+   type changes:* the package root exports 38 supported names, down
+   from 78; the architecture test holds that set. Internal names remain
+   available from their modules. Migration notes must cover the removed
+   root imports along with the other compatibility changes below.
 7. **Smaller, each with its reason.** *Done:* a stale backend is never
    signalled by its number -- without a pidfd the cleanup refuses and
    the start exits 2; a dry run prints its plan without the interface; a
@@ -213,6 +217,122 @@ for phases and write reasons, a result type for the barrier, a frozen
 changes public names and is 0.7.0. Its packaging proposal is declined
 as a requirement: ADR 0004 stands, and on the target platform `pip
 install --user` into the system Python is refused (PEP 668).
+
+#### Release readiness for 0.7.0
+
+The [assessment checked on 2026-09-21](reviews/0.7.0-readiness.md)
+supports the concern about operational maturity, with corrections:
+versioned releases and evidence attachments already exist, the module
+split is done, and validation before writing does not make a hardware
+apply atomic. Its numerical ratings are opinions, not release gates.
+
+The work below closes the gap between the implemented branch and a
+release someone can install, upgrade and recover. **P0 blocks the
+release candidate; P1 blocks the final release.** Each item needs its
+named evidence before it is marked done. These are additions to the
+[release checklist](RELEASE-CHECKLIST.md), to be incorporated there as
+they are implemented; the unchecked items are plans, not new claims
+about what already ships.
+
+- [x] **P0 -- Qualify the device and writer invariants together.**
+  Review start, switch, restore and reload against one resolved
+  interface, one device lock and validation for the effective device.
+  Reuse the existing identity, lock, lifecycle and partial-write tests;
+  add a regression only where the review finds an uncovered case.
+  Acceptance: record the candidate commit and test results for two
+  simulated identical devices, a backend replaced during a lock wait,
+  concurrent CLI writers, a refused start and a write interrupted
+  between phases. Nothing reaches the other device; a refusal sends
+  nothing; partial sends and unverifiable state stay distinct from
+  confirmation. Readiness must retain its documented clean-no-op and
+  asynchronous-verification meanings. Close any new defect before
+  proceeding; two physical interfaces remain unmeasured.
+  Completed against `86fb4e4`: existing device identity, startup,
+  concurrent process, reload and partial-write tests, plus regressions
+  for PID reuse before pidfd acquisition and mutable policy aliases.
+
+- [x] **P0 -- Exercise the actual version transition and recovery.**
+  Extend `tests/test_install_sh.py` from reinstalling one version to
+  installing `v0.6.11`, upgrading to the candidate and returning to
+  `v0.6.11`, with system commands stubbed and all paths isolated.
+  Acceptance: custom config, profiles and the active marker survive;
+  stale modules cannot be imported; the installed entry points resolve
+  the intended version; service stop/restart order and recovery from
+  an interrupted or failed install are checked. Test both the rootless
+  layout and the system-file layout through stubs. Publish the tested
+  upgrade/rollback steps, including a backup of the whole installation
+  and config, the new profile-machine restriction, effective-device
+  validation, frozen `Config`, enums and changed root imports. Software
+  rollback restores files and the selected version; it cannot undo
+  audio already emitted or guarantee a hardware rollback.
+  Implemented in `86fb4e4`: actual previous-release upgrade/rollback,
+  failed staging and SIGKILL during activation. The
+  [migration guide](UPGRADING.md) describes the tested recovery.
+
+- [ ] **P1 -- Publish a verifiable source installation bundle.**
+  Keep `install.sh` and the standard-library runtime (ADR 0004).
+  Produce a versioned archive from the release commit containing the
+  installer and its runtime, unit, udev and resume files; attach it,
+  a checksum manifest and the release's hardware evidence to the
+  GitHub release. Authenticate the manifest with a documented project
+  signature or build attestation, including how users verify its
+  identity. Acceptance: two clean archive builds from the same commit
+  have the same digest; installation from the extracted archive passes
+  the installer checks; changing an artifact fails verification. Record
+  the desk commit and upstream SHA alongside the artifact digests.
+  This measures source-archive reproducibility, not reproducibility of
+  locally compiled C binaries. Signing our release does not authenticate
+  unsigned upstream history.
+
+- [x] **P1 -- Make the evidence and support limits agree everywhere.**
+  Align README, security model and release checklist with the recorded
+  results: 2322 dump paths, 1888 confirmed sweep entries and 14 skipped
+  entries; playback writes remain unverifiable. The historical sweep
+  and dump predate the firmware field. Document that carry-over
+  explicitly, require firmware on new recordings, and apply the existing
+  remeasurement rules when pin, firmware or model changes; never fill
+  missing historical metadata from a newer observation. Acceptance:
+  release notes identify each artifact's date, backend revision and
+  firmware or stated provenance gap. The support description separates
+  measured UCX II behaviour from simulated multi-device cases and the
+  802 channel map, which the pinned backend cannot operate. Security
+  text distinguishes loopback reachability from user authentication,
+  cooperative locks from raw OSC writers, and readable `48v` from
+  settings the config is allowed to write. Keep a short hardware-report
+  recipe with the device, firmware, pin and evidence needed for another
+  model; no new model is promised for 0.7.0.
+  README, security model, checklist and the
+  [evidence guide](HARDWARE-EVIDENCE.md) now state these limits. Fresh
+  [0.7.0 hardware recordings](evidence/0.7.0/) include firmware and
+  candidate provenance; historical fixtures are kept unchanged.
+
+- [ ] **P1 -- Close qualification on the final candidate.**
+  Run the existing release checklist on the final revision: Python
+  matrix, coverage ratchet, five repeats, a fresh mutation run, the
+  200-cycle soak and hardware evidence. The 0.6.11 measurements and the
+  post-split mutation baseline are not results for the final 0.7.0 tree.
+  Record job durations and any retries beside their results; retain
+  nightly/release mutation scheduling, and investigate failures before
+  counting a retry as evidence. Acceptance: every required gate names
+  the candidate revision, limitations are in its release notes and
+  installation instructions select a released tag. Additional QA
+  machinery needs a demonstrated missing check or measured cost saving.
+
+Order: qualify the runtime invariants, exercise migration/recovery,
+finish the bundle and evidence documentation, then qualify the final
+candidate. A fix during qualification reruns the affected checks and
+invalidates any evidence it changes. A smaller source file alone does
+not close a correctness finding.
+
+**Not added to 0.7.0:** PyPI or distro packages, reproducible C binary
+packages, additional hardware models, another backend, a GUI,
+continuous reconciliation or an apply journal. The existing non-goals
+and declined proposals stay so. Distro packaging is a possible later
+step, using the tested install/upgrade contract once a target
+distribution and a maintainer for it are identified. Low star counts
+are not a reason to add features or weaken gates; adoption and
+long-term field reliability cannot be manufactured by a release
+checklist.
 
 ## Decisions that are free now and expensive later
 
