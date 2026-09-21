@@ -257,6 +257,8 @@ jobs:
       # against. install.sh carries the SHA.
       - name: Build the pinned upstream revision
         run: |
+          # Match the literal shell parameter expression in install.sh.
+          # shellcheck disable=SC2016
           ref=$(sed -n 's/^OSCMIX_REF="\${OSCMIX_REF:-\(.*\)}"$/\1/p' install.sh)
           test -n "$ref" || { echo "no pinned OSCMIX_REF in install.sh"; exit 1; }
           echo "pinned upstream ref: $ref"

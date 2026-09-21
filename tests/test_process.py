@@ -227,6 +227,36 @@ def test_a_process_that_exited_needs_no_signal(process_mod, monkeypatch):
     assert killed == []
 
 
+@pytest.mark.parametrize(("error", "accepted"), [
+    (PermissionError(1, "signal denied"), False),
+    (AttributeError("pidfd_send_signal unavailable"), False),
+    (ProcessLookupError(3, "already gone"), True),
+])
+def test_a_handle_does_not_mean_its_signal_was_accepted(
+        process_mod, monkeypatch, caplog, error, accepted):
+    """An open pidfd can still be unsignallable under a syscall policy.
+
+    Reporting that as success lets startup continue with the old backend
+    still holding the port. Only an already exited process needs no signal.
+    """
+    closed, killed = [], []
+
+    def refuse(fd, sig):
+        assert (fd, sig) == (999, signal.SIGTERM)
+        raise error
+
+    monkeypatch.setattr(process_mod.os, "pidfd_open", lambda pid: 999, raising=False)
+    monkeypatch.setattr(process_mod.signal, "pidfd_send_signal", refuse, raising=False)
+    monkeypatch.setattr(process_mod.os, "close", closed.append)
+    monkeypatch.setattr(process_mod.os, "kill", lambda pid, sig: killed.append(pid))
+    assert process_mod._terminate(4321, lambda: True) is accepted
+    assert closed == [999]
+    assert killed == []
+    if not accepted:
+        assert "pid 4321" in caplog.text
+        assert str(error) in caplog.text
+
+
 class Child:
     """A backend that ignores SIGTERM for a while, then exits."""
 
