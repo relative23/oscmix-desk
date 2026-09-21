@@ -1,0 +1,236 @@
+{
+  "measured": "2026-09-22T01:23:00",
+  "device": "Fireface UCX II",
+  "sinks": {
+    "1/2": "oscmix.krk-monitors",
+    "5/6": "oscmix.main",
+    "7/8": "oscmix.phones"
+  },
+  "sink_channels": {
+    "oscmix.krk-monitors": [
+      "FL",
+      "FR"
+    ],
+    "oscmix.main": [
+      "FL",
+      "FR"
+    ],
+    "oscmix.phones": [
+      "FL",
+      "FR"
+    ]
+  },
+  "serial": "24216011",
+  "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "firmware": {
+    "usb_revision": "3.01",
+    "dsp_version": 36
+  },
+  "min_response_db": 12.0,
+  "min_above_background_db": 12.0,
+  "tone": {
+    "hz": 1000.0,
+    "seconds": 5.0,
+    "amplitude": 0.3
+  },
+  "routes": [
+    {
+      "route": "krk-monitors",
+      "outputs": [
+        1,
+        2
+      ],
+      "output_state": {
+        "output_1": {
+          "volume": 0.0,
+          "mute": 0
+        },
+        "output_2": {
+          "volume": 0.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_1": {
+          "left_tone": -54.41749572753906,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_2": {
+          "left_tone": -144.0,
+          "right_tone": -54.41749572753906,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 89.6,
+      "response_right_db": 89.6,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        1,
+        2
+      ],
+      "sink": "oscmix.krk-monitors",
+      "stereo": false
+    },
+    {
+      "route": "main",
+      "outputs": [
+        5,
+        6
+      ],
+      "output_state": {
+        "output_5": {
+          "volume": -42.0,
+          "mute": 0
+        },
+        "output_6": {
+          "volume": -42.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_5": {
+          "left_tone": -76.35678100585938,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_6": {
+          "left_tone": -106.87812805175781,
+          "right_tone": -76.56343841552734,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 67.6,
+      "response_right_db": 30.3,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        5,
+        6
+      ],
+      "sink": "oscmix.main",
+      "stereo": false
+    },
+    {
+      "route": "main-to-krk",
+      "outputs": [
+        1,
+        2
+      ],
+      "output_state": {
+        "output_1": {
+          "volume": 0.0,
+          "mute": 0
+        },
+        "output_2": {
+          "volume": 0.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_1": {
+          "left_tone": -34.34186553955078,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_2": {
+          "left_tone": -64.71430206298828,
+          "right_tone": -34.54729080200195,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 109.7,
+      "response_right_db": 30.2,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        5,
+        6
+      ],
+      "sink": "oscmix.main",
+      "stereo": false
+    },
+    {
+      "route": "main-to-phones",
+      "outputs": [
+        7,
+        8
+      ],
+      "output_state": {
+        "output_7": {
+          "volume": 0.0,
+          "mute": 0
+        },
+        "output_8": {
+          "volume": 0.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_7": {
+          "left_tone": -34.54729080200195,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_8": {
+          "left_tone": -144.0,
+          "right_tone": -34.54729080200195,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 109.5,
+      "response_right_db": 109.5,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        5,
+        6
+      ],
+      "sink": "oscmix.main",
+      "stereo": false
+    },
+    {
+      "route": "phones",
+      "outputs": [
+        7,
+        8
+      ],
+      "output_state": {
+        "output_7": {
+          "volume": 0.0,
+          "mute": 0
+        },
+        "output_8": {
+          "volume": 0.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_7": {
+          "left_tone": -34.54729080200195,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_8": {
+          "left_tone": -144.0,
+          "right_tone": -34.54729080200195,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 109.5,
+      "response_right_db": 109.5,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        7,
+        8
+      ],
+      "sink": "oscmix.phones",
+      "stereo": false
+    }
+  ],
+  "unmeasured": [],
+  "ok": true,
+  "complete": true
+}
