@@ -324,3 +324,23 @@ def test_a_config_is_not_changed_after_it_is_read(session_mod, tmp_path):
     assert (kept.osc_port, kept.serial) == (9000, "24216011")
     assert [r.name for r in kept.routes] == ["y"]
     assert (fresh.osc_port, fresh.serial) == (7222, ""), "nor is this one"
+
+
+def test_a_frozen_desk_cannot_change_ownership_through_its_policy_table(tmp_path):
+    """Changing a nested dict must not turn a remembered fader into a pin."""
+    from dataclasses import replace
+
+    from oscmix_desk import Config, load_config
+    from oscmix_desk.registers import Policy
+
+    config = load_config(routing_conf(
+        tmp_path, "[pin]\noutput.volume = remember\n"))
+    with pytest.raises(TypeError):
+        config.policies[("output", "volume")] = Policy.PIN
+
+    policies = {("output", "volume"): Policy.REMEMBER}
+    constructed = Config(policies=policies)
+    pinned_serial = replace(constructed, serial="24216011")
+    policies[("output", "volume")] = Policy.PIN
+    assert constructed.policies[("output", "volume")] is Policy.REMEMBER
+    assert pinned_serial.policies[("output", "volume")] is Policy.REMEMBER

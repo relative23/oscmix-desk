@@ -129,7 +129,7 @@ def test_a_backend_of_a_live_session_is_not_stale(tmp_path, monkeypatch):
     monkeypatch.setattr(process.os, "getuid", os.getuid)
     killed = []
     monkeypatch.setattr(process, "_terminate",
-                        lambda pid: killed.append(pid) or True)
+                        lambda pid, still_stale: killed.append(pid) or True)
     assert cleanup(port, proc) == 39000
     assert killed == []
 
@@ -141,7 +141,7 @@ def test_a_backend_whose_session_is_gone_is_stale(tmp_path, monkeypatch):
     monkeypatch.setattr(process, "STALE_BACKEND_SETTLE", 0.0)
     killed = []
     monkeypatch.setattr(process, "_terminate",
-                        lambda pid: killed.append(pid) or True)
+                        lambda pid, still_stale: killed.append(pid) or True)
     assert cleanup(port, proc) is None
     assert killed == [int(holder.name)]
     # Reparented to init after its session died: stale as well.
@@ -327,7 +327,7 @@ def test_a_session_named_past_the_interpreter_or_under_init_is_not_one(
     monkeypatch.setattr(process, "STALE_BACKEND_SETTLE", 0.0)
     killed = []
     monkeypatch.setattr(process, "_terminate",
-                        lambda pid: killed.append(pid) or True)
+                        lambda pid, still_stale: killed.append(pid) or True)
     assert cleanup(port, proc) is None
     assert killed == [int(holder.name)]
     init = proc / "1"

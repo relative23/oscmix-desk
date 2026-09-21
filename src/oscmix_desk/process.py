@@ -234,7 +234,7 @@ def _cleanup_stale_backend(port: int, proc_root: Path) -> Optional[int]:
         return session
     log.warning("UDP port %d already in use; terminating the stale oscmix "
                 "that holds it (pid %d)", port, owner)
-    if not _terminate(owner):
+    if not _terminate(owner, lambda: _still_stale(owner, port, proc_root)):
         # Not signalled, so the port stays held and a backend started now
         # could not bind it. Exit 2 like a session in the way: a restart
         # cannot change what this machine lets a process do.
@@ -264,13 +264,21 @@ def _supervising_session(entry: Path, proc_root: Path) -> Optional[int]:
     return int(parent) if "oscmix-session" in names else None
 
 
-def _terminate(pid: int) -> bool:
+def _still_stale(pid: int, port: int, proc_root: Path) -> bool:
+    """Recheck the target after a pidfd pins its process identity."""
+    return (socket_owner(port, proc_root) == pid
+            and pid in find_stale_backends(proc_root)
+            and _supervising_session(proc_root / str(pid), proc_root) is None)
+
+
+def _terminate(pid: int, still_stale: Callable[[], bool]) -> bool:
     """SIGTERM to a process that was identified a moment ago, by pidfd.
 
     Between scanning /proc and signalling, that process may exit and the
-    kernel may hand its number to something else; a plain os.kill would
-    then signal a stranger. A pidfd refers to the process itself rather
-    than to the number, so the race cannot be lost -- signalling a dead
+    kernel may hand its number to something else. Revalidate the holder,
+    user, executable and absence of a supervising session AFTER opening
+    the pidfd: opening it after a /proc scan alone still leaves a reuse
+    window. From then on the fd pins that process; signalling a dead
     one fails instead of hitting its successor.
 
     True when it was signalled or is already gone. False when no pidfd
@@ -290,6 +298,10 @@ def _terminate(pid: int) -> bool:
                   "has that number by now -- stop it by hand", pid, exc)
         return False
     try:
+        if not still_stale():
+            log.error("pid %d no longer identifies the stale backend; "
+                      "nothing was signalled", pid)
+            return False
         signal.pidfd_send_signal(fd, signal.SIGTERM)
     except ProcessLookupError:
         pass                        # exited between the two calls

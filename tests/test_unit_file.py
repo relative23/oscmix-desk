@@ -387,3 +387,24 @@ def test_the_verify_script_tolerates_an_uninstalled_execstart(tmp_path):
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 1
     assert "NoNewPrivilegs" in result.stderr
+
+
+def test_the_verify_script_cannot_pass_when_systemd_cannot_run(tmp_path):
+    """A failed manager setup reports no unit name, but proves nothing."""
+    import os
+    import subprocess
+
+    from support import repo_file
+
+    fake = tmp_path / "systemd-analyze"
+    fake.write_text("#!/bin/sh\n"
+                    "echo 'Failed to create manager: Operation not permitted' >&2\n"
+                    "exit 1\n")
+    fake.chmod(0o755)
+    env = dict(os.environ, PATH=str(tmp_path) + os.pathsep + os.environ["PATH"])
+    result = subprocess.run(
+        ["sh", str(repo_file("scripts", "verify-unit.sh"))],
+        env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 1
+    assert "Failed to create manager" in result.stderr
+    assert "is clean" not in result.stdout

@@ -9,6 +9,7 @@ else reads them.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Mapping, NamedTuple, Optional, Tuple, Union
 
 from .constants import (
@@ -187,3 +188,10 @@ class Config:
     #: What the command line put in place of the file's settings. No file
     #: this process reads again has a say in these, exactly as at its start.
     overrides: CommandLine = field(default_factory=CommandLine)
+
+    def __post_init__(self) -> None:
+        # A frozen dataclass alone leaves a dict writable. Copy first:
+        # retaining the caller's mapping would let it change which values
+        # a later reconcile pins, after this desk was validated.
+        object.__setattr__(self, "policies",
+                           MappingProxyType(dict(self.policies)))
