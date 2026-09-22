@@ -236,9 +236,12 @@ def test_unlinked_route_states_the_unlink_explicitly(session_mod):
                      ("/mix/6/playback/1", 100)]
 
 
-def test_mono_route_needs_no_linking(session_mod):
+def test_mono_route_unlinks_both_pairs(session_mod):
     route = make_route(session_mod, playback=(1,), output=(9,))
-    assert reconcile.link_messages(route) == []
+    assert reconcile.link_messages(route) == [
+        ("/playback/1/stereo", "i", (0,)),
+        ("/output/9/stereo", "i", (0,)),
+    ]
     assert [p for p, _t, _a in reconcile.mix_messages(route)] == \
         ["/mix/9/playback/1"]
 
@@ -383,10 +386,11 @@ def test_output_link_state_carries_the_expected_value(session_mod):
         make_route(session_mod, name="b", playback=(7, 8), output=(7, 8)),
         make_route(session_mod, name="c", playback=(1, 2), output=(1, 2),
                    stereo=False),
-        make_route(session_mod, name="mono", playback=(1,), output=(9,)),
+        make_route(session_mod, name="mono", playback=(11,), output=(9,)),
     ]
     assert routing.output_link_state(routes) == {"/output/7/stereo": 1,
-                                                     "/output/1/stereo": 0}
+                                                "/output/1/stereo": 0,
+                                                "/output/9/stereo": 0}
 
 
 def test_unlinked_route_compensates_the_halved_gain(session_mod):
@@ -485,5 +489,4 @@ def test_the_barrier_waits_for_the_echo_on_the_port_it_was_given(
     assert asked == [((routing_mod.output_link_state(config.routes), 9123,
                        routing_mod.LINK_ECHO_TIMEOUT),
                       {"backend": silent_backend})]
-
 

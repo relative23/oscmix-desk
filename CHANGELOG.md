@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Unlink both source and destination pairs before applying a mono route.
+  Previously, an existing stereo link could fold a single-channel address
+  onto its odd neighbour and change additional mix cells. Reject conflicting
+  mono/stereo requirements across routes before the first write.
 - Preserve digital mute on unlinked stereo routes: `level = -65` no
   longer receives the positive gain compensation that left a small
   nonzero signal. Reject unlinked-pair boosts above 0 dB instead of
@@ -27,6 +31,9 @@
   restore after SIGINT/SIGTERM, and report unrestored state even when the
   evidence file cannot be saved. Evidence identifies the comparison code
   and rejects source changes during measurement.
+- Restore and check the whole readable state between sweep passes. A lost
+  partner-channel restoration can no longer become the next probe's
+  baseline; unresolved drift stops probing before another group is written.
 - Match both `HOME` and `XDG_CONFIG_HOME` before installer service actions.
   Refuse installation through a mismatched or unidentified user manager,
   including its root integration steps. An uninstall using another config

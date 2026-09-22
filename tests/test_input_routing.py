@@ -115,9 +115,12 @@ def test_an_input_pair_writes_the_input_matrix(session_mod):
     ]
 
 
-def test_a_mono_input_route_needs_no_link(session_mod):
+def test_a_mono_input_route_unlinks_source_and_destination(session_mod):
     route = session_mod.Route(name="m", input=(3,), output=(9,))
-    assert reconcile.link_messages(route) == []
+    assert reconcile.link_messages(route) == [
+        ("/input/3/stereo", "i", (0,)),
+        ("/output/9/stereo", "i", (0,)),
+    ]
     assert [p for p, _t, _a in reconcile.mix_messages(route)] == \
         ["/mix/9/input/3"]
 

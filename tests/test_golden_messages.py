@@ -70,7 +70,12 @@ source = Internal
 
 #: Every pair is linked before any mix is written, once each: outputs 5/6
 #: are fed by two routes and linked once. An unlinked output pair says so
-#: (0); its source pair is linked all the same. A mono route links nothing.
+#: (0); its source pair is linked all the same. Mono addresses require
+#: unlinked pairs; otherwise the pinned C backend also changes neighbours.
+MONO_LINKS = [
+    ("/playback/15/stereo", "i", (0,)),
+    ("/output/15/stereo", "i", (0,)),
+]
 LINKS = [
     ("/playback/1/stereo", "i", (1,)),
     ("/output/5/stereo", "i", (1,)),
@@ -79,6 +84,7 @@ LINKS = [
     ("/output/9/stereo", "i", (0,)),
     ("/playback/11/stereo", "i", (1,)),
     ("/output/13/stereo", "i", (0,)),
+    *MONO_LINKS,
     ("/input/1/stereo", "i", (1,)),
     ("/output/1/stereo", "i", (1,)),
 ]
@@ -136,12 +142,15 @@ def test_the_oracle_is_held_to_the_same_literals(config):
     honest: it repeats a shared link where the plan does not, and is
     otherwise these registers too."""
     walked = oracle.routing_plan(config.routes)
+    # The historical oracle predates 0.7.1's deliberate mono unlinks.
     # Outputs 5/6 linked a second time, for the second route that feeds them.
-    _same(walked.links, LINKS[:3] + [LINKS[1]] + LINKS[3:])
+    historical_links = [message for message in LINKS if message not in MONO_LINKS]
+    _same(walked.links, historical_links[:3] + [LINKS[1]] + historical_links[3:])
     _same(walked.mix, MIX)
 
 
 def test_the_runtime_s_message_shapes_are_these_too(config):
     for route in config.routes:
+        added = MONO_LINKS if route.name == 'mono' else []
         _same(reconcile.link_messages(route) + reconcile.mix_messages(route),
-              oracle.route_messages(route))
+              added + oracle.route_messages(route))

@@ -40,7 +40,8 @@ once.
 Every dropped repeat must carry the value already in the plan, and a
 second test holds that: two routes sharing an output pair must agree on
 its link state (``_check_link_agreement`` rejects configs where they do
-not), and ``/playback/N/stereo`` is always 1.
+not). Mono routes require unlinked source and output pairs too; otherwise
+the backend folds their addresses onto a neighbouring channel.
 
 This module used to carry the note that nothing in the runtime wrote
 through it yet. It was true for one release and then not, and it stayed
@@ -96,14 +97,8 @@ def link_messages(route: Route) -> List[Message]:
     address the same pair register and the second overwrites the first,
     which leaves one half of the pair completely silent.
     """
-    if len(route.output) != 2:
-        return []
-    kind, source = route.source
-    return [
-        ("/%s/%d/stereo" % (kind, source[0]), "i", (1,)),
-        ("/output/%d/stereo" % route.output[0], "i",
-         (1 if route.stereo else 0,)),
-    ]
+    return [("/%s/%d/stereo" % (kind, channel), "i", (int(linked),))
+            for kind, channel, linked in route.link_requirements]
 
 
 def mix_messages(route: Route) -> List[Message]:

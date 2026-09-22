@@ -19,6 +19,13 @@ Unlinked stereo pairs (`stereo = false`) reject `level > 0`, which was
 previously silently clamped to unity. Use a level in -65..0 dB. The mute
 value -65 now bypasses compensation and writes digital zero on both sides.
 
+Mono routes now explicitly unlink their source and output pairs. Previously
+their effect depended on existing stereo flags and could include a
+neighbouring channel. A mono source cannot share its pair with a stereo
+source route. A mono output can share an output pair only with other routes
+that also require it unlinked. Conflicting declarations are now refused;
+choose consistent mono/pair routes before applying the config.
+
 Config exports now preserve sub-tenth quantities and identify omitted
 state. A partial or unusually panned matrix may produce fewer routes
 with explicit warnings. Merge into your original config; an omitted

@@ -148,7 +148,10 @@ compensation uses the available positive gain headroom. `level = -65`
 writes digital mute on both sides.
 
 Apply with `systemctl --user restart oscmix.service`. Mono routes
-(`playback = 3` / `output = 7`) work too. PipeWire and PulseAudio send
+(`playback = 3` / `output = 7`) work too. They explicitly unlink both
+source and output pairs so only the named channels are addressed. Routes
+requiring contradictory link states for the same pair are rejected before
+anything is written. PipeWire and PulseAudio send
 stereo audio to playback channels 1/2, so most setups only route 1/2 to
 wherever their speakers are connected.
 

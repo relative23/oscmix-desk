@@ -418,7 +418,7 @@ def _check_device_channels(config: _Draft) -> None:
 
 
 def _check_link_agreement(routes: Sequence[Route]) -> None:
-    """Reject routes that disagree on whether an output pair is linked.
+    """Reject routes that disagree on a source or output pair's link.
 
     The stereo link is a property of the hardware pair, not of a route, so
     two routes feeding the same outputs cannot each have their own. Left
@@ -427,19 +427,18 @@ def _check_link_agreement(routes: Sequence[Route]) -> None:
     a linked pair fed by the hard-panned pair of an unlinked route folds
     both messages onto the same register, and one output goes dead.
     """
-    seen: Dict[Tuple[int, ...], Route] = {}
+    seen: Dict[Tuple[str, int], Tuple[Route, bool]] = {}
     for route in routes:
-        if len(route.output) != 2:
-            continue
-        previous = seen.get(route.output)
-        if previous is None:
-            seen[route.output] = route
-        elif previous.stereo != route.stereo:
-            raise ConfigError(
-                "[route:%s] and [route:%s] both drive output pair %s but "
-                "disagree on 'stereo' (%s vs %s); the link is a property of "
-                "the hardware pair, so it has to be the same for both"
-                % (previous.name, route.name,
-                   "/".join(map(str, route.output)),
-                   str(previous.stereo).lower(), str(route.stereo).lower())
-            )
+        for family, channel, linked in route.link_requirements:
+            key = family, channel
+            previous = seen.get(key)
+            if previous is None:
+                seen[key] = route, linked
+            elif previous[1] != linked:
+                raise ConfigError(
+                    "[route:%s] and [route:%s] both use %s pair %d/%d but "
+                    "disagree on 'stereo' (%s vs %s); the link belongs to "
+                    "the pair, and a mono route requires it unlinked"
+                    % (previous[0].name, route.name, family, channel, channel + 1,
+                       str(previous[1]).lower(), str(linked).lower())
+                )

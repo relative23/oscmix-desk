@@ -96,8 +96,9 @@ METHOD = ("Each register is written a different legal value from its own "
           "one addressed. Passes are split by channel parity so a linked "
           "pair is never written against itself, writes are paced because "
           "a burst is dropped, and every register gets three attempts. "
-          "Each pass attempts to restore its direct writes; a final repair "
-          "also checks permitted partner effects. Protected changes are "
+          "Each pass restores its direct writes and repairs permitted "
+          "partner effects before the next pass; unresolved drift stops "
+          "probing. A final repair also checks the full state. Protected changes are "
           "reported, never written back. Judgement uses parameter encoding, "
           "not a tolerance derived from the probe step. 'clamped' is the "
           "legacy name for a changed-but-wrong report, not a diagnosis.")
@@ -441,7 +442,7 @@ def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
     say = note or (lambda _text: None)
     findings = []
     pending = []
-    reference = dict(state)
+    reference = state
     for path, register in targets:
         if not permitted(path, register):
             findings.append(skipped(path, "write not permitted: ADR 0016"))
@@ -465,6 +466,14 @@ def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
             say("step %d, %s: %d written, %d answered"
                  % (step + 1, "odd" if odd else "even", len(group),
                     len(settled)))
+            # A lost partner restoration must not become the next
+            # pass's baseline. Measured on input 9/10: 0.4 remained on
+            # channel 10, so its next probe rounded back to the original
+            # zero and was mistaken for an ignored write. It could also
+            # falsely confirm an already-present partner change.
+            state, unrestored = repair(device, listener, reference, state)
+            if unrestored:
+                raise RuntimeError("pass restoration incomplete: %s" % ", ".join(unrestored))
             pending = [(p, r) for p, r in pending if p not in set(settled)]
     known = dict(targets)
     for path in [p for p, _r in targets]:
