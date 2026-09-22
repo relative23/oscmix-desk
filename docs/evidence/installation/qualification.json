@@ -1235,5 +1235,15 @@
       "tests/package_migration.py": "81c6d223507c956042504bceb4e801df4c48961d15ad0484b365ffa8e29abd25"
     }
   },
-  "hardware_evidence": "The merged core at abd8594 was measured on the physical UCX II separately. The container and VM results here remain software-only."
+  "hardware_evidence": "The merged core at abd8594 was measured on the physical UCX II separately. The container and VM results here remain software-only.",
+  "publication_pipeline": {
+    "commit": "626f72a9f40e2f08087dd72747bb84677d398fbb",
+    "run": "https://github.com/relative23/oscmix-desk/actions/runs/35785269862",
+    "conclusion": "success",
+    "mode": "development candidate; no GitHub release created",
+    "source_targets_passed": 7,
+    "native_targets_passed": 4,
+    "collection": "The source job downloaded all four native artifacts, checked their producer SHA256SUMS and included them in a single attested candidate asset set.",
+    "qualification": "Reusable workflow call exercised on GitHub; package, installer and runtime content unchanged from the local matrix."
+  }
 }
