@@ -166,9 +166,9 @@ there is a concrete consumer; it is not the main installation project.
 
 Detailed plan: [UCX II sample-rate qualification](plans/high-sample-rates.md).
 
-- [ ] Establish a fresh 44.1/48 kHz baseline with firmware, backend pin,
+- [x] Establish a fresh 44.1/48 kHz baseline with firmware, backend pin,
   actual device rate, USB alternate setting, ALSA map and optical mode.
-- [ ] Measure 88.2/96 and 176.4/192 kHz separately. Distinguish physical
+- [x] Measure 88.2/96 and 176.4/192 kHz separately. Distinguish physical
   ADAT capacity, USB stream channels, playback numbering and OSC register
   addresses; do not halve the whole device's channel count by assumption.
 - [ ] Check valid and unavailable routes, channel links, refresh/read-back,
@@ -178,9 +178,16 @@ Detailed plan: [UCX II sample-rate qualification](plans/high-sample-rates.md).
   add regressions for the actual failure cases and publish a per-mode
   support table. Missing digital equipment means an explicit evidence gap.
 
-Preparation does not change the running interface's rate or generate
-sound. Later acoustic checks must respect the user's quiet setup and
-must not be substituted for missing register read-back.
+**Measured:** [24 USB/ALSA combinations](evidence/0.7.1/sample-rates.md),
+18 passing and six incomplete/failed, with full restoration after every
+attempt and a final five-route PipeWire check. The 20-channel mode has
+only 16 active playback channels at Double Speed; Quad Speed passes with
+8/14 channels and fails with 16/20. Register addresses remain present.
+0.7.1 does not automatically select or validate the live USB/rate mode.
+Rate-aware refusal, separate high-rate link/mute cases, external digital
+connections and clock-source transitions remain outside this measurement.
+The explicit support table is complete for the combinations actually
+tested; it does not close those remaining H1 checks.
 
 ### G1 -- Desktop companion proposal
 

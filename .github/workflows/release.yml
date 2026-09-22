@@ -1,12 +1,18 @@
 name: Release artifacts
 
 on:
+  push:
+    tags: ['v*']
   release:
     types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   source:
@@ -20,6 +26,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
@@ -35,13 +42,40 @@ jobs:
           python -m pytest -q build/extracted/oscmix-desk-*/tests/test_install_sh.py
           cd build/release
           sha256sum --check SHA256SUMS
-      - name: Require the published tag to match the artifact
-        if: github.event_name == 'release'
+      - name: Require the release tag and include its measured evidence
+        if: github.event_name == 'release' || github.ref_type == 'tag'
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
-          python -c 'import json, os; m=json.load(open("build/release/release-manifest.json")); assert os.environ["RELEASE_TAG"] == "v" + m["version"]'
-      - name: Attest the archive and its manifest
+          python - <<'PY'
+          import hashlib, json, os, shutil
+          from pathlib import Path
+          output = Path('build/release')
+          manifest = json.loads((output / 'release-manifest.json').read_text())
+          assert os.environ['RELEASE_TAG'] == 'v' + manifest['version']
+          evidence = Path('docs/evidence') / manifest['version']
+          assert (evidence / 'release-notes.md').is_file(), 'Release notes are required before tagging'
+          hardware = json.loads((evidence / 'hardware-evidence.json').read_text())
+          assert hardware['ok'] is True and hardware['complete'] is True and not hardware['unmeasured']
+          sweep = json.loads((evidence / 'write-sweep-ucx2.json').read_text())
+          assert sweep['schema'] == 2 and sweep['error'] is None and not sweep['not_restored']
+          assert sweep['findings'] and len(sweep['findings']) == sweep['probed']
+          assert all(row['verdict'] in ('confirmed', 'skipped') for row in sweep['findings'])
+          runtime = {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                     for path in Path('src/oscmix_desk').glob('*.py')}
+          for record in (hardware, sweep):
+              assert record['oscmix_revision'] == manifest['oscmix_revision']
+              assert record['desk_source']['runtime_sha256'] == runtime, 'Hardware evidence predates this runtime'
+          for source in sorted(evidence.glob('*.json')):
+              shutil.copy2(source, output / source.name)
+          shutil.copy2(evidence / 'release-notes.md', output / 'release-notes.md')
+          (output / 'SHA256SUMS').write_text(''.join(
+              hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name + '\n'
+              for path in sorted(output.iterdir()) if path.name != 'SHA256SUMS'))
+          PY
+          cd build/release
+          sha256sum --check SHA256SUMS
+      - name: Attest the archive, manifest and attached evidence
         id: provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
@@ -55,7 +89,22 @@ jobs:
           name: release-source
           path: build/release/
           retention-days: 30
-      - name: Attach to the published release
+      - name: Create or resume a draft for the pushed tag
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft > build/is-draft; then
+            test "$(cat build/is-draft)" = true || { echo 'Refusing to replace a published release'; exit 1; }
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft \
+              --title "$RELEASE_TAG" --notes-file build/release/release-notes.md
+          fi
+          gh release upload "$RELEASE_TAG" build/release/* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest \
+            --notes-file build/release/release-notes.md
+      - name: Attach to a release published through the UI
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}

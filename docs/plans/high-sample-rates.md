@@ -1,8 +1,12 @@
 # UCX II qualification above 48 kHz
 
-**Status: measurement plan, 2026-09-22; not new hardware evidence.**
-Priority H1 in the [roadmap](../ROADMAP.md). Preparation does not change
-the current device, play test signals or alter the backend pin.
+**Status: 24 USB/ALSA modes measured on 2026-09-22.** See the
+[results and limits](../evidence/0.7.1/sample-rates.md): 18 combinations
+pass, six are incomplete or fail. All return to the exact readable
+baseline and the known desk. This closes the first measurement stage of
+H1 in the [roadmap](../ROADMAP.md), not physical digital-port qualification
+or a rate-aware planner. The protocol below remains the contract for
+extending those measurements; the backend pin is unchanged.
 
 ## Question to answer
 
@@ -26,9 +30,9 @@ digital channels and oscmix addresses must be measured independently.
 
 | Rate group | Rates to record | Physical ADAT capacity expected from the manual | USB/ALSA/register map |
 | --- | --- | --- | --- |
-| Single Speed baseline | 44.1 / 48 kHz | 8 | Record afresh; compare existing evidence |
-| Double Speed | 88.2 / 96 kHz | 4 | Unqualified; measure alternate settings and numbering |
-| Quad Speed | 176.4 / 192 kHz | 2 | Unqualified; measure alternate settings and numbering |
+| Single Speed baseline | 44.1 / 48 kHz | 8 | All four USB modes pass their playback/mixer checks |
+| Double Speed | 88.2 / 96 kHz | 4 | 8/14/16 pass; 20 exposes four silent playback channels |
+| Quad Speed | 176.4 / 192 kHz | 2 | 8/14 pass; 16/20 fail timing or time out |
 
 Optical SPDIF mode needs its own entry; it is not an ADAT measurement.
 Missing optical/digital loopback equipment limits the conclusions and
