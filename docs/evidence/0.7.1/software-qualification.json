@@ -3,7 +3,7 @@
   "candidate": "0.7.1",
   "status": "offline qualification passed; hardware and publication pending",
   "base_commit": "cd7e5218430ce5901dd0f4d8a51a6fd6b659a049",
-  "source_state": "unreleased candidate worktree; identify tested files by SHA256, not by the base commit alone",
+  "source_state": "The tested runtime, tools and tests match candidate_code_commit by SHA256; measurements were collected in the worktree before committing.",
   "host": {
     "distribution": "Ubuntu 26.04.1 LTS",
     "architecture": "x86_64",
@@ -404,5 +404,6 @@
     "final-offline/extra-python39.log": "fe0c93d88eb22a6ab2d62fadc049be9c9154edbd2602e1f586c24c23a9a1cd60",
     "check-boundaries.log": "364e9ebc15129c06fbe3deb53834fd112ceeac539dca5b01007ff04c5e3f0210",
     "numeric-boundary-mutation.log": "2fa26211150ef5022b18acaeef54aa4486dc4b95955098a64dba7d39f95add66"
-  }
+  },
+  "candidate_code_commit": "b271758f5e1ad820e1624d7d3b4fccd634c1fac0"
 }

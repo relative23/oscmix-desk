@@ -2,8 +2,9 @@
 
 **Unreleased. Physical qualification remains open.** The
 [software record](software-qualification.json) identifies the tested
-candidate files by SHA-256 and records the offline gates. Its base commit
-alone does not identify the candidate's uncommitted changes.
+candidate files by SHA-256 and records the offline gates. The tested
+runtime, tools and tests match candidate commit `b271758`. Results were
+collected before that commit; its file hashes have been checked afterward.
 
 The final check passes 1,653 tests with two empty-parameter skips. The
 core passes Python 3.9–3.14, five repetitions, a 200-cycle soak and fifteen
