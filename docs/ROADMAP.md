@@ -1,8 +1,9 @@
 # Roadmap
 
-Current plan after **0.7.0**, updated 2026-09-22. The next proposed patch
-is **0.7.1: numerical correctness, faithful export and safe measurement
-restoration**. The desktop companion is deferred by the maintainer.
+Current plan for **0.7.1**, updated 2026-09-23. The correctness patch has
+completed software and UCX II qualification, including corrected mono
+routing, numeric comparisons, export and measurement restoration.
+The desktop companion is deferred by the maintainer.
 The product target is a
 **Fireface UCX II across Linux distributions**, with and without a desktop.
 This is a portability goal, not a claim that every distribution, init
@@ -29,13 +30,14 @@ The full checklist and old proposals are preserved in the
 [archived roadmap](history/roadmap-through-0.7.0.md#release-readiness-for-070);
 completed work is no longer an open backlog item.
 
-## 0.7.1 in progress: correctness and evidence
+## 0.7.1: correctness and evidence
 
-This is work in progress, not a release announcement. The reproducible
-parser, comparison, export and measurement defects are corrected in the
-candidate. The architecture, config syntax, backend pin and supported
-hardware scope are preserved. Release qualification remains open until
-the corrected method has fresh evidence from the physical UCX II.
+**Qualification complete.** Parser, comparison, export, mono-route and
+measurement defects are corrected. The backend pin and supported device
+remain unchanged. The [evidence](evidence/0.7.1/) records fresh software
+gates, hardware measurements, physical disconnect/reconnect and restoration
+of readable state and the known playback routes. Publication is tracked by the
+[versioned release](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.1).
 
 - [x] Enforce explicit write permission during **every sweep restoration**,
   including retries and partner effects. Report protected or missing
@@ -61,10 +63,16 @@ the corrected method has fresh evidence from the physical UCX II.
 - [x] Add independent semantic regressions for these gaps. Retain existing
   receive-port, identity, writer-lock, partial-write and persistence tests;
   those mechanisms already exist and do not need replacement designs.
-- [ ] Qualify the candidate under the [release checklist](RELEASE-CHECKLIST.md),
-  including a real **0.7.0 → 0.7.1 → 0.7.0** installation transition.
-  Take fresh relevant hardware evidence only after the comparison and
-  restore fixes, with an agreed quiet setup and recorded restoration.
+- [x] Qualify the candidate under the [release checklist](RELEASE-CHECKLIST.md),
+  including the actual **0.6.11/0.7.0 → 0.7.1 → original-version**
+  installation transitions. Fresh hardware measurements follow the
+  corrections, with monitoring physically off and readable state restored.
+  The physical off/on test also passes.
+- [x] Correct mono routing from existing linked pairs and reject conflicting
+  mono/stereo declarations. Measure input and playback paths separately.
+- [x] Document the [feature surface](FEATURE-SURFACE.md) of config, backend
+  and existing GTK controls. Source bindings do not qualify every control
+  or physical DSP effect.
 
 The old sweep confirms that reports changed under its historical method;
 its tolerance can accept an incorrect value and confirmed findings omit
@@ -80,8 +88,10 @@ duration specification. Snapshot precision is corrected; existing delay
 values remain in backend units pending an independent signal measurement.
 See [numeric contracts](NUMERIC-CONTRACT.md).
 
-The [candidate software record](evidence/0.7.1/) records the offline gates
-and their scope. It is not fresh hardware evidence or a release approval.
+The [software record](evidence/0.7.1/software-qualification.json) records
+the final gates, file hashes and durations. Separate hardware artifacts
+identify what was measured; publication attestations authenticate released
+files, not a test performed by a GitHub runner.
 
 **Release boundary:** no new GUI, packaging platform, full pan/matrix
 syntax, global/nested policy-override syntax, continuous polling or OSC
@@ -148,7 +158,9 @@ migration and return, SIGHUP with an explicit PIN, and a maintenance fence
 that survives a reboot and clears after successful package repair. These
 are software tests with a simulated backend, not hardware qualification
 on seven distributions. The reusable CI path passes all eleven source/native
-targets and creates release attestations only on a published release event.
+targets. A successful GitHub rehearsal also builds and collects native
+assets. The prepared tag workflow waits for those jobs before publication;
+branch-run attestations are development evidence, not a released package.
 The actual 0.7.0 → native package → 0.7.0 file migration also passes on each
 native target with a simulated user bus; Ubuntu has the additional real
 user-manager VM check. Package publication remains before I2 closes.
@@ -223,7 +235,6 @@ this first scope; users can open the existing upstream mixer.
 | Open work | When to take it on |
 | --- | --- |
 | Two physical interfaces and per-device service instances | Two devices are available to measure discovery, concurrent lifecycle and isolation; simulated identity tests alone do not qualify it. |
-| A whole-stack feature matrix | Audit the pinned backend, declarative config and actual upstream GUI separately. Publish observed capabilities without an unverified product-comparison scorecard. |
 | Targeted register queries / better read-back | Upstream support or a reproducible backend change exists; measure it before moving the pin. Playback-matrix read-back is still unavailable. |
 | Additional init-system adapters and immutable-system packages | The common/manual installation contract is proven and a maintained target environment is available. These stay part of the Linux portability goal. |
 | A Flatpak GUI | Host integration can be exposed through a small, tested local interface; a sandboxed frontend alone does not install the host backend and udev rules. |

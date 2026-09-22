@@ -1,6 +1,6 @@
 # Upgrade and recovery
 
-## Preparing for 0.7.1
+## Upgrading to 0.7.1
 
 The source installer requires the systemd user manager's `HOME` and
 effective `XDG_CONFIG_HOME` to match the invocation before changing files
@@ -10,7 +10,7 @@ both configurations share `~/.local/lib/oscmix-desk`, so deleting it could
 remove the running desk's code. A missing manager identity is no longer
 permission to enable or restart its service.
 
-0.7.1 is not yet released. Its stricter numeric validation rejects
+0.7.1 has stricter numeric validation. It rejects
 nonfinite values, fractional integer settings and wire/backend overflow
 that older versions accepted. Correct these values before applying a
 desk; run `--dry-run` on each config/profile first.
@@ -39,8 +39,11 @@ it; see [numeric contracts and evidence limits](NUMERIC-CONTRACT.md).
 Retain old evidence as historical data. Older snapshots rounded to one
 decimal place and cannot establish that smaller values were unchanged.
 
-The release qualification must exercise 0.7.0 → 0.7.1 → 0.7.0; this
-document is not evidence that the transition has already passed.
+The actual 0.6.11 and 0.7.0 → 0.7.1 → original-version installation
+transitions pass in isolated rootless and redirected system-file layouts.
+They check installed entry points/module inventory and preservation of
+config, profiles and the marker; see [qualification](evidence/0.7.1/).
+These software checks do not establish a hardware rollback.
 
 ## The 0.7.0 transition
 
@@ -134,16 +137,16 @@ later in installation can leave files from two versions; rerunning the
 installer completes them. This is recovery, not an atomic transaction
 across the package, binaries, systemd and system files.
 
-To return to 0.6.11, stop the service and run **that release's installer**.
-It removes stale modules when replacing the package. Restore backed-up
-config/profiles/marker if you changed them for 0.7.0, and restore any
+To return to 0.7.0 or 0.6.11, stop the service and run **that release's
+installer**. It removes stale modules when replacing the package. Restore
+backed-up config/profiles/marker if you changed them, and restore any
 custom unit drop-ins or generated PipeWire files you changed. Reload
 systemd, start the service and check version, journal and `--diff` again.
 If system integration changed, reinstall those files from the selected
-release too; the same backend pin is used by 0.6.11 and 0.7.0.
+release too; 0.6.11, 0.7.0 and 0.7.1 use the same backend pin.
 
-The automated transition test installs the actual 0.6.11 commit, upgrades
-to this tree and installs 0.6.11 again in isolated homes. Both the rootless
+The automated transition tests install the actual 0.6.11 and 0.7.0 commits,
+upgrade to this tree and reinstall the respective original in isolated homes. Both the rootless
 layout and redirected system-file layout are exercised, including module
 inventory, installed entry points, custom config, profiles and marker.
 Software rollback restores files and a version. It cannot undo audio
