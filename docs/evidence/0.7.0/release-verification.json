@@ -1,0 +1,66 @@
+{
+  "release": "https://github.com/relative23/oscmix-desk/releases/tag/v0.7.0",
+  "tag": "v0.7.0",
+  "desk_commit": "25eb57dff7a305b0e6452010ce15992c90ad144b",
+  "published_at": "2026-09-22T02:04:27Z",
+  "verified_at": "2026-09-22T02:08:29+00:00",
+  "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "main_ci": {
+    "url": "https://github.com/relative23/oscmix-desk/actions/runs/35677140929",
+    "head_sha": "25eb57dff7a305b0e6452010ce15992c90ad144b",
+    "conclusion": "success",
+    "successful_jobs": 10,
+    "scheduled_mutation_job": "skipped; fresh local mutation evidence is in quality/mutation-baseline.json"
+  },
+  "release_workflow": {
+    "url": "https://github.com/relative23/oscmix-desk/actions/runs/35678114670",
+    "head_sha": "25eb57dff7a305b0e6452010ce15992c90ad144b",
+    "conclusion": "success"
+  },
+  "local_check": {
+    "passed": 1517,
+    "skipped": 2,
+    "seconds": 118.12
+  },
+  "extracted_installer_tests": {
+    "passed": 23,
+    "seconds": 6.15
+  },
+  "archive_sha256": "157a8ca3be57e65c98c32b64bbe0dd6a12677158add58a465e6a053418b4fb09",
+  "downloaded_assets": {
+    "attestation.jsonl": "sha256:bad04b765fbc503797a83ca2ecc5d2759809c709ec5dbb8062c0a4e841517e60",
+    "hardware-evidence-powercycle.json": "sha256:39b3ddf899c1fb01c38f6d9d3c896bd56f93ea5747ed990693a0a7dcc4a5a970",
+    "hardware-evidence-unlinked.json": "sha256:34db5792e41b9a53a8ec06f939eb8a719695744c1ed23ec6511c709f4d028872",
+    "hardware-evidence.json": "sha256:82a7996fd872f7f671c8793dc22dd8e9e5cf67b92e97eb4b72aa2c9ebacfb73b",
+    "measurement.json": "sha256:610814dea7db0f8d6028985ad5b50a90f6dbb4d3a3c908b664c4d76e8c0827ac",
+    "oscmix-desk-0.7.0.tar.gz": "sha256:157a8ca3be57e65c98c32b64bbe0dd6a12677158add58a465e6a053418b4fb09",
+    "power-cycle.json": "sha256:011737addaa447d892f7db55b6f7a210d03460890edb5eb26ecd5dc614f9e234",
+    "README.md": "sha256:80e7ddc507afb90347187ebad15f7c4464a5cfd5d09552fc6d59c0f6519fb1b6",
+    "refresh-dump.json": "sha256:f4683e3cb5ba8a9c3cac46713afec578413f5f49bbe15c4d0b431321f9caef0b",
+    "release-manifest.json": "sha256:7bbeb565cc6eb11ccab0e7d0dbd3b491f5569a78b0e004a401d320a1e9eac62d",
+    "SHA256SUMS": "sha256:03ba50ca055482c5d3c1b29af2c45d7258fcf59fc363179f73b1b23c7bc0bf55",
+    "write-sweep-ucx2.json": "sha256:3921b2fac8f30691150d0ba78591c75194392a4e598219d2a56fad9ff267c63f"
+  },
+  "verification": {
+    "github_cli": "2.101.0",
+    "repository": "relative23/oscmix-desk",
+    "signer_workflow": "relative23/oscmix-desk/.github/workflows/release.yml",
+    "source_ref": "refs/tags/v0.7.0",
+    "source_digest": "25eb57dff7a305b0e6452010ce15992c90ad144b",
+    "deny_self_hosted_runners": true,
+    "attestation_verified": true,
+    "sha256sum_check_passed": true,
+    "all_downloads_match_github_asset_digests": true,
+    "source_archive_matches_two_local_builds": true,
+    "hardware_attachments_match_attested_archive": true,
+    "altered_archive_rejected_by_checksum_check": true,
+    "main_branch_attestation_rejected_for_release_tag": true
+  },
+  "qualification_provenance": {
+    "fully_qualified_candidate": "0ba7fa458da456f60c9f3cf97c4021e5c9b51334",
+    "release_runtime_and_test_trees_match_candidate": true,
+    "hardware_runtime_commit": "86fb4e45d6ca342fbd7744b5312239f8a9103994",
+    "hardware_manifest": "measurement.json",
+    "note": "Release-only documentation changes followed the qualified candidate. The published tag passed main CI and local make check. Hardware, mutation and soak records name the revisions actually measured; they were not rerun for documentation changes."
+  }
+}

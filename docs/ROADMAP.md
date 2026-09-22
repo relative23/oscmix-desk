@@ -97,7 +97,7 @@ the desk on the main configuration's machine. Installation stages the
 runtime, serialises installers and supports recovery after interruption;
 the actual 0.6.11 upgrade and rollback are tested in both layouts.
 
-The qualified candidate passes 1517 tests, Python 3.9–3.14, five full
+The release passes 1517 tests, Python 3.9–3.14, five full
 repeats and the restart and fault soaks. Coverage is 97.683%; the fresh
 mutation score is 0.799662 on 7701 mutants. UCX II USB 3.01 / DSP 36
 measurements include all five routes, 1888 confirmed sweep entries and a
@@ -286,7 +286,7 @@ about what already ships.
   failed staging and SIGKILL during activation. The
   [migration guide](UPGRADING.md) describes the tested recovery.
 
-- [ ] **P1 -- Publish a verifiable source installation bundle.**
+- [x] **P1 -- Publish a verifiable source installation bundle.**
   Keep `install.sh` and the standard-library runtime (ADR 0004).
   Produce a versioned archive from the release commit containing the
   installer and its runtime, unit, udev and resume files; attach it,
@@ -303,8 +303,14 @@ about what already ships.
   Implemented in `86fb4e4`: the Git-object source builder, checksum
   manifest and release-attestation workflow. Two local builds agree and
   the extracted install tests pass; [verification instructions](RELEASE-ARTIFACTS.md)
-  are available. Publication and verification against the eventual tag
-  remain open. A local checksum is not a GitHub attestation.
+  are available. Published in
+  [v0.7.0](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.0):
+  the downloaded checksum manifest passes GitHub attestation verification
+  for this repository, the release workflow, `refs/tags/v0.7.0` and
+  commit `25eb57d`. All artifact digests match, the published archive
+  equals both local builds, and an altered copy fails verification.
+  The [publication record](evidence/0.7.0/release-verification.json)
+  records the workflow and checks.
 
 - [x] **P1 -- Make the evidence and support limits agree everywhere.**
   Align README, security model and release checklist with the recorded
@@ -328,7 +334,7 @@ about what already ships.
   [0.7.0 hardware recordings](evidence/0.7.0/) include firmware and
   candidate provenance; historical fixtures are kept unchanged.
 
-- [ ] **P1 -- Close qualification on the final candidate.**
+- [x] **P1 -- Close qualification on the final candidate.**
   Run the existing release checklist on the final revision: Python
   matrix, coverage ratchet, five repeats, a fresh mutation run, the
   200-cycle soak and hardware evidence. The 0.6.11 measurements and the
@@ -353,9 +359,15 @@ about what already ships.
   run and the targeted recheck. Hardware provenance is in the
   [measurement manifest](evidence/0.7.0/measurement.json), including the
   physical power cycle, automatic hotplug start and quiet five-route
-  repeat. CI passes on `0ba7fa4`; runtime behaviour is that measured at
-  `86fb4e4`. Final release closure still requires the selected tag,
-  CI on `main`, and published, verified artifacts.
+  repeat. The published tag names `25eb57d`, which passes all ten
+  applicable CI jobs on `main` and local `make check`; its runtime and
+  test trees match the qualified candidate `0ba7fa4`. Runtime behaviour
+  is that measured at `86fb4e4`. Source artifacts and all eight hardware
+  evidence files are published, and the downloaded tag attestation,
+  checksums and hardware digests have been verified. Installation
+  instructions select `v0.7.0`. The
+  [publication record](evidence/0.7.0/release-verification.json) closes
+  the remaining gates without relabelling earlier measurements.
 
 Order: qualify the runtime invariants, exercise migration/recovery,
 finish the bundle and evidence documentation, then qualify the final
