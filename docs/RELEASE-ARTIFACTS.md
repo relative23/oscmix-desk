@@ -15,6 +15,9 @@ an audio test performed by a GitHub runner.
 From 0.7.1, pushing the annotated release tag also starts this workflow.
 After the archive checks, it requires the version's committed hardware
 evidence and release notes, adds their checksums, and attests the files.
+It also requires the completed software gates to identify the exact
+runtime, tests and tools by file hash, plus a passing physical disconnect
+and reconnect record. Intermediate candidate records cannot qualify a tag.
 It creates a draft, uploads the complete asset set and then publishes it.
 A failed run leaves a draft that can be resumed; an already published
 release is not replaced by the tag path. Creating a release through the
