@@ -78,3 +78,19 @@ Whether the named tri-state (`True`/`False`/`None` from
 `await_link_echo`, `None` from `verify_routing`) becomes a result type.
 It should, together with the other stringly-typed domains the same
 review named; that changes public names and belongs to 0.7.0.
+
+## Amended in 0.7.0
+
+The same distinction on the other side of the bind. `Listener.messages`
+caught `socket.timeout` and every other `OSError` alike and yielded
+nothing, so a port that was bound and then could not be read looked like
+a quiet backend -- and since the error returned at once where a timeout
+waits, every reader spun: measured, 1.3 million reads in half a second,
+for the 8 s of a `--dump-config` or the 10 s of a read-back, ending in
+"no reply from the backend -- is oscmix running?". A timeout is still
+how a wait ends. Any other socket error is a `ReceivePortError` naming
+the port and the cause, which every caller already handles as this
+record decided: the barrier waits blind, the verifier re-establishes the
+mix and fails, a reconcile stands down, a switch is applied and not read
+back, a read exits 1. Found by a third outside review.
+

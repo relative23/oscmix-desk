@@ -15,9 +15,10 @@ starts rather than the work it completes.
 import importlib.util
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 from oscmix_desk import registers as R
+from oscmix_desk.errors import DeviceAmbiguous
 
 
 def load_sweep():
@@ -195,7 +196,7 @@ def test_the_artifact_covers_every_settable_register(sweep):
     """
     import json
 
-    from conftest import repo_file
+    from support import repo_file
 
     artifact = json.loads(
         repo_file("docs", "evidence", "write-sweep-ucx2.json").read_text())
@@ -216,7 +217,7 @@ def test_the_artifact_names_the_device_and_the_pin(sweep):
     """
     import json
 
-    from conftest import repo_file
+    from support import repo_file
 
     artifact = json.loads(
         repo_file("docs", "evidence", "write-sweep-ucx2.json").read_text())
@@ -301,3 +302,31 @@ def test_the_sweep_holds_the_device_lock():
     assert "not\\n                         \"sweeping" in source or \
         "not sweeping" in source.replace("\\n", " ").replace('"', "") or \
         "sweeping" in source, "it says what it did instead"
+
+
+def test_the_sweep_resolves_its_device_and_refuses_two():
+    source = repo_file("scripts", "sweep-writes.py").read_text()
+    assert "resolve_device(" in source
+    assert "except DeviceAmbiguous" in source
+
+def test_the_sweep_refuses_two_boxes_before_it_takes_anything(monkeypatch,
+                                                              capsys):
+    import importlib.util
+    import sys
+
+    spec = importlib.util.spec_from_file_location(
+        "sweep_writes_identity", repo_file("scripts", "sweep-writes.py"))
+    sweep = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sweep)
+
+    def ambiguous(*_args):
+        raise DeviceAmbiguous("2 interfaces match 'Fireface UCX II'")
+
+    taken = []
+    monkeypatch.setattr(sweep, "resolve_device", ambiguous)
+    monkeypatch.setattr(sweep, "take_device_lock",
+                        lambda *a, **k: taken.append(a))
+    monkeypatch.setattr(sys, "argv", ["sweep-writes.py"])
+    assert sweep.main() == 1
+    assert taken == []
+    assert "the sweep supports one interface" in capsys.readouterr().err

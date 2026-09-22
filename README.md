@@ -3,16 +3,18 @@
 [![CI](https://github.com/relative23/oscmix-desk/actions/workflows/ci.yml/badge.svg)](https://github.com/relative23/oscmix-desk/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Your RME Fireface, described in a text file.** Write down what the desk
+**Your RME Fireface UCX II, described in a text file.** Write down what the desk
 should look like -- routing, faders, EQ, dynamics, reverb, the clock -- and
 it is applied every time the interface is plugged in or the machine boots.
-Then `--diff` tells you whether it still looks that way.
+Use profiles for different setups and `--diff` to compare the config with
+the state the device reports. Settings that cannot be read back are shown
+as unverifiable.
 
 It started as an autostart, and it still is one: plug the interface in, the
 backend comes up, the mixer GUI is one click away in the app menu. What it
 grew into is a state layer. **2028 registers are declared**, each with its
-type, its bounds and its verification class, every one of them measured
-against a real UCX II rather than copied from a datasheet.
+type, its bounds and its verification class, checked against recorded
+UCX II dumps and a write sweep. The measurement limits are stated below.
 
 [oscmix] by Michael Forney does the hard part: it speaks the Fireface's
 MIDI SysEx protocol and exposes the hardware mixer over OSC, with a GTK
@@ -25,10 +27,10 @@ makes the desktop integration disappear.
 | `--diff` | what an apply would change, without changing it |
 | `--dump-config` | the desk you have, as the file that reproduces it |
 | `--snapshot` | every register the device reports, for comparing two moments |
-| profiles | named alternatives, switched as a transaction |
+| profiles | named alternatives, switched under one lock with a stated outcome |
 | `[pin]` | which settings the file owns and which the device keeps |
 | udev rule | starts the backend on hotplug, disables Fireface USB autosuspend, and keeps affected ASM4242 host controllers awake |
-| systemd user service | supervises the backend (`Type=notify`: "started" means "audio works") |
+| systemd user service | supervises the backend; reports initial apply and subsequent verification separately |
 | `--pipewire-sinks` | named outputs ("Monitors", "Headphones") in your desktop's sound settings |
 | desktop entry + launcher | "RME Fireface Mixer" in the app menu, with sanity checks and notifications |
 | `install.sh` | builds oscmix at a pinned revision and installs everything per-user |
@@ -41,18 +43,20 @@ a file, and keeps the file and the desk agreeing.*
 
 ## Measured, not asserted
 
-Every claim here was taken off a real device, and the ones that did not
-survive were removed rather than softened. Three defects in 0.1.3 were
+Hardware claims are tied to recordings from a real UCX II. Multi-device
+identity and concurrency are also tested with simulated devices; two
+physical interfaces have not been measured together. Three defects in 0.1.3 were
 invisible at message level and only showed up by playing a tone and reading
 the device's own meters; that set the standard the project has been held to
 since.
 
-- **Every settable register is proven to accept a write**, not assumed
-  to: a sweep writes each of the 1902 a different legal value and
-  confirms the device's own report, with per-register verdicts in
+- **1888 sweep entries confirmed; 14 deliberately skipped.** The sweep
+  covers 1902 settable entries, skips reference-level changes (ADR 0016),
+  and records per-register verdicts in
   [docs/evidence/write-sweep-ucx2.json](docs/evidence/write-sweep-ucx2.json).
-  It found two defects in this project's own register model and one
-  upstream before any user could.
+  Playback matrix writes cannot be verified by this backend. The recorded
+  refresh contains 2322 paths, including 70 streamed paths. See the
+  [evidence and provenance limits](docs/HARDWARE-EVIDENCE.md).
 - Each release attaches a **hardware evidence artifact**: the routes
   measured, the levels, the device serial, the exact oscmix revision
   and, since 0.6.2, the firmware it was taken against -- because a
@@ -60,7 +64,7 @@ since.
   invisible in it.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
-- Twenty-six [decision records](docs/decisions/) carry the reasoning and the
+- Twenty-seven [decision records](docs/decisions/) carry the reasoning and the
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work
@@ -101,10 +105,16 @@ independent of the audio server.
 ## Install
 
 ```sh
-git clone https://github.com/relative23/oscmix-desk
+git clone --branch v0.7.0 https://github.com/relative23/oscmix-desk
 cd oscmix-desk
 ./install.sh
 ```
+
+This selects [release 0.7.0](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.0).
+Read the [migration and rollback instructions](docs/UPGRADING.md) before
+upgrading from 0.6.x. The release also provides a
+[source archive with verification instructions](docs/RELEASE-ARTIFACTS.md).
+Use a released tag or verified archive; `main` can contain unreleased changes.
 
 The installer builds oscmix from upstream, installs everything into
 `~/.local` / `~/.config`, and asks for sudo once -- for the udev rule in
@@ -214,8 +224,9 @@ Leave `[osc]` and `[device]` out of a profile. Those describe the
 machine, not the desk, and are taken from your main config. A dumped
 profile restates them, which is harmless until `routing.conf`'s own
 change -- it then names the old ones. A profile that names *another*
-port or interface still wins in 0.6.x, is told so, and is not applied by
-a running session to its own interface; from 0.7.0 it is refused
+port or interface is refused: a switch to it writes nothing, and one
+that was still active from 0.6.x falls back to `routing.conf` with a
+warning
 ([ADR 0026](docs/decisions/0026-a-profile-is-the-desk-not-the-machine.md)).
 One main config per directory: the profiles and the record of the
 active one belong to the directory.
@@ -381,15 +392,12 @@ More in [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 
 ## Other Fireface models
 
-Every number in this repository was measured on one Fireface UCX II,
-and that is the method rather than a gap in it: upstream oscmix is
-written for the UCX II, with experimental support for the 802, and a
-state layer that claimed more than it had measured would be the kind
-of documentation this project exists to avoid. The register table is
-indexed by device from its first line, so a second model is a data
-change with an evidence artifact, not a rewrite.
+Hardware measurements come from one Fireface UCX II. **The pinned
+backend cannot operate a Fireface 802.** This project's 802 entry is a
+channel map used for validation, without a register model or a support
+claim. Other models require a working backend and measured evidence.
 
-What an 802 gets today: routes, with channel ranges checked against
+What an 802 config gets today: routes, with channel ranges checked against
 upstream's own table; channel, nested and global sections are dropped
 with a warning that names the device and says nothing in them could
 reach it, rather than parsed into nothing. The device name and USB ID
@@ -399,7 +407,8 @@ IDs in `udev/90-rme-fireface.rules`.
 What it would take, with the hardware on the desk: record a dump
 (`scripts/record-dump.py`), declare the rows, run the write sweep
 (`scripts/sweep-writes.py`) and attach one evidence artifact. That is
-the bar `Device.supported` states in the data. Reports welcome.
+the bar `Device.supported` states in the data. Start with the
+[hardware-report recipe](docs/HARDWARE-EVIDENCE.md#reporting-another-device).
 
 ## Development
 

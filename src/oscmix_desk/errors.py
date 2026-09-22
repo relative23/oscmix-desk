@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
 
 class ConfigError(Exception):
     """A problem in routing.conf that the user has to fix."""
@@ -43,3 +45,28 @@ class ReceivePortError(OSError):
     end an apply half-way: the link barrier catches it and waits blind,
     because the links are on the wire by then (ADR 0025).
     """
+
+
+class WriteFailed(OSError):
+    """The wire gave out, and this is how far the write had come.
+
+    ``written`` are the register paths that were handed to the kernel
+    before the failure, in order; ``unwritten`` the ones that were not.
+    Handed to the kernel is all a datagram socket can say -- it is not
+    arrival -- but it is the difference between "nothing happened" and
+    "the desk is somewhere between two configs", which is the one thing a
+    person at that desk needs to know (ADR 0027).
+
+    An OSError, so every handler that already stands down when the
+    backend cannot be reached applies to it unchanged: a start fails and
+    is retried, a verifier and a reconcile log it and stand down. Only a
+    switch reads the two lists, because only a switch has to say what it
+    did.
+    """
+
+    def __init__(self, cause: OSError, written: "Sequence[str]",
+                 unwritten: "Sequence[str]") -> None:
+        super().__init__(cause.errno, cause.strerror or str(cause))
+        self.written = tuple(written)
+        self.unwritten = tuple(unwritten)
+

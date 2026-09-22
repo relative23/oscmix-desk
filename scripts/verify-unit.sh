@@ -36,11 +36,20 @@ BASENAME="$(basename "$UNIT")"
 # matches on their English text. A German runner reports "Datei oder
 # Verzeichnis nicht gefunden" and the exception would stop matching --
 # turning an environmental note back into a failing gate.
-OUTPUT="$(LC_ALL=C systemd-analyze verify --user "$UNIT" 2>&1 || true)"
+VERIFY_STATUS=0
+OUTPUT="$(LC_ALL=C systemd-analyze verify --user "$UNIT" 2>&1)" || VERIFY_STATUS=$?
 
 # Anything naming our unit is a finding: unknown keys, bad values,
 # unresolvable specifiers. Other units on the host are not our problem.
 MINE="$(printf '%s\n' "$OUTPUT" | grep -F "$BASENAME" || true)"
+
+# A manager that could not even start reports no unit name. Filtering
+# that diagnostic used to turn a failed verification into "is clean".
+if [ "$VERIFY_STATUS" -ne 0 ] && [ -z "$MINE" ]; then
+    echo "systemd-analyze could not verify $BASENAME (exit $VERIFY_STATUS):" >&2
+    printf '%s\n' "$OUTPUT" >&2
+    exit 1
+fi
 
 # One exception, and only one. systemd-analyze also resolves ExecStart=
 # and reports the binary as missing when it is not installed -- which is

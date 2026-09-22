@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = PROJECT_ROOT / "src" / "oscmix_desk"
@@ -46,13 +46,17 @@ ALLOWED_IMPORTS = {
     # errors is itself a leaf, so no direction in the graph changes.
     "discovery": {"errors", "log"},
     # log is a leaf: one named logger, configured by the CLI entry point
-    # before load_config runs. config gained it for the unknown-section
-    # warning of ADR 0006 -- a warning has to reach the journal, and
-    # returning it up the call chain would be a second error channel
-    # beside ConfigError for no benefit.
-    # registers is a leaf like constants: pure data about devices,
-    # importing nothing from the package.
-    "config": {"constants", "errors", "log", "registers"},
+    # before load_config runs. The section parsers have it for the
+    # unknown-section warning of ADR 0006 -- a warning has to reach the
+    # journal, and returning it up the call chain would be a second error
+    # channel beside ConfigError for no benefit. The loader itself logs
+    # nothing.
+    # registers and devices are near-leaves like constants: the shape of
+    # a register row, and the rows. devices sits on registers, since a
+    # table is made of rows, and everything that asks which device a
+    # config names reads devices.
+    "config": {"constants", "devices", "errors", "model", "registers",
+               "sections"},
     # link_messages/mix_messages moved down into reconcile: they are
     # pure message shapes, and keeping them here made reconcile sit
     # above routing while routing wanted to call it -- a cycle.
@@ -60,29 +64,42 @@ ALLOWED_IMPORTS = {
     # receive port that cannot be bound from one that is held (ADR 0025),
     # and the leaf is where that exception lives -- imported from there,
     # because `__init__` is the only module that re-exports.
-    "routing": {"backend", "config", "constants", "errors", "log",
-                "reconcile"},
-    "verify": {"backend", "config", "constants", "errors", "log",
-               "reconcile", "registers", "routing"},
-    "pipewire": {"config", "errors"},
+    "routing": {"backend", "constants", "errors", "log", "model", "reconcile"},
+    "verify": {"backend", "constants", "devices", "errors", "log", "model",
+               "osc", "reconcile", "registers", "routing"},
+    "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "log"},
-    # `profiles` since 0.6.3: a reload has to apply the same desk a
-    # start does, and "the active profile, else routing.conf" is
-    # answered in profiles.effective_config. profiles sits above verify
-    # and imports nothing from session, so no cycle.
-    "session": {"config", "constants", "discovery", "errors", "log",
-                "notify", "process", "profiles", "reconcile", "routing",
-                "verify"},
-    # `discovery` since 0.6.2: the snapshot header names the device's
-    # serial and firmware, which are the leaf's to answer. A leaf with no
-    # imports of its own, already below session; cli reading it changes
-    # no direction in the graph.
+    # `locking` since 0.7.0: the unit takes the device lock itself around
+    # its apply and its verifier, and the lock is a module of its own now
+    # rather than a part of profiles. What the desk in effect is, session
+    # asks reload.
+    # `devices` since 0.7.0: a start says when the interface reports
+    # another firmware than the one its register table was recorded on.
+    "session": {"constants", "devices", "discovery", "errors", "locking",
+                "log", "model", "notices", "notify", "process", "reconcile",
+                "reload", "routing", "verify"},
+    # What a running session does with a desk it reads again, split out
+    # of session in 0.7.0: below session, which starts it and hands it
+    # the SIGHUP. `profiles` because a reload has to apply the same desk
+    # a start does, and "the active profile, else routing.conf" is
+    # answered in profiles.effective_config; profiles sits above verify
+    # and imports nothing from here, so no cycle. `locking` for the lock
+    # around every reconcile.
+    "reload": {"constants", "discovery", "errors", "locking", "log", "model",
+               "notices", "notify", "paths", "profiles", "verify"},
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
-    "cli": {"backend", "config", "constants", "discovery", "errors", "log",
-            "pipewire", "process", "profiles", "reconcile", "registers",
+    "cli": {"config", "constants", "errors", "log", "model", "notices",
+            "outcome", "paths", "pipewire", "process", "profiles", "reads",
             "session"},
+    # The three actions that read the device, split out of cli in 0.7.0.
+    # `discovery` since 0.6.2: the snapshot header names the device's
+    # serial and firmware, which are the leaf's to answer. `process` for
+    # whose backend holds the port, `dump` for the device's state as a
+    # config.
+    "reads": {"backend", "constants", "devices", "discovery", "dump", "errors",
+              "log", "model", "osc", "process", "reconcile"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
@@ -93,15 +110,35 @@ ALLOWED_IMPORTS = {
     # the question the start's stale cleanup already asks through
     # process.socket_owner (ADR 0024). process imports nothing above
     # discovery, so no cycle.
-    "profiles": {"backend", "config", "constants", "discovery", "errors",
-                 "log", "process", "registers", "routing", "verify"},
+    "profiles": {"backend", "config", "constants", "devices", "discovery",
+                 "errors", "locking", "log", "marker", "model", "notices",
+                 "outcome", "paths", "process", "routing", "verify"},
+    # The three things a switch is made of besides its order, split out of
+    # profiles in 0.7.0. Each is a near-leaf: the lock knows its wait and
+    # the journal, the marker knows what a profile name is, and an outcome
+    # is a value that imports nothing.
+    "locking": {"constants", "log"},
+    "marker": {"errors", "log", "paths"},
+    "outcome": set(),
     "launcher": {"constants", "discovery"},
-    # constants only, and only for the fader range: the register table
-    # declares the device's bounds, and writing -65.0/6.0 here as well
-    # would be the same fact in two files -- which is how a validator and
-    # a register table come to disagree. constants imports nothing
-    # itself, so the graph stays acyclic.
-    "registers": {"constants"},
+    # What config.py was until 0.7.0, by what each part is. `model` is the
+    # desk as data and what nearly everything reads -- the reconciler, the
+    # router, the verifier and the sink generator stopped depending on
+    # the parser the day it moved out. `paths` is where a desk is looked
+    # for, `sections` the parsers the register table drives, `notices`
+    # what there is to say about a desk; `config` is the loader on top.
+    "model": {"constants", "registers"},
+    "paths": {"errors"},
+    "sections": {"devices", "errors", "log", "model", "registers"},
+    "notices": {"devices", "log", "model"},
+    # A leaf: the shape of a row and of a device, and the questions asked
+    # of a table somebody hands it.
+    "registers": set(),
+    # constants only for the fader range: the register table declares the
+    # device's bounds, and writing -65.0/6.0 here as well would be the
+    # same fact in two files -- which is how a validator and a register
+    # table come to disagree.
+    "devices": {"constants", "registers"},
     # The one place that opens a socket to the device. Its Traits name
     # the upstream behaviour the timing constants work around.
     # `errors` since 0.6.11: a receive port that cannot be bound for a
@@ -111,10 +148,20 @@ ALLOWED_IMPORTS = {
     # Pure: config + the message shapes + the register table. No
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.
-    "reconcile": {"config", "constants", "registers"},
-    "__init__": {"config", "constants", "discovery", "errors", "launcher",
-                 "log", "notify", "osc", "pipewire", "process", "profiles",
-                 "reconcile", "registers", "routing", "session", "verify"},
+    # `osc` since 0.7.0, here and in whatever handles a register's value:
+    # the leaf names what a value on this wire is, so that it is not an
+    # `object` each reader casts past the type checker.
+    "reconcile": {"constants", "devices", "model", "osc", "registers"},
+    # The other direction, split out of reconcile in 0.7.0: what the device
+    # reports, as a config and as its text. As pure as the reconciler,
+    # whose message shapes and policy it reads.
+    "dump": {"constants", "model", "osc", "reconcile", "registers"},
+    # The supported surface and nothing else since 0.7.0: what it imports
+    # is what it re-exports, and the leaves it used to pull in for the
+    # sake of their internals are reached through their own modules.
+    "__init__": {"config", "constants", "errors", "launcher", "marker",
+                 "model", "outcome", "paths", "pipewire", "profiles",
+                 "routing", "session", "verify"},
 
 }
 
@@ -304,8 +351,8 @@ def test_every_public_name_is_exercised_by_some_test(session_mod):
 # --------------------------------------------------------------------------
 
 def _exempt_lines():
-    """(first, last) line of the `no mutate` region in registers.py."""
-    source = (PACKAGE / "registers.py").read_text().splitlines()
+    """(first, last) line of the `no mutate` region in devices.py."""
+    source = (PACKAGE / "devices.py").read_text().splitlines()
     starts = [i for i, line in enumerate(source, 1)
               if line.strip() == "# pragma: no mutate start"]
     ends = [i for i, line in enumerate(source, 1)
@@ -316,9 +363,9 @@ def _exempt_lines():
     return starts[0], ends[0]
 
 
-def _defined_at(name):
-    """The line a top-level name is bound on in registers.py."""
-    for node in ast.walk(parse(PACKAGE / "registers.py")):
+def _defined_at(name, module="devices"):
+    """The line a top-level name is bound on in that module."""
+    for node in ast.walk(parse(PACKAGE / ("%s.py" % module))):
         if isinstance(node, ast.FunctionDef) and node.name == name:
             return node.lineno
         if isinstance(node, ast.Assign):
@@ -329,7 +376,7 @@ def _defined_at(name):
                 and isinstance(node.target, ast.Name)
                 and node.target.id == name):
             return node.lineno
-    raise AssertionError("registers.py defines no %s" % name)
+    raise AssertionError("%s.py defines no %s" % (module, name))
 
 
 @pytest.mark.parametrize("name", ["_seq", "_EQ_BANDS", "_ROOMEQ_BANDS", "_HIGH_SHELF",
@@ -354,10 +401,16 @@ def test_everything_that_queries_the_table_stays_under_mutation(name):
 
     Exempting data is defensible because the recordings check it harder.
     Exempting the functions that read that data would not be -- a wrong
-    answer there is behaviour, and nothing else is measuring it.
+    answer there is behaviour, and nothing else is measuring it. One of
+    them lives beside the table, below the region; the rest in
+    `registers`, which has no such region at all.
     """
-    _, last = _exempt_lines()
-    assert _defined_at(name) > last
+    if name == "device_for_name":
+        _, last = _exempt_lines()
+        assert _defined_at(name) > last
+    else:
+        assert _defined_at(name, "registers") > 0
+        assert "pragma: no mutate" not in (PACKAGE / "registers.py").read_text()
 
 
 # --------------------------------------------------------------------------
@@ -407,3 +460,53 @@ def test_the_page_carries_no_history():
     assert dated == [], (
         "version numbers in the architecture body belong in the roadmap: %s"
         % dated)
+
+
+def test_a_patch_that_nothing_reads_fails_the_test(monkeypatch):
+    """The guard in conftest, held to doing what it says.
+
+    `oscmix_desk.locking` reads the wait it imports, so that patch goes
+    through; the package root reads nothing, so a patch on it would steer
+    no code at all.
+    """
+    import oscmix_desk
+    from oscmix_desk import locking
+
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.1)
+    with pytest.raises(pytest.fail.Exception,
+                       match=r"patching oscmix_desk\.load_config changes "
+                             "nothing"):
+        monkeypatch.setattr(oscmix_desk, "load_config", None)
+    assert oscmix_desk.load_config is not None, "and nothing was replaced"
+
+
+def test_the_supported_surface_is_this_and_grows_by_decision(session_mod):
+    """78 names until 0.7.0, most of them internals, each one something a
+    caller could come to depend on (third outside review). What is left is
+    what somebody scripting their desk needs: read a config, apply and
+    verify it, switch profiles, the errors and outcomes those produce, the
+    two entry points. A name more is a decision, made here."""
+    assert set(session_mod.__all__) == {
+        # a desk, read
+        "load_config", "Config", "Route", "ChannelSetting", "GlobalSetting",
+        "CommandLine", "Machine", "discover_config_path", "list_profiles",
+        "profile_path",
+        # applied and verified
+        "apply_routing", "verify_routing", "verify_and_repair", "VerifyResult",
+        "expected_registers", "generate_pipewire_conf",
+        # profiles
+        "switch_profile", "restore_main", "load_profile", "effective_config",
+        "active_profile", "describe_profiles", "Outcome", "APPLIED_VERIFIED",
+        "APPLIED_UNVERIFIED", "REFUSED", "WRITTEN_IN_PART",
+        # what goes wrong
+        "ConfigError", "DeviceAmbiguous", "DeviceLockUnavailable",
+        "ReceivePortError", "WriteFailed",
+        # entry points and their contract
+        "run_session", "launch_mixer", "EXIT_OK", "EXIT_FAILURE",
+        "EXIT_CONFIG", "__version__",
+    }
+    # Gone from the root, reachable through their modules as they always
+    # were (`oscmix_desk.log` and the rest still exist: they are modules).
+    for internal in ("encode_osc", "link_messages", "select_seq_client",
+                     "find_stale_backends", "sd_notify", "policy_for"):
+        assert not hasattr(session_mod, internal), internal

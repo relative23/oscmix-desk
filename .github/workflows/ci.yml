@@ -95,6 +95,8 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0 # the upgrade test installs the actual v0.6.11 commit
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -114,6 +116,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
@@ -138,6 +142,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.13"
@@ -251,6 +257,8 @@ jobs:
       # against. install.sh carries the SHA.
       - name: Build the pinned upstream revision
         run: |
+          # Match the literal shell parameter expression in install.sh.
+          # shellcheck disable=SC2016
           ref=$(sed -n 's/^OSCMIX_REF="\${OSCMIX_REF:-\(.*\)}"$/\1/p' install.sh)
           test -n "$ref" || { echo "no pinned OSCMIX_REF in install.sh"; exit 1; }
           echo "pinned upstream ref: $ref"

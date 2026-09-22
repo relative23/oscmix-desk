@@ -31,7 +31,8 @@ register set, but `apply_routing()` must use `link_messages()` and
 ## Evidence
 
 `/output/<n>/level` read off the wire with a left-only and a right-only
-test tone, before and after. See the 0.1.2 entry in CHANGELOG.md.
+test tone, before and after. See the 0.1.2 entry in the changelog
+([docs/history](../history/changelog-0.1-0.4.md)).
 
 ## Amended in 0.6.10
 

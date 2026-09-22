@@ -22,11 +22,11 @@ took, which is nobody's decision.
 import pytest
 
 from oscmix_desk import verify
+from oscmix_desk.devices import device_for_name
 from oscmix_desk.registers import (
     PIN,
     POLICIES,
     REMEMBER,
-    device_for_name,
     register_policy,
     settable_options,
 )
@@ -271,8 +271,8 @@ def test_a_dump_emits_pinned_options_and_comments_out_remembered_ones():
     answer comes from the same column rather than from a rule inside the
     writer.
     """
-    from oscmix_desk.config import ChannelSetting, Config
-    from oscmix_desk.reconcile import render_config
+    from oscmix_desk.dump import render_config
+    from oscmix_desk.model import ChannelSetting, Config
 
     config = Config(device_name="Fireface UCX II", channels=[
         ChannelSetting("output", 5, "volume", -12.0),    # remembered
@@ -295,8 +295,8 @@ def test_a_dumped_remembered_value_is_still_shown():
     Omitting remembered options would make a channel with a hand-set
     fader look like a channel with no state at all.
     """
-    from oscmix_desk.config import ChannelSetting, Config
-    from oscmix_desk.reconcile import render_config
+    from oscmix_desk.dump import render_config
+    from oscmix_desk.model import ChannelSetting, Config
 
     text = render_config(Config(device_name="Fireface UCX II", channels=[
         ChannelSetting("output", 5, "volume", -12.0)]), UCX2)
@@ -311,8 +311,9 @@ def test_a_dumped_config_round_trips_through_the_parser(tmp_path):
     value rendered in a format the parser rejects, turns a dump into a
     file that fails at the next boot -- and the person finds out then.
     """
-    from oscmix_desk.config import ChannelSetting, Config, load_config
-    from oscmix_desk.reconcile import render_config
+    from oscmix_desk.config import load_config
+    from oscmix_desk.dump import render_config
+    from oscmix_desk.model import ChannelSetting, Config
 
     config = Config(device_name="Fireface UCX II", channels=[
         ChannelSetting("output", 5, "volume", -12.0),
@@ -381,7 +382,7 @@ def test_channel_state_is_reconstructed_from_a_dump():
     has produced that shape. So the reconstruction is asserted from the
     reported registers, not from a hand-built Config.
     """
-    from oscmix_desk.reconcile import channels_from_observed
+    from oscmix_desk.dump import channels_from_observed
 
     seen = {
         "/output/5/volume": (-12.0,),
@@ -404,7 +405,7 @@ def test_channel_state_is_reconstructed_from_a_dump():
 def test_only_settable_options_are_reconstructed():
     # A dump that invented options would produce a file the parser
     # rejects -- and the person finds out at the next boot.
-    from oscmix_desk.reconcile import channels_from_observed
+    from oscmix_desk.dump import channels_from_observed
 
     seen = {"/output/5/name": ("Monitors",), "/input/1/48v": (1,),
             "/output/5/volume": (-3.0,)}
@@ -422,9 +423,9 @@ def test_the_dump_command_passes_channel_state_to_the_renderer():
     """
     import ast
 
-    from conftest import repo_file
+    from support import repo_file
 
-    source = repo_file("src", "oscmix_desk", "cli.py").read_text()
+    source = repo_file("src", "oscmix_desk", "reads.py").read_text()
     tree = ast.parse(source)
     called = {node.func.id for node in ast.walk(tree)
               if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)}

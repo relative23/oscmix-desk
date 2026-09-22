@@ -3,7 +3,7 @@
 A hand-written model of a device is knowledge that decays silently:
 nothing fails when it goes stale, the device just does something other
 than what the config says. These tests are the difference between a
-model and a memory -- every claim `registers.py` makes about the UCX II
+model and a memory -- every claim `devices.py` makes about the UCX II
 is held against `tests/data/refresh-dump.json` (a warm `/refresh`) and
 `tests/data/cold-plug-timeline.json` (a real USB replug).
 
@@ -17,9 +17,9 @@ import json
 import re
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
-from oscmix_desk import registers
+from oscmix_desk import devices, registers
 
 
 @pytest.fixture(scope="module")
@@ -38,11 +38,11 @@ def cold():
 # --------------------------------------------------------------------------
 
 def test_the_model_is_indexed_by_device():
-    assert len(registers.DEVICES) >= 2
-    assert registers.UCX2.usb_id != registers.FF802.usb_id
+    assert len(devices.DEVICES) >= 2
+    assert devices.UCX2.usb_id != devices.FF802.usb_id
     # `48v` on 1-2 and `hi-z` on 3-4 are UCX II facts, not Fireface facts.
-    assert registers.UCX2.channels_for("48v") == (1, 2)
-    assert registers.UCX2.channels_for("hi-z") == (3, 4)
+    assert devices.UCX2.channels_for("48v") == (1, 2)
+    assert devices.UCX2.channels_for("hi-z") == (3, 4)
 
 
 def test_an_untested_device_declares_no_registers_rather_than_guesses():
@@ -60,9 +60,9 @@ def test_an_untested_device_declares_no_registers_rather_than_guesses():
     they are read rather than guessed. No evidence artifact, so it stays
     unsupported.
     """
-    assert registers.FF802.supported is False
-    assert registers.FF802.registers == ()
-    assert registers.FF802.evidence is None
+    assert devices.FF802.supported is False
+    assert devices.FF802.registers == ()
+    assert devices.FF802.evidence is None
 
 
 def test_the_802_channel_map_is_not_a_copy_of_the_ucx2():
@@ -73,17 +73,17 @@ def test_the_802_channel_map_is_not_a_copy_of_the_ucx2():
     twenty channels against thirty, 48V on 1-2 against 9-12, and the
     802's Mic/Inst channels carrying no gain register at all.
     """
-    assert registers.FF802.channels_for("input") != \
-        registers.UCX2.channels_for("input")
-    assert registers.FF802.channels_for("48v") == (9, 10, 11, 12)
-    assert registers.UCX2.channels_for("48v") == (1, 2)
-    assert 9 not in registers.FF802.channels_for("input-gain")
+    assert devices.FF802.channels_for("input") != \
+        devices.UCX2.channels_for("input")
+    assert devices.FF802.channels_for("48v") == (9, 10, 11, 12)
+    assert devices.UCX2.channels_for("48v") == (1, 2)
+    assert 9 not in devices.FF802.channels_for("input-gain")
 
 
 def test_a_supported_device_names_its_evidence():
     # The roadmap's bar: register table declared, capabilities recorded,
     # and one hardware evidence artifact.
-    for device in registers.DEVICES:
+    for device in devices.DEVICES:
         if device.supported:
             assert device.registers, "%s claims support with no registers" % device.key
             assert device.channels
@@ -92,14 +92,14 @@ def test_a_supported_device_names_its_evidence():
 
 def test_an_unmodelled_device_is_no_opinion_not_an_error():
     # Every caller must treat None as "keep doing what you did".
-    assert registers.device_for_name("Fireface UFX III") is None
+    assert devices.device_for_name("Fireface UFX III") is None
     assert registers.verify_class(None, "/output/1/volume") is None
     assert registers.cold_plug_complete(None, "/output/1/stereo") is False
 
 
 def test_the_configured_device_name_resolves():
-    assert registers.device_for_name("Fireface UCX II") is registers.UCX2
-    assert registers.device_for_name("  fireface ucx ii  ") is registers.UCX2
+    assert devices.device_for_name("Fireface UCX II") is devices.UCX2
+    assert devices.device_for_name("  fireface ucx ii  ") is devices.UCX2
 
 
 # --------------------------------------------------------------------------
@@ -128,17 +128,17 @@ def channels_in(dump, prefix, leaf):
 ])
 def test_every_channel_range_matches_the_recording(warm, capability, prefix, leaf):
     recorded = channels_in(warm["registers"], prefix, leaf)
-    assert registers.UCX2.channels_for(capability) == recorded, (
+    assert devices.UCX2.channels_for(capability) == recorded, (
         "the model says /%s/N/%s exists on %s, the device reported %s"
-        % (prefix, leaf, registers.UCX2.channels_for(capability), recorded))
+        % (prefix, leaf, devices.UCX2.channels_for(capability), recorded))
 
 
 def test_the_meters_run_further_than_the_control_registers(warm):
     # The reason a single "channel count" per device would already be
     # wrong: meters go to 22, everything that can be *set* stops at 20.
     meters = channels_in(warm["registers"], "output", "level")
-    assert registers.UCX2.channels_for("meter") == meters
-    assert max(meters) > max(registers.UCX2.channels_for("output"))
+    assert devices.UCX2.channels_for("meter") == meters
+    assert max(meters) > max(devices.UCX2.channels_for("output"))
 
 
 # --------------------------------------------------------------------------
@@ -147,8 +147,8 @@ def test_the_meters_run_further_than_the_control_registers(warm):
 
 def test_every_verifiable_register_really_is_reported(warm):
     reported = set(warm["registers"])
-    missing = [p for p in registers.declared_paths(registers.UCX2)
-               if registers.verify_class(registers.UCX2, p) == registers.VERIFIABLE
+    missing = [p for p in registers.declared_paths(devices.UCX2)
+               if registers.verify_class(devices.UCX2, p) == registers.VERIFIABLE
                and p not in reported]
     assert missing == [], (
         "declared verifiable but absent from the recorded dump: %s" % missing[:8])
@@ -156,8 +156,8 @@ def test_every_verifiable_register_really_is_reported(warm):
 
 def test_every_write_only_register_really_is_absent(warm):
     reported = set(warm["registers"])
-    present = [p for p in registers.declared_paths(registers.UCX2)
-               if registers.verify_class(registers.UCX2, p) == registers.WRITE_ONLY
+    present = [p for p in registers.declared_paths(devices.UCX2)
+               if registers.verify_class(devices.UCX2, p) == registers.WRITE_ONLY
                and p in reported]
     assert present == [], (
         "declared write-only but the device reported it: %s -- if upstream "
@@ -165,7 +165,7 @@ def test_every_write_only_register_really_is_absent(warm):
 
 
 def test_the_playback_matrix_is_the_only_re_established_family(warm):
-    reest = [r for r in registers.UCX2.registers
+    reest = [r for r in devices.UCX2.registers
              if r.verify == registers.REESTABLISHED]
     assert [r.template for r in reest] == ["/mix/{out}/playback/{pb}"]
     # ... and it is absent, which is what forces the class.
@@ -174,7 +174,7 @@ def test_the_playback_matrix_is_the_only_re_established_family(warm):
 
 
 def test_the_input_matrix_is_verifiable_which_0_3_0_depends_on(warm):
-    assert registers.verify_class(registers.UCX2, "/mix/5/input/1") == \
+    assert registers.verify_class(devices.UCX2, "/mix/5/input/1") == \
         registers.VERIFIABLE
     assert len([p for p in warm["registers"]
                 if p.startswith("/mix/") and "/input/" in p]) >= 100
@@ -191,7 +191,7 @@ def test_the_class_of_an_unknown_path_is_unknown(warm):
     dump for something the model does not carry keeps it honest without
     needing an edit per family.
     """
-    device = registers.UCX2
+    device = devices.UCX2
     declared = set(registers.declared_paths(device))
     undeclared = sorted(p for p in warm["registers"]
                         if p not in declared and not p.endswith("/level"))
@@ -201,7 +201,7 @@ def test_the_class_of_an_unknown_path_is_unknown(warm):
 
 
 def test_every_declared_class_is_one_of_the_three():
-    for device in registers.DEVICES:
+    for device in devices.DEVICES:
         for register in device.registers:
             assert register.verify in registers.VERIFY_CLASSES
 
@@ -219,14 +219,14 @@ def test_the_families_called_complete_really_arrive_whole(cold):
     verifying against a half-filled cache.
     """
     reported = set(cold["first_report_seconds"])
-    for register in registers.UCX2.registers:
+    for register in devices.UCX2.registers:
         if not register.per_channel:
             continue
-        if not registers.cold_plug_complete(registers.UCX2,
+        if not registers.cold_plug_complete(devices.UCX2,
                                             register.path(ch=1)):
             continue
         missing = [register.path(ch=c)
-                   for c in registers.UCX2.channels_for(register.channels)
+                   for c in devices.UCX2.channels_for(register.channels)
                    if register.path(ch=c) not in reported]
         assert missing == [], (
             "%s is declared complete after a cold plug but %d channel(s) "
@@ -248,17 +248,17 @@ def test_everything_else_is_not_claimed_to_be_complete(cold):
     """
     reported = set(cold["first_report_seconds"])
     partial = []
-    for register in registers.UCX2.registers:
+    for register in devices.UCX2.registers:
         if not register.per_channel:
             continue
-        channels = registers.UCX2.channels_for(register.channels)
+        channels = devices.UCX2.channels_for(register.channels)
         if not channels or register.verify != registers.VERIFIABLE:
             continue
         seen = sum(1 for c in channels if register.path(ch=c) in reported)
         if 0 < seen < len(channels):
             partial.append((register.template, seen, len(channels)))
             assert not registers.cold_plug_complete(
-                registers.UCX2, register.path(ch=channels[0])), (
+                devices.UCX2, register.path(ch=channels[0])), (
                 "%s arrived for %d of %d channels but is declared complete"
                 % (register.template, seen, len(channels)))
     assert partial, (
@@ -273,16 +273,16 @@ def test_what_0_2_0_verifies_survives_a_cold_plug(cold):
     for path in ("/output/1/stereo", "/output/5/stereo", "/output/7/stereo",
                  "/playback/1/stereo"):
         assert path in reported, "%s missing from a cold plug" % path
-        assert registers.verify_class(registers.UCX2, path) == registers.VERIFIABLE
-        assert registers.cold_plug_complete(registers.UCX2, path)
+        assert registers.verify_class(devices.UCX2, path) == registers.VERIFIABLE
+        assert registers.cold_plug_complete(devices.UCX2, path)
 
 
 def test_an_unmeasured_register_is_never_called_complete():
     # A verifier must not fail a register into a warning because a
     # hotplug was still filling the cache, and "unknown" must not read
     # as "fine".
-    assert not registers.cold_plug_complete(registers.UCX2, "/reverb/type")
-    assert not registers.cold_plug_complete(registers.UCX2, "/output/1/mute")
+    assert not registers.cold_plug_complete(devices.UCX2, "/reverb/type")
+    assert not registers.cold_plug_complete(devices.UCX2, "/output/1/mute")
     assert not registers.cold_plug_complete(None, "/output/1/stereo")
 
 
@@ -298,10 +298,10 @@ def test_the_global_registers_are_declared_once_not_per_channel():
     declared in the table and never checked against a recording -- the
     quietest way to be wrong about a device.
     """
+    from oscmix_desk.devices import device_for_name
     from oscmix_desk.registers import (
         GLOBAL,
         declared_paths,
-        device_for_name,
     )
 
     device = device_for_name("Fireface UCX II")
@@ -324,7 +324,8 @@ def test_every_declared_echo_register_is_in_the_recording(warm):
     somebody's desk. `/echo` is the first family declared without a
     channel, so it is the first chance for that check to pass vacuously.
     """
-    from oscmix_desk.registers import GLOBAL, device_for_name
+    from oscmix_desk.devices import device_for_name
+    from oscmix_desk.registers import GLOBAL
 
     device = device_for_name("Fireface UCX II")
     declared = {r.template for r in device.registers
@@ -342,7 +343,7 @@ def test_the_echo_family_is_complete_against_the_recording(warm):
     `--dump-config` would emit the half it knows and silently drop the
     rest, which reads as "the device has no echo settings".
     """
-    from oscmix_desk.registers import device_for_name
+    from oscmix_desk.devices import device_for_name
 
     device = device_for_name("Fireface UCX II")
     declared = {r.template for r in device.registers}
@@ -368,7 +369,7 @@ def test_the_echo_bounds_are_upstreams_and_not_invented():
     against the hardware. Measured beats both invented and absent.
     """
     from oscmix_desk.constants import LEVEL_MAX, LEVEL_MIN
-    from oscmix_desk.registers import device_for_name
+    from oscmix_desk.devices import device_for_name
 
     by_path = {r.template: r for r in device_for_name("Fireface UCX II").registers}
     assert (by_path["/echo/delay"].lo, by_path["/echo/delay"].hi) == (0.0, 2.0)
@@ -419,7 +420,7 @@ def test_rows_sharing_a_template_never_overlap():
 
     from oscmix_desk import registers
 
-    for device in registers.DEVICES:
+    for device in devices.DEVICES:
         if not device.registers:
             continue
         by_template = collections.defaultdict(list)
@@ -447,10 +448,36 @@ def test_the_gain_rows_together_cover_what_the_device_reports():
     channel would leave a register the device reports and the model does
     not describe at all.
     """
-    from oscmix_desk.registers import UCX2
+    from oscmix_desk.devices import UCX2
 
     rows = [r for r in UCX2.registers if r.template == "/input/{ch}/gain"]
     covered: set = set()
     for register in rows:
         covered |= set(UCX2.channels_for(register.channels))
     assert covered == set(UCX2.channels_for("input-gain"))
+
+
+def test_every_row_carries_members_of_the_closed_sets():
+    """Verification class, policy and domain are enums since 0.7.0. They
+    were strings, and a row that misspelt one was a row with a class no
+    code branched on: nothing failed, the register was just never
+    verified, pinned or validated. Every row of every device is held to
+    the members here, and the old names are those members."""
+    for device in devices.DEVICES:
+        for register in device.registers:
+            assert isinstance(register.verify, registers.VerifyClass), register
+            assert isinstance(register.policy, registers.Policy), register
+            assert register.domain is None \
+                or isinstance(register.domain, registers.Domain), register
+    assert tuple(registers.VerifyClass) == registers.VERIFY_CLASSES
+    assert registers.POLICIES == (registers.PIN, registers.REMEMBER)
+    assert tuple(registers.Domain) \
+        == (registers.BOOL, registers.ENUM, registers.NUMBER)
+    # They compare, hash and join as the strings they were ...
+    assert registers.PIN == "pin"
+    assert {registers.VERIFIABLE: 1}["verifiable"] == 1
+    assert " or ".join(sorted(registers.POLICIES)) == "pin or remember"
+    # ... and print as them only by `.value`, on every Python this runs on.
+    assert registers.REESTABLISHED.value == "re-established"
+    with pytest.raises(ValueError, match="'pinned' is not a valid Policy"):
+        registers.Policy("pinned")

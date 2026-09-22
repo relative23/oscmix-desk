@@ -8,8 +8,9 @@ rather than discovered.
 
 oscmix listens on **UDP 127.0.0.1:7222** and acts on every datagram it
 receives. There is no authentication, no authorisation and no origin
-check beyond the loopback bind. **Any process running as your user can
-write any mixer register**, including this project's own routing.
+check beyond the loopback bind. **Any local process that can reach this
+loopback socket can issue mixer writes**, including processes belonging
+to other local accounts. Binding localhost does not authenticate a user.
 
 That is upstream's design, and on a single-user desktop it is a
 reasonable one -- it is the same trust level as your audio server. It is
@@ -18,12 +19,13 @@ can do:
 
 - today: routing and output faders. A hostile local process can silence
   your monitors, or make them very loud.
-- since 0.3.0, with `[input:N]` sections: **phantom power**. `48v` is a
-  register like any other. Sending 48 V into a ribbon microphone
-  damages it.
+- the upstream protocol also exposes **phantom power**. An inappropriate
+  change can affect connected equipment. oscmix-desk models `48v` as
+  readable but gives it no writable config domain; `[input:N]` cannot
+  enable it. The sweep also excludes reference-level changes (ADR 0016).
 
 If that matters for your setup, the port is the boundary to defend --
-either by not running untrusted code as your audio user, or by moving
+either by controlling which local processes can reach it, or by moving
 oscmix into a namespace where 7222 is not reachable. This project cannot
 fix it from the outside; it can only avoid making it worse.
 
@@ -124,9 +126,12 @@ policy decides what a later reconcile does with it (ADR 0012, ADR 0019).
 
 `_cleanup_stale_backend` terminates a leftover `oscmix` that is holding
 the OSC port. It only considers processes owned by the calling user whose
-`comm` or argv0 is `oscmix`, and it signals through `os.pidfd_open` so a
-PID recycled between the `/proc` scan and the signal cannot be hit by
-mistake. A process it cannot verify is reported, never signalled.
+`comm` or argv0 is `oscmix`, without a live supervising session. After
+opening a pidfd it checks ownership of the port, process identity and
+supervision again, then signals through that handle. Checking only
+before opening it leaves a PID reuse window. A process it cannot verify
+is reported, never signalled; an unavailable pidfd never falls back to
+signalling a bare PID.
 
 ## The supply chain
 
@@ -140,9 +145,16 @@ evidence artifact. Tracking upstream is an explicit opt-in:
 OSCMIX_REF=master ./install.sh
 ```
 
-There is no signature verification: upstream publishes no signed tags.
+There is no upstream signature verification: upstream publishes no signed tags.
 That is a real gap, and it is the reason the default is a specific commit
 that has been measured against real hardware rather than a moving branch.
+
+The 0.7.0 source release workflow produces checksums and a GitHub build
+attestation for this project's archive and manifest. The
+[verification instructions](RELEASE-ARTIFACTS.md) constrain the repository,
+workflow and release tag. That attestation identifies our build; it does
+not authenticate upstream's unsigned history or prove the locally
+compiled C binaries reproducible.
 
 ## Not in scope
 

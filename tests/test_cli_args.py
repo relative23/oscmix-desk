@@ -4,6 +4,8 @@ from itertools import permutations
 
 import pytest
 
+from oscmix_desk import reload as reload_mod
+
 
 def test_an_out_of_range_osc_port_on_the_command_line_is_a_config_error(
         session_mod, tmp_path):
@@ -290,46 +292,47 @@ def test_a_dry_run_warns_about_the_desk_it_shows(tmp_path, caplog):
 
 def test_a_reload_warns_about_the_desk_it_re_read(tmp_path, caplog):
     from oscmix_desk import Config
-    from oscmix_desk import session as session_module
 
     path = _unmodelled_desk(tmp_path)
     (tmp_path / "active-profile").write_text("one\n")
     with caplog.at_level("WARNING"):
-        session_module._reloaded_desk(Config(device_name="Some Box"), path)
+        reload_mod._reloaded_desk(Config(device_name="Some Box"), path)
     assert len(_unchecked(caplog)) == 1
     assert "its 3 route(s)" in _unchecked(caplog)[0]
 
 
-def test_a_device_override_that_bypasses_the_validation_is_named(
+def test_a_device_override_is_what_the_desk_is_validated_for(
         tmp_path, caplog, monkeypatch):
-    """`--device` arrives after the file was validated. When it names
-    another model, or none, the channel check said nothing about the
-    interface the routes now go to. Said with the other notices, by what
-    shows or writes this desk: a dump shows the device's, a snapshot and
-    a listing show none -- and the listing said it, while it was said at
-    the override (0.6.11)."""
+    """`--device` arrived after the file had been validated, and 0.6.11
+    could only warn that the check had been made for another interface.
+    It is part of the load since 0.7.0: a desk that does not fit the
+    interface it is sent to is a configuration error, exit 2, from every
+    action that loads it -- and one that fits says nothing at all."""
     from oscmix_desk import cli
 
+    shown = []
+    monkeypatch.setattr(cli, "run_session",
+                        lambda _args, config: shown.append(config) or 0)
     path = tmp_path / "routing.conf"
-    path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    for name in ("_diff", "_snapshot", "_dump_config"):
-        monkeypatch.setattr(cli, name, lambda config: 0)
-    monkeypatch.setattr(cli, "pw_dump_objects", lambda: None)
-    notice = ("--device replaces [device] name after validation: this config "
-              "was checked for 'Fireface UCX II' and is used for 'Some Box'")
-    for action, times in ((["--dry-run", "--timeout", "0"], 1),
-                          (["--diff"], 1), (["--pipewire-sinks"], 1),
-                          (["--dump-config"], 0), (["--snapshot"], 0),
-                          (["--list-profiles"], 0)):
+    path.write_text("[device]\nname = Fireface 802\n"
+                    "[route:main]\nplayback = 1/2\noutput = 29/30\n")
+    assert cli.main(["--config", str(path), "--dry-run"]) == 0
+    for action in (["--dry-run"], ["--diff"], ["--list-profiles"]):
         caplog.clear()
-        with caplog.at_level("WARNING"):
-            cli.main(["--config", str(path), "--device", "Some Box", *action])
-        assert caplog.text.count(notice) == times, action
+        with caplog.at_level("ERROR"):
+            assert cli.main(["--config", str(path), "--device",
+                             "Fireface UCX II", *action]) == 2, action
+        assert ("configuration error: [route:main] output: channel 29 does "
+                "not exist on a Fireface UCX II") in caplog.text
+    path.write_text("[device]\nname = Fireface 802\n"
+                    "[route:main]\nplayback = 1/2\noutput = 19/20\n")
     caplog.clear()
     with caplog.at_level("WARNING"):
-        cli.main(["--config", str(path), "--device", "fireface ucx ii",
-                  "--diff"])
-    assert "--device" not in caplog.text, "the same model, spelled differently"
+        assert cli.main(["--config", str(path), "--device",
+                         " fireface ucx ii ", "--dry-run"]) == 0
+    assert caplog.text == ""
+    assert (shown[-1].device_name, shown[-1].loaded.device_name) == (
+        "fireface ucx ii", "Fireface 802")
 
 
 @pytest.mark.parametrize("action", [["--profile", "one"], ["--no-profile"]])
@@ -406,7 +409,7 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
     for action in ([], ["--diff"], ["--snapshot"]):
         assert cli.main(["--config", str(path), *overrides, *action]) == 0
     # Replaced, and remembered as replaced: what a session resolves a
-    # re-read file with (`session._kept_for_this_process`).
+    # re-read file with (`reload_mod._kept_for_this_process`).
     from oscmix_desk import CommandLine
 
     said = CommandLine(device_name="fireface ucx ii", osc_port=9000)
@@ -417,14 +420,13 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
     assert seen == [("start", "Fireface UCX II", 7222, CommandLine())]
 
 
-def test_a_dry_run_shows_the_profile_for_the_interface_the_profile_names(
+def test_a_dry_run_shows_the_desk_as_the_switch_loads_it(
         tmp_path, caplog, monkeypatch):
     """The desk in effect's ports and device name were written over the
-    profile before it was shown. The name is what a dry run acts on -- it
-    looks for that interface and warns about it -- so a profile naming its
-    own was shown as the active desk's. The ports are not printed; they
-    are asserted because "the desk as the switch loads it" is the rule
-    (0.6.11)."""
+    profile before it was shown (0.6.11). A dry run loads the profile the
+    way the switch does -- so since 0.7.0 one that names another machine is
+    the same configuration error in both, exit 2, and a marker that still
+    points at one does not leak into what another profile inherits."""
     from oscmix_desk import cli
 
     shown = []
@@ -443,9 +445,11 @@ def test_a_dry_run_shows_the_profile_for_the_interface_the_profile_names(
     assert cli.main(["--config", str(path), "--dry-run",
                      "--profile", "near"]) == 0
     assert cli.main(["--config", str(path), "--dry-run", "--no-profile"]) == 0
-    assert cli.main(["--config", str(path), "--dry-run",
-                     "--profile", "far"]) == 0
+    with caplog.at_level("ERROR"):
+        assert cli.main(["--config", str(path), "--dry-run",
+                         "--profile", "far"]) == 2
+    assert ("configuration error: profile 'far' names another backend or "
+            "interface") in caplog.text
     assert [(d.device_name, d.osc_port) for d in shown] == [
         ("Fireface UCX II", 9001),      # near inherits routing.conf, not far
-        ("Fireface UCX II", 9001),
-        ("Some Box", 9100)]
+        ("Fireface UCX II", 9001)]

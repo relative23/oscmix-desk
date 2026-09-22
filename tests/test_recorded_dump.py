@@ -19,12 +19,11 @@ the prose, so the disagreement cannot quietly become folklore again.
 import json
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 # Aliased: `registers` is already a local name in the fixtures below,
 # for the dict a recording holds.
-from oscmix_desk import registers as model
-from oscmix_desk import verify
+from oscmix_desk import devices, verify
 
 # Registers this project writes, in the families it cares about.
 ROUTED = [
@@ -74,7 +73,7 @@ def test_a_register_the_dump_never_reports_is_never_called_prompt(
     reported = set(dump["registers"])
     for path in ROUTED:
         if path not in reported:
-            assert not session_mod.register_promptly_reported(path), (
+            assert not verify.register_promptly_reported(path), (
                 "%s is not in the recorded dump, so classifying it as "
                 "promptly reported makes every run warn and re-send"
                 % path)
@@ -92,7 +91,7 @@ def test_a_register_called_prompt_really_does_arrive_in_the_window(
 
     registers = dump["registers"]
     for path in ROUTED:
-        if path in registers and session_mod.register_promptly_reported(path):
+        if path in registers and verify.register_promptly_reported(path):
             _tags, first_seen = registers[path]
             assert first_seen < constants.VERIFY_TIMEOUT, (
                 "%s is classified prompt but arrived %.1fs into the dump, "
@@ -198,7 +197,7 @@ def test_the_measured_dump_disagrees_with_the_prose_and_says_so(
     # What the old classification cost: a lost /playback/<n>/stereo was
     # never counted as a problem and so never re-sent, on precisely the
     # register family the two-phase apply exists to get right.
-    assert session_mod.register_promptly_reported("/playback/1/stereo") is True
+    assert verify.register_promptly_reported("/playback/1/stereo") is True
 
 
 # --------------------------------------------------------------------------
@@ -393,19 +392,19 @@ def test_no_channel_setting_is_called_prompt_unless_the_cold_plug_proves_it(
     """
     arrived = set(cold["first_report_seconds"])
     wrongly_prompt = []
-    for register in model.UCX2.registers:
+    for register in devices.UCX2.registers:
         if register.domain is None:
             continue
         if not register.template.startswith(("/input/{ch}/",
                                              "/output/{ch}/")):
             continue
         paths = [register.template.format(ch=channel)
-                 for channel in model.UCX2.channels[register.channels]]
+                 for channel in devices.UCX2.channels[register.channels]]
         if all(path in arrived for path in paths):
             continue            # complete after a cold plug, so "yes" is right
         wrongly_prompt += [path for path in paths
                            if verify.register_promptly_reported(
-                               path, model.UCX2)]
+                               path, devices.UCX2)]
     assert wrongly_prompt == [], (
         "%d paths a cold plug does not deliver are still called prompt, "
         "so a hotplug re-sends them: %s"

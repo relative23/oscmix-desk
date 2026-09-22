@@ -11,14 +11,14 @@ while adding this family, and both were silent.
 """
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 from oscmix_desk import ConfigError
 from oscmix_desk.config import load_config
+from oscmix_desk.devices import device_for_name
 from oscmix_desk.reconcile import desired
 from oscmix_desk.registers import (
     ENABLE_OPTION,
-    device_for_name,
     nested_families,
     settable_nested,
     settable_options,
@@ -232,6 +232,6 @@ def test_a_childless_option_cannot_be_written_as_a_section(tmp_path, caplog):
     """`[gain:input:3]` is not a thing, and has to warn rather than parse."""
     with caplog.at_level("WARNING"):
         config = load_config(_conf(tmp_path, "[gain:input:3]\nenabled = 12\n"))
-    assert config.channels == []
+    assert config.channels == ()
     assert any("ignoring unknown section" in record.getMessage()
                for record in caplog.records)

@@ -10,9 +10,11 @@ landed at 53% on cli.py and was found by the gate, on a push.
 """
 
 import pytest
-from conftest import free_udp_port, proc_with_ports, write_config
+from support import free_udp_port, proc_with_ports, write_config
+from two_boxes import DESK
 
 from oscmix_desk import cli
+from oscmix_desk import outcome as outcome_mod
 from oscmix_desk.constants import (
     EXIT_CONFIG,
     EXIT_NOT_PERSISTED,
@@ -228,7 +230,7 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     # the unit re-read the desk in effect (ADR 0018).
     # Which desk the unit runs cannot be told here (no unit process), and
     # "cannot be told" reloads as before; the rule itself has its own
-    # tests in test_device_identity.
+    # tests in test_whose_backend.
     _quick_wire(monkeypatch)
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
@@ -320,16 +322,15 @@ def test_a_restore_reloads_the_unit_that_runs_its_desk(tmp_path, monkeypatch):
     """`--no-profile` was only ever driven with a unit nobody could read,
     which reloads whatever the switch was for: handing the reload decision
     no config at all went unnoticed (a survivor of `_main`, 0.6.11)."""
-    from oscmix_desk import profiles
 
     path = tmp_path / "routing.conf"
     path.write_text(GOOD)
     reloads = []
     monkeypatch.setattr(cli, "reload_service",
                         lambda: reloads.append(1) or cli.RELOAD_DONE)
-    monkeypatch.setattr(cli, "restore_main", lambda _path: profiles.Outcome(
-        state=profiles.APPLIED_UNVERIFIED, name="routing.conf",
-        reason=profiles.NOT_CHECKED))
+    monkeypatch.setattr(cli, "restore_main", lambda _path: outcome_mod.Outcome(
+        state=outcome_mod.APPLIED_UNVERIFIED, name="routing.conf",
+        reason=outcome_mod.NOT_CHECKED))
     monkeypatch.setattr(cli, "_unit_desk", lambda: (True, path))
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert reloads == [1]
@@ -344,12 +345,11 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
     """Unknown is still a reload: nearly every switch is for the unit's own
     desk, and an untold unit lets its verifier re-apply the old one
     (0.6.3). But a second review is right that it is a guess."""
-    from oscmix_desk import profiles
 
     monkeypatch.setattr(cli, "reload_service", lambda: cli.RELOAD_DONE)
     monkeypatch.setattr(cli, "unit_process", lambda *_a: None)
-    applied = profiles.Outcome(state=profiles.APPLIED_UNVERIFIED, name="x",
-                               reason=profiles.NOT_CHECKED)
+    applied = outcome_mod.Outcome(state=outcome_mod.APPLIED_UNVERIFIED, name="x",
+                               reason=outcome_mod.NOT_CHECKED)
     with caplog.at_level("WARNING"):
         assert cli._report_outcome(applied, tmp_path / "routing.conf") \
             == EXIT_OK
@@ -376,3 +376,16 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
         cli._report_outcome(applied, tmp_path / "routing.conf")
     assert "could not tell" not in caplog.text
 
+
+def test_an_empty_profile_name_is_a_refused_switch_not_a_start(
+        tmp_path, monkeypatch, capsys):
+    """`--profile ''` was falsy, fell through every action, and started
+    the service; with --list-profiles it listed (0.6.9)."""
+    started = []
+    monkeypatch.setattr(cli, "run_session", lambda *a: started.append(1) or 0)
+    path = write_config(tmp_path / "routing.conf", DESK)
+    assert cli.main(["--config", str(path), "--profile", ""]) == cli.EXIT_CONFIG
+    assert started == []
+    assert "is not a profile name" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        cli.main(["--config", str(path), "--profile", "", "--list-profiles"])

@@ -17,6 +17,8 @@ import struct
 import oracle
 import pytest
 
+from oscmix_desk import constants, osc, reconcile
+
 # A missing dev dependency should say so, not abort collection for the
 # whole suite: `make test` on a fresh checkout is a reasonable thing to
 # try before reading requirements-dev.txt.
@@ -80,8 +82,8 @@ def as_float32(value):
 @given(message=osc_messages())
 def test_encoding_then_decoding_returns_the_message(session_mod, message):
     path, tags, args = message
-    decoded_path, decoded_tags, decoded_args = session_mod.decode_osc(
-        session_mod.encode_osc(path, tags, *args))
+    decoded_path, decoded_tags, decoded_args = osc.decode_osc(
+        osc.encode_osc(path, tags, *args))
     assert decoded_path == path
     assert decoded_tags == tags
     assert len(decoded_args) == len(args)
@@ -97,7 +99,7 @@ def test_an_encoded_message_is_always_four_byte_aligned(session_mod, message):
     # OSC 1.0 requires it, and oscmix's parser assumes it. A message that
     # is not aligned desynchronises everything after it in a bundle.
     path, tags, args = message
-    assert len(session_mod.encode_osc(path, tags, *args)) % 4 == 0
+    assert len(osc.encode_osc(path, tags, *args)) % 4 == 0
 
 
 @settings(max_examples=400)
@@ -107,7 +109,7 @@ def test_decoding_hostile_bytes_fails_cleanly(session_mod, data):
     # reject, it may parse, but it must not raise something the callers do
     # not catch -- they only ever guard ValueError and struct.error.
     try:
-        path, tags, args = session_mod.decode_osc(data)
+        path, tags, args = osc.decode_osc(data)
     except (ValueError, struct.error):
         return
     assert isinstance(path, str)
@@ -122,7 +124,7 @@ def test_iterating_hostile_datagrams_never_raises(session_mod, data):
     # iter_osc_messages splits bundles by a length prefix taken straight
     # from the datagram; a hostile length must not escape as an exception
     # or spin forever.
-    for message in session_mod.iter_osc_messages(data):
+    for message in osc.iter_osc_messages(data):
         assert isinstance(message, bytes)
 
 
@@ -157,7 +159,7 @@ def test_route_messages_is_exactly_its_two_phases(session_mod, level, stereo):
     route = session_mod.Route(name="r", playback=(1, 2), output=(5, 6),
                               level=level, stereo=stereo)
     assert oracle.route_messages(route) == (
-        session_mod.link_messages(route) + session_mod.mix_messages(route))
+        reconcile.link_messages(route) + reconcile.mix_messages(route))
 
 
 @given(level=st.floats(min_value=-65.0, max_value=6.0,
@@ -183,7 +185,7 @@ def test_level_means_the_same_gain_linked_or_not(session_mod, level):
         route = session_mod.Route(name="r", playback=(1, 2), output=(5, 6),
                                   level=level, stereo=stereo)
         return {p: a for p, _t, a in
-                session_mod.mix_messages(route)}["/mix/5/playback/1"][0]
+                reconcile.mix_messages(route)}["/mix/5/playback/1"][0]
 
     linked, unlinked = mix_level(True), mix_level(False)
     # 20*log10(2) of headroom, which oscmix halves back to `level`.
@@ -207,7 +209,7 @@ def test_config_parsing_is_total(session_mod, tmp_path_factory, text):
     assert isinstance(config, session_mod.Config)
     for route in config.routes:
         assert len(route.playback) == len(route.output)
-        assert session_mod.LEVEL_MIN <= route.level <= session_mod.LEVEL_MAX
+        assert constants.LEVEL_MIN <= route.level <= constants.LEVEL_MAX
 
 
 @given(port=st.integers())
@@ -247,7 +249,7 @@ def corrupted_messages(draw):
 @given(data=corrupted_messages())
 def test_decoding_corrupted_messages_fails_cleanly(session_mod, data):
     try:
-        path, tags, args = session_mod.decode_osc(data)
+        path, tags, args = osc.decode_osc(data)
     except (ValueError, struct.error):
         return
     assert isinstance(path, str)
@@ -265,4 +267,4 @@ def test_bundles_with_hostile_sizes_terminate(session_mod, sizes, payload):
     datagram = b"#bundle\x00" + b"\x00" * 8
     for size in sizes:
         datagram += struct.pack(">i", size) + payload
-    assert isinstance(list(session_mod.iter_osc_messages(datagram)), list)
+    assert isinstance(list(osc.iter_osc_messages(datagram)), list)

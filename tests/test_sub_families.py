@@ -16,15 +16,16 @@ import json
 import re
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
-from oscmix_desk import reconcile
-from oscmix_desk.config import Config, load_config
+from oscmix_desk import dump, reconcile
+from oscmix_desk.config import load_config
+from oscmix_desk.devices import UCX2
+from oscmix_desk.model import Config
 from oscmix_desk.registers import (
     BOOL,
     ENABLE_OPTION,
     NUMBER,
-    UCX2,
     declared_paths,
     nested_families,
     settable_nested,
@@ -179,8 +180,8 @@ def test_a_section_round_trips_through_a_dump(family, sub):
     seen = {register.template.format(ch=3): _plausible(register)
             for register in settable_nested(UCX2, sub, family).values()}
     config = Config(device_name="Fireface UCX II",
-                    channels=list(reconcile.channels_from_observed(seen, UCX2)))
-    text = reconcile.render_config(config, UCX2)
+                    channels=list(dump.channels_from_observed(seen, UCX2)))
+    text = dump.render_config(config, UCX2)
     assert "[%s:%s:3]" % (sub, family) in text
 
 

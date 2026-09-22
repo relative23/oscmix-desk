@@ -14,3 +14,5 @@ mutants/
 .mutmut-cache
 hardware-evidence.json
 hardware-evidence-unlinked.json
+!docs/evidence/**/hardware-evidence*.json
+docs/reviews/

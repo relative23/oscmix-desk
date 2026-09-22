@@ -20,7 +20,9 @@ import time
 
 import oracle
 import pytest
-from conftest import free_udp_port, osc_bundle
+from support import free_udp_port, osc_bundle
+
+from oscmix_desk import osc
 
 
 class LossyDevice(threading.Thread):
@@ -80,9 +82,9 @@ class LossyDevice(threading.Thread):
                 continue
             except OSError:
                 return
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _tags, _args = self.session_mod.decode_osc(message)
+                    path, _tags, _args = osc.decode_osc(message)
                 except (ValueError, struct.error):
                     continue
                 self.received.append(path)
@@ -96,7 +98,7 @@ def make_route(session_mod):
 
 
 def full_dump(session_mod, route):
-    return [session_mod.encode_osc(path, types, *args)
+    return [osc.encode_osc(path, types, *args)
             for path, types, args in oracle.route_messages(route)]
 
 
@@ -186,7 +188,7 @@ def test_verification_survives_a_flood_of_unrelated_registers(session_mod,
     monkeypatch.setattr(verify_mod, "VERIFY_TIMEOUT", 1.0)
     send_port, recv_port = free_udp_port(), free_udp_port()
     route = make_route(session_mod)
-    noise = [session_mod.encode_osc("/input/%d/gain" % channel, "f", 12.0)
+    noise = [osc.encode_osc("/input/%d/gain" % channel, "f", 12.0)
              for channel in range(1, 200)]
     device = LossyDevice(session_mod, send_port, recv_port,
                          dump=noise + full_dump(session_mod, route))
@@ -248,9 +250,9 @@ class DyingDevice(threading.Thread):
                 continue
             except OSError:
                 return
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _tags, _args = self.session_mod.decode_osc(message)
+                    path, _tags, _args = osc.decode_osc(message)
                 except (ValueError, struct.error):
                     continue
                 self.received.append(path)

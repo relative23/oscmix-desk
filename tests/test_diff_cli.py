@@ -11,11 +11,15 @@ do with the answer.
 """
 
 import socket
+from pathlib import Path
 
-from conftest import free_udp_port, osc_bundle
+from support import fake_proc, free_udp_port, osc_bundle
 from test_dump_config_cli import FakeBackend, dump_of
+from two_boxes import A, B
 
-from oscmix_desk import cli
+from oscmix_desk import cli, osc
+from oscmix_desk import reads as reads_mod
+from oscmix_desk.discovery import Device
 
 CONFIG = ("[device]\nname = Fireface UCX II\n\n"
           "[route:main]\nplayback = 1/2\noutput = 5/6\nlevel = 0.0\n\n"
@@ -64,9 +68,9 @@ class RecordingBackend(FakeBackend):
                 if self.stopping.is_set():
                     return
                 continue
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _t, _a = self.session_mod.decode_osc(message)
+                    path, _t, _a = osc.decode_osc(message)
                 except ValueError:
                     continue
                 self.received.append(path)
@@ -131,8 +135,8 @@ def test_the_playback_matrix_is_counted_apart_from_real_differences():
     difference would answer "has the desk drifted?" with a number that
     is never zero.
     """
+    from oscmix_desk.devices import UCX2
     from oscmix_desk.reconcile import REWRITE, desired, plan
-    from oscmix_desk.registers import UCX2
 
     config_paths = {"/mix/5/playback/1"}
     entries = [e for e in desired(_config()) if e.path in config_paths]
@@ -142,7 +146,7 @@ def test_the_playback_matrix_is_counted_apart_from_real_differences():
 
 
 def _config():
-    from oscmix_desk.config import Config, Route
+    from oscmix_desk.model import Config, Route
     return Config(device_name="Fireface UCX II",
                   routes=[Route(name="main", playback=(1, 2), output=(5, 6),
                                 level=0.0)])
@@ -176,7 +180,7 @@ def test_silence_is_an_error_not_an_empty_diff(session_mod, capsys, tmp_path,
     expires -- paying the real 8 s to learn that is what pushed the CI
     mutation job past its limit once already.
     """
-    monkeypatch.setattr(cli, "DUMP_READ_SECONDS", 0.6)
+    monkeypatch.setattr(reads_mod, "DUMP_READ_SECONDS", 0.6)
     code, out, _ = run_diff(session_mod, capsys, tmp_path, [])
     assert code == 1
     assert "matches the config" not in out
@@ -247,7 +251,7 @@ def test_the_output_is_sorted_so_two_runs_can_be_diffed(session_mod, capsys,
 
 def test_silence_is_an_error_not_an_empty_snapshot(session_mod, capsys,
                                                    tmp_path, monkeypatch):
-    monkeypatch.setattr(cli, "DUMP_READ_SECONDS", 0.6)
+    monkeypatch.setattr(reads_mod, "DUMP_READ_SECONDS", 0.6)
     code, out = run_snapshot(session_mod, capsys, tmp_path, [])
     assert code == 1
     assert out == ""
@@ -274,10 +278,10 @@ def test_the_three_outcomes_have_three_codes(session_mod, capsys, tmp_path,
     # waiting here is paid thousands of times. The read window and the
     # quiet detection are what this test would otherwise sit through
     # three times over, and neither is what it is about.
-    monkeypatch.setattr(cli, "DUMP_QUIET_SECONDS", 0.15)
+    monkeypatch.setattr(reads_mod, "DUMP_QUIET_SECONDS", 0.15)
     matched, _out, _ = run_diff(session_mod, capsys, tmp_path, IN_SYNC)
     differed, _out, _ = run_diff(session_mod, capsys, tmp_path, DRIFTED)
-    monkeypatch.setattr(cli, "DUMP_READ_SECONDS", 0.6)
+    monkeypatch.setattr(reads_mod, "DUMP_READ_SECONDS", 0.6)
     silent, _out, _ = run_diff(session_mod, capsys, tmp_path, [])
 
     assert (matched, differed, silent) == (EXIT_OK, EXIT_DIFFERS, EXIT_FAILURE)
@@ -306,7 +310,43 @@ def test_two_port_draws_never_collide():
     """send == recv is a backend answering itself and a CLI reading
     silence; free_udp_port now remembers its recent draws, and this
     holds it to that."""
-    from conftest import free_udp_port
+    from support import free_udp_port
 
     for _ in range(500):
         assert free_udp_port() != free_udp_port()
+
+
+def test_a_snapshot_names_the_resolved_box(tmp_path, monkeypatch):
+    from oscmix_desk import Config
+
+    one = fake_proc(tmp_path / "one", boxes=[B])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(one))
+    assert reads_mod._snapshot_serial(Config()) == B[1]
+    two = fake_proc(tmp_path / "two", boxes=[A, B])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(two))
+    assert reads_mod._snapshot_serial(Config()) == "ambiguous"
+    assert reads_mod._snapshot_serial(Config(serial=A[1])) == A[1]
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(tmp_path / "none")))
+    assert reads_mod._snapshot_serial(Config()) == "?"
+
+def test_a_snapshot_names_the_box_its_backend_drives(tmp_path, monkeypatch):
+    from oscmix_desk import Config
+
+    port = free_udp_port()
+    proc = fake_proc(tmp_path, boxes=[A, B], bound=[(port, "oscmix", A[0])])
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+    assert reads_mod._snapshot_serial(Config(serial=B[1], osc_port=port)) == A[1]
+
+def test_a_snapshot_reads_the_real_proc_by_default(monkeypatch):
+
+    from oscmix_desk import Config
+
+    seen = []
+    monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
+    monkeypatch.setattr(reads_mod, "port_holder",
+                        lambda port, proc: seen.append(proc) or None)
+    monkeypatch.setattr(reads_mod, "resolve_device",
+                        lambda usb, name, serial, proc: seen.append(proc)
+                        or Device(usb, B[1], B[0]))
+    assert reads_mod._snapshot_serial(Config()) == B[1]
+    assert seen == [Path("/proc"), Path("/proc")]

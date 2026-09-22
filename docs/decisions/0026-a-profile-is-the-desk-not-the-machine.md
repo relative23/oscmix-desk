@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted. 0.6.11 stops the wrong writes and warns; 0.7.0 refuses a
-profile that names another machine than its `routing.conf`. Amends
+Accepted, and complete in 0.7.0. 0.6.11 stopped the wrong writes and
+warned; 0.7.0 refuses a profile that names another machine than its
+`routing.conf`. Amends
 [0011](0011-a-profile-switch-states-its-outcome.md) and
 [0018](0018-the-active-profile-survives-a-start.md), under which a
 profile that states machine settings keeps them, and
@@ -144,3 +145,18 @@ A setup whose profile really names another backend has to give that
 backend its own directory by 0.7.0. It is told on every switch and start
 until then, and the changelog will say that a file which loaded now
 refuses.
+
+## Done in 0.7.0
+
+`load_profile` raises the `ConfigError`, so every path that loads a
+profile agrees without knowing about it: a switch is `REFUSED` with
+nothing written and no marker moved, a dry run and a listing say the
+same, and a marker that still points at such a profile -- written by
+0.6.x, where it won -- falls back to `routing.conf` with a warning, as
+for any active profile that no longer loads (ADR 0018). What 0.6.11
+needed to live with such profiles is gone: the warning, the record of
+what a profile's `routing.conf` resolved to (`Config.main`), and the
+three forms of advice a refused reload had to choose from. Only
+`routing.conf` can name another machine now, a restart follows it, and
+the error says so.
+

@@ -1,5 +1,5 @@
 {
-  "recorded": "2026-09-19",
+  "recorded": "2026-09-22",
   "note": [
     "A ratio, not a count. Absolute survivor counts rise with every",
     "line added -- new code means new mutants, so a healthy change",
@@ -386,31 +386,50 @@
     "its copy; one of them had changed after it.",
     "",
     "min_score 0.77 -> 0.79, by floor_note's rule: the measured score",
-    "rounded down to the hundredth."
+    "rounded down to the hundredth.",
+    "",
+    "0.7.0, the file split (2026-09-19): 0.794 -> 0.795 on 7485 -> 7484",
+    "mutants, which is the measurement saying what the step claims --",
+    "nothing changed. Six source modules became eighteen and every",
+    "mutant's name carries its module, so the run was a full one with",
+    "mutants/ removed, 114 minutes. The one mutant fewer is the lock",
+    "path's last fallback, spelled without the marker's function so that",
+    "the lock does not depend on the marker. Nothing uncovered, no new",
+    "survivor outside log arguments. min_score stays 0.79.",
+    "",
+    "0.7.0 qualification (2026-09-22): 7484 -> 7701 mutants. A fresh full run took 6825.36 seconds; rejudging the 43 pidfd termination mutants with fresh test-selection stats took 204.63 seconds. The final ratio is 0.799662; min_score remains 0.79."
   ],
   "measured": {
-    "total": 7485,
-    "killed": 5934,
-    "survived": 1535,
+    "total": 7701,
+    "killed": 6147,
+    "survived": 1540,
     "not_covered": 0,
-    "timeout": 16,
-    "score": 0.794,
-    "run_minutes": 105,
-    "cache": "mutants/ removed before the full run; ten functions re-run by name afterwards with mutmut-stats.json cleared (see note)",
-    "scope": "register table exempt (ADR 0015)",
+    "timeout": 14,
+    "score": 0.799662,
+    "run_minutes": 113.76,
+    "full_run_seconds": 6825.36,
+    "recheck_seconds": 204.63,
+    "full_run_commit": "86fb4e45d6ca342fbd7744b5312239f8a9103994",
+    "recheck_commit": "dd5a54d3387a4a6e4f8f1a428f3370e53645f3ae",
+    "test_tree": "82f67565d7eafd1daa32b3df6e42a664ff2b22ae",
+    "cache": "Fresh mutants/ directory for the full run. All 43 _terminate mutants rejudged by name after clearing mutmut-stats.json for the three added signal tests.",
+    "scope": "register table exempt (ADR 0015), in devices.py since the split",
     "note": [
-      "The 0.6.11 release measurement."
+      "Final 0.7.0 behaviour and tests. The later profiles module-description correction changes no executable code.",
+      "The full run measured 6139 killed, 1548 survived and 14 timeouts; the targeted recheck killed eight more. Timeouts are excluded from killed / (killed + survived).",
+      "All 16 _still_stale mutants are killed. The _terminate recheck selects all three new signal-failure tests; its false-success mutant is killed."
     ]
   },
   "previous": {
-    "recorded": "2026-09-17",
-    "total": 7118,
-    "killed": 5517,
-    "survived": 1587,
+    "recorded": "2026-09-19",
+    "total": 7484,
+    "killed": 5938,
+    "survived": 1532,
     "not_covered": 0,
-    "score": 0.777,
+    "timeout": 14,
+    "score": 0.795,
     "why_it_moved": [
-      "The 0.6.10 release measurement; min_score 0.77."
+      "The post-split 0.7.0 measurement, before the behaviour changes; min_score 0.79."
     ]
   },
   "confirmed_by_ci": {
@@ -421,7 +440,7 @@
     "not_covered": 82,
     "score": 0.692,
     "note": [
-      "The measurement this min_score is set from. Ten green jobs; the",
+      "Historical confirmation of the 0.69 baseline, not of the current 0.7.0 measurement. Ten green jobs; the",
       "policy printed 'score rose to 0.692; raise min_score' itself,",
       "which is what this change does.",
       "",
@@ -434,15 +453,8 @@
   "min_score": 0.79,
   "tolerance": 0.01,
   "floor_note": [
-    "The gate is min_score - tolerance = 0.78. That is the number that",
-    "matters: the score may not fall below it. min_score is set at the",
-    "measured score rounded down to the hundredth, so the policy neither",
-    "fails nor nags on the run it was recorded from -- a baseline that",
-    "prints 'raise me' on every CI run teaches people to ignore it.",
-    "",
-    "0.014 of headroom on the measured 0.794, the same order as every",
-    "raise before it. What eats headroom stayed the same: assertions",
-    "getting better or worse, because register rows land inside the",
-    "ADR 0015 exemption."
+    "The gate is min_score - tolerance = 0.78. min_score remains the measured score rounded down to the hundredth, not the rounded display value.",
+    "The measured ratio is 6147 / (6147 + 1540) = 0.799661767, leaving 0.019661767 above the floor. The 14 timeouts and zero uncovered mutants are outside that denominator.",
+    "The register-table exemption remains unchanged (ADR 0015)."
   ]
 }

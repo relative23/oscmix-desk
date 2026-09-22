@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 import os
 
-__version__ = "0.6.11"
+__version__ = "0.7.0"
 
 DEFAULT_DEVICE_NAME = "Fireface UCX II"
 DEFAULT_USB_ID = "2a39:3fd9"
@@ -151,7 +151,7 @@ RECONCILE_WAIT_FOR_VERIFIER = 30.0
 
 # How long a writer waits for the device lock before it gives up. Every
 # writer takes it: a switch, `--no-profile`, and the unit's own apply,
-# verifier and reconcile (profiles.take_device_lock, ADR 0019). Two at
+# verifier and reconcile (locking.take_device_lock, ADR 0019). Two at
 # once would interleave their link phases and mix writes on the wire.
 # A switch holds it for at most a barrier, the writes and a read-back
 # window -- about 13 s -- and the unit's start-up transaction for about

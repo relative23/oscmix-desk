@@ -12,9 +12,9 @@ import json
 import socket
 
 import pytest
-from conftest import free_udp_port, repo_file
+from support import free_udp_port, repo_file
 
-from oscmix_desk import backend
+from oscmix_desk import backend, osc
 
 
 @pytest.fixture(scope="module")
@@ -90,7 +90,7 @@ def test_a_burst_arrives_in_the_order_it_was_given(session_mod):
         got = []
         for _ in messages:
             datagram, _addr = rx.recvfrom(65536)
-            got.append(session_mod.decode_osc(datagram)[0])
+            got.append(osc.decode_osc(datagram)[0])
     finally:
         rx.close()
     assert got == [m[0] for m in messages]
@@ -165,7 +165,7 @@ def test_a_dump_request_is_a_refresh(session_mod):
         datagram, _addr = rx.recvfrom(65536)
     finally:
         rx.close()
-    assert session_mod.decode_osc(datagram)[0] == "/refresh"
+    assert osc.decode_osc(datagram)[0] == "/refresh"
 
 
 def test_the_seam_is_the_only_place_that_opens_a_device_socket():

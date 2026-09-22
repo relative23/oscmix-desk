@@ -9,24 +9,14 @@ import logging
 import math
 import os
 import sys
-import time
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Dict, Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 
-from .backend import loopback
-from .config import (
-    Config,
-    discover_config_path,
-    load_config,
-    log_desk_notices,
-    profile_path,
-)
+from .config import load_config
 from .constants import (
     DEFAULT_DEVICE_TIMEOUT,
-    DUMP_LISTEN_SETTLE,
     EXIT_CONFIG,
-    EXIT_DIFFERS,
     EXIT_FAILURE,
     EXIT_NOT_PERSISTED,
     EXIT_OK,
@@ -34,51 +24,28 @@ from .constants import (
     SERVICE_UNIT,
     __version__,
 )
-from .discovery import device_firmware, resolve_device
-from .errors import ConfigError, DeviceAmbiguous, ReceivePortError
+from .errors import ConfigError
 from .log import log
+from .model import CommandLine, Config
+from .notices import log_desk_notices
+from .outcome import REFUSED, WRITTEN_IN_PART, Outcome
+from .paths import discover_config_path, profile_path
 from .pipewire import find_sink, generate_pipewire_conf, pw_dump_objects
 from .process import (
     RELOAD_DONE,
     RELOAD_NOT_RUNNING,
-    port_holder,
     reload_service,
     unit_process,
 )
 from .profiles import (
-    REFUSED,
-    Outcome,
     describe_profiles,
     effective_config,
     load_profile,
     restore_main,
     switch_profile,
 )
-from .reconcile import (
-    PHASE_CHANNEL,
-    PHASE_LINK,
-    PHASE_MIX,
-    REWRITE,
-    Write,
-    channels_from_observed,
-    desired,
-    globals_from_observed,
-    observed,
-    plan,
-    render_config,
-    routes_from_observed,
-)
-from .registers import device_for_name
+from .reads import _diff, _dump_config, _snapshot
 from .session import run_session
-
-#: How long --dump-config listens for the device's reply. The dump is
-#: over in ~2 s on a UCX II (tests/data/cold-plug-timeline.json); this is
-#: several times that so a slower device is not truncated, and it costs
-#: nothing on a fast one because the read stops when the window ends.
-DUMP_READ_SECONDS = 8.0
-
-#: Stop early once no *new* register has arrived for this long.
-DUMP_QUIET_SECONDS = 1.0
 
 
 def build_arg_parser() -> ArgumentParser:
@@ -127,26 +94,6 @@ def build_arg_parser() -> ArgumentParser:
     return parser
 
 
-def _snapshot_serial(config: Config) -> str:
-    """The box a snapshot names in its header: the one it read.
-
-    The read goes to whatever backend holds the OSC port, so the header
-    names the interface that backend bridges when that can be followed,
-    and the resolved interface otherwise. In 0.6.9's first form it named
-    the resolved box even when the port belonged to another one's backend
-    (found by review); until 0.6.9, the first serial in the card list.
-    """
-    proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
-    holder = port_holder(config.osc_port, proc_root)
-    if holder is not None and holder.serial:
-        return holder.serial
-    try:
-        device = resolve_device(config.usb_id, config.device_name,
-                                config.serial, proc_root)
-    except DeviceAmbiguous:
-        return "ambiguous"
-    return device.serial or "?"
-
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """The entry point: `_main`, with Ctrl-C turned into an exit code.
@@ -162,29 +109,38 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 130
 
 
-def _override_device(config: Config, name: str) -> None:
-    """``--device``: the ALSA client to wait for, and the model from here on.
+def _command_line(args: "argparse.Namespace") -> Optional[CommandLine]:
+    """``--device`` and ``--osc-port`` as the parser takes them, or None.
 
-    It arrives after the file was validated, so the channels and sections
-    were checked for the device the *file* names; see
-    ``config.replaced_device_warning``. Refused together with a switch or
-    a restore, which take their interface from the config and never saw
-    the override (``_refuse_conflicting_actions``). Remembered as an
-    override, like ``--osc-port``: a desk this process reads again is
-    resolved the way a restart would resolve it.
+    Handed to the parser rather than put over its result: the desk is then
+    validated for the interface it goes to, where ``--device`` used to
+    arrive after the file had been checked for the one it names (0.7.0).
+    Refused together with a switch or a restore, which take their
+    interface from the config and never saw the override
+    (``_refuse_conflicting_actions``).
     """
-    config.device_name = name
-    config.overrides = config.overrides._replace(device_name=name)
+    if args.osc_port is not None and not 1 <= args.osc_port <= 65535:
+        # Bounded like `[osc] port` in the file. A port outside the range
+        # used to pass straight through: nothing bound it, and the first
+        # symptom was the backend failing to start.
+        log.error("configuration error: --osc-port %d out of range 1..65535",
+                  args.osc_port)
+        return None
+    # Stripped like `[device] name` is: the client search compares the
+    # name as given, and padding matched nothing.
+    return CommandLine(args.device.strip() if args.device else None,
+                       args.osc_port)
 
 
-def _desk_in_effect(config_path: Optional[Path]) -> Optional[Config]:
+def _desk_in_effect(config_path: Optional[Path],
+                    said: CommandLine) -> Optional[Config]:
     """The desk this invocation is about, named in the log; None if refused.
 
     The active profile if one is remembered, else routing.conf (ADR
     0018); only routing.conf itself can refuse.
     """
     try:
-        config, active = effective_config(config_path)
+        config, active = effective_config(config_path, said)
     except ConfigError as exc:
         log.error("configuration error: %s", exc)
         return None
@@ -213,24 +169,10 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     config_path = args.config or discover_config_path()
-    config = _desk_in_effect(config_path)
+    said = _command_line(args)
+    config = None if said is None else _desk_in_effect(config_path, said)
     if config is None:
         return EXIT_CONFIG
-
-    if args.device:
-        # Stripped like `[device] name` is: the client search compares
-        # the name as given, and padding matched nothing.
-        _override_device(config, args.device.strip())
-    if args.osc_port is not None:
-        # Bounded like `[osc] port` in the file. A port outside the range
-        # used to pass straight through: nothing bound it, and the first
-        # symptom was the backend failing to start.
-        if not 1 <= args.osc_port <= 65535:
-            log.error("configuration error: --osc-port %d out of range 1..65535",
-                      args.osc_port)
-            return EXIT_CONFIG
-        config.osc_port = args.osc_port
-        config.overrides = config.overrides._replace(osc_port=args.osc_port)
 
     if args.dry_run and (args.profile is not None or args.no_profile):
         return _dry_run_desk(args, config_path)
@@ -398,6 +340,13 @@ def _report_outcome(outcome: "Outcome",
     sys.stdout.write(outcome.describe() + "\n")
     if outcome.state == REFUSED:
         return EXIT_CONFIG
+    if outcome.state == WRITTEN_IN_PART:
+        # The marker was left alone, so the unit's reconcile writes the
+        # desk in effect back over the part that went out -- the one
+        # repair there is, if the backend can be reached again by then.
+        # Exit 1 whatever the reload says: the switch did not happen.
+        _hand_over_to_the_unit(config_path)
+        return EXIT_FAILURE
     if not outcome.persisted:
         # Measured on the desk: with the marker unwritten, the reload's
         # reconcile re-read routing.conf and undid the switch two
@@ -406,14 +355,21 @@ def _report_outcome(outcome: "Outcome",
                     "reconcile would undo what was just applied",
                     SERVICE_UNIT)
         return EXIT_NOT_PERSISTED
-    # The unit's own state has to follow, or its start-up verifier may
-    # still be re-applying the desk it started with (process.reload_service).
-    # Only when it is the unit's desk that changed: a reload after a
-    # switch of some other file -- named by --config, or by OSCMIX_CONFIG
-    # in this shell -- made the unit re-apply its own routing.conf over
-    # that switch (0.6.9). The unit's desk is what the unit resolved --
-    # its own --config, else its own environment -- not what this
-    # process would.
+    return _hand_over_to_the_unit(config_path)
+
+
+def _hand_over_to_the_unit(config_path: Optional[Path]) -> int:
+    """Reload the unit when it is the unit's desk that changed.
+
+    The unit's own state has to follow, or its start-up verifier may
+    still be re-applying the desk it started with
+    (process.reload_service). Only when it is the unit's desk that
+    changed: a reload after a switch of some other file -- named by
+    --config, or by OSCMIX_CONFIG in this shell -- made the unit re-apply
+    its own routing.conf over that switch (0.6.9). The unit's desk is
+    what the unit resolved -- its own --config, else its own environment
+    -- not what this process would.
+    """
     told, unit_desk = _unit_desk()
     if config_path is not None and unit_desk is not None \
             and not _same_file(config_path, unit_desk):
@@ -424,7 +380,7 @@ def _report_outcome(outcome: "Outcome",
     if reloaded == RELOAD_DONE:
         # The unit decides what it does with the desk: it has the facts.
         # One that names another backend is not applied there, and its
-        # journal says so (session._kept_for_this_process).
+        # journal says so (reload._kept_for_this_process).
         log.info("%s reloaded; its own reconcile follows the new desk, or "
                  "says in its journal why it does not", SERVICE_UNIT)
         if config_path is not None and not told:
@@ -479,232 +435,3 @@ def _same_file(one: Path, other: Optional[Path]) -> bool:
         return one.resolve() == other.resolve()
     except OSError:
         return False
-
-
-#: Phase numbers as the diff prints them. The apply writes in this
-#: order and the barrier between the first two is what ADR 0001 is
-#: about, so a diff that listed writes in path order would hide the one
-#: thing about them that is not obvious.
-_PHASE_NAMES = ((PHASE_LINK, "links"),
-                (PHASE_MIX, "mix matrix"),
-                (PHASE_CHANNEL, "channel and global state"))
-
-
-#: Registers that stream on their own. A snapshot exists to be diffed,
-#: and a level meter changes between any two reads.
-_STREAMING_SUFFIXES = ("/level", "/meter")
-
-
-def _snapshot(config: Config) -> int:
-    """Print every register the device reports, verbatim and sorted.
-
-    `--dump-config` renders a *config*, so it can only show registers a
-    config can express: everything with a value domain. That leaves the
-    link flags, phantom power, Room EQ and the rest invisible, and a
-    diff of two dumps therefore cannot prove they are unchanged.
-
-    This was found the hard way. A measurement left `/output/9/stereo`
-    unlinked on a working desk and two dumps compared equal, because
-    `stereo` has no domain and no dump ever carried it. The link flags
-    are the register class that produced every defect in 0.1.3.
-
-    Meters are excluded because they change between any two reads, which
-    would make every comparison noisy and none of them wrong.
-    """
-    seen = _read_device(config)
-    if seen is None:
-        return EXIT_FAILURE
-
-    rows = [(path, args) for path, args in seen.items()
-            if not path.endswith(_STREAMING_SUFFIXES)]
-    log.info("read %d registers; %d in the snapshot, %d streaming and left out",
-             len(seen), len(rows), len(seen) - len(rows))
-    firmware = device_firmware(
-        config.usb_id,
-        Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")), seen)
-    # Provenance on the first line: two snapshots are only comparable
-    # when they come from the same device on the same firmware, and a
-    # file that does not say cannot be checked later.
-    sys.stdout.write(
-        "# oscmix-session --snapshot: %d registers; %s serial %s, usb %s, "
-        "dsp %s\n" % (len(rows), config.device_name, _snapshot_serial(config),
-                       firmware["usb_revision"] or "?",
-                       "?" if firmware["dsp_version"] is None
-                       else firmware["dsp_version"]))
-    for path, args in sorted(rows):
-        sys.stdout.write("%s %s\n" % (path, " ".join(_one_value(a)
-                                                     for a in args)))
-    return EXIT_OK
-
-
-def _diff(config: Config) -> int:
-    """Print what an apply would write, and what it would leave alone.
-
-    The reconciler already answers this -- `plan()` is what the session
-    runs on every start -- so this prints its result instead of sending
-    it. Nothing is written and no register is touched.
-
-    Exit codes, and the middle one is why this is worth stating:
-
-        0  the device matches the config
-        3  it does not (`EXIT_DIFFERS`)
-        1  the read failed, so nothing is known either way
-
-    `diff(1)` uses 1 for "differing", and that is not available here: 1
-    already means EXIT_FAILURE, and a caller has to be able to tell "the
-    desk drifted" from "the backend never answered". Those are opposite
-    situations, and conflating them makes a monitoring check report
-    healthy silence when the backend is down.
-
-    **A rewrite is not a difference.** `/mix/<out>/playback/<pb>` is
-    never reported (ADR 0002) and is written on every apply whatever the
-    device holds, so counting it would make the exit code permanently 3
-    and worth nothing.
-    """
-    seen = _read_device(config)
-    if seen is None:
-        return EXIT_FAILURE
-
-    model = device_for_name(config.device_name)
-    result = plan(desired(config), seen, model)
-
-    # A rewrite is not a difference. `/mix/<out>/playback/<pb>` is never
-    # reported (ADR 0002), so it is written on every apply whatever the
-    # device holds -- listing it next to a real mismatch would answer
-    # "has the desk drifted?" with a number that is always non-zero.
-    differing = [w for w in result.writes if w.reason != REWRITE]
-    rewritten = [w for w in result.writes if w.reason == REWRITE]
-
-    log.info("read %d registers; %d differ, %d always rewritten, "
-             "%d already match", len(seen), len(differing), len(rewritten),
-             len(result.confirmed))
-
-    if not differing:
-        sys.stdout.write("the device matches the config\n")
-    else:
-        sys.stdout.write("%d register(s) differ from the config:\n\n"
-                         % len(differing))
-        for phase, name in _PHASE_NAMES:
-            writes = [w for w in differing if w.phase == phase]
-            if not writes:
-                continue
-            sys.stdout.write("phase %d -- %s\n" % (phase, name))
-            for write in sorted(writes, key=lambda w: w.path):
-                sys.stdout.write("  %s\n" % _diff_line(write, seen))
-            sys.stdout.write("\n")
-
-    if rewritten:
-        sys.stdout.write(
-            "%d more would be rewritten regardless: a dump never reports "
-            "them, so\nan apply cannot tell whether they are already "
-            "right (ADR 0002).\n" % len(rewritten))
-    return EXIT_DIFFERS if differing else EXIT_OK
-
-
-def _diff_line(write: Write, seen: Dict[str, Tuple[object, ...]]) -> str:
-    """One write as `path  config-value  device-value  reason`."""
-    return "%-34s %-14s device %-14s %s" % (
-        write.path, _values(write.args), _values(seen.get(write.path)),
-        write.reason)
-
-
-def _values(args: Optional[Tuple[object, ...]]) -> str:
-    """OSC arguments as a config would read them, or a dash for absent.
-
-    A missing register and a register holding an empty value are
-    different facts, and a diff that printed both as blank would be
-    saying the device is silent when it answered.
-    """
-    if args is None:
-        return "-"
-    return ", ".join(_one_value(value) for value in args)
-
-
-def _one_value(value: object) -> str:
-    if isinstance(value, float):
-        return "%.1f" % value
-    return str(value)
-
-
-def _read_device(config: Config) -> Optional[Dict[str, Tuple[object, ...]]]:
-    """Every register the running backend reports, or None with a reason.
-
-    Shared by `--dump-config` and `--diff`, which ask the device the same
-    question and differ only in what they do with the answer. An empty
-    read is a failure rather than an empty result: "you have no routing"
-    and "nobody answered" call for opposite responses.
-    """
-    device = loopback(config.osc_port, config.osc_recv_port)
-    try:
-        listener = device.listen()
-    except ReceivePortError as exc:
-        # Not the GUI, so closing it would not help; say what it is.
-        log.error("%s", exc.strerror)
-        return None
-    if listener is None:
-        log.error("UDP %d is in use -- close the mixer GUI; its meters and "
-                  "this read would split the device's replies",
-                  config.osc_recv_port)
-        return None
-
-    seen: Dict[str, Tuple[object, ...]] = {}
-    try:
-        # The same settle the verifier takes, and for the same reason.
-        # `setrefresh` answers with `/playback/N/stereo` synchronously,
-        # out of oscmix's own memory, before the device's dump reaches
-        # the wire; while nothing is bound on the receive port every
-        # meter datagram draws an ICMP port-unreachable that Linux
-        # queues, and the next write is dropped with it. Measured here:
-        # without this, 4 of 8 reads came back with 1982 registers and
-        # no playback stereo at all; with it, 11 of 11 read 2002.
-        #
-        # `--dump-config` has had this hole since it existed, while the
-        # constant's own docstring claimed this path paid the wait.
-        time.sleep(DUMP_LISTEN_SETTLE)
-        device.request_dump()
-        deadline = time.monotonic() + DUMP_READ_SECONDS
-        quiet_after = deadline
-        while time.monotonic() < deadline:
-            fresh = False
-            for path, _tags, args in listener.messages(0.25):
-                if path not in seen:
-                    fresh = True
-                seen.setdefault(path, tuple(args))
-            if fresh:
-                # Stop once the dump goes quiet rather than always
-                # waiting out the window: it is over in ~2 s on a UCX II,
-                # and a command that takes 8 s regardless invites being
-                # interrupted halfway. The level meters keep streaming,
-                # so "quiet" means no register we had not already seen.
-                quiet_after = time.monotonic() + DUMP_QUIET_SECONDS
-            elif seen and time.monotonic() > quiet_after:
-                break
-    finally:
-        listener.close()
-
-    if not seen:
-        log.error("no reply from the backend on UDP %d -- is oscmix running?",
-                  config.osc_recv_port)
-        return None
-    return seen
-
-
-def _dump_config(config: Config) -> int:
-    """Print a routing.conf built from what the device reports."""
-    seen = _read_device(config)
-    if seen is None:
-        return EXIT_FAILURE
-
-    model = device_for_name(config.device_name)
-    dumped = Config(device_name=config.device_name, usb_id=config.usb_id,
-                    osc_port=config.osc_port,
-                    osc_recv_port=config.osc_recv_port,
-                    routes=list(routes_from_observed(observed(seen))),
-                    channels=list(channels_from_observed(seen, model)),
-                    globals=list(globals_from_observed(seen, model)))
-    log.info("read %d registers; %d input route(s), %d channel setting(s) "
-             "and %d global setting(s) reconstructed",
-             len(seen), len(dumped.routes), len(dumped.channels),
-             len(dumped.globals))
-    sys.stdout.write(render_config(dumped, model))
-    return EXIT_OK

@@ -14,13 +14,14 @@ against upstream's node table, never against what looked plausible.
 import json
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
-from oscmix_desk.config import GlobalSetting, load_config
+from oscmix_desk.config import load_config
+from oscmix_desk.devices import device_for_name
+from oscmix_desk.model import GlobalSetting
 from oscmix_desk.registers import (
     ENABLE_OPTION,
     GLOBAL,
-    device_for_name,
     global_families,
     settable_globals,
 )
@@ -424,7 +425,8 @@ def test_the_three_registers_whose_bounds_had_to_be_measured():
     width registers, -0.01 and 1.02 refused; 0 and 100 accepted on
     smooth, -1 and 101 refused.
     """
-    from oscmix_desk.registers import UCX2, register_at
+    from oscmix_desk.devices import UCX2
+    from oscmix_desk.registers import register_at
 
     for path in ("/echo/width", "/reverb/width"):
         register = register_at(UCX2, path)
@@ -440,6 +442,7 @@ def test_reverb_volume_stays_unbounded():
     keeps none. An `hi` copied from `/echo/volume` because the two look
     alike would reject values this device takes.
     """
-    from oscmix_desk.registers import UCX2, register_at
+    from oscmix_desk.devices import UCX2
+    from oscmix_desk.registers import register_at
 
     assert register_at(UCX2, "/reverb/volume").hi is None

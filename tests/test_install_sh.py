@@ -10,7 +10,7 @@ import stat
 import subprocess
 
 import pytest
-from conftest import repo_file
+from support import repo_file
 
 PROJECT_ROOT = repo_file("install.sh").parent
 
@@ -155,6 +155,58 @@ def test_install_is_idempotent_and_keeps_user_config(tmp_path):
     assert result.returncode == 0
     assert config.read_text() == "# customized by the user\n"
     assert "keeping existing" in result.stdout
+
+
+def test_a_failed_runtime_copy_keeps_the_installed_version(tmp_path):
+    """Do not delete the running package before its replacement exists."""
+    home, env, log = make_fake_home(tmp_path)
+    assert run("install.sh", ["--no-build", "--no-udev"], env).returncode == 0
+    package = home / ".local" / "lib" / "oscmix-desk" / "oscmix_desk"
+    before = {p.name: p.read_bytes() for p in package.glob("*.py")}
+    stub = tmp_path / "stub-bin" / "install"
+    stub.write_text('#!/bin/sh\ncase "$*" in *model.py*) exit 28 ;; esac\n'
+                    'exec /usr/bin/install "$@"\n')
+    stub.chmod(0o755)
+    log.write_text("")
+    result = run("install.sh", ["--no-build", "--no-udev"], env)
+    assert result.returncode != 0
+    assert {p.name: p.read_bytes() for p in package.glob("*.py")} == before
+    assert "restart oscmix.service" not in log.read_text()
+
+
+def test_the_service_is_stopped_before_installed_code_changes(tmp_path):
+    home, env, log = make_fake_home(tmp_path)
+    session_home_stub(tmp_path, str(home))
+    plug_in(tmp_path, env)
+    stub = tmp_path / "stub-bin" / "install"
+    stub.write_text('#!/bin/sh\nprintf "install %s\\n" "$*" >> "' + str(log)
+                    + '"\nexec /usr/bin/install "$@"\n')
+    stub.chmod(0o755)
+    result = run("install.sh", ["--no-build", "--no-udev"], env)
+    assert result.returncode == 0, result.stderr
+    calls = log.read_text()
+    assert calls.index("stop oscmix.service") < calls.index("/bin/oscmix-session")
+    assert calls.index("/bin/oscmix-session") < calls.index("restart oscmix.service")
+
+
+def test_an_installer_killed_during_activation_can_be_rerun(tmp_path):
+    home, env, log = make_fake_home(tmp_path)
+    assert run("install.sh", ["--no-build", "--no-udev"], env).returncode == 0
+    package = home / ".local" / "lib" / "oscmix-desk" / "oscmix_desk"
+    before = {p.name: p.read_bytes() for p in package.glob("*.py")}
+    stub = tmp_path / "stub-bin" / "mv"
+    stub.write_text('#!/bin/sh\n/usr/bin/mv "$@" || exit $?\n'
+                    'case "$*" in *oscmix_desk.previous) kill -KILL "$PPID" ;; esac\n')
+    stub.chmod(0o755)
+    log.write_text("")
+    interrupted = run("install.sh", ["--no-build", "--no-udev"], env)
+    assert interrupted.returncode == -9
+    assert "restart oscmix.service" not in log.read_text()
+    stub.unlink()
+    recovered = run("install.sh", ["--no-build", "--no-udev"], env)
+    assert recovered.returncode == 0, recovered.stderr
+    assert {p.name: p.read_bytes() for p in package.glob("*.py")} == before
+    assert not package.with_name("oscmix_desk.previous").exists()
 
 
 def test_uninstall_removes_files_but_keeps_config(tmp_path):

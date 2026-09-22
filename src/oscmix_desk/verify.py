@@ -4,20 +4,39 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 
-from .backend import Backend, loopback
-from .config import Config
+from .backend import (
+    Backend,
+    Listener,
+    loopback,
+)
 from .constants import DUMP_LISTEN_SETTLE, VERIFY_SETTLE, VERIFY_TIMEOUT
+from .devices import device_for_name
 from .errors import ReceivePortError
 from .log import log
+from .model import Config
+from .osc import (
+    Args,
+    Message,
+    Value,
+)
 from .reconcile import desired, matches, policy_for
 from .registers import (
     PIN,
     VERIFIABLE,
     Device,
+    Policy,
     cold_plug_complete,
-    device_for_name,
     register_at,
     verify_class,
 )
@@ -33,7 +52,7 @@ from .routing import (
 
 # One expected register: its OSC type tags and the arguments it must
 # report back. Keyed by OSC path.
-Registers = Dict[str, Tuple[str, Tuple[object, ...]]]
+Registers = Dict[str, Tuple[str, Args]]
 
 
 def expected_registers(config: Config) -> Registers:
@@ -59,8 +78,8 @@ def expected_registers(config: Config) -> Registers:
     return {entry.path: (entry.tags, entry.args) for entry in desired(config)}
 
 
-def _register_matches(want_types: str, want_args: Sequence[object],
-                      got_args: Sequence[object]) -> bool:
+def _register_matches(want_types: str, want_args: Sequence[Value],
+                      got_args: Sequence[Value]) -> bool:
     """Compare a reported register against the expected value.
 
     Delegates to ``reconcile.matches`` so the read-back and the plan
@@ -177,9 +196,9 @@ class VerifyResult:
     unobserved: List[str]
 
 
-def _absorb(report: Tuple[str, str, Sequence[object]], registers: Registers,
+def _absorb(report: Message, registers: Registers,
             confirmed: Set[str], mismatched: Set[str],
-            on_observed: Optional[Callable[[str, Sequence[object]],
+            on_observed: Optional[Callable[[str, Sequence[Value]],
                                            None]]) -> None:
     """Classify one reported register against what was expected.
 
@@ -200,9 +219,9 @@ def _absorb(report: Tuple[str, str, Sequence[object]], registers: Registers,
         mismatched.add(path)
 
 
-def _observe(listener: object, registers: Registers, prompt: Set[str],
+def _observe(listener: Listener, registers: Registers, prompt: Set[str],
              confirmed: Set[str], mismatched: Set[str],
-             on_observed: Optional[Callable[[str, Sequence[object]], None]],
+             on_observed: Optional[Callable[[str, Sequence[Value]], None]],
              should_stop: StopCheck, timeout: float) -> None:
     """Read reports until the window closes, a stop is asked, or time runs out.
 
@@ -217,7 +236,7 @@ def _observe(listener: object, registers: Registers, prompt: Set[str],
             return
         if _window_may_close(registers, prompt, confirmed, mismatched):
             return
-        for report in listener.messages(0.25):  # type: ignore[attr-defined]
+        for report in listener.messages(0.25):
             _absorb(report, registers, confirmed, mismatched, on_observed)
 
 
@@ -249,7 +268,7 @@ def _window_may_close(registers: Registers, reportable: Set[str],
 
 def verify_routing(registers: Registers, send_port: int, recv_port: int,
                    timeout: float = VERIFY_TIMEOUT,
-                   on_observed: Optional[Callable[[str, Sequence[object]],
+                   on_observed: Optional[Callable[[str, Sequence[Value]],
                                                   None]] = None,
                    should_stop: StopCheck = never_stop,
                    *,
@@ -314,7 +333,7 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
 
 def _link_sync_observer(config: Config, pending_links: Dict[str, int],
                         reapplied: Dict[str, bool], should_stop: StopCheck
-                        ) -> Callable[[str, Sequence[object]], None]:
+                        ) -> Callable[[str, Sequence[Value]], None]:
     """Watch the dump for the link state, and re-apply the mix once it lands.
 
     This is the point of sharing one ``/refresh`` between verification
@@ -327,12 +346,12 @@ def _link_sync_observer(config: Config, pending_links: Dict[str, int],
     the caller's, because the caller still needs to know afterwards
     whether the re-apply happened.
     """
-    def on_observed(path: str, args: Sequence[object]) -> None:
+    def on_observed(path: str, args: Sequence[Value]) -> None:
         # Only a report of the *expected* link value means oscmix's state
         # is right; a stale opposite value must not release the re-apply.
         if path in pending_links and args:
             try:
-                reported = int(args[0])  # type: ignore[call-overload]
+                reported = int(args[0])
             except (TypeError, ValueError):
                 return
             if reported != pending_links[path]:
@@ -398,7 +417,7 @@ def _report(result: VerifyResult, config: Config, device: Optional[Device],
 
 
 def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
-                 overrides: Optional[Dict[Tuple[str, str], str]] = None
+                 overrides: Optional[Mapping[Tuple[str, str], Policy]] = None
                  ) -> List[str]:
     """The registers that count as a problem worth re-sending for.
 
@@ -421,7 +440,7 @@ def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
 
 def _kept_by_the_device(result: VerifyResult,
                         device: Optional[Device] = None,
-                        overrides: Optional[Dict[Tuple[str, str], str]] = None
+                        overrides: Optional[Mapping[Tuple[str, str], Policy]] = None
                         ) -> List[str]:
     """Mismatches this session is deliberately letting the device keep."""
     return sorted(path for path in result.mismatched
@@ -483,7 +502,7 @@ def reconcile_now(config: Config, reason: str,
 
 
 def _read_back(registers: Registers, config: Config,
-               on_observed: Callable[[str, Sequence[object]], None],
+               on_observed: Callable[[str, Sequence[Value]], None],
                should_stop: StopCheck,
                device: Optional[Device]) -> Optional[VerifyResult]:
     """``verify_routing`` for the verifier, with the desk left whole.

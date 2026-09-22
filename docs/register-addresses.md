@@ -1,6 +1,6 @@
 # Register addresses, measured
 
-The register model in `registers.py` carries oscmix's OSC **paths**. The
+The register table in `devices.py` carries oscmix's OSC **paths**. The
 device knows only **register addresses**, and every defect this project
 has found in the last two releases lived in the gap between the two:
 Room EQ folded onto itself, `/output/N/phase` never written at all, a

@@ -1,20 +1,24 @@
 """USB presence detection via sysfs (no lsusb dependency)."""
 
+import pytest
+
+from oscmix_desk import discovery
+
 
 def test_device_found(session_mod, fake_sysfs):
-    assert session_mod.usb_device_present("2a39:3fd9", fake_sysfs) is True
+    assert discovery.usb_device_present("2a39:3fd9", fake_sysfs) is True
 
 
 def test_case_insensitive_match(session_mod, fake_sysfs):
-    assert session_mod.usb_device_present("2A39:3FD9", fake_sysfs) is True
+    assert discovery.usb_device_present("2A39:3FD9", fake_sysfs) is True
 
 
 def test_device_absent(session_mod, empty_sysfs):
-    assert session_mod.usb_device_present("2a39:3fd9", empty_sysfs) is False
+    assert discovery.usb_device_present("2a39:3fd9", empty_sysfs) is False
 
 
 def test_missing_sysfs_dir(session_mod, tmp_path):
-    assert session_mod.usb_device_present("2a39:3fd9", tmp_path / "nope") is False
+    assert discovery.usb_device_present("2a39:3fd9", tmp_path / "nope") is False
 
 
 def test_a_device_the_kernel_has_not_authorized_is_present_and_named(
@@ -139,3 +143,33 @@ def test_device_firmware_has_one_shape_for_every_artifact(fake_sysfs,
     # Nothing known is None, not a guess and not an omitted key.
     assert discovery.device_firmware("2a39:3fd9", empty_sysfs, None) == {
         "usb_revision": None, "dsp_version": None}
+
+
+@pytest.mark.parametrize(("release", "name", "said"), [
+    ("0301", "Fireface UCX II", False),     # the firmware that was measured
+    ("0305", "Fireface UCX II", True),
+    ("0305", "Some Box", False),            # nobody measured anything on it
+    (None, "Fireface UCX II", False),       # not readable: nothing to say
+])
+def test_a_start_says_when_the_firmware_is_not_the_one_that_was_measured(
+        tmp_path, caplog, release, name, said):
+    """The register table, the hardware evidence and the write sweep were
+    recorded on USB release 3.01. Until 0.7.0 nothing said that the box on
+    the desk was not the box that was measured. A notice, not a refusal:
+    every register is still read back, and a firmware update must not take
+    the desk down."""
+    from oscmix_desk import Config
+    from oscmix_desk import session as session_module
+
+    dev = tmp_path / "1-1"
+    dev.mkdir()
+    (dev / "idVendor").write_text("2a39\n")
+    (dev / "idProduct").write_text("3fd9\n")
+    if release:
+        (dev / "bcdDevice").write_text(release + "\n")
+    with caplog.at_level("WARNING"):
+        session_module._firmware_notice(Config(device_name=name), tmp_path)
+    expected = ("the interface reports USB release 3.05, and the register "
+                "table for 'Fireface UCX II' was recorded on 3.01")
+    assert (expected in caplog.text) is said
+    assert bool(caplog.text) is said

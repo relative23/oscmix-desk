@@ -14,9 +14,10 @@ import socket
 import threading
 import time
 
-from conftest import free_udp_port, osc_bundle
+from support import free_udp_port, osc_bundle
 
-from oscmix_desk import cli
+from oscmix_desk import cli, osc
+from oscmix_desk import reads as reads_mod
 
 
 class FakeBackend(threading.Thread):
@@ -43,9 +44,9 @@ class FakeBackend(threading.Thread):
                 if self.stopping.is_set():
                     return
                 continue
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _t, _a = self.session_mod.decode_osc(message)
+                    path, _t, _a = osc.decode_osc(message)
                 except ValueError:
                     continue
                 if path == "/refresh":
@@ -54,7 +55,7 @@ class FakeBackend(threading.Thread):
 
 
 def dump_of(session_mod, registers):
-    return [session_mod.encode_osc(p, t, *a) for p, t, a in registers]
+    return [osc.encode_osc(p, t, *a) for p, t, a in registers]
 
 
 def run_dump(session_mod, capsys, registers, *, hold_port=False):
@@ -134,7 +135,7 @@ def test_silence_is_an_error_not_an_empty_config(session_mod, capsys, caplog,
                                                  monkeypatch):
     """"Nobody answered" and "you have no routing" call for opposite
     responses, and both would render as a file with no routes."""
-    monkeypatch.setattr(cli, "DUMP_READ_SECONDS", 0.6)
+    monkeypatch.setattr(reads_mod, "DUMP_READ_SECONDS", 0.6)
     send_port, recv_port = free_udp_port(), free_udp_port()
     config = session_mod.Config(device_name="Fireface UCX II",
                                 osc_port=send_port, osc_recv_port=recv_port)
@@ -153,7 +154,7 @@ def test_it_stops_when_the_dump_goes_quiet(session_mod, capsys):
     code, _out = run_dump(session_mod, capsys, MONITOR)
     elapsed = time.monotonic() - started
     assert code == session_mod.EXIT_OK
-    assert elapsed < cli.DUMP_READ_SECONDS, (
+    assert elapsed < reads_mod.DUMP_READ_SECONDS, (
         "the read waited out the full window (%.1fs) instead of stopping "
         "when the dump went quiet" % elapsed)
 
@@ -184,7 +185,7 @@ def test_the_read_settles_before_it_asks_for_the_dump(session_mod, tmp_path):
     backend.start()
     started = time.monotonic()
     try:
-        cli._read_device(config)
+        reads_mod._read_device(config)
     finally:
         backend.stop()
         backend.join(timeout=3)
@@ -192,10 +193,10 @@ def test_the_read_settles_before_it_asks_for_the_dump(session_mod, tmp_path):
 
     assert backend.asked_at is not None, "the backend never saw /refresh"
     waited = backend.asked_at - started
-    assert waited >= cli.DUMP_LISTEN_SETTLE, (
+    assert waited >= reads_mod.DUMP_LISTEN_SETTLE, (
         "asked for the dump %.3f s after opening the socket, before the "
         "%.3f s settle -- the playback stereo burst is what gets lost"
-        % (waited, cli.DUMP_LISTEN_SETTLE))
+        % (waited, reads_mod.DUMP_LISTEN_SETTLE))
 
 
 class TimingBackend(FakeBackend):
@@ -213,9 +214,9 @@ class TimingBackend(FakeBackend):
                 if self.stopping.is_set():
                     return
                 continue
-            for message in self.session_mod.iter_osc_messages(data):
+            for message in osc.iter_osc_messages(data):
                 try:
-                    path, _t, _a = self.session_mod.decode_osc(message)
+                    path, _t, _a = osc.decode_osc(message)
                 except ValueError:
                     continue
                 if path == "/refresh":

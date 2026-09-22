@@ -16,11 +16,11 @@ from pathlib import Path
 
 import pytest
 
-from oscmix_desk import config as _config
 from oscmix_desk import launcher as _launcher
+from oscmix_desk import paths as paths_mod
 
 #: Read at collection, before any fixture patches them.
-_IMPORTED_SYSTEM_CONFIGS = (_config.SYSTEM_CONFIG, _launcher.SYSTEM_CONFIG)
+_IMPORTED_SYSTEM_CONFIGS = (paths_mod.SYSTEM_CONFIG, _launcher.SYSTEM_CONFIG)
 
 
 @pytest.fixture
@@ -113,14 +113,13 @@ def test_the_xdg_config_is_used_when_no_override_is_set(launch_mod, clean_env,
 
 def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
                                                        tmp_path):
-    """config.discover_config_path's rule, repeated in a module that may
+    """paths_mod.discover_config_path's rule, repeated in a module that may
     not import config -- held equal here across the environments that
     decide it. A relative XDG_CONFIG_HOME is ignored by both (0.6.10),
     an empty HOME is looked up, and a uid without a passwd entry has no
     user directory: `~/.config` is not read relative to the cwd."""
     import pwd
 
-    from oscmix_desk import config
 
     home = tmp_path / "home"
     xdg = tmp_path / "xdg"
@@ -166,7 +165,7 @@ def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
             else:
                 clean_env.setenv(name, value)
         found = launch_mod.config_file()
-        assert found == config.discover_config_path(), case
+        assert found == paths_mod.discover_config_path(), case
         seen.add(found)
     assert seen == {home / ".config" / "oscmix" / "routing.conf",
                     tmp_path / "named.conf", xdg / "oscmix" / "routing.conf",
@@ -177,20 +176,19 @@ def test_both_modules_default_to_the_same_system_config(launch_mod,
                                                         clean_env, tmp_path):
     """The two literals, as imported -- the suite patches both, so only
     the values read before any fixture can show them drifting apart."""
-    from oscmix_desk import config
 
     in_config, in_launcher = _IMPORTED_SYSTEM_CONFIGS
     assert in_config == Path("/etc/oscmix/routing.conf")
     assert in_launcher == in_config
     clean_env.delenv("OSCMIX_SYSTEM_CONFIG")
-    clean_env.setattr(config, "SYSTEM_CONFIG", tmp_path / "a")
-    assert config.system_config({}) == tmp_path / "a"
-    assert config.system_config(
+    clean_env.setattr(paths_mod, "SYSTEM_CONFIG", tmp_path / "a")
+    assert paths_mod.system_config({}) == tmp_path / "a"
+    assert paths_mod.system_config(
         {"OSCMIX_SYSTEM_CONFIG": str(tmp_path / "b")}) == tmp_path / "b"
     # From the environment it is given, like the rest of the search: the
     # unit's, when the CLI resolves the unit's desk.
     clean_env.setenv("OSCMIX_SYSTEM_CONFIG", str(tmp_path / "c"))
-    assert config.system_config({}) == tmp_path / "a"
+    assert paths_mod.system_config({}) == tmp_path / "a"
 
 
 # --------------------------------------------------------------------------
@@ -522,7 +520,7 @@ def test_the_port_of_the_active_profile_wins(launch_mod, clean_env, tmp_path):
 def test_settings_read_like_the_backend_reads_them(launch_mod, clean_env,
                                                   tmp_path):
     """Inline comments are comments, as in config.load_config, and a profile
-    name may start with a capital, as config.profile_path allows."""
+    name may start with a capital, as paths_mod.profile_path allows."""
     conf = write_conf(tmp_path / "routing.conf",
                       "[device]\nusb-id = 2a39:3fd9  # UCX II\n"
                       "[osc]\nport = 9001 ; the desk\n")
@@ -543,3 +541,13 @@ def test_the_backend_poll_asks_the_given_proc(launch_mod, clean_env, tmp_path):
     clean_env.setattr(launch_mod, "BACKEND_WAIT", 0.0)
     assert launch_mod.ensure_backend((9100, 9001), tmp_path) is False
     assert asked == [(9100, tmp_path), (9001, tmp_path)]
+
+
+def test_the_launcher_and_the_session_agree_on_what_a_profile_name_is():
+    import inspect
+
+    from oscmix_desk import launcher
+
+    rule = 'r"[A-Za-z0-9][A-Za-z0-9._-]*"'
+    assert rule in inspect.getsource(paths_mod.profile_path)
+    assert rule in inspect.getsource(launcher._active_profile_port)

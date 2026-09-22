@@ -6,23 +6,20 @@ See docs/OSC-PROTOCOL.md for why."""
 from __future__ import annotations
 
 import time
+from enum import Enum
 from typing import Callable, Dict, Mapping, Optional, Sequence
 
 from .backend import Backend, loopback
-from .config import Config, Route
 from .constants import (
     DEFAULT_OSC_RECV_PORT,
     LINK_ECHO_TIMEOUT,
     LINK_SETTLE,
     LINK_SYNC_BLIND_DELAY,
 )
-from .errors import ReceivePortError
+from .errors import ReceivePortError, WriteFailed
 from .log import log
-from .reconcile import (
-    desired,
-    link_messages,
-    plan,
-)
+from .model import Config, Route
+from .reconcile import Plan, desired, link_messages, plan
 
 # Asked before every write and between every phase of the background
 # verifier. See docs/decisions/0009-verifier-stop-contract.md: the
@@ -62,9 +59,27 @@ def wait_unless_stopped(seconds: float, should_stop: StopCheck) -> bool:
         time.sleep(min(0.1, remaining))
 
 
+class LinkEcho(Enum):
+    """What the wait for the link echo came to.
+
+    Three answers, each normal, and until 0.7.0 one ``Optional[bool]``:
+    ``True``, ``False`` and ``None``, told apart by an ``is None`` and a
+    ``not`` that were easy to swap (first outside review; the mutation run
+    had already shown that swapping them went unnoticed). Truthy only when
+    confirmed, so ``if await_link_echo(...)`` still means what it meant.
+    """
+
+    CONFIRMED = "confirmed"          # every register arrived at its value
+    SILENT = "silent"                # the wait ran out
+    UNOBSERVABLE = "unobservable"    # the mixer GUI holds the receive port
+
+    def __bool__(self) -> bool:
+        return self is LinkEcho.CONFIRMED
+
+
 def await_link_echo(expected: Mapping[str, int], recv_port: int,
                     timeout: Optional[float] = None, *,
-                    backend: Optional[Backend] = None) -> Optional[bool]:
+                    backend: Optional[Backend] = None) -> LinkEcho:
     """Wait until oscmix reports every register in ``expected`` at its value.
 
     ``expected`` maps an OSC path to the integer the device has to report
@@ -74,10 +89,10 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
     0 just as a linked one waits for 1, and a stale report of the opposite
     value must not end the wait.
 
-    Returns True when everything arrived, False on timeout, and None when
-    the receive port is unavailable (the mixer GUI holds it), in which
+    ``CONFIRMED`` when everything arrived, ``SILENT`` on timeout, and
+    ``UNOBSERVABLE`` when the mixer GUI holds the receive port, in which
     case the caller falls back to a plain wait. A port that cannot be
-    bound for any other reason raises ``ReceivePortError``.
+    bound or read for any other reason raises ``ReceivePortError``.
 
     ``backend`` is the caller's, when it has one. Without it this built
     its own from ``recv_port`` and ignored the one ``apply_routing`` had
@@ -88,27 +103,27 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
     waiting for an echo no double could send.
     """
     if not expected:
-        return True
+        return LinkEcho.CONFIRMED
     if timeout is None:
         timeout = LINK_ECHO_TIMEOUT
     device = backend if backend is not None else loopback(0, recv_port)
     listener = device.listen()
     if listener is None:
-        return None
+        return LinkEcho.UNOBSERVABLE
     pending = dict(expected)
     deadline = time.monotonic() + timeout
     try:
         while pending:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                return False
+                return LinkEcho.SILENT
             heard = False
             for path, _tags, args in listener.messages(remaining):
                 heard = True
                 if path not in pending or not args:
                     continue
                 try:
-                    reported = int(args[0])  # type: ignore[call-overload]
+                    reported = int(args[0])
                 except (TypeError, ValueError):
                     continue
                 if reported == pending[path]:
@@ -116,8 +131,8 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
             if not heard and pending:
                 # The listener yields nothing on a socket timeout, which
                 # is the only way this loop ends without the registers.
-                return False
-        return True
+                return LinkEcho.SILENT
+        return LinkEcho.CONFIRMED
     finally:
         listener.close()
 
@@ -153,11 +168,11 @@ def _cross_the_barrier(config: Config, recv_port: int,
                   LINK_SETTLE)
         time.sleep(LINK_SETTLE)
         return
-    if echoed is None:
+    if echoed is LinkEcho.UNOBSERVABLE:
         log.info("link echo unobservable (UDP %d in use); waiting %.1fs",
                  recv_port, LINK_SETTLE)
         time.sleep(LINK_SETTLE)
-    elif not echoed:
+    elif echoed is LinkEcho.SILENT:
         # Normal when the pairs were already linked: no change, no echo.
         log.info("no link change reported within %.1fs; mix matrix will "
                  "be re-applied after the register sync", timeout)
@@ -203,15 +218,7 @@ def apply_routing(config: Config, port: int,
     # through setinputstereo(), which updates oscmix's state right away,
     # while /output/<n>/stereo relies on the device report -- see
     # backend.Traits.reports_link_state_on_write.
-    device.send(w.message() for w in wanted.links())
-
-    _cross_the_barrier(config, recv_port, device)
-
-    device.send(w.message() for w in wanted.mix())
-    # Channel state last: it does not depend on the barrier, and a fader
-    # or a reference level landing before the routing exists would be
-    # audible for the width of it.
-    device.send(w.message() for w in wanted.channel())
+    _send_in_order(wanted, config, recv_port, device)
     for route in config.routes:
         kind, source = route.source
         log.info(
@@ -236,6 +243,29 @@ def apply_routing(config: Config, port: int,
                  "the device", len(skip))
 
 
+def _send_in_order(wanted: Plan, config: Config, recv_port: int,
+                   device: Backend) -> None:
+    """Links, the barrier, the mix, then channel state.
+
+    Channel state last: it does not depend on the barrier, and a fader or
+    a reference level landing before the routing exists would be audible
+    for the width of it. A burst that fails part of the way is reported
+    for the whole apply: the backend knows how far its burst came, and how
+    far the *apply* came is that plus the bursts on either side.
+    """
+    bursts = (wanted.links(), wanted.mix(), wanted.channel())
+    for index, burst in enumerate(bursts):
+        if index == 1:
+            _cross_the_barrier(config, recv_port, device)
+        try:
+            device.send(w.message() for w in burst)
+        except WriteFailed as exc:
+            before = [w.path for done in bursts[:index] for w in done]
+            after = [w.path for rest in bursts[index + 1:] for w in rest]
+            raise WriteFailed(exc, before + list(exc.written),
+                              list(exc.unwritten) + after) from exc
+
+
 def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
     """The ``/output/<n>/stereo`` values a routing depends on.
 
@@ -248,7 +278,7 @@ def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
     for route in routes:
         for path, _types, args in link_messages(route):
             if path.startswith("/output/"):
-                state[path] = int(args[0])  # type: ignore[call-overload]
+                state[path] = int(args[0])
     return state
 
 

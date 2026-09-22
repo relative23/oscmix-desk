@@ -39,6 +39,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from oscmix_desk import devices
 from oscmix_desk import registers as R
 from oscmix_desk.backend import loopback
 from oscmix_desk.constants import (
@@ -54,7 +55,7 @@ from oscmix_desk.discovery import (
     resolve_device,
 )
 from oscmix_desk.errors import DeviceAmbiguous, ReceivePortError
-from oscmix_desk.profiles import take_device_lock
+from oscmix_desk.locking import take_device_lock
 
 #: Steps as a fraction of the declared range, smallest first. One percent
 #: is below the quantisation of several families, which is the point: it
@@ -274,8 +275,8 @@ def settable(limit: Optional[int] = None,
              match: str = "") -> List[Tuple[str, R.Register]]:
     """Every register a config can set, in declaration order."""
     out = []
-    for path in R.declared_paths(R.UCX2):
-        register = R.register_at(R.UCX2, path)
+    for path in R.declared_paths(devices.UCX2):
+        register = R.register_at(devices.UCX2, path)
         if register is None or register.domain is None:
             continue
         if match and match not in path:
@@ -443,7 +444,7 @@ def repair(device, listener, reference: Dict[str, object],
             return current, []
         writes = []
         for path in wrong:
-            register = R.register_at(R.UCX2, path)
+            register = R.register_at(devices.UCX2, path)
             if register is not None and path in reference:
                 writes.append((path, register, reference[path]))
         write_batch(device, writes)

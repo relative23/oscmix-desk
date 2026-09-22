@@ -72,16 +72,29 @@ Common findings in the journal:
   applied; it cannot be read back until the cause is gone. `Permission
   denied` is a `[osc] recv-port` below 1024. Until 0.6.11 this was
   reported as "in use", which sent the reader to a GUI that was closed.
+- `cannot read the receive port UDP N: <reason>` -- the port was bound
+  and then could not be read: the loopback interface went down, or the
+  socket was taken away. Same consequences as above -- the routing is
+  applied, a read exits 1 -- and the same remedy: remove the cause, then
+  `systemctl --user reload oscmix.service`.
 - `no register model for '<name>': its N route(s) are written as given`
   -- `[device] name` is not an interface this project has a register
   table or channel map for, so the routes' channel numbers are not
   checked against the hardware. Expected on an interface this project
   has never seen (the 802 is checked against upstream's channel map and
   does not warn); a typo in the name looks the same.
-- `--device replaces [device] name after validation: this config was
-  checked for '<A>' and is used for '<B>'` -- the file names one model
-  and the override another, so the channel check was made for the wrong
-  interface. Put the name in `routing.conf` instead.
+- `the interface reports USB release X, and the register table for
+  '<name>' was recorded on 3.01` -- the firmware on the box is not the
+  one this project was measured against. Nothing is refused and every
+  register is still read back; if something that used to verify stops
+  doing so after a firmware update, this line is the first thing to
+  mention in a report, with `oscmix-session --snapshot`.
+- `configuration error: ... channel N does not exist on a <B>` with
+  `--device <B>` on the command line -- the desk is validated for the
+  interface it is sent to, and this one does not fit it: the file names
+  another model and routes to channels `<B>` does not have. Exit 2,
+  nothing written. (0.6.11 validated for the file's device and warned
+  that `--device` had replaced the name afterwards.)
 - `the desk now in effect is for another backend or interface -- ...`
   with `Status: running; reconcile skipped` -- `routing.conf`, or the
   active profile, now resolves to another device name, usb id, serial or
@@ -89,17 +102,27 @@ Common findings in the journal:
   line would go there; the line says which, and what to do. A running
   session keeps its backend, so the desk was **not** applied. For
   `routing.conf`: `systemctl --user restart oscmix.service` follows it.
-  For a profile that itself names another machine: take `[osc]` and
-  `[device]` out of it and reload (`systemctl --user reload
-  oscmix.service`) -- a restart would move the unit off its interface.
-  The line names `--no-profile` as well where that can work, and a
-  restart instead of the reload where `routing.conf` needs one.
-- `this profile names another backend or interface than its
-  routing.conf` -- works for the switch in 0.6.x and is refused from
-  0.7.0 (ADR 0026). A profile made with `--dump-config` restates the
-  main config's values and is not meant -- until `routing.conf`'s port
-  or device changes, after which the dump names the old one. Taking
-  `[osc]` and `[device]` out of the profile is the remedy either way.
+- `wrote N of M register(s) of '<profile>' and then could not: cannot
+  write to the backend on UDP ...` with exit 1 -- the socket gave out
+  part of the way through a switch, so some of the profile is on the
+  device and the rest is not; the line lists both. The marker was left
+  alone, so the desk in effect is still the previous one: the command
+  asks the unit to reload, and its reconcile writes that desk back. If
+  the backend could not be reached then either, `systemctl --user reload
+  oscmix.service` once it can does the same. With nothing written at all
+  the line reads `refused ..., nothing written` and the exit code is 2.
+- `profile '<name>' names another backend or interface than
+  .../routing.conf -- <what differs>` -- a profile is the desk, not the
+  machine (ADR 0026), so one whose `[osc]` or `[device]` resolve to
+  something else than `routing.conf`'s is refused: a switch to it exits
+  2 and writes nothing, a listing shows it as broken, and if it was
+  still the active profile from 0.6.x -- where it won -- the start and
+  every reload apply `routing.conf` and say `ignoring ...` with this
+  reason. A profile made with `--dump-config` restates the main config's
+  values and is not meant -- until `routing.conf`'s port or device
+  changes, after which the dump names the old one. Taking `[osc]` and
+  `[device]` out of the profile is the remedy either way; a desk that
+  really is for another backend needs its own directory and `--config`.
 - `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
   GUI was listening on the state port, so the read-back was not possible.
 - `unconfirmed after retry: ...` -- the device never reported the listed

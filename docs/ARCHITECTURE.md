@@ -84,25 +84,37 @@ acyclic graph.
 | `errors` | `ConfigError`, the one exception a user ever sees; the two refusals that are not config text, an ambiguous interface and an unavailable device lock; and `ReceivePortError`, a receive port that cannot be bound for a reason other than a holder (ADR 0025) |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
-| `registers` | the register model as data: paths, tags, bounds, verification class, policy, per-device channel maps |
-| `config` | parse `routing.conf` into a `Config`, refusing what the model declares unsettable and warning about what it does not model at all |
+| `registers` | what a register row and a device are -- path, tags, bounds, verification class, policy -- and the questions the parser, the reconciler and the verifier ask of a device's table |
+| `devices` | the tables themselves: the UCX II's rows and channel map, the 802's channel map, and which of them a config names |
+| `model` | a desk as data: routes, channel and global settings, and the five settings that say where it goes |
+| `paths` | where a desk is looked for: the config, `profiles/` beside it, and what a profile name is |
+| `sections` | the sections the register table declares -- channels, families, globals -- refusing what it declares unsettable and warning about what it does not model at all |
+| `config` | parse `routing.conf` into a `Config`: `[device]`, `[osc]`, routes and pins here, the rest through `sections`; total, so every input is a `Config` or a `ConfigError` |
+| `notices` | what there is to say about a desk before it is written or shown |
 | `discovery` | find the device and resolve which interface a desk is for: serial, sequencer client and lock key from one answer; USB presence; whether a UDP port is bound |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
-| `reconcile` | `desired` / `observed` / `plan`, and rendering a `Config` back to text |
+| `reconcile` | `desired` / `observed` / `plan`: what should be written, in what order, and why |
+| `dump` | the other direction: what the device reports, recovered as routes and settings and rendered as a `routing.conf` |
 | `backend` | the one place that opens a socket to the device; its `Traits` name the upstream behaviour the timing constants work around |
 | `routing` | send a plan in two phases, with the link barrier between them |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
 | `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and say who holds a port and which interface that backend bridges |
 | `pipewire` | generate named virtual sinks from the same config |
-| `profiles` | switch to `profiles/<name>.conf` as a transaction, reporting an outcome rather than raising |
+| `locking` | the lock every writer of one interface holds: where it lives, how it is opened, how long it is waited for |
+| `marker` | which profile is in effect, remembered beside the config: read, written through a rename, removed |
+| `outcome` | what a switch did, as a value: applied and verified, applied and unverified, refused, or written in part with both lists |
+| `profiles` | switch to `profiles/<name>.conf` under that lock, in one fixed order -- validate, write, remember, check -- reporting an outcome rather than raising |
+| `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` -- kept for the machine the session runs on, or refused as a desk for somewhere else |
 | `session` | the service lifecycle: wait for the device, start the backend, apply, signal ready, verify, shut down |
 | `launcher` | the desktop entry's entry point; deliberately depends on almost nothing |
-| `cli` | argument parsing and the exit-code mapping, and nothing else |
-| `__init__` | the public surface, and the only module that re-exports |
+| `reads` | the three actions that read the device and write nothing: `--snapshot`, `--diff`, `--dump-config` |
+| `cli` | argument parsing, one action per invocation, and the exit-code mapping -- a switch's outcome and the unit's reload included |
+| `__init__` | the supported surface -- read a config, apply and verify it, switch profiles, the errors and outcomes, the two entry points -- and the only module that re-exports; every other module is implementation |
 
 ## The register model is data
 
-`registers.py` declares every register as a row: path template, OSC type
+`devices.py` declares every register as a row of the shape `registers.py`
+defines: path template, OSC type
 tags, which channels have it on which device, how it verifies, what a
 config may set it to, its bounds and unit, and who wins after the first
 write.
@@ -150,9 +162,9 @@ port is held by the mixer GUI and the echo cannot be observed.
 takes a `Backend` argument, which is what lets the whole apply and verify
 path be driven by a fake in tests.
 
-**`registers.Device`** is the only place that knows a device exists. The
-model is indexed by device from the first line, so a second interface is
-a table rather than a rewrite. Only the UCX II has one; the 802 has its
+**`devices`** is the only place that knows a device exists. The model is
+indexed by device from the first line (`registers.Device`), so a second
+interface is a table rather than a rewrite. Only the UCX II has one; the 802 has its
 channel map and no registers, because oscmix cannot drive it.
 
 ### Exit codes
@@ -160,7 +172,7 @@ channel map and no registers, because oscmix cannot drive it.
 | Code | Meaning | systemd reaction |
 |---|---|---|
 | 0 | device absent, clean shutdown, or clean backend exit | none |
-| 1 | runtime failure | restart after 3 s (max 5 per 2 min) |
+| 1 | runtime failure; from the command line also a switch whose write gave out part of the way | restart after 3 s (max 5 per 2 min) |
 | 2 | a configuration the unit cannot run: a routing.conf error, two interfaces and no `[device] serial`, a session already running on the port; from the command line also a usage error or a refused switch | **no** restart (`RestartPreventExitStatus=2`) |
 | 3 | `--diff` only: the device and the config disagree | never seen; the service runs no flag |
 | 4 | a switch reached the device but could not be recorded | never seen; flags only |

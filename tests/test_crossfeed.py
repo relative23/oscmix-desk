@@ -25,11 +25,11 @@ reader saw half the stream.
 import pytest
 
 from oscmix_desk.config import load_config
+from oscmix_desk.devices import UCX2
 from oscmix_desk.errors import ConfigError
 from oscmix_desk.registers import (
     NUMBER,
     REMEMBER,
-    UCX2,
     register_policy,
     settable_options,
 )

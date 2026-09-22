@@ -118,3 +118,20 @@ selected hardware by accident rather than by what it said, the refusal
 names the option and the remedy, and the changelog says in so many words
 that a working file now exits 2. A value that *meant* something keeps
 meaning it.
+
+## Amended in 0.7.0
+
+Two files that loaded now refuse, each said in the changelog under its
+own heading, and neither changes what an option *name* means:
+
+* A profile whose `[osc]` or `[device]` resolve to another machine than
+  its `routing.conf` ([ADR 0026](0026-a-profile-is-the-desk-not-the-machine.md)).
+  0.6.11 warned for one release first.
+* A desk that does not fit the interface `--device` sends it to. The
+  parser knows the command line now and validates for the device the
+  desk goes to; until then it validated for the device the file names,
+  the override arrived afterwards, and outputs 29/30 of an 802 desk
+  reached a UCX II with a warning at most. The file alone means what it
+  meant; it is the combination with `--device` that is held to the
+  hardware it names.
+

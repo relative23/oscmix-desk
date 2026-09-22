@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 import pytest
-from conftest import free_udp_port, read_until_ready
+from support import free_udp_port, read_until_ready
 from test_session_integration import (
     ROUTING_CONF,
     SESSION_BIN,
@@ -36,6 +36,8 @@ from test_session_integration import (
     terminate,
     wait_for,
 )
+
+from oscmix_desk import osc
 
 pytestmark = pytest.mark.skipif(
     bool(os.environ.get("MUTANT_UNDER_TEST")),
@@ -104,14 +106,14 @@ def one_startup(tmp_path, session_mod, cycle):
         # cycle. A leak that leaves the barrier in a stale state shows up
         # here as reordering rather than as a crash.
         mix = [
-            session_mod.encode_osc("/mix/5/playback/1", "fi", 0.0, 0),
-            session_mod.encode_osc("/output/5/volume", "f", 0.0),
-            session_mod.encode_osc("/output/6/volume", "f", 0.0),
+            osc.encode_osc("/mix/5/playback/1", "fi", 0.0, 0),
+            osc.encode_osc("/output/5/volume", "f", 0.0),
+            osc.encode_osc("/output/6/volume", "f", 0.0),
         ]
         expected = [
-            session_mod.encode_osc("/playback/1/stereo", "i", 1),
-            session_mod.encode_osc("/output/5/stereo", "i", 1),
-        ] + mix + [session_mod.encode_osc("/refresh")] + mix
+            osc.encode_osc("/playback/1/stereo", "i", 1),
+            osc.encode_osc("/output/5/stereo", "i", 1),
+        ] + mix + [osc.encode_osc("/refresh")] + mix
         received = [bytes.fromhex(line)
                     for line in datagram_log.read_text().splitlines()]
         assert received[:9] == expected, "cycle %d: routing diverged" % cycle

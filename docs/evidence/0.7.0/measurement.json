@@ -1,0 +1,24 @@
+{
+  "desk_commit": "86fb4e45d6ca342fbd7744b5312239f8a9103994",
+  "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+  "firmware": {
+    "usb_revision": "3.01",
+    "dsp_version": 36
+  },
+  "device": "Fireface UCX II",
+  "serial": "24216011",
+  "files": {
+    "hardware-evidence.json": "82a7996fd872f7f671c8793dc22dd8e9e5cf67b92e97eb4b72aa2c9ebacfb73b",
+    "hardware-evidence-unlinked.json": "34db5792e41b9a53a8ec06f939eb8a719695744c1ed23ec6511c709f4d028872",
+    "write-sweep-ucx2.json": "3921b2fac8f30691150d0ba78591c75194392a4e598219d2a56fad9ff267c63f",
+    "refresh-dump.json": "f4683e3cb5ba8a9c3cac46713afec578413f5f49bbe15c4d0b431321f9caef0b",
+    "hardware-evidence-powercycle.json": "39b3ddf899c1fb01c38f6d9d3c896bd56f93ea5747ed990693a0a7dcc4a5a970",
+    "power-cycle.json": "011737addaa447d892f7db55b6f7a210d03460890edb5eb26ecd5dc614f9e234"
+  },
+  "snapshot_comparison": {
+    "registers": 2252,
+    "differences": 0
+  },
+  "note": "Route times are local Europe/Berlin; sweep time is UTC. A device-meter measurement, not independent analog capture. Test scripts ran from the named commit; historical fixtures remain unchanged. The later physical power-cycle check uses the same installed runtime; its repeat tone is reduced to amplitude 0.001 and two seconds, with unchanged verdict thresholds (power-cycle.json)."
+}

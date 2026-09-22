@@ -105,7 +105,8 @@ exclude_lines = [
 # more than a point above the gate, so the checklist's rule applies --
 # raise it now rather than next release. The rise is the profile code's
 # error branches, each driven by a test since the marker and lock work.
-fail_under = 96
+# 96 -> 97 (0.7.0): the complete suite now measures above 97 percent.
+fail_under = 97
 
 [tool.mutmut]
 # Mutation testing answers the question coverage cannot: do the assertions
@@ -113,7 +114,7 @@ fail_under = 96
 # Scoped to the modules that decide what the hardware does -- the ones
 # where a surviving mutant means silent, audible breakage.
 #
-# The register *table* inside registers.py is exempt, marked in the file
+# The register *table*, devices.py, is exempt, marked in the file
 # with `# pragma: no mutate start` / `end`. It is data built at import
 # time, which mutmut cannot attribute to a covering test, so it scored
 # as though nothing tested it while the recordings check it harder than

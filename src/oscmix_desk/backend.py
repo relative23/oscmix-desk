@@ -39,12 +39,10 @@ import socket
 import struct
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Iterable, Iterator, Optional, Sequence, Tuple, Type
+from typing import Iterable, Iterator, Optional, Type
 
-from .errors import ReceivePortError
-from .osc import decode_osc, encode_osc, iter_osc_messages
-
-Message = Tuple[str, str, Tuple[object, ...]]
+from .errors import ReceivePortError, WriteFailed
+from .osc import Message, decode_osc, encode_osc, iter_osc_messages
 
 #: Datagrams larger than this are not produced by anything upstream
 #: sends; the size is the socket read buffer, not a protocol limit.
@@ -113,22 +111,35 @@ class Listener:
     ``ReceivePortError`` for every other reason the port cannot be had.
     """
 
-    def __init__(self, sock: "socket.socket") -> None:
+    def __init__(self, sock: "socket.socket",
+                 port: Optional[int] = None) -> None:
         self._sock = sock
+        self._port = port
 
-    def messages(self, timeout: float) -> Iterator[Tuple[str, str,
-                                                         Sequence[object]]]:
+    def messages(self, timeout: float) -> Iterator[Message]:
         """Decoded messages from one datagram, or nothing on timeout.
 
         Malformed messages are skipped rather than raised on: this reads
         off a socket, and one bad message must not end a dump that is
         otherwise confirming registers.
+
+        A timeout is the normal way a wait ends. Any other socket error
+        is a ``ReceivePortError``: until 0.7.0 it read as "nothing
+        arrived" too, returned at once, and every reader then spun --
+        measured, 1.3 million reads in half a second -- until its window
+        closed and it reported silence from a backend that was never
+        asked (third outside review).
         """
-        self._sock.settimeout(timeout)
         try:
+            self._sock.settimeout(timeout)
             datagram, _ = self._sock.recvfrom(READ_SIZE)
-        except (socket.timeout, OSError):
+        except socket.timeout:
             return
+        except OSError as exc:
+            raise ReceivePortError(
+                exc.errno, "cannot read the receive port%s: %s"
+                % ("" if self._port is None else " UDP %d" % self._port,
+                   exc.strerror or exc)) from exc
         for raw in iter_osc_messages(datagram):
             try:
                 path, tags, args = decode_osc(raw)
@@ -164,13 +175,26 @@ class Backend:
         """Put a burst of registers on the wire, in the order given.
 
         One socket for the burst: the order is the caller's, and this
-        must not reorder or coalesce it.
+        must not reorder or coalesce it. A socket error part of the way is
+        a ``WriteFailed`` naming what had gone out and what had not.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        burst = list(messages)
         try:
-            for path, tags, args in messages:
-                sock.sendto(encode_osc(path, tags, *args),
-                            (self.host, self.send_port))
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        except OSError as exc:
+            raise WriteFailed(exc, [], [m[0] for m in burst]) from exc
+        try:
+            for index, (path, tags, args) in enumerate(burst):
+                try:
+                    sock.sendto(encode_osc(path, tags, *args),
+                                (self.host, self.send_port))
+                except OSError as exc:
+                    # How far it came is the caller's to report: until
+                    # 0.7.0 the bare OSError said only that something
+                    # failed, and a switch let it out as a traceback.
+                    paths = [message[0] for message in burst]
+                    raise WriteFailed(exc, paths[:index],
+                                      paths[index:]) from exc
         finally:
             sock.close()
 
@@ -203,7 +227,7 @@ class Backend:
             raise ReceivePortError(
                 exc.errno, "cannot bind the receive port UDP %d: %s"
                 % (self.recv_port, exc.strerror or exc)) from exc
-        return Listener(sock)
+        return Listener(sock, self.recv_port)
 
 
 def loopback(send_port: int, recv_port: int) -> Backend:

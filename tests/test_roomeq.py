@@ -15,8 +15,8 @@ sub-families. This file is what only Room EQ knows.
 import pytest
 
 from oscmix_desk.config import load_config
+from oscmix_desk.devices import UCX2
 from oscmix_desk.registers import (
-    UCX2,
     declared_paths,
     nested_families,
     settable_nested,
@@ -100,4 +100,4 @@ def test_an_unmodelled_device_still_gets_no_opinion(tmp_path):
     path = tmp_path / "routing.conf"
     path.write_text("[device]\nname = Some Other Interface\n\n"
                     "[roomeq:output:5]\nband1gain = -6.0\n")
-    assert load_config(path).channels == []
+    assert load_config(path).channels == ()

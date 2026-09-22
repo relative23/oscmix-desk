@@ -109,6 +109,15 @@ require() {
     command -v "$1" >/dev/null 2>&1 || fail "missing dependency: $1 ($2)"
 }
 
+# The user manager belongs to the login session, not to an overridden
+# HOME. A scratch installation must not stop or restart the real desk.
+manages_this_home() {
+    local session_home
+    session_home="$(systemctl --user show-environment 2>/dev/null |
+                    sed -n 's/^HOME=//p')" || true
+    [ -z "$session_home" ] || [ "$session_home" = "$HOME" ]
+}
+
 # --------------------------------------------------------------------------
 # Preflight checks
 # --------------------------------------------------------------------------
@@ -120,6 +129,13 @@ python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' \
 if ! systemctl --user show-environment >/dev/null 2>&1; then
     fail "cannot talk to the systemd user instance (is this a desktop session?)"
 fi
+
+# Hold this through the build too: two installers for the same home
+# must not replace its binaries or shared build checkout concurrently.
+require flock "to serialise installation"
+mkdir -p "$LIB_DIR"
+exec 9>"$LIB_DIR/.install.lock"
+flock -n 9 || fail "another installer is using $LIB_DIR"
 
 # --------------------------------------------------------------------------
 # Build oscmix (backend, alsaseqio bridge, GTK mixer)
@@ -189,16 +205,6 @@ if [ "$DO_BUILD" = 1 ]; then
     info "building oscmix ($GTK_FLAG)"
     make -C "$BUILD_DIR" "$GTK_FLAG" >/dev/null
 
-    install_file 755 "$BUILD_DIR/oscmix" "$BIN_DIR/oscmix"
-    install_file 755 "$BUILD_DIR/alsaseqio" "$BIN_DIR/alsaseqio"
-    if [ -x "$BUILD_DIR/gtk/oscmix-gtk" ]; then
-        GTK_BUILT=1
-        install_file 755 "$BUILD_DIR/gtk/oscmix-gtk" "$BIN_DIR/oscmix-gtk"
-        # oscmix-gtk aborts without its GSettings schema.
-        install_file 644 "$BUILD_DIR/gtk/oscmix.gschema.xml" \
-            "$DATA_DIR/glib-2.0/schemas/oscmix.gschema.xml"
-        glib-compile-schemas "$DATA_DIR/glib-2.0/schemas"
-    fi
 else
     info "skipping build (--no-build); checking for existing binaries"
     for tool in oscmix alsaseqio; do
@@ -208,6 +214,51 @@ else
         done
         [ "$found" = 1 ] || fail "$tool not found; run without --no-build"
     done
+fi
+
+# Prepare the complete Python package before stopping the service or
+# replacing any installed code. A failed copy used to leave half a
+# package behind. The lock serialises installers for this installation.
+RUNTIME_PREVIOUS="$LIB_DIR/oscmix_desk.previous"
+if [ ! -e "$LIB_DIR/oscmix_desk" ] && [ -d "$RUNTIME_PREVIOUS" ]; then
+    mv "$RUNTIME_PREVIOUS" "$LIB_DIR/oscmix_desk"
+fi
+RUNTIME_STAGE="$(mktemp -d "$LIB_DIR/.stage.XXXXXX")"
+STOPPED_SERVICE=0
+finish_install() {
+    local status=$?
+    if [ ! -e "$LIB_DIR/oscmix_desk" ] && [ -d "$RUNTIME_PREVIOUS" ]; then
+        mv "$RUNTIME_PREVIOUS" "$LIB_DIR/oscmix_desk"
+    fi
+    [ ! -d "$RUNTIME_STAGE" ] || rm -rf "$RUNTIME_STAGE"
+    if [ "$status" -ne 0 ] && [ "$STOPPED_SERVICE" = 1 ]; then
+        warn "installation incomplete; the service remains stopped."
+        warn "Rerun install.sh from the chosen release before starting it."
+    fi
+    return "$status"
+}
+trap finish_install EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+for module in "$PROJECT_DIR/src/oscmix_desk/"*.py; do
+    install -m 644 "$module" "$RUNTIME_STAGE/$(basename "$module")"
+done
+if manages_this_home && systemctl --user is-active --quiet oscmix.service; then
+    info "stopping the service before replacing installed code"
+    systemctl --user stop oscmix.service || fail "could not stop oscmix.service"
+    STOPPED_SERVICE=1
+fi
+
+if [ "$DO_BUILD" = 1 ]; then
+    install_file 755 "$BUILD_DIR/oscmix" "$BIN_DIR/oscmix"
+    install_file 755 "$BUILD_DIR/alsaseqio" "$BIN_DIR/alsaseqio"
+    if [ -x "$BUILD_DIR/gtk/oscmix-gtk" ]; then
+        GTK_BUILT=1
+        install_file 755 "$BUILD_DIR/gtk/oscmix-gtk" "$BIN_DIR/oscmix-gtk"
+        install_file 644 "$BUILD_DIR/gtk/oscmix.gschema.xml" \
+            "$DATA_DIR/glib-2.0/schemas/oscmix.gschema.xml"
+        glib-compile-schemas "$DATA_DIR/glib-2.0/schemas"
+    fi
 fi
 
 # --------------------------------------------------------------------------
@@ -234,11 +285,11 @@ done
 # would be importable and silently win, so the directory is replaced
 # wholesale rather than merged into.
 info "installing the runtime package to $LIB_DIR"
-rm -rf "$LIB_DIR/oscmix_desk"
-mkdir -p "$LIB_DIR/oscmix_desk"
-for module in "$PROJECT_DIR/src/oscmix_desk/"*.py; do
-    install -m 644 "$module" "$LIB_DIR/oscmix_desk/$(basename "$module")"
-done
+rm -rf "$RUNTIME_PREVIOUS"
+if [ -e "$LIB_DIR/oscmix_desk" ]; then
+    mv "$LIB_DIR/oscmix_desk" "$RUNTIME_PREVIOUS"
+fi
+mv "$RUNTIME_STAGE" "$LIB_DIR/oscmix_desk"
 
 info "installing scripts to $BIN_DIR"
 install_file 755 "$PROJECT_DIR/bin/oscmix-session" "$BIN_DIR/oscmix-session"
@@ -269,13 +320,6 @@ install -D -m 644 "$PROJECT_DIR/config/routing.conf.example" \
 # `systemctl --user show-environment` reports the session's own HOME, so
 # the two can be compared. When it reports nothing this proceeds, which
 # is what every earlier version did.
-manages_this_home() {
-    local session_home
-    session_home="$(systemctl --user show-environment 2>/dev/null |
-                    sed -n 's/^HOME=//p')" || true
-    [ -z "$session_home" ] || [ "$session_home" = "$HOME" ]
-}
-
 info "installing systemd user service"
 install_file 644 "$PROJECT_DIR/systemd/oscmix.service" "$UNIT_DIR/oscmix.service"
 if manages_this_home; then
@@ -419,3 +463,4 @@ fi
 
 info "done. Open 'RME Fireface Mixer' from your app menu."
 info "Routing config: $CONFIG_DIR/routing.conf"
+rm -rf "$RUNTIME_PREVIOUS"
