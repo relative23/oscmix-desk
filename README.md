@@ -6,7 +6,9 @@
 **Your RME Fireface UCX II, described in a text file.** Write down what the desk
 should look like -- routing, faders, EQ, dynamics, reverb, the clock -- and
 it is applied every time the interface is plugged in or the machine boots.
-Then `--diff` tells you whether it still looks that way.
+Use profiles for different setups and `--diff` to compare the config with
+the state the device reports. Settings that cannot be read back are shown
+as unverifiable.
 
 It started as an autostart, and it still is one: plug the interface in, the
 backend comes up, the mixer GUI is one click away in the app menu. What it
@@ -103,15 +105,16 @@ independent of the audio server.
 ## Install
 
 ```sh
-git clone --branch v0.6.11 https://github.com/relative23/oscmix-desk
+git clone --branch v0.7.0 https://github.com/relative23/oscmix-desk
 cd oscmix-desk
 ./install.sh
 ```
 
-This selects the last published release. The 0.7.0 candidate has
-[migration and rollback instructions](docs/UPGRADING.md) and a
+This selects [release 0.7.0](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.0).
+Read the [migration and rollback instructions](docs/UPGRADING.md) before
+upgrading from 0.6.x. The release also provides a
 [source archive with verification instructions](docs/RELEASE-ARTIFACTS.md).
-Use its released tag after qualification; `main` can contain unreleased changes.
+Use a released tag or verified archive; `main` can contain unreleased changes.
 
 The installer builds oscmix from upstream, installs everything into
 `~/.local` / `~/.config`, and asks for sudo once -- for the udev rule in

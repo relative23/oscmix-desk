@@ -88,7 +88,25 @@ a GUI that nobody here maintains. Every row marked 0.4.0 is a row where
 the honest answer today is "turn it in the GUI, and hope nothing resets
 it" -- which is the same answer TotalMix gives, minus the snapshot.
 
-## Where we are (0.6.11)
+## Where we are (0.7.0)
+
+**0.7.0 (2026-09-22)** separates the runtime along its existing
+responsibilities, validates the effective device before writes, freezes
+configuration and reports partial writes explicitly. Profiles describe
+the desk on the main configuration's machine. Installation stages the
+runtime, serialises installers and supports recovery after interruption;
+the actual 0.6.11 upgrade and rollback are tested in both layouts.
+
+The qualified candidate passes 1517 tests, Python 3.9–3.14, five full
+repeats and the restart and fault soaks. Coverage is 97.683%; the fresh
+mutation score is 0.799662 on 7701 mutants. UCX II USB 3.01 / DSP 36
+measurements include all five routes, 1888 confirmed sweep entries and a
+physical power cycle. Playback read-back and two physical interfaces
+remain outside the measured scope. The [release](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.0)
+records the final publication checks and artifact provenance; the
+[migration guide](UPGRADING.md) describes compatibility changes.
+
+### Previous release: 0.6.11
 
 *What came before -- the status of every release back to 0.6.0, and the
 chapters for 0.2.0 through 0.5.0 as they were planned and closed -- is
@@ -127,12 +145,11 @@ command line's overrides included, and only then held against what the
 session runs. Mutation 0.794 on 7485 mutants with the floor at 0.78,
 coverage 97%.
 
-### Planned: 0.7.0
+### 0.7.0 changes
 
 Decided, and recorded so that none of it is found twice. No new surface:
 nothing is added to what a `routing.conf` can declare. The structural
-work below is implemented on the 0.7.0 branch; that is not yet a released
-or fully qualified 0.7.0. The remaining release work is listed under
+work below is implemented and qualified. Publication checks are tracked under
 [Release readiness](#release-readiness-for-070).
 
 1. **Files a person can read, first and alone.** *Done, with no change
@@ -220,8 +237,8 @@ install --user` into the system Python is refused (PEP 668).
 
 #### Release readiness for 0.7.0
 
-The current branch still needs operational qualification. In assessing
-that work, distinguish the actual gaps from completed work:
+Operational qualification is complete. In assessing
+the release, distinguish the actual gaps from completed work:
 versioned releases and evidence attachments already exist, the module
 split is done, and validation before writing does not make a hardware
 apply atomic. Its numerical ratings are opinions, not release gates.
@@ -336,7 +353,7 @@ about what already ships.
   run and the targeted recheck. Hardware provenance is in the
   [measurement manifest](evidence/0.7.0/measurement.json), including the
   physical power cycle, automatic hotplug start and quiet five-route
-  repeat. CI passes on `dd5a54d`; runtime behaviour is that measured at
+  repeat. CI passes on `0ba7fa4`; runtime behaviour is that measured at
   `86fb4e4`. Final release closure still requires the selected tag,
   CI on `main`, and published, verified artifacts.
 

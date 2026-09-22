@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 -- 2026-09-22
 
-0.7.0 release candidate. Module boundaries, explicit write outcomes and
+Module boundaries, explicit write outcomes and
 configuration invariants, followed by installation and hardware qualification.
 
 ### Fixed
