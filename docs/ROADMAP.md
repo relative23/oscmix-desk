@@ -220,8 +220,8 @@ install --user` into the system Python is refused (PEP 668).
 
 #### Release readiness for 0.7.0
 
-The [assessment checked on 2026-09-21](reviews/0.7.0-readiness.md)
-supports the concern about operational maturity, with corrections:
+The current branch still needs operational qualification. In assessing
+that work, distinguish the actual gaps from completed work:
 versioned releases and evidence attachments already exist, the module
 split is done, and validation before writing does not make a hardware
 apply atomic. Its numerical ratings are opinions, not release gates.
@@ -283,6 +283,11 @@ about what already ships.
   This measures source-archive reproducibility, not reproducibility of
   locally compiled C binaries. Signing our release does not authenticate
   unsigned upstream history.
+  Implemented in `86fb4e4`: the Git-object source builder, checksum
+  manifest and release-attestation workflow. Two local builds agree and
+  the extracted install tests pass; [verification instructions](RELEASE-ARTIFACTS.md)
+  are available. Publication and verification against the eventual tag
+  remain open. A local checksum is not a GitHub attestation.
 
 - [x] **P1 -- Make the evidence and support limits agree everywhere.**
   Align README, security model and release checklist with the recorded
@@ -317,6 +322,10 @@ about what already ships.
   the candidate revision, limitations are in its release notes and
   installation instructions select a released tag. Additional QA
   machinery needs a demonstrated missing check or measured cost saving.
+  The release notes must record the tested runtime and test revisions,
+  completed gates, actual hardware results and remaining publication
+  steps. They must distinguish the final candidate from the historical
+  post-split mutation measurement.
 
 Order: qualify the runtime invariants, exercise migration/recovery,
 finish the bundle and evidence documentation, then qualify the final

@@ -1,0 +1,69 @@
+{
+  "desk_commit": "86fb4e45d6ca342fbd7744b5312239f8a9103994",
+  "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "device": "Fireface UCX II",
+  "serial": "24216011",
+  "firmware": {
+    "usb_revision": "3.01",
+    "dsp_version": 36
+  },
+  "physical_switches": "The user switched the UCX II off and on and confirmed each action.",
+  "off": {
+    "usb_matches": [],
+    "ucx_in_cards": false,
+    "service": "ActiveState=inactive\nSubState=dead\nMainPID=0\nExecMainStatus=0\n",
+    "check": {
+      "passed": 1517,
+      "skipped": 2,
+      "seconds": 117.92
+    }
+  },
+  "on": {
+    "observed_at": "2026-09-22T02:39:37.298014+02:00",
+    "usb_matches": [
+      "/sys/bus/usb/devices/5-2"
+    ],
+    "ucx_in_cards": true,
+    "service": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestamp": "Tue 2026-09-22 02:39:34 CEST",
+      "MainPID": "2543218",
+      "StatusText": "running; verifier finished at 02:39:35",
+      "ExecMainStartTimestamp": "Tue 2026-09-22 02:39:32 CEST",
+      "ExecMainStatus": "0"
+    },
+    "manual_start_issued": false
+  },
+  "readback": {
+    "reported_registers": 2322,
+    "mismatches": 0,
+    "matches": 8,
+    "unverifiable_playback_entries": 5
+  },
+  "snapshot_after_quiet_measurement": {
+    "before_registers": 2252,
+    "after_registers": 2252,
+    "differences": 0
+  },
+  "route_evidence": "hardware-evidence-powercycle.json",
+  "quiet_test": {
+    "routes": 5,
+    "ok": true,
+    "complete": true,
+    "seconds": 26.75,
+    "tone": {
+      "hz": 1000.0,
+      "seconds": 2.0,
+      "amplitude": 0.001
+    },
+    "peak_sample_limit": 32,
+    "full_scale_sample": 32767,
+    "method": "The unchanged verify-hardware.py harness was imported with TONE_AMPLITUDE=0.001 and TONE_SECONDS=2.0. Both generated WAVs were checked for 96000 stereo 16-bit frames and a peak of 32/32767 before any playback. Verdict thresholds stayed at 12 dB."
+  },
+  "notes": [
+    "No manual service start or restart was issued between physical power-off and observation of the completed automatic verifier.",
+    "The read-back cannot confirm the playback matrix; the quiet device-meter measurement checks its effect.",
+    "Raw state snapshots stay private. The user requested quiet playback for the late-night repeat."
+  ]
+}

@@ -6,7 +6,7 @@ existed, its verdict arithmetic was under test, and no measured artifact
 had ever been attached to anything.
 
 This is the list that closes that. 0.7.0 adds the operational checks from
-the [readiness review](reviews/0.7.0-readiness.md): actual upgrade and
+the [roadmap](ROADMAP.md#release-readiness-for-070): actual upgrade and
 rollback, interrupted installation and a verifiable source bundle. Gate
 results belong in the release rather than merely being producible.
 

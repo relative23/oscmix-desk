@@ -13,9 +13,10 @@ So the order is fixed and the whole module is arranged around it --
 cannot be understood costs an error message and not one datagram.
 
 That is why this states an outcome rather than raising (``outcome``):
-applied and verified, applied and unverified, or refused. There is
-deliberately no fourth. "Partly applied, and here is a traceback" is the
-state this module exists to make unrepresentable.
+applied and verified, applied and unverified, refused, or written in
+part. A partial write names the submitted and unsent registers and
+leaves the active marker unchanged (ADR 0027). It cannot promise a
+hardware rollback.
 
 The order of a switch is this module's, and only this module's: which
 interface and backend it may write to, the lock taken (``locking``), the
