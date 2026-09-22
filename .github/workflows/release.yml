@@ -94,14 +94,38 @@ jobs:
           assert os.environ['RELEASE_TAG'] == 'v' + manifest['version']
           evidence = Path('docs/evidence') / manifest['version']
           assert (evidence / 'release-notes.md').is_file(), 'Release notes are required before tagging'
+          software = json.loads((evidence / 'software-qualification.json').read_text())
+          assert software['candidate'] == manifest['version'] and software['status'] == 'qualified'
+          required = {'check', 'coverage', 'flake', 'soak-200', 'unit', 'mutation'}
+          required.update('python-3.%d' % minor for minor in range(9, 15))
+          required.update('fault-%02d' % index for index in range(1, 16))
+          assert required <= {row['gate'] for row in software['gates'] if row['exit'] == 0}
+          assert all(row['exit'] == 0 for row in software['gates'])
+          paths = [path for directory in ('src', 'tests', 'bin', 'scripts')
+                   for path in Path(directory).rglob('*')
+                   if path.is_file() and '__pycache__' not in path.parts
+                   and path.suffix not in ('.pyc', '.pyo')]
+          paths += [Path(name) for name in ('pyproject.toml', 'requirements-dev.txt', 'Makefile')]
+          tested = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
+          assert software['tested_files_sha256'] == tested, 'Software qualification predates these files'
+          support = [Path('install.sh'), Path('uninstall.sh'), Path('quality/vulture-allowlist.py')]
+          support += [path for directory in ('config', 'systemd', 'udev', 'packaging')
+                      for path in Path(directory).rglob('*') if path.is_file()]
+          support_hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in support}
+          assert software['supporting_files_sha256'] == support_hashes, 'Installation files changed after qualification'
+          lifecycle = json.loads((evidence / 'lifecycle.json').read_text())
+          assert lifecycle['ok'] is True
+          assert lifecycle['physical_disconnect']['no_interface_check']['ok'] is True
           hardware = json.loads((evidence / 'hardware-evidence.json').read_text())
           assert hardware['ok'] is True and hardware['complete'] is True and not hardware['unmeasured']
           sweep = json.loads((evidence / 'write-sweep-ucx2.json').read_text())
           assert sweep['schema'] == 2 and sweep['error'] is None and not sweep['not_restored']
+          assert sweep['before_messages'] == sweep['after_messages'], 'Sweep left changed readable state'
           assert sweep['findings'] and len(sweep['findings']) == sweep['probed']
           assert all(row['verdict'] in ('confirmed', 'skipped') for row in sweep['findings'])
           runtime = {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
                      for path in Path('src/oscmix_desk').glob('*.py')}
+          assert lifecycle['installed_runtime_sha256'] == runtime
           for record in (hardware, sweep):
               assert record['oscmix_revision'] == manifest['oscmix_revision']
               assert record['desk_source']['runtime_sha256'] == runtime, 'Hardware evidence predates this runtime'

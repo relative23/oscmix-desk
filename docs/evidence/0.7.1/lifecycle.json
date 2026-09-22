@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "measured": "2026-09-22T21:13:43.071079+00:00",
+  "runtime_commit": "abd859486ee8b61e7ed2567545642d202595e842",
+  "installed_runtime_sha256": {
+    "profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+    "numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+    "verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+    "launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+    "registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+    "outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+    "config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+    "discovery.py": "02dcf0575ccda9b532800c72728aefd050924b6c875f16359df8d50da0a54c40",
+    "osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+    "reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+    "process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+    "pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+    "log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+    "reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+    "paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+    "sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+    "constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+    "errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+    "model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+    "marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+    "backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+    "locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+    "session.py": "3a8936a00d8c6e88184db6edf72b203ed31e1ceeaf89cbd8f141b6bbb4ba12af",
+    "cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+    "dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+    "reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+    "routing.py": "0d739d6497d4e815abc5adb01d867233439a63ea16981d6989616744a3443478",
+    "__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+    "notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+    "devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+    "notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893"
+  },
+  "physical_disconnect": {
+    "service_exit": "clean after USB disconnect",
+    "no_interface_check": {
+      "taken": "2026-09-22T21:05:37.155320+00:00",
+      "exit": 0,
+      "seconds": 153.03639631299302,
+      "first": {
+        "alsa": false,
+        "usb": []
+      },
+      "last": {
+        "alsa": false,
+        "usb": []
+      },
+      "device_present_during_check": [],
+      "commit": "5cd9879e2b3e15a2aa8f09896f03e565deda75ed",
+      "ok": true
+    },
+    "passed": 1677,
+    "skipped": 2,
+    "absence_observation": "/proc/asound/cards and /sys/bus/usb/devices checked every 0.25 seconds throughout make check",
+    "environment_retry": "An earlier sandboxed attempt was denied local UDP socket creation and is not counted. The unsandboxed repeat above passed."
+  },
+  "physical_reconnect": {
+    "automatic_start": true,
+    "manual_service_start": false,
+    "service": "ActiveState=active\nSubState=running\nUnitFileState=enabled\nMainPID=303002\nStatusText=running; verifier finished at 23:12:02\nExecMainStatus=0\n",
+    "verification": "8 register settings confirmed; 5 playback paths not reported by this backend",
+    "readable_state_paths": 2252,
+    "changed_paths": {},
+    "repeat_changed_paths": [],
+    "test_tones_after_replug": false,
+    "backend": {
+      "pid": 303034,
+      "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+      "matches_local_build": true
+    }
+  },
+  "restoration": {
+    "all_24_rate_cases_exact": true,
+    "final_five_route_meter_check": true,
+    "original_rate_hz": 48000,
+    "input_1_gain_db": 0,
+    "phantom_1_2": false,
+    "user_configuration_preserved": true,
+    "installer_example_updated": true,
+    "full_state_reference": "write-sweep-ucx2.json#/after_messages"
+  },
+  "ok": true,
+  "runtime_sandbox": {
+    "backend_pid": 303034,
+    "proc_status": {
+      "Uid": "1000\t1000\t1000\t1000",
+      "Gid": "1000\t1000\t1000\t1000",
+      "CapEff": "0000000000000000",
+      "NoNewPrivs": "1",
+      "Seccomp": "2",
+      "Seccomp_filters": "16"
+    },
+    "namespaces": {
+      "backend_mnt": "mnt:[4026531832]",
+      "backend_net": "net:[4026531833]",
+      "backend_user": "user:[4026540489]",
+      "user_manager_mnt": null,
+      "user_manager_net": null,
+      "user_manager_user": null
+    },
+    "unit_requested": {
+      "exit": 0,
+      "stdout": "PrivateTmp=yes\nProtectHome=read-only\nProtectSystem=strict\nNoNewPrivileges=yes\nSystemCallFilter=_llseek _newselect accept accept4 access add_key alarm arch_prctl arm_fadvise64_64 bind brk cacheflush capget capset chdir chmod chown chown32 clock_getres clock_getres_time64 clock_gettime clock_gettime64 clock_nanosleep clock_nanosleep_time64 clone clone3 close close_range connect copy_file_range creat dup dup2 dup3 epoll_create epoll_create1 epoll_ctl epoll_ctl_old epoll_pwait epoll_pwait2 epoll_wait epoll_wait_old eventfd eventfd2 execve execveat exit exit_group faccessat faccessat2 fadvise64 fadvise64_64 fallocate fchdir fchmod fchmodat fchmodat2 fchown fchown32 fchownat fcntl fcntl64 fdatasync fgetxattr flistxattr flock fork fremovexattr fsetxattr fstat fstat64 fstatat64 fstatfs fstatfs64 fsync ftruncate ftruncate64 futex futex_time64 futex_waitv futimesat get_mempolicy get_robust_list get_thread_area getcpu getcwd getdents getdents64 getegid getegid32 geteuid geteuid32 getgid getgid32 getgroups getgroups32 getitimer getpeername getpgid getpgrp getpid getppid getpriority getrandom getresgid getresgid32 getresuid getresuid32 getrlimit getrusage getsid getsockname getsockopt gettid gettimeofday getuid getuid32 getxattr getxattrat inotify_add_watch inotify_init inotify_init1 inotify_rm_watch io_cancel io_destroy io_getevents io_pgetevents io_pgetevents_time64 io_setup io_submit io_uring_enter io_uring_register io_uring_setup ioctl ioprio_get ioprio_set ipc kcmp keyctl kill landlock_add_rule landlock_create_ruleset landlock_restrict_self lchown lchown32 lgetxattr link linkat listen listmount listxattr listxattrat llistxattr lremovexattr lseek lsetxattr lsm_get_self_attr lsm_list_modules lstat lstat64 madvise mbind membarrier memfd_create migrate_pages mkdir mkdirat mknod mknodat mlock mlock2 mlockall mmap mmap2 move_pages mprotect mq_getsetattr mq_notify mq_open mq_timedreceive mq_timedreceive_time64 mq_timedsend mq_timedsend_time64 mq_unlink mremap mseal msgctl msgget msgrcv msgsnd msync munlock munlockall munmap name_to_handle_at nanosleep newfstatat nice oldfstat oldlstat oldolduname oldstat olduname open open_tree openat openat2 pause personality pidfd_open pidfd_send_signal pipe pipe2 poll ppoll ppoll_time64 prctl pread64 preadv preadv2 prlimit64 process_madvise process_vm_readv process_vm_writev pselect6 pselect6_time64 pwrite64 pwritev pwritev2 read readahead readdir readlink readlinkat readv recv recvfrom recvmmsg recvmmsg_time64 recvmsg remap_file_pages removexattr removexattrat rename renameat renameat2 request_key restart_syscall riscv_flush_icache riscv_hwprobe rmdir rseq rt_sigaction rt_sigpending rt_sigprocmask rt_sigqueueinfo rt_sigreturn rt_sigsuspend rt_sigtimedwait rt_sigtimedwait_time64 rt_tgsigqueueinfo sched_get_priority_max sched_get_priority_min sched_getaffinity sched_getattr sched_getparam sched_getscheduler sched_rr_get_interval sched_rr_get_interval_time64 sched_setaffinity sched_setattr sched_setparam sched_setscheduler sched_yield seccomp select semctl semget semop semtimedop semtimedop_time64 send sendfile sendfile64 sendmmsg sendmsg sendto set_mempolicy set_mempolicy_home_node set_robust_list set_thread_area set_tid_address set_tls setfsgid setfsgid32 setfsuid setfsuid32 setgid setgid32 setgroups setgroups32 setitimer setns setpgid setpriority setregid setregid32 setresgid setresgid32 setresuid setresuid32 setreuid setreuid32 setrlimit setsid setsockopt setuid setuid32 setxattr setxattrat shmat shmctl shmdt shmget shutdown sigaction sigaltstack signal signalfd signalfd4 sigpending sigprocmask sigreturn sigsuspend socket socketcall socketpair splice stat stat64 statfs statfs64 statmount statx swapcontext symlink symlinkat sync sync_file_range sync_file_range2 syncfs sysinfo tee tgkill time timer_create timer_delete timer_getoverrun timer_gettime timer_gettime64 timer_settime timer_settime64 timerfd_create timerfd_gettime timerfd_gettime64 timerfd_settime timerfd_settime64 times tkill truncate truncate64 ugetrlimit umask uname unlink unlinkat unshare uretprobe userfaultfd utime utimensat utimensat_time64 utimes vfork vmsplice wait4 waitid waitpid write writev\nRestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX\n",
+      "stderr": ""
+    },
+    "note": "Read-only process observations: NoNewPrivs=1, Seccomp=2 and no effective capabilities. The user-manager namespace identifiers were unavailable; this record does not establish mount-namespace isolation. Requested unit properties are not proof of their enforcement; see docs/SECURITY-MODEL.md for the separately measured Ubuntu limitation."
+  }
+}
