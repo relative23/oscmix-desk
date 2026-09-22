@@ -1,6 +1,6 @@
 # Source release artifacts
 
-The 0.7.0 release workflow builds `oscmix-desk-0.7.0.tar.gz` from its Git
+The 0.7.1 release workflow builds `oscmix-desk-0.7.1.tar.gz` from its Git
 commit. It contains `install.sh`, the Python runtime, system integration,
 tests and documentation. It also produces `release-manifest.json` with
 the desk commit, pinned oscmix SHA and archive digest, plus `SHA256SUMS`.
@@ -41,11 +41,11 @@ and release tag, then the checksums:
 gh attestation verify SHA256SUMS \
   --repo relative23/oscmix-desk \
   --signer-workflow relative23/oscmix-desk/.github/workflows/release.yml \
-  --source-ref refs/tags/v0.7.0 \
+  --source-ref refs/tags/v0.7.1 \
   --deny-self-hosted-runners --bundle attestation.jsonl
 sha256sum --check SHA256SUMS
-tar -xzf oscmix-desk-0.7.0.tar.gz
-cd oscmix-desk-0.7.0
+tar -xzf oscmix-desk-0.7.1.tar.gz
+cd oscmix-desk-0.7.1
 ./install.sh
 ```
 
@@ -66,8 +66,8 @@ attestation**. The qualification record must distinguish these states.
 From a checkout containing the selected commit:
 
 ```sh
-python3 scripts/build-release.py --ref v0.7.0 --output build/first
-python3 scripts/build-release.py --ref v0.7.0 --output build/second
+python3 scripts/build-release.py --ref v0.7.1 --output build/first
+python3 scripts/build-release.py --ref v0.7.1 --output build/second
 diff -r build/first build/second
 ```
 

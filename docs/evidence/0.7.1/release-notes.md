@@ -40,20 +40,33 @@ workflow commits do not change that runtime.
 - 1,677 tests pass, with two empty-parameter skips. Python 3.9–3.14,
   five repetitions, a 200-cycle soak and fifteen fault repetitions pass.
 - Coverage including branches is 97.58%, above the 97% gate.
-- The final mutation counts are recorded in `software-qualification.json`.
+- The fresh mutation run covers **8,248 mutants: 6,571 killed, 1,663
+  survived, 14 timeouts and 0 uncovered**, score **0.798033** (timeouts
+  excluded).
 - A complete check with the physical interface switched off passes.
   Reconnection starts the installed service automatically and completes its
   verifier. All 2,252 readable messages match the original state.
 - Actual 0.6.11 and 0.7.0 installation, upgrade and rollback paths are tested
   in isolated rootless and redirected system-file layouts.
 
+Measured gate durations: check 143.60 s, coverage 145.78 s, five suite
+repeats 737.56 s, each Python version 144.27–151.23 s, 200-cycle soak 263.70 s,
+each fault repeat 33.04–35.62 s, and the fresh mutation run 9516.19 s.
+The physical-interface-off check took 153.04 s. These are observed host
+durations, not runtime performance guarantees.
+
 Hardware: **Fireface UCX II, serial 24216011, USB 3.01 / DSP 36**;
 oscmix **`f2fdd5ec78338848754aad32cc07f3440de63395`**. The measured running
 binary SHA-256 is
 `3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f`.
 
+All attached hardware measurements were taken on **2026-09-22**, against
+that backend pin, firmware and corrected desk runtime. JSON timestamps
+retain their original form; the playback helper's timezone-less timestamps
+are Europe/Berlin, while the other experiments explicitly record UTC.
+
 The corrected sweep confirms **1,888 entries**, deliberately skips **14**
-reference-level entries and leaves **no unrestored state**. Separate checks
+reference-level entries and leaves **no unrestored readable state**. Separate checks
 cover mono input/playback selection, linked/unlinked gain and mute, and all
 five configured playback routes. Actual 24-bit/48-kHz microphone capture
 confirms input 1 with a BETA 58A, phantom power off and temporary gain restored;
@@ -83,5 +96,8 @@ on the installation branch. The proposed desktop companion is deferred.
 Playback matrix read-back remains unavailable. Hardware meters establish
 routing effects, not independent analog connector performance. Physical
 Room EQ delay still needs an external return measurement; existing delay
-numbers are labelled OSC units, not seconds. Two physical devices, other
-Fireface models and external digital/clock configurations are unqualified.
+numbers are labelled OSC units, not seconds. Two physical devices and
+external digital/clock configurations are unqualified. Multi-device
+identity and concurrent writers are exercised
+with simulated devices. The Fireface 802 backend at this pin is a register
+stub; its channel map is not working hardware support.

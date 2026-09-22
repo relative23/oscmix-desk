@@ -1,18 +1,24 @@
-# 0.7.1 candidate evidence
+# 0.7.1 qualification
 
-**Unreleased. Final qualification remains open.** Fresh hardware results
-below exercise candidate `abd8594`. Its regular check passes 1,677 tests
-with two empty-parameter skips, including a complete run with the physical
-interface switched off. Python 3.9–3.14, five repetitions, a 200-cycle soak
-and fifteen fault repetitions also pass. Coverage is 97.58% including
-branches, displayed as 98%. The fresh mutation run is still in progress.
+The corrected runtime and test/tool files match
+`abd859486ee8b61e7ed2567545642d202595e842`. All 27 software gates pass:
+1,677 tests with two empty-parameter skips, Python 3.9–3.14, five suite
+repetitions, a 200-cycle soak and fifteen fault repetitions. A complete
+check with the physical UCX II switched off also passes; reconnection
+automatically starts the installed service and completes its verifier.
 
-The [software record](software-qualification.json) currently retains the
-**earlier** candidate `b271758`, identified by file hashes: 1,653 tests and
-8,263 mutants. These are historical intermediate results, not the final
-counts for the corrected mono-route implementation. The final record
-will replace them only after the fresh gates complete. An independent C
-calculation of the unchanged scalar conversions agrees in 34,930 cases.
+Coverage is 97.58% including branches, displayed as 98%; the gate remains
+97%. The fresh mutation run covers **8,248 mutants: 6,571 killed, 1,663 survived,
+14 timeouts and 0 uncovered**, score **0.798033**. Timeouts are excluded
+from the ratio. Six additional injected-fault checks cover Route properties
+that mutmut does not mutate; they are not added to its total.
+
+The [software record](software-qualification.json) contains exact hashes,
+gate durations and the historical intermediate candidate's provenance.
+An independent C calculation of the unchanged scalar conversions agrees
+in 34,930 cases. The [lifecycle record](lifecycle.json) includes the physical
+off/on test, installed runtime identity and restored state. The
+[release notes](release-notes.md) describe compatibility and scope.
 
 ## Fresh hardware measurements
 
@@ -39,6 +45,6 @@ checked with meters, not recovered from a snapshot.
 
 Meter results do not establish analog connector performance or physical
 Room EQ delay. Higher-rate qualification is recorded separately. Historic
-0.7.0 sweeps retain their original data and method limits. The remaining
-release checklist must finish before publication; native packages belong
-to the following milestone.
+0.7.0 sweeps retain their original data and method limits. The tag workflow
+requires these completed records and matching files before publication.
+Native packages belong to the following milestone.

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.1 -- unreleased
+## 0.7.1 -- 2026-09-23
 
 ### Fixed
 
@@ -48,6 +48,24 @@
   numeric range is retained as OSC units pending independent measurement.
 - State the precision/tolerance limits of historical snapshots and sweeps.
   See [numeric contracts](docs/NUMERIC-CONTRACT.md).
+- Distinguish the supported desk, backend and GTK capabilities in the
+  [feature inventory](docs/FEATURE-SURFACE.md).
+
+### Qualification and distribution
+
+- Fresh corrected UCX II sweep: 1,888 confirmed, 14 protected entries
+  skipped, all 2,252 readable messages restored exactly. Separate checks
+  cover mono input/playback, linked/unlinked gain and mute, and actual
+  24-bit/48-kHz microphone capture with phantom power off.
+- Measure 24 USB/ALSA rate/mode combinations: 18 pass and six are
+  incomplete or fail. Publish those limits; automatic live-rate validation
+  and physical digital-port qualification remain open.
+- Complete the 1,677-test suite on Python 3.9–3.14, repeated fault and
+  lifecycle gates, a fresh 8,248-mutant run and the physical off/on test.
+  The release evidence records counts, durations and source identities.
+- A pushed version tag requires matching completed software and hardware
+  records before creating a draft, attaching checksummed and attested
+  assets, and publishing it. 0.7.1 retains the source installer.
 
 ## 0.7.0 -- 2026-09-22
 

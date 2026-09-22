@@ -25,10 +25,10 @@ makes the desktop integration disappear.
 |---|---|
 | `routing.conf` | the desk as a text file: routes, faders, per-channel state, EQ, room EQ, dynamics, low cut, auto level, crossfeed, reverb, echo, control room, clock |
 | `--diff` | what an apply would change, without changing it |
-| `--dump-config` | the desk you have, as the file that reproduces it |
+| `--dump-config` | reported settings exported as config, with unrepresentable or unknown state identified |
 | `--snapshot` | every register the device reports, for comparing two moments |
 | profiles | named alternatives, switched under one lock with a stated outcome |
-| `[pin]` | which settings the file owns and which the device keeps |
+| `[pin]` | ownership overrides for flat input/output settings; other families use their register defaults |
 | udev rule | starts the backend on hotplug, disables Fireface USB autosuspend, and keeps affected ASM4242 host controllers awake |
 | systemd user service | supervises the backend; reports initial apply and subsequent verification separately |
 | `--pipewire-sinks` | named outputs ("Monitors", "Headphones") in your desktop's sound settings |
@@ -36,6 +36,9 @@ makes the desktop integration disappear.
 | `install.sh` | builds oscmix at a pinned revision and installs everything per-user |
 
 [oscmix]: https://github.com/michaelforney/oscmix
+
+The [feature inventory](docs/FEATURE-SURFACE.md) distinguishes desk config,
+the pinned backend and its existing GTK controls, including their limits.
 
 ![oscmix-gtk showing the Fireface UCX II hardware mixer](docs/img/oscmix-gtk.png)
 *The upstream oscmix-gtk mixer on a UCX II. This project keeps that desk in
@@ -112,12 +115,12 @@ independent of the audio server.
 ## Install
 
 ```sh
-git clone --branch v0.7.0 https://github.com/relative23/oscmix-desk
+git clone --branch v0.7.1 https://github.com/relative23/oscmix-desk
 cd oscmix-desk
 ./install.sh
 ```
 
-This selects [release 0.7.0](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.0).
+This selects [release 0.7.1](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.1).
 Read the [migration and rollback instructions](docs/UPGRADING.md) before
 upgrading from 0.6.x. The release also provides a
 [source archive with verification instructions](docs/RELEASE-ARTIFACTS.md).
