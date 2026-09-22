@@ -326,6 +326,19 @@ about what already ships.
   completed gates, actual hardware results and remaining publication
   steps. They must distinguish the final candidate from the historical
   post-split mutation measurement.
+  Software and hardware qualification is complete on the candidate:
+  1517 tests pass, Python 3.9–3.14 pass in CI, combined coverage is
+  97.683% against the raised 97% floor, five full repeats pass, as do
+  the 200-cycle restart soak and fifteen fault-soak repeats. The fresh
+  mutation result is 6147 killed, 1540 survived, 14 timeouts and none
+  uncovered out of 7701 (ratio 0.799662); its
+  [baseline](../quality/mutation-baseline.json) records both the full
+  run and the targeted recheck. Hardware provenance is in the
+  [measurement manifest](evidence/0.7.0/measurement.json), including the
+  physical power cycle, automatic hotplug start and quiet five-route
+  repeat. CI passes on `dd5a54d`; runtime behaviour is that measured at
+  `86fb4e4`. Final release closure still requires the selected tag,
+  CI on `main`, and published, verified artifacts.
 
 Order: qualify the runtime invariants, exercise migration/recovery,
 finish the bundle and evidence documentation, then qualify the final
