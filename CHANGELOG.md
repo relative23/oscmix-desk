@@ -1,5 +1,22 @@
 # Changelog
 
+## Following installation milestone -- in development
+
+- Add a read-only installer preflight and manual foreground mode. Separate
+  a fresh file installation from explicit service activation; preserve an
+  existing service state during upgrades. Keep the standard-library core.
+- Stage source and native installations from a common payload. Build
+  distribution-specific DEB/RPM/Arch artifacts with the pinned backend,
+  checksums, file manifests and reproducible-build/lifecycle checks.
+- Add explicit native setup, source migration and recovery. Preserve user
+  desks and profiles, refuse changes while mixer processes run, and keep
+  automatic startup blocked across an interrupted update and reboot.
+- Qualify seven source targets and four native targets in the reusable CI
+  workflow. Test real user-service behavior and migration in an Ubuntu VM.
+  Containers and simulated backends do not qualify hardware on those OSes.
+- Keep native activation opt-in. New GUI and physical multi-device support
+  remain deferred; these installation changes are separate from 0.7.1.
+
 ## 0.7.1 -- unreleased
 
 ### Fixed
@@ -21,16 +38,6 @@
 - Restrict sweep restoration and retries to permitted writable registers.
   Record raw probe/readback details and failed restoration, including on
   interruption; recheck the backend/interface identity before writes.
-- Preserve every argument and type tag in sweep baseline/final reports;
-  a changed mix pan can no longer be hidden by an unchanged first value.
-  Reject empty selections and nonpositive limits before device access,
-  restore after SIGINT/SIGTERM, and report unrestored state even when the
-  evidence file cannot be saved. Evidence identifies the comparison code
-  and rejects source changes during measurement.
-- Match both `HOME` and `XDG_CONFIG_HOME` before installer service actions.
-  Refuse installation through a mismatched or unidentified user manager,
-  including its root integration steps. An uninstall using another config
-  under the same home refuses before removing the shared runtime.
 
 ### Documentation
 

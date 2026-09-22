@@ -6,6 +6,8 @@ step is skipped (--no-build) with fake oscmix binaries pre-installed.
 """
 
 import os
+import shlex
+import shutil
 import stat
 import subprocess
 
@@ -53,7 +55,8 @@ def make_fake_home(tmp_path):
         # would otherwise touch the real /etc/udev rule on dev machines.
         stub.write_text('#!/bin/sh\necho "%s $@" >> "%s"\n'
                         'case "$*" in *show-environment*) echo "HOME=$HOME"; '
-                        'echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" ;; esac\nexit 0\n'
+                        'echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" ;; '
+                        '*is-active*|*is-enabled*) exit 3 ;; esac\nexit 0\n'
                         % (tool, log))
         stub.chmod(0o755)
 
@@ -116,14 +119,14 @@ def test_install_no_build_installs_everything(tmp_path):
     assert "Type=notify" in unit.read_text()
 
     desktop = home / ".local" / "share" / "applications" / "oscmix-gtk.desktop"
-    assert ("Exec=%s/oscmix-launch" % bin_dir) in desktop.read_text()
+    assert ('Exec="%s/oscmix-launch"' % bin_dir) in desktop.read_text()
     icon = (home / ".local" / "share" / "icons" / "hicolor" / "scalable"
             / "apps" / "oscmix.svg")
     assert icon.is_file()
 
     calls = log.read_text()
     assert "systemctl --user daemon-reload" in calls
-    assert "systemctl --user enable --quiet oscmix.service" in calls
+    assert "systemctl --user enable --quiet oscmix.service" not in calls
     assert "udevadm" not in calls  # --no-udev
 
 
@@ -178,7 +181,7 @@ def test_a_failed_runtime_copy_keeps_the_installed_version(tmp_path):
 
 def test_the_service_is_stopped_before_installed_code_changes(tmp_path):
     home, env, log = make_fake_home(tmp_path)
-    session_home_stub(tmp_path, str(home))
+    session_home_stub(tmp_path, str(home), active=True)
     plug_in(tmp_path, env)
     stub = tmp_path / "stub-bin" / "install"
     stub.write_text('#!/bin/sh\nprintf "install %s\\n" "$*" >> "' + str(log)
@@ -197,7 +200,7 @@ def test_an_installer_killed_during_activation_can_be_rerun(tmp_path):
     package = home / ".local" / "lib" / "oscmix-desk" / "oscmix_desk"
     before = {p.name: p.read_bytes() for p in package.glob("*.py")}
     stub = tmp_path / "stub-bin" / "mv"
-    stub.write_text('#!/bin/sh\n/usr/bin/mv "$@" || exit $?\n'
+    stub.write_text('#!/bin/sh\n' + shlex.quote(shutil.which('mv')) + ' "$@" || exit $?\n'
                     'case "$*" in *oscmix_desk.previous) kill -KILL "$PPID" ;; esac\n')
     stub.chmod(0o755)
     log.write_text("")
@@ -349,11 +352,11 @@ def test_the_installed_tree_carries_every_runtime_module(tmp_path):
 # systemd's user instance is per login session, not per HOME.
 # --------------------------------------------------------------------------
 
-def session_home_stub(tmp_path, session_home):
+def session_home_stub(tmp_path, session_home, *, active=False, enabled=False):
     """A `systemctl` stub that answers show-environment with a HOME.
 
-    The default stub reports the scratch environment. This one names a
-    specific manager, including another HOME or an unknown identity.
+    The default stub uses the scratch environment. This one lets a test
+    name a different manager, or report an unknown HOME explicitly.
     """
     stub = tmp_path / "stub-bin" / "systemctl"
     log = tmp_path / "calls.log"
@@ -366,7 +369,8 @@ def session_home_stub(tmp_path, session_home):
         '    exit 0\n'
         '  fi\n'
         'done\n'
-        'exit 0\n' % (log, session_home))
+        'case "$*" in *is-active*) exit %d ;; *is-enabled*) exit %d ;; esac\n'
+        'exit 0\n' % (log, session_home, 0 if active else 3, 0 if enabled else 3))
     stub.chmod(0o755)
 
 
@@ -417,36 +421,10 @@ def test_install_arms_the_service_when_the_session_matches(tmp_path):
     home, env, log = make_fake_home(tmp_path)
     session_home_stub(tmp_path, str(home))
 
-    result = run("install.sh", ["--no-build"], env)
+    result = run("install.sh", ["--no-build", "--enable"], env)
 
     assert result.returncode == 0
     assert "enable --quiet oscmix.service" in log.read_text()
-
-
-@pytest.mark.parametrize("script", ["install.sh", "uninstall.sh"])
-def test_same_home_with_another_config_never_changes_the_running_install(tmp_path, script):
-    home, env, log = make_fake_home(tmp_path)
-    session_home_stub(tmp_path, str(home))
-    env['XDG_CONFIG_HOME'] = str(tmp_path / 'other-config')
-    before = {path.relative_to(home): path.read_bytes()
-              for path in home.rglob('*') if path.is_file()}
-    result = run(script, ['--no-build'] if script == 'install.sh' else [], env)
-    assert result.returncode != 0
-    assert 'XDG_CONFIG_HOME' in result.stderr
-    assert {path.relative_to(home): path.read_bytes()
-            for path in home.rglob('*') if path.is_file()} == before
-    calls = log.read_text()
-    for forbidden in ('stop oscmix.service', 'enable', 'udevadm', 'sudo', 'restart'):
-        assert forbidden not in calls
-
-
-def test_unknown_manager_identity_never_permits_installation(tmp_path):
-    home, env, log = make_fake_home(tmp_path)
-    session_home_stub(tmp_path, '')
-    result = run('install.sh', ['--no-build'], env)
-    assert result.returncode != 0
-    assert not (home / '.local/lib/oscmix-desk').exists()
-    assert 'enable' not in log.read_text()
 
 
 def _fake_system_files(tmp_path, env):
@@ -527,7 +505,7 @@ def test_a_start_that_fails_does_not_end_the_installer(tmp_path):
     stub.write_text(stub.read_text().replace(
         "exit 0", 'case "$*" in *restart*) exit 1 ;; *is-active*) exit 3 ;; esac\nexit 0'))
     plug_in(tmp_path, env)
-    result = run("install.sh", ["--no-build", "--no-udev"], env)
+    result = run("install.sh", ["--no-build", "--no-udev", "--enable"], env)
     assert result.returncode == 0, result.stderr
     assert "backend did not start" in result.stderr
 

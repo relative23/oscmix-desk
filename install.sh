@@ -60,12 +60,20 @@ TMPFILES_CONF="${OSCMIX_TMPFILES_CONF:-/usr/lib/tmpfiles.d/oscmix-desk.conf}"
 
 DO_BUILD=1
 DO_UDEV=1
+CHECK_ONLY=0
+MANUAL=0
+ENABLE=0
+PREFLIGHT_ARGS=()
 
 usage() {
     cat <<'EOF'
 usage: ./install.sh [options]
 
 options:
+  --check      report prerequisites and destinations without changing files
+  --enable     enable automatic operation and start if the device is attached;
+               first review routing.conf and inspect --dry-run
+  --manual     install for foreground use without a systemd user manager
   --no-build   skip building oscmix (use already installed binaries)
   --no-udev    skip the root steps: the udev rule (no hotplug autostart),
                the resume hook (no reconcile after suspend) and the
@@ -81,13 +89,21 @@ EOF
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --no-build) DO_BUILD=0 ;;
+        --check) CHECK_ONLY=1 ;;
+        --enable) ENABLE=1; PREFLIGHT_ARGS+=(--enable) ;;
+        --manual) MANUAL=1; PREFLIGHT_ARGS+=(--manual) ;;
+        --no-build) DO_BUILD=0; PREFLIGHT_ARGS+=(--no-build) ;;
         --no-udev) DO_UDEV=0 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "install.sh: unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
     shift
 done
+
+if [ "$MANUAL" = 1 ] && [ "$ENABLE" = 1 ]; then
+    echo "install.sh: --manual and --enable cannot be combined" >&2
+    exit 2
+fi
 
 info() { printf '\033[1;34m::\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
@@ -104,6 +120,9 @@ install_file() {
     fi
     install -D -m "$mode" "$src" "$dst"
 }
+
+# shellcheck source=scripts/install-payload.sh
+source "$PROJECT_DIR/scripts/install-payload.sh"
 
 require() {
     command -v "$1" >/dev/null 2>&1 || fail "missing dependency: $1 ($2)"
@@ -125,14 +144,38 @@ manages_this_home() {
 # --------------------------------------------------------------------------
 
 require python3 "needed by oscmix-session"
-python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' \
-    || fail "python3 >= 3.9 required"
+python3 "$PROJECT_DIR/scripts/install-preflight.py" "${PREFLIGHT_ARGS[@]}" \
+    || fail "preflight failed; see the missing prerequisites above"
+[ "$CHECK_ONLY" = 0 ] || exit 0
 
-if ! systemctl --user show-environment >/dev/null 2>&1; then
-    fail "cannot talk to the systemd user instance (is this a desktop session?)"
+HAS_MANAGER=0
+if command -v systemctl >/dev/null 2>&1 \
+    && systemctl --user show-environment >/dev/null 2>&1; then
+    HAS_MANAGER=1
 fi
-manages_this_home \
-    || fail "systemd's user manager must match HOME and XDG_CONFIG_HOME; no files changed"
+if [ "$ENABLE" = 1 ] && { [ "$HAS_MANAGER" = 0 ] || ! manages_this_home; }; then
+    fail "--enable needs the systemd user manager for $HOME; no files changed"
+fi
+if [ "$HAS_MANAGER" = 0 ]; then
+    MANUAL=1
+fi
+if [ "$HAS_MANAGER" = 1 ] && [ "$MANUAL" = 0 ] && ! manages_this_home; then
+    fail "systemd's user manager must match HOME and XDG_CONFIG_HOME; no files changed"
+fi
+# The manual path still shares the per-user runtime with any user unit.
+if [ "$HAS_MANAGER" = 1 ] && ! manages_this_home \
+    && systemctl --user show-environment 2>/dev/null | sed -n 's/^HOME=//p' | grep -Fxq "$HOME"; then
+    fail "systemd's user manager uses another XDG_CONFIG_HOME; no files changed"
+fi
+WAS_ACTIVE=0
+WAS_ENABLED=0
+if [ "$HAS_MANAGER" = 1 ] && manages_this_home; then
+    systemctl --user is-active --quiet oscmix.service && WAS_ACTIVE=1
+    systemctl --user is-enabled --quiet oscmix.service && WAS_ENABLED=1
+fi
+if [ "$MANUAL" = 1 ] && { [ "$WAS_ACTIVE" = 1 ] || [ "$WAS_ENABLED" = 1 ]; }; then
+    fail "an active or enabled oscmix.service exists; stop and disable it before choosing --manual"
+fi
 
 # Hold this through the build too: two installers for the same home
 # must not replace its binaries or shared build checkout concurrently.
@@ -205,9 +248,16 @@ if [ "$DO_BUILD" = 1 ]; then
             ;;
     esac
     info "building oscmix at $OSCMIX_BUILT_SHA"
+    git -C "$BUILD_DIR" diff --quiet HEAD -- \
+        || fail "backend checkout has local source changes; preserve them in another checkout before installing"
 
     info "building oscmix ($GTK_FLAG)"
-    make -C "$BUILD_DIR" "$GTK_FLAG" >/dev/null
+    # Build the transports this product actually installs. Upstream's
+    # `all` also builds alsarawio, an unused transport requiring Linux
+    # kernel development headers on musl distributions.
+    BUILD_TARGETS=(oscmix alsaseqio)
+    [ "$GTK_FLAG" != GTK=y ] || BUILD_TARGETS+=(gtk)
+    make -C "$BUILD_DIR" "$GTK_FLAG" "${BUILD_TARGETS[@]}" >/dev/null
 
 else
     info "skipping build (--no-build); checking for existing binaries"
@@ -244,23 +294,17 @@ finish_install() {
 trap finish_install EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-for module in "$PROJECT_DIR/src/oscmix_desk/"*.py; do
-    install -m 644 "$module" "$RUNTIME_STAGE/$(basename "$module")"
-done
-if manages_this_home && systemctl --user is-active --quiet oscmix.service; then
+payload_runtime "$PROJECT_DIR" "$RUNTIME_STAGE"
+if [ "$WAS_ACTIVE" = 1 ]; then
     info "stopping the service before replacing installed code"
     systemctl --user stop oscmix.service || fail "could not stop oscmix.service"
     STOPPED_SERVICE=1
 fi
 
 if [ "$DO_BUILD" = 1 ]; then
-    install_file 755 "$BUILD_DIR/oscmix" "$BIN_DIR/oscmix"
-    install_file 755 "$BUILD_DIR/alsaseqio" "$BIN_DIR/alsaseqio"
+    payload_backend "$BUILD_DIR" "$BIN_DIR" "$DATA_DIR"
     if [ -x "$BUILD_DIR/gtk/oscmix-gtk" ]; then
         GTK_BUILT=1
-        install_file 755 "$BUILD_DIR/gtk/oscmix-gtk" "$BIN_DIR/oscmix-gtk"
-        install_file 644 "$BUILD_DIR/gtk/oscmix.gschema.xml" \
-            "$DATA_DIR/glib-2.0/schemas/oscmix.gschema.xml"
         glib-compile-schemas "$DATA_DIR/glib-2.0/schemas"
     fi
 fi
@@ -296,8 +340,7 @@ fi
 mv "$RUNTIME_STAGE" "$LIB_DIR/oscmix_desk"
 
 info "installing scripts to $BIN_DIR"
-install_file 755 "$PROJECT_DIR/bin/oscmix-session" "$BIN_DIR/oscmix-session"
-install_file 755 "$PROJECT_DIR/bin/oscmix-launch" "$BIN_DIR/oscmix-launch"
+payload_entry_points "$PROJECT_DIR" "$BIN_DIR"
 
 if [ ! -e "$CONFIG_DIR/routing.conf" ]; then
     info "installing default config to $CONFIG_DIR/routing.conf"
@@ -322,34 +365,37 @@ install -D -m 644 "$PROJECT_DIR/config/routing.conf.example" \
 # service that is not the one just installed.
 #
 # `systemctl --user show-environment` reports the session's own HOME, so
-# the home and configuration base must both match. Missing identity is
-# not evidence that this is the intended manager.
-info "installing systemd user service"
-install_file 644 "$PROJECT_DIR/systemd/oscmix.service" "$UNIT_DIR/oscmix.service"
-if manages_this_home; then
-    systemctl --user daemon-reload
-    systemctl --user enable --quiet oscmix.service
+# both the home and configuration base must match. Missing identity is
+# not evidence that the manager belongs to this installation.
+if [ "$MANUAL" = 0 ]; then
+    info "installing systemd user service"
+    install_file 644 "$PROJECT_DIR/systemd/oscmix.service" "$UNIT_DIR/oscmix.service"
+    if manages_this_home; then
+        systemctl --user daemon-reload
+        if [ "$ENABLE" = 1 ]; then
+            systemctl --user enable --quiet oscmix.service
+        fi
+    else
+        warn "unit installed but not enabled: systemd's user instance serves a"
+        warn "different home than $HOME. Run --enable from the intended session."
+    fi
 else
-    warn "unit installed but not enabled: systemd's user instance serves a"
-    warn "different home than $HOME, so enabling it would arm somebody"
-    warn "else's service. Enable it from that session with:"
-    warn "  systemctl --user enable --now oscmix.service"
+    info "manual foreground installation; no systemd service installed or enabled"
 fi
 
-info "installing desktop entry and icon"
-install_file 644 "$PROJECT_DIR/desktop/oscmix.svg" \
-    "$DATA_DIR/icons/hicolor/scalable/apps/oscmix.svg"
-# Desktop files cannot rely on PATH containing ~/.local/bin.
-DESKTOP_TMP="$(mktemp)"
-sed "s|^Exec=.*|Exec=$BIN_DIR/oscmix-launch|" \
-    "$PROJECT_DIR/desktop/oscmix-gtk.desktop" > "$DESKTOP_TMP"
-install_file 644 "$DESKTOP_TMP" "$DATA_DIR/applications/oscmix-gtk.desktop"
-rm -f "$DESKTOP_TMP"
-if command -v update-desktop-database >/dev/null 2>&1; then
-    update-desktop-database "$DATA_DIR/applications" 2>/dev/null || true
-fi
-if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-    gtk-update-icon-cache -q -t "$DATA_DIR/icons/hicolor" 2>/dev/null || true
+HAS_GTK=0
+for directory in "$BIN_DIR" /usr/local/bin /usr/bin; do
+    [ ! -x "$directory/oscmix-gtk" ] || HAS_GTK=1
+done
+if [ "$HAS_GTK" = 1 ]; then
+    info "installing desktop entry and icon"
+    payload_desktop "$PROJECT_DIR" "$BIN_DIR" "$DATA_DIR"
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database "$DATA_DIR/applications" 2>/dev/null || true
+    fi
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -q -t "$DATA_DIR/icons/hicolor" 2>/dev/null || true
+    fi
 fi
 
 # --------------------------------------------------------------------------
@@ -358,18 +404,24 @@ fi
 # --------------------------------------------------------------------------
 
 if [ "$DO_UDEV" = 1 ]; then
-    info "installing udev rule (needs root)"
     if SUDO=""; [ "$(id -u)" != 0 ]; then SUDO="sudo"; fi
+    # SYSTEMD_USER_WANTS can start even a disabled unit. Installing and
+    # triggering this rule on a fresh install would therefore write the
+    # example desk before its owner had asked for a first apply.
+    if [ "$MANUAL" = 0 ] && { [ "$ENABLE" = 1 ] || [ "$WAS_ENABLED" = 1 ]; }; then
+    info "installing udev rule (needs root)"
     if $SUDO install -m 644 "$PROJECT_DIR/udev/90-rme-fireface.rules" "$UDEV_RULE" \
         && $SUDO udevadm control --reload-rules; then
         # Apply the ASM4242 host-controller runtime-PM workaround now; the
         # rule will apply automatically on subsequent boots.
-        $SUDO udevadm trigger --subsystem-match=pci \
-            --attr-match="vendor=0x1b21" \
-            --attr-match="device=0x2426" --action=add 2>/dev/null || true
-        $SUDO udevadm trigger --subsystem-match=usb \
-            --attr-match="idVendor=$USB_VENDOR" \
-            --attr-match="idProduct=$USB_PRODUCT" --action=add 2>/dev/null || true
+        if [ "$ENABLE" = 1 ] || [ "$WAS_ACTIVE" = 1 ]; then
+            $SUDO udevadm trigger --subsystem-match=pci \
+                --attr-match="vendor=0x1b21" \
+                --attr-match="device=0x2426" --action=add 2>/dev/null || true
+            $SUDO udevadm trigger --subsystem-match=usb \
+                --attr-match="idVendor=$USB_VENDOR" \
+                --attr-match="idProduct=$USB_PRODUCT" --action=add 2>/dev/null || true
+        fi
     else
         warn "could not install $UDEV_RULE -- hotplug autostart is disabled."
         warn "To finish manually:"
@@ -394,13 +446,17 @@ if [ "$DO_UDEV" = 1 ]; then
     else
         warn "no system-sleep directory; skipping the resume hook"
     fi
+    else
+        info "hotplug and resume activation deferred; use --enable after reviewing the desk"
+    fi
 
     # The lock directory every writer of an interface shares. Without
     # it the path falls back to $XDG_RUNTIME_DIR, which sudo, cron and a
     # bare ssh command do not have -- and a writer that computes a
     # different path does not contend with the holder (ADR 0023).
     info "installing the shared lock directory (needs root)"
-    if $SUDO install -m 644 "$PROJECT_DIR/systemd/tmpfiles.d/oscmix-desk.conf" \
+    if command -v systemd-tmpfiles >/dev/null 2>&1 \
+        && $SUDO install -m 644 "$PROJECT_DIR/systemd/tmpfiles.d/oscmix-desk.conf" \
             "$TMPFILES_CONF" \
         && $SUDO systemd-tmpfiles --create "$TMPFILES_CONF"; then
         info "lock directory: /run/oscmix-desk (group audio)"
@@ -414,9 +470,11 @@ if [ "$DO_UDEV" = 1 ]; then
             warn "manager starts again with the new group"
         fi
     else
-        warn "could not install $TMPFILES_CONF; run these by hand:"
-        warn "  sudo install -m 644 systemd/tmpfiles.d/oscmix-desk.conf $TMPFILES_CONF"
-        warn "  sudo systemd-tmpfiles --create $TMPFILES_CONF"
+        warn "shared locks were not provisioned. Before live use, create the"
+        warn "audio group if absent, add the intended operator to it, and run:"
+        warn "  sudo install -d -o root -g audio -m 3770 /run/oscmix-desk"
+        warn "Arrange that directory creation on every boot (see docs/INSTALLATION.md)."
+        warn "Without it, locking is per user and does not exclude other users."
     fi
 else
     info "skipping the root steps (--no-udev): no hotplug autostart, no"
@@ -438,10 +496,12 @@ device_present() {
     return 1
 }
 
-if device_present && ! manages_this_home; then
+if [ "$MANUAL" = 1 ]; then
+    info "inspect the desk with oscmix-session --dry-run, then start oscmix-session in a terminal"
+elif device_present && ! manages_this_home; then
     info "Fireface detected, but not restarting the backend: systemd's user"
     info "instance serves a different home than $HOME"
-elif device_present; then
+elif [ "$WAS_ACTIVE" = 1 ] || { [ "$ENABLE" = 1 ] && device_present; }; then
     info "Fireface detected; (re)starting backend"
     # Under set -e a failed start job would end the installer here, before
     # the lines that say what to do about it.
@@ -452,8 +512,14 @@ elif device_present; then
     else
         warn "backend did not start; check: journalctl --user -u oscmix.service"
     fi
-else
+elif [ "$ENABLE" = 1 ]; then
     info "Fireface not connected; the backend will start automatically on plug-in"
+elif [ "$WAS_ENABLED" = 1 ]; then
+    info "automatic startup remains enabled; the previously stopped service remains stopped"
+else
+    info "files installed; automatic operation has not been enabled"
+    info "review $CONFIG_DIR/routing.conf and run: $BIN_DIR/oscmix-session --dry-run"
+    info "then enable explicitly: ./install.sh --no-build --enable"
 fi
 
 case ":$PATH:" in
@@ -465,6 +531,9 @@ if [ "$DO_BUILD" = 1 ] && [ "$GTK_BUILT" = 0 ]; then
     warn "the GTK mixer was not built; only the headless backend is installed"
 fi
 
-info "done. Open 'RME Fireface Mixer' from your app menu."
+info "installation complete."
+if [ "$HAS_GTK" = 1 ]; then
+    info "The companion mixer opens with 'RME Fireface Mixer'."
+fi
 info "Routing config: $CONFIG_DIR/routing.conf"
 rm -rf "$RUNTIME_PREVIOUS"

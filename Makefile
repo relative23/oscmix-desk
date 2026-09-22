@@ -1,7 +1,7 @@
 PYTHON ?= python3
 SCRIPTS = bin/oscmix-session bin/oscmix-launch
 PACKAGE = src/oscmix_desk
-SHELL_SCRIPTS = install.sh uninstall.sh scripts/verify-unit.sh systemd/system-sleep/oscmix
+SHELL_SCRIPTS = install.sh uninstall.sh scripts/verify-unit.sh scripts/install-payload.sh scripts/stage-install.sh packaging/oscmix-desk.install systemd/system-sleep/oscmix
 # Repeats for the flakiness gate. The suite binds real UDP sockets and
 # runs background threads, so a single green run proves little.
 REPEAT ?= 5
@@ -43,7 +43,7 @@ typecheck:
 # -- test contracts, documented data -- is listed with its reason in
 # quality/vulture-allowlist.py, which vulture reads as usage.
 deadcode:
-	$(PYTHON) -m vulture $(PACKAGE) $(SCRIPTS) scripts/ quality/vulture-allowlist.py --min-confidence 60
+	$(PYTHON) -m vulture $(PACKAGE) $(SCRIPTS) scripts/ packaging/oscmix-setup packaging/package-guard quality/vulture-allowlist.py --min-confidence 60
 
 # parallel mode plus a combine step: the integration tests measure the
 # session subprocess too, and each process writes its own data file.

@@ -1,0 +1,124 @@
+name: Distribution and package qualification
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'bin/**'
+      - 'config/**'
+      - 'install.sh'
+      - 'uninstall.sh'
+      - 'packaging/**'
+      - 'scripts/**'
+      - 'systemd/**'
+      - 'udev/**'
+      - 'tests/**'
+      - 'requirements-dev.txt'
+      - '.github/workflows/distributions.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'bin/**'
+      - 'config/**'
+      - 'install.sh'
+      - 'uninstall.sh'
+      - 'packaging/**'
+      - 'scripts/**'
+      - 'systemd/**'
+      - 'udev/**'
+      - 'tests/**'
+      - 'requirements-dev.txt'
+      - '.github/workflows/distributions.yml'
+  schedule:
+    - cron: '43 5 * * 1'
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: distributions-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [debian13, ubuntu2404, ubuntu2604, fedora44, opensuse16, arch, alpine322]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build and exercise the source installer without host devices
+        env:
+          TARGET: ${{ matrix.target }}
+        run: python3 scripts/qualify-distribution.py --target "$TARGET" --output build/distribution
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: source-${{ matrix.target }}
+          path: build/distribution/
+          retention-days: 14
+
+  native:
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [ubuntu2404, fedora44, opensuse16, arch]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require the published tag to match this source
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          PYTHONPATH=src python3 -c 'import os; from oscmix_desk import __version__; assert os.environ["RELEASE_TAG"] == "v" + __version__'
+      - name: Build twice and check actual package-manager transitions
+        env:
+          TARGET: ${{ matrix.target }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          options=()
+          if [ "$EVENT" != release ]; then options+=(--development); fi
+          python3 scripts/qualify-distribution.py --target "$TARGET" --native "${options[@]}" --output build/native
+      - name: Attest the release package, recipe and manifest
+        id: provenance
+        if: github.event_name == 'release'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: 'build/native/package/*'
+      - name: Include the signed provenance bundle
+        if: github.event_name == 'release'
+        env:
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          TARGET: ${{ matrix.target }}
+        run: cp "$BUNDLE" "build/native/package/attestation-$TARGET.jsonl"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: native-${{ matrix.target }}
+          path: build/native/
+          retention-days: 30
+      - name: Attach qualified artifacts to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" build/native/package/*

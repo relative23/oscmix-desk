@@ -115,7 +115,9 @@ I2 builds on I1's layout and ownership rules, not a second installer.
 
 ### I1 / I2 -- Installation comfort
 
-Detailed plan: [installation across Linux distributions](plans/installation.md).
+Usage: [installation and recovery](INSTALLATION.md).
+Qualification: [recorded software matrix](evidence/installation/).
+Design decisions: [installation across Linux distributions](plans/installation.md).
 
 - [x] Separate installing the files from enabling integration and applying
   a desk. Report dependencies, backend revision, active installation,
@@ -132,7 +134,7 @@ Detailed plan: [installation across Linux distributions](plans/installation.md).
 - [x] Build native DEB/RPM packages and an Arch recipe from a shared staging
   layout. Keep the source path for other distributions; define ownership
   and migration from existing per-user installs before publishing packages.
-- [ ] Verify install, upgrade, interrupted install, downgrade and uninstall
+- [x] Verify install, upgrade, interrupted install, downgrade and uninstall
   without losing config, profiles or the active marker. Detect shadowing
   binaries and user-unit overrides. Installation must not silently start
   writing a new default desk to an attached interface.
@@ -146,8 +148,9 @@ migration and return, SIGHUP with an explicit PIN, and a maintenance fence
 that survives a reboot and clears after successful package repair. These
 are software tests with a simulated backend, not hardware qualification
 on seven distributions. The reusable CI path passes all eleven source/native targets and creates
-release attestations only on a published release event. The additional
-per-target migration checks and package publication remain before I2 closes.
+release attestations only on a published release event. The actual 0.7.0 source-to-package-to-source file migration also passes
+on each native target with a simulated user bus; Ubuntu has the additional
+real-manager VM check. Package publication remains before I2 closes.
 
 **Packaging direction:** native packages where tested, a common source
 installer elsewhere. `pip`/`pipx` alone do not install the complete host

@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = oscmix-desk
+
+[Action]
+Description = Refusing mixer package changes while a mixer is running
+When = PreTransaction
+Exec = /usr/lib/oscmix-desk/package-guard remove
+AbortOnFail
