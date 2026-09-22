@@ -137,6 +137,54 @@ def test_refresh_keeps_tags_and_every_argument(sweep, monkeypatch):
     }
 
 
+def test_partner_restoration_precedes_the_next_probe(sweep, monkeypatch):
+    """Actual UCX-II case: channel 9 restores, its linked partner 10 does not."""
+    paths = ('/input/9/eq/band2gain', '/input/10/eq/band2gain')
+    state = dict.fromkeys(paths, 0.0)
+    writes = []
+    dropped = False
+
+    class Device:
+        def send(self, messages):
+            nonlocal dropped
+            for path, _tags, args in messages:
+                value = args[0]
+                writes.append((path, value))
+                if path == paths[1] and value != 0:
+                    assert state[paths[1]] == 0, 'next probe started from leftover partner state'
+                state[path] = value
+                partner = paths[1] if path == paths[0] else paths[0]
+                if path == paths[0] and value == 0 and not dropped:
+                    dropped = True
+                else:
+                    state[partner] = value
+
+    monkeypatch.setattr(sweep.time, 'sleep', lambda *args: None)
+    monkeypatch.setattr(sweep, 'read_all', lambda *args: dict(state))
+    targets = [(path, R.register_at(sweep.devices.UCX2, path)) for path in paths]
+    findings = sweep.sweep(Device(), None, targets, dict(state))
+    assert sweep.summarise(findings) == {'confirmed': 2}
+    assert state == dict.fromkeys(paths, 0.0)
+    assert (paths[1], 0) in writes
+
+
+def test_unrestorable_partner_stops_probes_before_the_next_group(sweep, monkeypatch):
+    paths = ('/input/9/eq/band2gain', '/input/10/eq/band2gain')
+    reference = dict.fromkeys(paths, 0.0)
+    groups = []
+
+    def one_pass(device, listener, group, state, step, attempts):
+        groups.append([path for path, _register in group])
+        return {paths[0]: 0.0, paths[1]: 0.4}, [paths[0]]
+
+    monkeypatch.setattr(sweep, '_pass', one_pass)
+    monkeypatch.setattr(sweep, 'repair', lambda *args: ({paths[1]: 0.4}, [paths[1]]))
+    targets = [(path, R.register_at(sweep.devices.UCX2, path)) for path in paths]
+    with pytest.raises(RuntimeError, match='pass restoration incomplete'):
+        sweep.sweep(None, None, targets, reference)
+    assert groups == [[paths[0]]]
+
+
 @pytest.mark.parametrize('changed', [False, True])
 def test_evidence_names_comparison_code_and_refuses_a_changed_runtime(
         sweep, monkeypatch, tmp_path, changed):

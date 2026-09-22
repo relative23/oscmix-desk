@@ -81,6 +81,13 @@ def test_a_blind_plan_is_what_the_apply_sends_today_minus_repeats(
     config = make_config(session_mod, *[route(session_mod, **r) for r in routes])
     old = list(oracle.routing_plan(config.routes).messages())
     new = list(reconcile.plan(reconcile.desired(config)).messages())
+    # 0.7.1 deliberately adds mono unlink writes to the historical
+    # sequence. Their exact channels and conflict rules are covered by
+    # test_mono_routes; the remaining sequence must stay equivalent.
+    old_paths = {message[0] for message in old}
+    new = [message for message in new
+           if not (message[0] not in old_paths and message[0].endswith('/stereo')
+                   and message[2] == (0,))]
     assert new == without_repeats(old), (
         "the reconciler diverges from routing_plan by more than repeats; "
         "nothing may switch over while this differs")

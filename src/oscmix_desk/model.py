@@ -58,6 +58,23 @@ class Route:
         """
         return ("input", self.input) if self.input else ("playback", self.playback)
 
+    @property
+    def link_requirements(self) -> Tuple[Tuple[str, int, bool], ...]:
+        """The pair flags required to address exactly this route's channels.
+
+        Even channel addresses fold onto the odd partner while linked.
+        A mono route therefore requires both its source and destination
+        pairs unlinked. Parsing checks agreement across routes; planning
+        writes these same requirements before the mix.
+        """
+        kind, source = self.source
+        return (
+            (kind, source[0] if source[0] % 2 else source[0] - 1,
+             len(source) == 2),
+            ("output", self.output[0] if self.output[0] % 2 else self.output[0] - 1,
+             len(self.output) == 2 and self.stereo),
+        )
+
 
 @dataclass(frozen=True)
 class ChannelSetting:

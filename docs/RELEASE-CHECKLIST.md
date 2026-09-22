@@ -134,6 +134,13 @@ one that found all three defects in 0.1.3.
       rule, backend binary identity, original/final state and any error.
       An interrupted run or residual drift is not release qualification.
       Keep historical artifacts unchanged and label their method limits.
+- [ ] If mono/input routing changed, measure input and playback sources
+      separately, including even-channel selection from previously linked
+      pairs. Confirm the named connection and the absence of neighbour
+      writes; record the channel flags and restoration. A microphone test
+      records its model, connection, gain and phantom-power state. Confirm
+      capture independently of monitor routing, and state when only meter
+      or register evidence is available instead of recorded PCM.
 
 ## 5. Install, from nothing
 

@@ -147,10 +147,15 @@ pass on Ubuntu 24.04, Fedora 44, openSUSE Leap 16 and Arch. An Ubuntu
 migration and return, SIGHUP with an explicit PIN, and a maintenance fence
 that survives a reboot and clears after successful package repair. These
 are software tests with a simulated backend, not hardware qualification
-on seven distributions. The reusable CI path passes all eleven source/native targets and creates
-release attestations only on a published release event. The actual 0.7.0 source-to-package-to-source file migration also passes
-on each native target with a simulated user bus; Ubuntu has the additional
-real-manager VM check. Package publication remains before I2 closes.
+on seven distributions. The reusable CI path passes all eleven source/native
+targets and creates release attestations only on a published release event.
+The actual 0.7.0 → native package → 0.7.0 file migration also passes on each
+native target with a simulated user bus; Ubuntu has the additional real
+user-manager VM check. Package publication remains before I2 closes.
+
+The separately qualified implementation and its software matrix are on
+[`feature/portable-install`](https://github.com/relative23/oscmix-desk/tree/feature/portable-install).
+It has not been merged into the 0.7.1 correctness release.
 
 **Packaging direction:** native packages where tested, a common source
 installer elsewhere. `pip`/`pipx` alone do not install the complete host
