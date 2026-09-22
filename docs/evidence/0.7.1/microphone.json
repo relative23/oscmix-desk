@@ -1,0 +1,516 @@
+{
+  "taken": "2026-09-22T20:14:53.043413+00:00",
+  "desk_source": {
+    "version": "0.7.1",
+    "commit": "abd859486ee8b61e7ed2567545642d202595e842",
+    "dirty": false,
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "runtime_sha256": {
+      "__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+      "backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+      "cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+      "config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+      "constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+      "devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+      "discovery.py": "02dcf0575ccda9b532800c72728aefd050924b6c875f16359df8d50da0a54c40",
+      "dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+      "errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+      "launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+      "locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+      "log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+      "marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+      "model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+      "notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+      "notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+      "numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+      "osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+      "outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+      "paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+      "pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+      "process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+      "profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+      "reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+      "reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+      "registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+      "reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+      "routing.py": "0d739d6497d4e815abc5adb01d867233439a63ea16981d6989616744a3443478",
+      "sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+      "session.py": "3a8936a00d8c6e88184db6edf72b203ed31e1ceeaf89cbd8f141b6bbb4ba12af",
+      "verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f"
+    },
+    "tool_sha256": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd"
+  },
+  "backend": {
+    "pid": 3842153,
+    "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+    "matches_local_build": true
+  },
+  "device": {
+    "usb_id": "2a39:3fd9",
+    "serial": "24216011",
+    "client": 24
+  },
+  "microphone": "Shure BETA 58A on MIC/LINE 1; user-reported direct connection",
+  "physical_setup": "KRK off; headphones unplugged; no external loopback",
+  "method": "ALSA hardware PCM capture; 40 dB temporarily; no routing changes; numeric windows only; voice timing checked separately",
+  "capture": {
+    "command": [
+      "arecord",
+      "--device=hw:CARD=II24216011,DEV=0",
+      "--format=S24_3LE",
+      "--channels=20",
+      "--rate=48000",
+      "--duration=20",
+      "--file-type=raw",
+      "-"
+    ],
+    "seconds": 20,
+    "frames": 960000,
+    "gain_db": 40,
+    "channels": {
+      "1": [
+        {
+          "start_s": 0.0,
+          "peak_dbfs": -35.63552582037098,
+          "rms_dbfs": -52.320445571595215
+        },
+        {
+          "start_s": 0.5,
+          "peak_dbfs": -35.73013509556834,
+          "rms_dbfs": -50.52651691811753
+        },
+        {
+          "start_s": 1.0,
+          "peak_dbfs": -37.894650173134906,
+          "rms_dbfs": -53.007627572351794
+        },
+        {
+          "start_s": 1.5,
+          "peak_dbfs": -37.707515985071595,
+          "rms_dbfs": -54.7380486437805
+        },
+        {
+          "start_s": 2.0,
+          "peak_dbfs": -43.07798314474249,
+          "rms_dbfs": -55.610042633264946
+        },
+        {
+          "start_s": 2.5,
+          "peak_dbfs": -43.07827830707837,
+          "rms_dbfs": -55.17997651996815
+        },
+        {
+          "start_s": 3.0,
+          "peak_dbfs": -38.09396611131912,
+          "rms_dbfs": -50.72938670877481
+        },
+        {
+          "start_s": 3.5,
+          "peak_dbfs": -38.23266840835494,
+          "rms_dbfs": -51.89104822233812
+        },
+        {
+          "start_s": 4.0,
+          "peak_dbfs": -40.108367115409195,
+          "rms_dbfs": -54.054445068718586
+        },
+        {
+          "start_s": 4.5,
+          "peak_dbfs": -38.43713418169634,
+          "rms_dbfs": -50.76268460274616
+        },
+        {
+          "start_s": 5.0,
+          "peak_dbfs": -35.85330055558549,
+          "rms_dbfs": -49.751848096376
+        },
+        {
+          "start_s": 5.5,
+          "peak_dbfs": -36.6334988648477,
+          "rms_dbfs": -53.73846466121588
+        },
+        {
+          "start_s": 6.0,
+          "peak_dbfs": -38.291241666589244,
+          "rms_dbfs": -55.17514414830128
+        },
+        {
+          "start_s": 6.5,
+          "peak_dbfs": -34.678827773278755,
+          "rms_dbfs": -48.75514245864853
+        },
+        {
+          "start_s": 7.0,
+          "peak_dbfs": -36.71646670057549,
+          "rms_dbfs": -53.05941447307582
+        },
+        {
+          "start_s": 7.5,
+          "peak_dbfs": -11.592176373383447,
+          "rms_dbfs": -22.198275060305498
+        },
+        {
+          "start_s": 8.0,
+          "peak_dbfs": -12.308713717191486,
+          "rms_dbfs": -20.38486042765037
+        },
+        {
+          "start_s": 8.5,
+          "peak_dbfs": -13.270160874600903,
+          "rms_dbfs": -26.331077951943197
+        },
+        {
+          "start_s": 9.0,
+          "peak_dbfs": -14.517279804609089,
+          "rms_dbfs": -24.571410257850474
+        },
+        {
+          "start_s": 9.5,
+          "peak_dbfs": -18.999218376597156,
+          "rms_dbfs": -28.939074022124128
+        },
+        {
+          "start_s": 10.0,
+          "peak_dbfs": -15.789222791895288,
+          "rms_dbfs": -27.792186319038457
+        },
+        {
+          "start_s": 10.5,
+          "peak_dbfs": -15.595056273755507,
+          "rms_dbfs": -27.448665117549268
+        },
+        {
+          "start_s": 11.0,
+          "peak_dbfs": -14.122934762407022,
+          "rms_dbfs": -23.178310578249803
+        },
+        {
+          "start_s": 11.5,
+          "peak_dbfs": -15.130884983547737,
+          "rms_dbfs": -22.99295017031309
+        },
+        {
+          "start_s": 12.0,
+          "peak_dbfs": -12.604230982742362,
+          "rms_dbfs": -21.00855973428071
+        },
+        {
+          "start_s": 12.5,
+          "peak_dbfs": -8.125963039130369,
+          "rms_dbfs": -16.18341427725169
+        },
+        {
+          "start_s": 13.0,
+          "peak_dbfs": -3.867431005619589,
+          "rms_dbfs": -17.965802945743288
+        },
+        {
+          "start_s": 13.5,
+          "peak_dbfs": -32.18330822229239,
+          "rms_dbfs": -50.15234280248575
+        },
+        {
+          "start_s": 14.0,
+          "peak_dbfs": -6.351360137222278,
+          "rms_dbfs": -21.149631301461916
+        },
+        {
+          "start_s": 14.5,
+          "peak_dbfs": -2.8984029699593643,
+          "rms_dbfs": -12.701791061960472
+        },
+        {
+          "start_s": 15.0,
+          "peak_dbfs": -5.67954317390101,
+          "rms_dbfs": -23.747640449963757
+        },
+        {
+          "start_s": 15.5,
+          "peak_dbfs": -34.81985697034644,
+          "rms_dbfs": -51.404607158582174
+        },
+        {
+          "start_s": 16.0,
+          "peak_dbfs": -10.322676166815988,
+          "rms_dbfs": -22.718384413184864
+        },
+        {
+          "start_s": 16.5,
+          "peak_dbfs": -36.1276427734243,
+          "rms_dbfs": -50.64630172680737
+        },
+        {
+          "start_s": 17.0,
+          "peak_dbfs": -48.296472986662195,
+          "rms_dbfs": -65.81554398065211
+        },
+        {
+          "start_s": 17.5,
+          "peak_dbfs": -42.949220644852005,
+          "rms_dbfs": -59.46198573636269
+        },
+        {
+          "start_s": 18.0,
+          "peak_dbfs": -37.35522806774811,
+          "rms_dbfs": -53.609007153732875
+        },
+        {
+          "start_s": 18.5,
+          "peak_dbfs": -44.63926390523681,
+          "rms_dbfs": -55.741270083274436
+        },
+        {
+          "start_s": 19.0,
+          "peak_dbfs": -45.75749054748087,
+          "rms_dbfs": -56.37669380335162
+        },
+        {
+          "start_s": 19.5,
+          "peak_dbfs": -43.39647063527255,
+          "rms_dbfs": -56.21458598942695
+        }
+      ],
+      "2": [
+        {
+          "start_s": 0.0,
+          "peak_dbfs": -104.15373113273537,
+          "rms_dbfs": -115.93784372703178
+        },
+        {
+          "start_s": 0.5,
+          "peak_dbfs": -104.15373113273537,
+          "rms_dbfs": -116.03148050005697
+        },
+        {
+          "start_s": 1.0,
+          "peak_dbfs": -103.82592280897198,
+          "rms_dbfs": -115.95782842058293
+        },
+        {
+          "start_s": 1.5,
+          "peak_dbfs": -103.05675777258847,
+          "rms_dbfs": -115.90323720450719
+        },
+        {
+          "start_s": 2.0,
+          "peak_dbfs": -103.35630089198153,
+          "rms_dbfs": -115.96804894966182
+        },
+        {
+          "start_s": 2.5,
+          "peak_dbfs": -103.35630089198153,
+          "rms_dbfs": -115.99142745651866
+        },
+        {
+          "start_s": 3.0,
+          "peak_dbfs": -103.82592280897198,
+          "rms_dbfs": -116.01555506663523
+        },
+        {
+          "start_s": 3.5,
+          "peak_dbfs": -103.05675777258847,
+          "rms_dbfs": -115.94162179976855
+        },
+        {
+          "start_s": 4.0,
+          "peak_dbfs": -103.35630089198153,
+          "rms_dbfs": -116.10772534444638
+        },
+        {
+          "start_s": 4.5,
+          "peak_dbfs": -104.15373113273537,
+          "rms_dbfs": -116.00085394019291
+        },
+        {
+          "start_s": 5.0,
+          "peak_dbfs": -103.51003746530735,
+          "rms_dbfs": -115.93982826941571
+        },
+        {
+          "start_s": 5.5,
+          "peak_dbfs": -103.98828061341558,
+          "rms_dbfs": -116.0353873969902
+        },
+        {
+          "start_s": 6.0,
+          "peak_dbfs": -103.51003746530735,
+          "rms_dbfs": -116.0603756606048
+        },
+        {
+          "start_s": 6.5,
+          "peak_dbfs": -103.82592280897198,
+          "rms_dbfs": -116.04988711856826
+        },
+        {
+          "start_s": 7.0,
+          "peak_dbfs": -102.91077299775849,
+          "rms_dbfs": -116.02595165303381
+        },
+        {
+          "start_s": 7.5,
+          "peak_dbfs": -103.98828061341558,
+          "rms_dbfs": -115.87189316071388
+        },
+        {
+          "start_s": 8.0,
+          "peak_dbfs": -103.82592280897198,
+          "rms_dbfs": -115.89791613120585
+        },
+        {
+          "start_s": 8.5,
+          "peak_dbfs": -102.35019852575361,
+          "rms_dbfs": -115.97917072956551
+        },
+        {
+          "start_s": 9.0,
+          "peak_dbfs": -103.82592280897198,
+          "rms_dbfs": -116.01888518968667
+        },
+        {
+          "start_s": 9.5,
+          "peak_dbfs": -103.35630089198153,
+          "rms_dbfs": -115.92317556923112
+        },
+        {
+          "start_s": 10.0,
+          "peak_dbfs": -103.35630089198153,
+          "rms_dbfs": -115.94837639931521
+        },
+        {
+          "start_s": 10.5,
+          "peak_dbfs": -102.35019852575361,
+          "rms_dbfs": -115.7145727365134
+        },
+        {
+          "start_s": 11.0,
+          "peak_dbfs": -103.35630089198153,
+          "rms_dbfs": -115.87978964416911
+        },
+        {
+          "start_s": 11.5,
+          "peak_dbfs": -102.91077299775849,
+          "rms_dbfs": -116.02132478868826
+        },
+        {
+          "start_s": 12.0,
+          "peak_dbfs": -103.82592280897198,
+          "rms_dbfs": -115.92002454126848
+        },
+        {
+          "start_s": 12.5,
+          "peak_dbfs": -103.98828061341558,
+          "rms_dbfs": -115.97031068227834
+        },
+        {
+          "start_s": 13.0,
+          "peak_dbfs": -104.49439791871097,
+          "rms_dbfs": -115.95171107076143
+        },
+        {
+          "start_s": 13.5,
+          "peak_dbfs": -103.66654421554648,
+          "rms_dbfs": -116.08333838141462
+        },
+        {
+          "start_s": 14.0,
+          "peak_dbfs": -103.35630089198153,
+          "rms_dbfs": -116.03596439280908
+        },
+        {
+          "start_s": 14.5,
+          "peak_dbfs": -104.15373113273537,
+          "rms_dbfs": -115.90722277221829
+        },
+        {
+          "start_s": 15.0,
+          "peak_dbfs": -103.51003746530735,
+          "rms_dbfs": -115.98486065833855
+        },
+        {
+          "start_s": 15.5,
+          "peak_dbfs": -104.32239448347262,
+          "rms_dbfs": -116.05642133840634
+        },
+        {
+          "start_s": 16.0,
+          "peak_dbfs": -102.21553087257425,
+          "rms_dbfs": -115.83515895600398
+        },
+        {
+          "start_s": 16.5,
+          "peak_dbfs": -103.2052381341726,
+          "rms_dbfs": -115.99939198598128
+        },
+        {
+          "start_s": 17.0,
+          "peak_dbfs": -102.76720130521602,
+          "rms_dbfs": -115.92882377965849
+        },
+        {
+          "start_s": 17.5,
+          "peak_dbfs": -102.48698701635972,
+          "rms_dbfs": -115.92071708877825
+        },
+        {
+          "start_s": 18.0,
+          "peak_dbfs": -103.51003746530735,
+          "rms_dbfs": -116.0143274711013
+        },
+        {
+          "start_s": 18.5,
+          "peak_dbfs": -103.66654421554648,
+          "rms_dbfs": -115.94084410838171
+        },
+        {
+          "start_s": 19.0,
+          "peak_dbfs": -103.98828061341558,
+          "rms_dbfs": -115.94975246326945
+        },
+        {
+          "start_s": 19.5,
+          "peak_dbfs": -103.35630089198153,
+          "rms_dbfs": -115.9865840943105
+        }
+      ]
+    },
+    "alsa": {
+      "stream0": "RME Fireface UCX II (24216011) at usb-0000:77:00.0-2, high speed : USB Audio\n\nPlayback:\n  Status: Stop\n  Interface 1\n    Altset 1\n    Format: S24_3LE\n    Channels: 20\n    Endpoint: 0x02 (2 OUT) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000\n    Data packet interval: 125 us\n    Bits: 24\n    Sync Endpoint: 0x82 (2 IN)\n    Sync EP Interface: 1\n    Sync EP Altset: 1\n    Implicit Feedback Mode: No\n  Interface 1\n    Altset 2\n    Format: S24_3LE\n    Channels: 16\n    Endpoint: 0x02 (2 OUT) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000\n    Data packet interval: 125 us\n    Bits: 24\n    Sync Endpoint: 0x82 (2 IN)\n    Sync EP Interface: 1\n    Sync EP Altset: 2\n    Implicit Feedback Mode: No\n  Interface 1\n    Altset 3\n    Format: S24_3LE\n    Channels: 14\n    Endpoint: 0x02 (2 OUT) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000\n    Data packet interval: 125 us\n    Bits: 24\n    Channel map: FL FR -- -- -- -- -- -- -- -- -- -- -- --\n    Sync Endpoint: 0x82 (2 IN)\n    Sync EP Interface: 1\n    Sync EP Altset: 3\n    Implicit Feedback Mode: No\n  Interface 1\n    Altset 4\n    Format: S24_3LE\n    Channels: 8\n    Endpoint: 0x02 (2 OUT) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000\n    Data packet interval: 125 us\n    Bits: 24\n    Channel map: FL FR -- -- -- -- -- --\n    Sync Endpoint: 0x82 (2 IN)\n    Sync EP Interface: 1\n    Sync EP Altset: 4\n    Implicit Feedback Mode: No\n\nCapture:\n  Status: Running\n    Interface = 2\n    Altset = 1\n    Packet Size = 540\n    Momentary freq = 48000 Hz (0x6.0000)\n  Interface 2\n    Altset 1\n    Format: S24_3LE\n    Channels: 20\n    Endpoint: 0x81 (1 IN) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000\n    Data packet interval: 125 us\n    Bits: 24\n  Interface 2\n    Altset 2\n    Format: S24_3LE\n    Channels: 16\n    Endpoint: 0x81 (1 IN) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000\n    Data packet interval: 125 us\n    Bits: 24\n  Interface 2\n    Altset 3\n    Format: S24_3LE\n    Channels: 14\n    Endpoint: 0x81 (1 IN) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000\n    Data packet interval: 125 us\n    Bits: 24\n    Channel map: FL FR FC LFE RL RR FLC FRC RC SL SR TC TFL TFC\n  Interface 2\n    Altset 4\n    Format: S24_3LE\n    Channels: 8\n    Endpoint: 0x81 (1 IN) (ASYNC)\n    Rates: 44100, 48000, 88200, 96000, 176400, 192000\n    Data packet interval: 125 us\n    Bits: 24\n    Channel map: FL FR FC LFE RL RR FLC FRC\n",
+      "pcm0c/sub0/hw_params": "access: RW_INTERLEAVED\nformat: S24_3LE\nsubformat: STD\nchannels: 20\nrate: 48000 (48000/1)\nperiod_size: 6000\nbuffer_size: 24000\n",
+      "pcm0c/sub0/status": "state: RUNNING\nowner_pid   : 4065528\ntrigger_time: 540053.399760108\ntstamp      : 0.000000000\ndelay       : 5665\navail       : 5617\navail_max   : 6037\n-----\nhw_ptr      : 47655\nappl_ptr    : 42038\n"
+    },
+    "stderr": "Recording raw data '-' : Signed 24 bit Little Endian in 3bytes, Rate 48000 Hz, Channels 20\n",
+    "raw_audio_saved": false
+  },
+  "sent": [
+    [
+      "/input/1/gain",
+      "f",
+      [
+        40.0
+      ]
+    ],
+    [
+      "/input/1/gain",
+      "f",
+      [
+        0.0
+      ]
+    ]
+  ],
+  "error": null,
+  "not_restored": [],
+  "before_messages": {
+    "reference": "write-sweep-ucx2.json#/after_messages",
+    "paths": 2252,
+    "sha256_canonical_json": "9d2ce0a3f9a5a991b55ead523752ed4f7c51861682be6845a5bbca18f56ee831"
+  },
+  "after_messages": {
+    "reference": "write-sweep-ucx2.json#/after_messages",
+    "paths": 2252,
+    "sha256_canonical_json": "9d2ce0a3f9a5a991b55ead523752ed4f7c51861682be6845a5bbca18f56ee831"
+  },
+  "adapter_sha256": "a709a207a25a608868cc8af690b198b676971a18774a514f64c914cabe2344ed",
+  "operator_observation": "User reports speaking very close and shouting. This confirms the input path under loud excitation, not normal speech gain calibration.",
+  "source_record_sha256": "2de18712b41b0b8264b83809ca881534fbbd3a2617b28cffab3d6032fdf4b2e9",
+  "restoration_note": "Both complete readable snapshots equal the shared sweep state exactly; the reference avoids duplicating 2252 unchanged messages."
+}

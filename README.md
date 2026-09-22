@@ -53,7 +53,9 @@ since.
 - **1888 sweep entries confirmed; 14 deliberately skipped.** The sweep
   covers 1902 settable entries, skips reference-level changes (ADR 0016),
   and records per-register verdicts in
-  [docs/evidence/write-sweep-ucx2.json](docs/evidence/write-sweep-ucx2.json).
+  [the corrected 0.7.1 sweep](docs/evidence/0.7.1/write-sweep-ucx2.json).
+  It preserves requested and reported values and restores all 2252
+  readable messages exactly, including type tags and additional arguments.
   Playback matrix writes cannot be verified by this backend. The recorded
   refresh contains 2322 paths, including 70 streamed paths. See the
   [evidence and provenance limits](docs/HARDWARE-EVIDENCE.md).
@@ -62,6 +64,11 @@ since.
   and, since 0.6.2, the firmware it was taken against -- because a
   device that changed underneath the evidence would otherwise be
   invisible in it.
+- [Sample-rate measurements](docs/evidence/0.7.1/sample-rates.md) cover
+  24 USB/ALSA combinations. At 88.2/96 kHz, the 20-channel stream has
+  only 16 active playback channels; at 176.4/192 kHz, the 8/14-channel
+  modes pass while 16/20 fail. The desk does not select or validate
+  the active stream mode automatically. Digital connectors remain unmeasured.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
 - Twenty-seven [decision records](docs/decisions/) carry the reasoning and the

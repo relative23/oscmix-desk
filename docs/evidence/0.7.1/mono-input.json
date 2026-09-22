@@ -1,0 +1,645 @@
+{
+  "taken": "2026-09-22T19:59:57.318532+00:00",
+  "desk_source": {
+    "version": "0.7.1",
+    "commit": "abd859486ee8b61e7ed2567545642d202595e842",
+    "dirty": false,
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "runtime_sha256": {
+      "__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+      "backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+      "cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+      "config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+      "constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+      "devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+      "discovery.py": "02dcf0575ccda9b532800c72728aefd050924b6c875f16359df8d50da0a54c40",
+      "dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+      "errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+      "launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+      "locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+      "log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+      "marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+      "model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+      "notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+      "notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+      "numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+      "osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+      "outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+      "paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+      "pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+      "process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+      "profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+      "reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+      "reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+      "registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+      "reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+      "routing.py": "0d739d6497d4e815abc5adb01d867233439a63ea16981d6989616744a3443478",
+      "sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+      "session.py": "3a8936a00d8c6e88184db6edf72b203ed31e1ceeaf89cbd8f141b6bbb4ba12af",
+      "verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f"
+    },
+    "tool_sha256": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd"
+  },
+  "backend": {
+    "pid": 3842153,
+    "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+    "matches_local_build": true
+  },
+  "device": {
+    "usb_id": "2a39:3fd9",
+    "serial": "24216011",
+    "client": 24
+  },
+  "method": "physical input matrix; no audio playback; legacy failure then corrected cases",
+  "findings": [
+    {
+      "case": "legacy-even-route-from-linked-pairs",
+      "matrix": {
+        "/mix/5/input/1": -12.0,
+        "/mix/5/input/2": "-inf",
+        "/mix/6/input/1": "-inf",
+        "/mix/6/input/2": -12.0
+      },
+      "unwanted_neighbour_changed": true
+    },
+    {
+      "case": "input-1-to-output-5",
+      "initial_links": {
+        "/input/1/stereo": 1,
+        "/output/5/stereo": 1
+      },
+      "final_links": {
+        "/input/1/stereo": 0,
+        "/output/5/stereo": 0
+      },
+      "matrix": {
+        "/mix/5/input/1": -12.0,
+        "/mix/5/input/2": "-inf",
+        "/mix/6/input/1": "-inf",
+        "/mix/6/input/2": "-inf"
+      },
+      "ok": true
+    },
+    {
+      "case": "input-1-to-output-6",
+      "initial_links": {
+        "/input/1/stereo": 1,
+        "/output/5/stereo": 1
+      },
+      "final_links": {
+        "/input/1/stereo": 0,
+        "/output/5/stereo": 0
+      },
+      "matrix": {
+        "/mix/5/input/1": "-inf",
+        "/mix/5/input/2": "-inf",
+        "/mix/6/input/1": -12.0,
+        "/mix/6/input/2": "-inf"
+      },
+      "ok": true
+    },
+    {
+      "case": "input-2-to-output-5",
+      "initial_links": {
+        "/input/1/stereo": 1,
+        "/output/5/stereo": 1
+      },
+      "final_links": {
+        "/input/1/stereo": 0,
+        "/output/5/stereo": 0
+      },
+      "matrix": {
+        "/mix/5/input/1": "-inf",
+        "/mix/5/input/2": -12.0,
+        "/mix/6/input/1": "-inf",
+        "/mix/6/input/2": "-inf"
+      },
+      "ok": true
+    },
+    {
+      "case": "input-2-to-output-6",
+      "initial_links": {
+        "/input/1/stereo": 1,
+        "/output/5/stereo": 1
+      },
+      "final_links": {
+        "/input/1/stereo": 0,
+        "/output/5/stereo": 0
+      },
+      "matrix": {
+        "/mix/5/input/1": "-inf",
+        "/mix/5/input/2": "-inf",
+        "/mix/6/input/1": "-inf",
+        "/mix/6/input/2": -12.0
+      },
+      "ok": true
+    }
+  ],
+  "sent": [
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/mix/6/input/2",
+      "fi",
+      [
+        -12.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/1",
+      "fi",
+      [
+        -12.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/1",
+      "fi",
+      [
+        -12.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/2",
+      "fi",
+      [
+        -12.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/2",
+      "fi",
+      [
+        -12.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/5/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/1",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/mix/6/input/2",
+      "fi",
+      [
+        -65.0,
+        0
+      ]
+    ],
+    [
+      "/input/1/stereo",
+      "i",
+      [
+        1
+      ]
+    ],
+    [
+      "/output/5/stereo",
+      "i",
+      [
+        1
+      ]
+    ]
+  ],
+  "error": null,
+  "not_restored": [],
+  "before_messages": {
+    "reference": "write-sweep-ucx2.json#/after_messages",
+    "paths": 2252,
+    "sha256_canonical_json": "9d2ce0a3f9a5a991b55ead523752ed4f7c51861682be6845a5bbca18f56ee831"
+  },
+  "after_messages": {
+    "reference": "write-sweep-ucx2.json#/after_messages",
+    "paths": 2252,
+    "sha256_canonical_json": "9d2ce0a3f9a5a991b55ead523752ed4f7c51861682be6845a5bbca18f56ee831"
+  },
+  "individual_baseline": {
+    "/mix/5/input/1": "-inf",
+    "/mix/5/input/2": "-inf",
+    "/mix/6/input/1": "-inf",
+    "/mix/6/input/2": "-inf"
+  },
+  "ok": true,
+  "source_record_sha256": "1f9218e5d52692fa7a32ed6fce5de21939aa809482bcd1cbd0ae6a6f7f91a744",
+  "restoration_note": "Both complete readable snapshots equal the shared sweep state exactly; the reference avoids duplicating 2252 unchanged messages."
+}

@@ -5,6 +5,32 @@ Its measured backend pin is
 `f2fdd5ec78338848754aad32cc07f3440de63395`. Evidence describes that
 combination and the firmware it records, not every Fireface or firmware.
 
+## Current measurements for 0.7.1
+
+The [0.7.1 evidence](evidence/0.7.1/) measures the corrected runtime
+`abd8594` on USB 3.01 / DSP 36. The schema-2 sweep confirms 1,888 entries,
+skips 14 reference-level entries and restores all 2,252 readable messages
+exactly, including every argument and type tag. No phantom-power or
+reference-level writes are sent. An initial pass exposed a lost
+partner-channel restoration between sweep groups; it was corrected and
+the entire sweep repeated before retaining the passing result.
+
+Separate experiments cover even/odd mono input and playback selection
+from linked pairs, linked/unlinked gain and mute, and all five configured
+playback routes. A BETA 58A on input 1 is captured through actual ALSA at
+24-bit/48 kHz with 40 dB temporarily and phantom power off; no speech file
+is retained. Loud, close speech peaks at -2.9 dBFS without digital clipping.
+This confirms capture, not normal-speech gain calibration or microphone
+quality. Original gain and mixer state are restored.
+
+The [sample-rate table](evidence/0.7.1/sample-rates.md) records 24 actual
+USB/ALSA combinations, including six incomplete/failed cases, with a
+return to the original state after every attempt. It qualifies playback
+and output-meter paths. External digital connectors, optical S/PDIF mode,
+physical Room EQ delay and high-rate ADC content are not measured.
+
+## Historical evidence
+
 **Historical numeric limits:** sweeps through 0.7.0 used a tolerance that
 could accept changed but incorrect scalar reports and omitted raw values
 for confirmations. Snapshots rounded floats to one decimal place. The
