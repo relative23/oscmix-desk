@@ -1,5 +1,8 @@
 # 0.7.1 qualification
 
+[Published release](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.1)
+and [verification of its assets and provenance](release-verification.json).
+
 The corrected runtime and test/tool files match
 `abd859486ee8b61e7ed2567545642d202595e842`. All 27 software gates pass:
 1,677 tests with two empty-parameter skips, Python 3.9–3.14, five suite

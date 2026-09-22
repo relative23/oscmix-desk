@@ -1,0 +1,137 @@
+{
+  "tag": "v0.7.1",
+  "release": "https://github.com/relative23/oscmix-desk/releases/tag/v0.7.1",
+  "desk_commit": "b0ebc56a9141c050fbb417ac49f8c0ef4ce980f1",
+  "published_at": "2026-09-22T23:00:04Z",
+  "verified_at": "2026-09-22T23:06:26.985280+00:00",
+  "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "downloaded_assets": {
+    "attestation.jsonl": "sha256:8ed38b6473802306fcfbadf0149f221f3d52d852677c8580496e90cebab6f1af",
+    "hardware-evidence.json": "sha256:18bca4473801013ef3c56c08acb68c5bc2a238005e975d70f50cd61893d82426",
+    "input-gain-mute.json": "sha256:aae905d5031b5cbc887f8d5ecf36695b216d66e6db8d0ea60c6fab1b53a90601",
+    "lifecycle.json": "sha256:6c4173d086425915b142545b9630e981612735f669c20d15b4b5f75ee27c9bc4",
+    "microphone.json": "sha256:69a308cd6edd798bee0692ff1f50a7e019b94e686f42695554204981616b0fc6",
+    "mono-input.json": "sha256:beb9e1e4ebbf2b2ece4c68ebda7e9b4589aedd8b6cabc37e7719d68b1cafc15a",
+    "oscmix-desk-0.7.1.tar.gz": "sha256:cc25cce86926de815838eb9cfbc584c31a81e4496badb3522f97193ed58e96c2",
+    "playback-after-rates.json": "sha256:949c6ac6c8fcd1bc8dc58c7eebb39c8690392a21d6ca87b0bbe4317073cd0cce",
+    "playback-cases.json": "sha256:c8707240179ee6456b1b88ac5b3c7b7c6c8936a95b1f33d357fbe18ea8d442bc",
+    "release-manifest.json": "sha256:a5e69e66cfae8a5436ab5a54710115452990f27c441cf56fb8c5d8cbb52c62bb",
+    "release-notes.md": "sha256:d877e9261f6ee56a222e80d9ecbf307cca885d5b5b4bf6d4c13cc04dc98bc20d",
+    "sample-rates.json": "sha256:080d9e29f96591d52fdd635fa39cde4650e85e5aae4fda97183a7449683c38cb",
+    "SHA256SUMS": "sha256:d1f1898d5e196595071ced106caa28a9140cba9c5e07e2a6ca2961090824fa6e",
+    "software-qualification.json": "sha256:6d1bab3bfdd7b4de354797bd0e8083dea87c7aff2f32b7055b55cef34b608e17",
+    "write-sweep-ucx2.json": "sha256:d207884b3feee9c8736d5669daad57499dbb3116408120b2bda0c733fd135daa"
+  },
+  "verification": {
+    "github_cli": "2.101.0",
+    "repository": "relative23/oscmix-desk",
+    "signer_workflow": "relative23/oscmix-desk/.github/workflows/release.yml",
+    "source_ref": "refs/tags/v0.7.1",
+    "source_digest": "b0ebc56a9141c050fbb417ac49f8c0ef4ce980f1",
+    "deny_self_hosted_runners": true,
+    "attestation_verified": true,
+    "sha256sum_check_passed": true,
+    "all_downloads_match_github_asset_digests": true,
+    "all_non_attestation_assets_match_local_qualified_build": true,
+    "evidence_matches_source_archive": true,
+    "verification_controls": [
+      {
+        "case": "attestation-verify",
+        "exit": 0,
+        "expected": true
+      },
+      {
+        "case": "wrong-ref",
+        "exit": 1,
+        "expected": true
+      },
+      {
+        "case": "altered-manifest",
+        "exit": 1,
+        "expected": true
+      },
+      {
+        "case": "altered-archive",
+        "exit": 1,
+        "expected": true
+      }
+    ]
+  },
+  "main_ci": {
+    "url": "https://github.com/relative23/oscmix-desk/actions/runs/35793309829",
+    "head_sha": "b0ebc56a9141c050fbb417ac49f8c0ef4ce980f1",
+    "conclusion": "success",
+    "successful_jobs": 10,
+    "scheduled_mutation_job": "Skipped on push; the full fresh local measurement is in software-qualification.json."
+  },
+  "release_workflow": {
+    "url": "https://github.com/relative23/oscmix-desk/actions/runs/35795186609",
+    "head_sha": "b0ebc56a9141c050fbb417ac49f8c0ef4ce980f1",
+    "conclusion": "success"
+  },
+  "local_release_tree": {
+    "commit": "b0ebc56a9141c050fbb417ac49f8c0ef4ce980f1",
+    "recorded": "2026-09-22T22:41:20.170103+00:00",
+    "clean_main": true,
+    "checks": [
+      {
+        "gate": "check",
+        "exit": 0,
+        "seconds": 144.95
+      },
+      {
+        "gate": "archive-first",
+        "exit": 0,
+        "seconds": 0.4
+      },
+      {
+        "gate": "archive-second",
+        "exit": 0,
+        "seconds": 0.4
+      },
+      {
+        "gate": "extracted-installer",
+        "exit": 0,
+        "seconds": 6.38
+      },
+      {
+        "gate": "checksums",
+        "exit": 0,
+        "seconds": 0.03
+      }
+    ],
+    "repeated_archive_and_manifest_identical": true,
+    "actual_workflow_qualification_guard_passed": true,
+    "private_reviews_and_gui_drafts_excluded": true,
+    "assets_sha256": {
+      "SHA256SUMS": "d1f1898d5e196595071ced106caa28a9140cba9c5e07e2a6ca2961090824fa6e",
+      "hardware-evidence.json": "18bca4473801013ef3c56c08acb68c5bc2a238005e975d70f50cd61893d82426",
+      "input-gain-mute.json": "aae905d5031b5cbc887f8d5ecf36695b216d66e6db8d0ea60c6fab1b53a90601",
+      "lifecycle.json": "6c4173d086425915b142545b9630e981612735f669c20d15b4b5f75ee27c9bc4",
+      "microphone.json": "69a308cd6edd798bee0692ff1f50a7e019b94e686f42695554204981616b0fc6",
+      "mono-input.json": "beb9e1e4ebbf2b2ece4c68ebda7e9b4589aedd8b6cabc37e7719d68b1cafc15a",
+      "oscmix-desk-0.7.1.tar.gz": "cc25cce86926de815838eb9cfbc584c31a81e4496badb3522f97193ed58e96c2",
+      "playback-after-rates.json": "949c6ac6c8fcd1bc8dc58c7eebb39c8690392a21d6ca87b0bbe4317073cd0cce",
+      "playback-cases.json": "c8707240179ee6456b1b88ac5b3c7b7c6c8936a95b1f33d357fbe18ea8d442bc",
+      "release-manifest.json": "a5e69e66cfae8a5436ab5a54710115452990f27c441cf56fb8c5d8cbb52c62bb",
+      "release-notes.md": "d877e9261f6ee56a222e80d9ecbf307cca885d5b5b4bf6d4c13cc04dc98bc20d",
+      "sample-rates.json": "080d9e29f96591d52fdd635fa39cde4650e85e5aae4fda97183a7449683c38cb",
+      "software-qualification.json": "6d1bab3bfdd7b4de354797bd0e8083dea87c7aff2f32b7055b55cef34b608e17",
+      "write-sweep-ucx2.json": "d207884b3feee9c8736d5669daad57499dbb3116408120b2bda0c733fd135daa"
+    }
+  },
+  "qualification_provenance": {
+    "fully_qualified_code_commit": "abd859486ee8b61e7ed2567545642d202595e842",
+    "release_code_tests_tools_and_installation_files_match_qualification": true,
+    "note": "Evidence, documentation and workflow commits followed the qualified source. The final tag commit also passed full main CI and a fresh local check. Hardware and long-running gates identify the revisions actually measured."
+  },
+  "separate_installation_development": {
+    "branch": "feature/portable-install",
+    "head_sha": "04ce0e2323cf3157ec6ad24e8ae595fa29b87b45",
+    "workflow": "https://github.com/relative23/oscmix-desk/actions/runs/35793594673",
+    "conclusion": "success",
+    "source_targets": 7,
+    "native_targets": 4,
+    "scope": "Development rehearsal including the artifact collector; native packages are not included in the 0.7.1 release."
+  }
+}

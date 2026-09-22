@@ -1,6 +1,6 @@
 # Roadmap
 
-Current plan for **0.7.1**, updated 2026-09-23. The correctness patch has
+Current plan after **0.7.1**, updated 2026-09-23. The correctness patch has
 completed software and UCX II qualification, including corrected mono
 routing, numeric comparisons, export and measurement restoration.
 The desktop companion is deferred by the maintainer.
@@ -32,12 +32,14 @@ completed work is no longer an open backlog item.
 
 ## 0.7.1: correctness and evidence
 
-**Qualification complete.** Parser, comparison, export, mono-route and
+**Closed and published.** Parser, comparison, export, mono-route and
 measurement defects are corrected. The backend pin and supported device
 remain unchanged. The [evidence](evidence/0.7.1/) records fresh software
 gates, hardware measurements, physical disconnect/reconnect and restoration
 of readable state and the known playback routes. Publication is tracked by the
-[versioned release](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.1).
+[versioned release](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.1). The
+[publication record](evidence/0.7.1/release-verification.json) verifies its
+assets, tag identity and matching source archive.
 
 - [x] Enforce explicit write permission during **every sweep restoration**,
   including retries and partner effects. Report protected or missing
