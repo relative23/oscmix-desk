@@ -12,6 +12,20 @@ archive, manifest and checksums produced by this repository's workflow.
 Hardware evidence is measured locally and attached separately; it is not
 an audio test performed by a GitHub runner.
 
+From 0.7.1, pushing the annotated release tag also starts this workflow.
+After the archive checks, it requires the version's committed hardware
+evidence and release notes, adds their checksums, and attests the files.
+It creates a draft, uploads the complete asset set and then publishes it.
+A failed run leaves a draft that can be resumed; an already published
+release is not replaced by the tag path. Creating a release through the
+GitHub UI remains supported. Run the release checklist before pushing
+the tag: CI builds and attests the recorded measurements, not the device.
+
+The tag path uses the repository's existing Actions token. No local
+browser login or additional personal token is needed. A release published
+with that token does not trigger another release-event workflow; any
+additional package workflow must also handle the tag explicitly.
+
 ## Verify before installing
 
 After the release is published, download the archive, `SHA256SUMS`,

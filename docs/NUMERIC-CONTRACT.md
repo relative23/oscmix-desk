@@ -49,6 +49,14 @@ they are labelled **OSC units**. Do not convert a desired physical delay
 using the old seconds label. An independently measured mapping is still
 required before physical units or a wider range can be offered.
 
+The pinned backend's output-loopback setter is also unsuitable for that
+measurement. Its output-address parser assigns `param.out`, but the setter
+uses the untouched `param.in`. An isolated run of the actual C backend
+produced the same MIDI message for enable/disable on outputs 1, 5, 6 and 20.
+Those messages were not sent to the device. Loopback has no config domain
+in oscmix-desk. An external return cable or a separately corrected and
+qualified backend is needed before using loopback as delay evidence.
+
 The same manual says Room EQ's enable button controls EQ; nonzero delay
 and volume calibration remain active independently. Its UCX II chapter
 limits Room EQ to 16 mono/8 stereo channels. Register-address coverage
