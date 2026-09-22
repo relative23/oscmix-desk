@@ -14,7 +14,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from .backend import loopback
 from .constants import (
@@ -221,8 +221,7 @@ def _values(args: Optional[Args]) -> str:
 
 
 def _one_value(value: Value) -> str:
-    if isinstance(value, float):
-        return "%.1f" % value
+    """Keep every reported digit: snapshots must expose sub-tenth drift."""
     return str(value)
 
 
@@ -301,15 +300,18 @@ def _dump_config(config: Config) -> int:
         return EXIT_FAILURE
 
     model = device_for_name(config.device_name)
+    warnings: List[str] = []
     dumped = Config(device_name=config.device_name, usb_id=config.usb_id,
                     osc_port=config.osc_port,
                     osc_recv_port=config.osc_recv_port,
-                    routes=tuple(routes_from_observed(observed(seen))),
-                    channels=tuple(channels_from_observed(seen, model)),
-                    globals=tuple(globals_from_observed(seen, model)))
+                    routes=tuple(routes_from_observed(observed(seen), model, warnings)),
+                    channels=tuple(channels_from_observed(seen, model, warnings)),
+                    globals=tuple(globals_from_observed(seen, model, warnings)))
     log.info("read %d registers; %d input route(s), %d channel setting(s) "
              "and %d global setting(s) reconstructed",
              len(seen), len(dumped.routes), len(dumped.channels),
              len(dumped.globals))
-    sys.stdout.write(render_config(dumped, model))
+    for warning in warnings:
+        log.warning("incomplete export: %s", warning)
+    sys.stdout.write(render_config(dumped, model, warnings))
     return EXIT_OK

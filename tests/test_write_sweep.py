@@ -13,6 +13,7 @@ starts rather than the work it completes.
 """
 
 import importlib.util
+import struct
 
 import pytest
 from support import repo_file
@@ -27,6 +28,153 @@ def load_sweep():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.mark.parametrize('arguments', [
+    ['--limit', '0'], ['--limit', '-1'], ['--match', '/not-a-register/'],
+])
+def test_empty_or_invalid_selection_refuses_before_device_access(sweep, monkeypatch, arguments):
+    monkeypatch.setattr(sweep.sys, 'argv', ['sweep-writes.py', *arguments])
+    monkeypatch.setattr(sweep, 'resolve_device', lambda *args:
+                        pytest.fail('invalid selection reached hardware discovery'))
+    with pytest.raises(SystemExit) as caught:
+        sweep.main()
+    assert caught.value.code == 2
+    assert sweep.settable(0) == []
+
+
+def test_sigterm_during_a_probe_restores_before_returning(sweep, monkeypatch):
+    import signal
+
+    previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+    calls = []
+
+    def probe(*args):
+        calls.append('probe')
+        signal.raise_signal(signal.SIGTERM)
+        pytest.fail('probing continued after SIGTERM')
+
+    def repair(*args):
+        calls.append('repair')
+        assert signal.getsignal(signal.SIGINT) == signal.SIG_IGN
+        assert signal.getsignal(signal.SIGTERM) == signal.SIG_IGN
+        return {'/output/1/volume': 0.0}, []
+
+    monkeypatch.setattr(sweep, 'sweep', probe)
+    monkeypatch.setattr(sweep, 'read_all', lambda *args: {})
+    monkeypatch.setattr(sweep, 'repair', repair)
+    findings, after, unrestored, error = sweep.measure_and_restore(
+        None, None, [], {'/output/1/volume': 0.0})
+    assert calls == ['probe', 'repair']
+    assert not findings
+    assert not unrestored
+    assert after == {'/output/1/volume': 0.0}
+    assert 'SIGTERM' in error
+    assert {sig: signal.getsignal(sig) for sig in previous} == previous
+
+
+def test_an_unsavable_artifact_still_reports_unrestored_state(sweep, monkeypatch,
+                                                            tmp_path, capsys):
+    from types import SimpleNamespace
+
+    device = SimpleNamespace(binary_evidence=dict,
+                             listen=lambda: SimpleNamespace(close=lambda: None), sent=[])
+    monkeypatch.setattr(sweep.sys, 'argv', ['sweep-writes.py', '--limit', '1',
+                                           '--out', str(tmp_path / 'missing/out.json')])
+    monkeypatch.setattr(sweep, 'resolve_device', lambda *args:
+                        SimpleNamespace(serial='123', key='ucx2'))
+    monkeypatch.setattr(sweep, 'take_device_lock', lambda *args:
+                        SimpleNamespace(release=lambda: None))
+    monkeypatch.setattr(sweep, 'CheckedBackend', lambda *args: device)
+    monkeypatch.setattr(sweep, 'read_all', lambda *args: {'/output/1/volume': 0.0})
+    monkeypatch.setattr(sweep, 'measure_and_restore', lambda *args:
+                        ([], {}, ['/output/1/volume'], 'restoration failed'))
+    monkeypatch.setattr(sweep, 'built_backend_revision', lambda *args: 'a' * 40)
+    monkeypatch.setattr(sweep, 'device_firmware', lambda *args: {})
+    assert sweep.main() == 1
+    error = capsys.readouterr().err
+    assert 'NOT RESTORED' in error
+    assert 'could not save sweep evidence' in error
+    assert error.index('NOT RESTORED') < error.index('could not save sweep evidence')
+
+
+def test_pan_drift_is_reported_without_writing_an_unpermitted_mix_cell(sweep):
+    path = '/mix/1/input/1'
+    before, after = sweep.Readback(), sweep.Readback()
+    before[path] = after[path] = -20.0
+    before.messages[path] = ('fi', (-20.0, -100))
+    after.messages[path] = ('fi', (-20.0, 100))
+
+    class NoWrites:
+        def send(self, messages):
+            pytest.fail('an unpermitted mix cell was written during restoration: %r' % messages)
+
+    assert sweep.drifted(before, after) == [path]
+    _, unrestored = sweep.repair(NoWrites(), None, before, after,
+                                 readback=lambda *args: after)
+    assert unrestored == [path]
+
+
+def test_refresh_keeps_tags_and_every_argument(sweep, monkeypatch):
+    from types import SimpleNamespace
+
+    ticks = iter([0.0, 0.0, 2.0])
+    monkeypatch.setattr(sweep.time, 'monotonic', lambda: next(ticks))
+    monkeypatch.setattr(sweep.time, 'sleep', lambda *args: None)
+    device = SimpleNamespace(request_dump=lambda: None)
+    listener = SimpleNamespace(messages=lambda *args: [
+        ('/mix/1/input/1', 'fi', (-20.0, -100)),
+        ('/clock/source', 'is', (0, 'Internal')),
+        ('/output/1/volume', '', ()),
+        ('/input/1/level', 'f', (-32.0,)),
+    ])
+    seen = sweep.read_all(device, listener, seconds=1.0)
+    assert seen == {'/mix/1/input/1': -20.0, '/clock/source': 0}
+    assert seen.messages == {
+        '/mix/1/input/1': ('fi', (-20.0, -100)),
+        '/clock/source': ('is', (0, 'Internal')),
+        '/output/1/volume': ('', ()),
+    }
+
+
+@pytest.mark.parametrize('changed', [False, True])
+def test_evidence_names_comparison_code_and_refuses_a_changed_runtime(
+        sweep, monkeypatch, tmp_path, changed):
+    import json
+    from types import SimpleNamespace
+
+    actual = sweep.source_evidence()
+    assert {'numeric.py', 'registers.py', 'devices.py'} <= actual['runtime_sha256'].keys()
+    assert all(len(value) == 64 for value in actual['runtime_sha256'].values())
+    later = dict(actual, runtime_sha256=dict(actual['runtime_sha256']))
+    if changed:
+        later['runtime_sha256']['numeric.py'] = '0' * 64
+    sources = iter([actual, later])
+    monkeypatch.setattr(sweep, 'source_evidence', lambda: next(sources))
+    output = tmp_path / 'measurement.json'
+    monkeypatch.setattr(sweep.sys, 'argv', ['sweep-writes.py', '--limit', '1',
+                                           '--out', str(output)])
+    monkeypatch.setattr(sweep, 'resolve_device', lambda *args:
+                        SimpleNamespace(serial='123', key='ucx2'))
+    monkeypatch.setattr(sweep, 'take_device_lock', lambda *args:
+                        SimpleNamespace(release=lambda: None))
+    device = SimpleNamespace(binary_evidence=dict,
+                             listen=lambda: SimpleNamespace(close=lambda: None), sent=[])
+    monkeypatch.setattr(sweep, 'CheckedBackend', lambda *args: device)
+    state = {'/output/1/volume': 0.0}
+    monkeypatch.setattr(sweep, 'read_all', lambda *args: state)
+    monkeypatch.setattr(sweep, 'measure_and_restore', lambda *args:
+                        ([{'verdict': 'confirmed'}], state, [], None))
+    monkeypatch.setattr(sweep, 'built_backend_revision', lambda *args: 'a' * 40)
+    monkeypatch.setattr(sweep, 'device_firmware', lambda *args: {})
+    assert sweep.main() == int(changed)
+    evidence = json.loads(output.read_text())
+    assert evidence['desk_source'] == actual
+    assert evidence['not_restored'] == []
+    if changed:
+        assert 'source files changed during measurement' in evidence['error']
+    else:
+        assert evidence['error'] is None
 
 
 @pytest.fixture(scope="module")
@@ -157,7 +305,11 @@ def test_every_candidate_stays_inside_the_declared_bounds(sweep):
         for fraction in (0.0, 0.5, 1.0):
             current = register.lo + (register.hi - register.lo) * fraction
             for value, _step in sweep.candidates(register, current):
+                lo, hi = (struct.unpack("!f", struct.pack("!f", v))[0]
+                          if register.tags == "f" else v
+                          for v in (register.lo, register.hi))
                 assert register.lo <= value <= register.hi, path
+                assert lo <= sweep.as_tag(value, register.tags) <= hi, path
 
 
 def test_reflevel_is_refused_and_48v_is_out_of_reach(sweep):
@@ -285,6 +437,66 @@ def test_restoration_retries_until_the_device_matches(sweep):
     assert unrestored == sorted(reference)
 
 
+@pytest.mark.parametrize("protected", [
+    "/input/1/48v", "/input/3/reflevel", "/output/3/reflevel",
+    "/clock/samplerate",
+])
+def test_restore_never_writes_protected_or_read_only_drift(sweep, monkeypatch,
+                                                         protected):
+    """Knowing a register exists is not permission to restore it."""
+    monkeypatch.setattr(sweep.time, "sleep", lambda _seconds: None)
+    safe = "/output/7/eq/band2q"
+    reference = {safe: 1.0, protected: 1}
+    current = {safe: 4.4, protected: 0}
+    sent = []
+
+    class Device:
+        def send(self, messages):
+            for path, _tags, args in messages:
+                sent.append(path)
+                current[path] = args[0]
+
+    after, unrestored = sweep.repair(
+        Device(), None, reference, current, rounds=3,
+        readback=lambda _device, _listener: dict(current))
+    assert sent == [safe]
+    assert after[safe] == 1.0
+    assert unrestored == [protected]
+
+
+def test_restore_keeps_missing_readback_visible(sweep, monkeypatch):
+    monkeypatch.setattr(sweep.time, "sleep", lambda _seconds: None)
+    sent = []
+
+    class Device:
+        def send(self, messages):
+            sent.extend(messages)
+
+    reference = {"/input/1/48v": 1, "/output/1/eq/band1gain": 0.0}
+    _after, unrestored = sweep.repair(
+        Device(), None, reference, {}, rounds=2,
+        readback=lambda _device, _listener: {})
+    assert unrestored == sorted(reference)
+    assert [path for path, _tags, _args in sent] == [
+        "/output/1/eq/band1gain", "/output/1/eq/band1gain"]
+
+
+def test_a_protected_batch_is_rejected_before_any_write(sweep):
+    from oscmix_desk.devices import UCX2
+
+    sent = []
+
+    class Device:
+        def send(self, messages):
+            sent.extend(messages)
+
+    paths = ("/output/1/eq/band1gain", "/input/1/48v")
+    writes = [(path, R.register_at(UCX2, path), 0) for path in paths]
+    with pytest.raises(ValueError, match="not permitted"):
+        sweep.write_batch(Device(), writes)
+    assert sent == []
+
+
 def test_the_sweep_holds_the_device_lock():
     """The loudest writer in the repository took no lock until 0.6.8.
 
@@ -330,3 +542,125 @@ def test_the_sweep_refuses_two_boxes_before_it_takes_anything(monkeypatch,
     assert sweep.main() == 1
     assert taken == []
     assert "the sweep supports one interface" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(("path", "value", "wrong"), [
+    ("/output/1/roomeq/delay", .00425, .0001),
+    ("/echo/delay", .2, .01),
+    ("/echo/width", .37, .01),
+    ("/input/1/dynamics/compratio", 1.4, 1.1),
+    ("/input/1/gain", 1., float("nan")),
+])
+def test_a_changed_but_wrong_report_never_confirms(sweep, path, value, wrong):
+    finding = sweep.verdict(path, 0., [(value, 20., wrong)])
+    assert finding["verdict"] != "confirmed"
+    observation, = finding["observations"]
+    assert observation["requested"] == value
+    assert observation["encoded"] == struct.unpack("!f", struct.pack("!f", value))[0]
+    assert "reported" in observation
+
+
+def test_a_real_pass_records_requested_wire_and_actual_report(sweep, monkeypatch):
+    from oscmix_desk.devices import UCX2
+
+    path = "/output/1/roomeq/delay"
+    register = R.register_at(UCX2, path)
+    before = {path: 0.}
+    states = iter([{path: .0001}, dict(before)])
+    sent = []
+
+    class Device:
+        def send(self, messages):
+            sent.extend(messages)
+
+    monkeypatch.setattr(sweep, "read_all", lambda *_args: next(states))
+    monkeypatch.setattr(sweep.time, "sleep", lambda _s: None)
+    attempts = {path: []}
+    after, settled = sweep._pass(Device(), None, [(path, register)], before, 0, attempts)
+    finding = sweep.verdict(path, 0., attempts[path])
+    observation, = finding["observations"]
+    assert observation["requested"] == .00425
+    assert observation["encoded"] == sent[0][2][0]
+    assert observation["expected_report"] == .004000000189989805
+    assert observation["reported"] == .0001
+    assert finding["verdict"] != "confirmed"
+    assert settled == [path]
+    assert after == before
+
+
+def test_an_unchanged_observation_is_kept_and_not_confirmed(sweep):
+    finding = sweep.verdict("/echo/delay", .1, [(.2, .1, .1)])
+    assert finding["verdict"] == "ignored"
+    assert finding["observations"][0]["reported"] == .1
+
+
+@pytest.mark.parametrize("exception", [OSError("send failed"), KeyboardInterrupt()])
+def test_an_interrupted_probe_still_restores_and_reports_failure(sweep, monkeypatch,
+                                                                exception):
+    path = "/output/1/eq/band1gain"
+    before = {path: 0.}
+    state = dict(before)
+
+    class Device:
+        def send(self, messages):
+            for name, _tags, args in messages:
+                state[name] = args[0]
+
+    def fails(*_args):
+        state[path] = -3.
+        raise exception
+
+    monkeypatch.setattr(sweep, "sweep", fails)
+    monkeypatch.setattr(sweep, "read_all", lambda *_args: dict(state))
+    monkeypatch.setattr(sweep.time, "sleep", lambda _s: None)
+    findings, after, unrestored, error = sweep.measure_and_restore(Device(), None, [], before)
+    assert findings == []
+    assert after == before
+    assert unrestored == []
+    assert type(exception).__name__ in error
+
+
+def test_failed_restoration_does_not_claim_an_unchanged_device(sweep, monkeypatch):
+    before = {"/output/1/eq/band1gain": 0.}
+    monkeypatch.setattr(sweep, "sweep", lambda *_args: [])
+
+    def disconnected(*_args):
+        raise ValueError("lost identity")
+
+    monkeypatch.setattr(sweep, "read_all", disconnected)
+    _, after, unrestored, error = sweep.measure_and_restore(None, None, [], before)
+    assert after == {}
+    assert unrestored == list(before)
+    assert "restoration failed" in error
+
+
+def test_replaced_backend_cannot_receive_a_restore(sweep, monkeypatch):
+    from oscmix_desk.discovery import Device
+    from oscmix_desk.process import PortHolder
+
+    interface = Device("2a39:3fd9", "24216011", 24)
+    holder = PortHolder(123, True, 24, interface.serial)
+    monkeypatch.setattr(sweep, "resolve_device", lambda *_args: interface)
+    monkeypatch.setattr(sweep, "port_holder", lambda *_args: holder)
+    backend = sweep.CheckedBackend(interface, 1, 2)
+    holder = PortHolder(456, True, 24, interface.serial)
+    with pytest.raises(ValueError, match="identity"):
+        backend.send([("/output/1/eq/band1gain", "f", (0.,))])
+
+
+def test_nonfinite_raw_values_survive_in_valid_json(sweep):
+    import json
+
+    value = {"reported": [float("nan"), float("inf"), float("-inf"), None]}
+    text = json.dumps(sweep.json_safe(value), allow_nan=False)
+    assert json.loads(text) == {"reported": ["nan", "inf", "-inf", None]}
+
+
+@pytest.mark.parametrize("state", [{}, {"/echo/delay": float("nan")}])
+def test_missing_or_invalid_baseline_is_not_a_successful_deliberate_skip(sweep, state):
+    from oscmix_desk.devices import UCX2
+
+    path = "/echo/delay"
+    target = (path, R.register_at(UCX2, path))
+    finding, = sweep.sweep(None, None, [target], state)
+    assert finding["verdict"] == "undetermined"

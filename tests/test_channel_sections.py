@@ -244,14 +244,14 @@ def test_a_quantity_out_of_range_names_the_range(tmp_path):
     # a config that promised 75 there would be silently cut down by
     # `setinputgain` rather than refused. Measured by the write sweep.
     path.write_text("[input:3]\ngain = 80.0\n")
-    with pytest.raises(ConfigError, match=r"80\.0 dB out of range 0\.0\.\.24\.0"):
+    with pytest.raises(ConfigError, match=r"80 out of range 0\.0\.\.24\.0 dB"):
         load_config(path)
     path.write_text("[input:1]\ngain = 80.0\n")
-    with pytest.raises(ConfigError, match=r"80\.0 dB out of range 0\.0\.\.75\.0"):
+    with pytest.raises(ConfigError, match=r"80 out of range 0\.0\.\.75\.0 dB"):
         load_config(path)
 
 
-def test_an_unbounded_quantity_is_only_checked_for_being_a_number():
+def test_an_unbounded_quantity_still_obeys_its_wire_type():
     """Where upstream declares no bound, neither does the model.
 
     A range invented here would reject values the device accepts, and a
@@ -263,7 +263,7 @@ def test_an_unbounded_quantity_is_only_checked_for_being_a_number():
     free = Register("/x", "i", "verifiable", "global", NUMBER)
     assert free.lo is None
     assert free.hi is None
-    assert _parse_number("1234.5", "x", "y", free) == 1234.5
+    assert _parse_number("1234", "x", "y", free) == 1234
 
 
 def test_output_phase_is_settable_since_the_pin_moved(session_mod, tmp_path):

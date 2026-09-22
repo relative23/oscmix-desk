@@ -46,7 +46,9 @@ def _mix(route: Route) -> List[Message]:
     if len(route.output) == 1 or route.stereo:
         written = [(route.output[0], route.level, 0)]
     else:
-        level = min(route.level, 0.0) + HALVED
+        # Mute is the backend's explicit zero, not another gain to offset.
+        level = (-65.0 if route.level <= -65.0
+                 else min(route.level, 0.0) + HALVED)
         written = [(route.output[0], level, -100), (route.output[1], level, 100)]
     messages: List[Message] = [
         ("/mix/%d/%s/%d" % (out, kind, first), "fi", (level, pan))

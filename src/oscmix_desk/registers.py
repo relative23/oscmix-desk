@@ -182,6 +182,15 @@ class Register:
     #: signal problem rather than a matter of taste. REMEMBER belongs to
     #: everything a person reaches for during a session.
     policy: Policy = REMEMBER
+    #: Scalar fixed-point scale in the pinned backend. None means no
+    #: fixed-point contract is declared, not a universal dB tolerance.
+    scale: Optional[float] = None
+    #: Input gain uses float32 multiplication followed by C truncation,
+    #: unlike setfixed's lroundf division. Both report tenths of a dB.
+    truncates: bool = False
+    #: Only mix-level arguments use setmix's logarithmic gain and -inf
+    #: mute report. Thresholds and fixed-point output faders do not.
+    mix_level: bool = False
 
     @property
     def per_channel(self) -> bool:

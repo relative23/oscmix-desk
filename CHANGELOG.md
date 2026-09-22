@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.7.1 -- unreleased
+
+### Fixed
+
+- Preserve digital mute on unlinked stereo routes: `level = -65` no
+  longer receives the positive gain compensation that left a small
+  nonzero signal. Reject unlinked-pair boosts above 0 dB instead of
+  silently reducing the requested level to unity.
+
+- Compare scalar values using their register encoding, including Float32
+  rounding and input-gain truncation. The mix-level tolerance and mute
+  sentinel no longer confirm unrelated delays, ratios or thresholds.
+- Reject nonfinite numbers, fractional integer settings and wire/storage
+  overflow during config validation. Invalid numeric/link reports cannot
+  cause a traceback or false confirmation.
+- Preserve sub-tenth values in config exports and snapshots. Export only
+  matrix routes supported by known link, pan and level state; show omitted
+  or malformed observations instead of inventing a route.
+- Restrict sweep restoration and retries to permitted writable registers.
+  Record raw probe/readback details and failed restoration, including on
+  interruption; recheck the backend/interface identity before writes.
+- Preserve every argument and type tag in sweep baseline/final reports;
+  a changed mix pan can no longer be hidden by an unchanged first value.
+  Reject empty selections and nonpositive limits before device access,
+  restore after SIGINT/SIGTERM, and report unrestored state even when the
+  evidence file cannot be saved. Evidence identifies the comparison code
+  and rejects source changes during measurement.
+- Match both `HOME` and `XDG_CONFIG_HOME` before installer service actions.
+  Refuse installation through a mismatched or unidentified user manager,
+  including its root integration steps. An uninstall using another config
+  under the same home refuses before removing the shared runtime.
+
+### Documentation
+
+- Correct UCX II headphone numbering (7/8), supported config options,
+  partial-state/profile behavior, PIN/REMEMBER semantics and four outcomes.
+- Distinguish backend numeric units from measured physical quantities.
+  Room EQ delay's previous seconds label is unsubstantiated; its existing
+  numeric range is retained as OSC units pending independent measurement.
+- State the precision/tolerance limits of historical snapshots and sweeps.
+  See [numeric contracts](docs/NUMERIC-CONTRACT.md).
+
 ## 0.7.0 -- 2026-09-22
 
 Module boundaries, explicit write outcomes and

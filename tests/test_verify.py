@@ -7,6 +7,8 @@ import oracle
 from support import free_udp_port, repo_file
 
 from oscmix_desk import osc, verify
+from oscmix_desk.devices import UCX2
+from oscmix_desk.registers import register_at
 
 
 def make_route(session_mod, **kwargs):
@@ -45,7 +47,9 @@ def test_register_matches_with_float_tolerance(verify_mod):
     # Expected values are deliberately non-zero: with want = 0.0 a sign
     # error in the comparison (want - got vs want + got) is invisible,
     # which is exactly what a surviving mutant showed.
-    match = verify_mod._register_matches
+    def match(tags, want, got):
+        return verify_mod._register_matches(
+            tags, want, got, register_at(UCX2, "/mix/5/input/1"))
     assert match("fi", (-6.0, 0), (-5.7, 0)) is True     # quantization
     assert match("fi", (-6.0, 0), (-5.4, 0)) is False    # real deviation
     assert match("fi", (-6.0, 0), (6.0, 0)) is False     # sign flipped

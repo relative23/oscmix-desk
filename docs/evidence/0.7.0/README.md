@@ -1,5 +1,14 @@
 # 0.7.0 candidate measurements
 
+**Historical-method limit (identified during 0.7.1 work):** the sweep's
+universal tolerance could confirm a changed but incorrect scalar value;
+confirmed findings did not retain that report. Snapshot rendering also
+rounded floats to one decimal place, so equality could hide smaller
+changes. The results below retain their original method and counts; they
+do not establish equality under the corrected numeric contract. The
+route/meter checks have a separate method and remain separate evidence.
+See [numeric contracts](../../NUMERIC-CONTRACT.md).
+
 Collected locally on 2026-09-22 against desk commit
 `86fb4e45d6ca342fbd7744b5312239f8a9103994`. The installed service used
 that runtime. `measurement.json` records the backend commit, binary hash,

@@ -224,11 +224,15 @@ def test_an_input_route_is_planned_as_verifiable(session_mod):
 
 def test_a_muted_gain_reads_back_as_negative_infinity(session_mod):
     from oscmix_desk import reconcile as r
+    from oscmix_desk.devices import UCX2
+    from oscmix_desk.registers import register_at
 
-    assert r.matches("fi", (-65.0, 0), (float("-inf"), 0))
+    register = register_at(UCX2, "/mix/5/input/1")
+
+    assert r.matches("fi", (-65.0, 0), (float("-inf"), 0), register=register)
     # Anything below the floor is stored as zero too, so it matches as
     # well -- the config range stops at -65 but the rule is `<=`.
-    assert r.matches("f", (-70.0,), (float("-inf"),))
+    assert r.matches("f", (-70.0,), (float("-inf"),), register=register)
 
 
 def test_the_mute_floor_is_the_one_upstream_uses(session_mod):
@@ -242,11 +246,15 @@ def test_the_mute_floor_is_the_one_upstream_uses(session_mod):
 
 def test_an_audible_gain_still_compares_normally(session_mod):
     from oscmix_desk import reconcile as r
+    from oscmix_desk.devices import UCX2
+    from oscmix_desk.registers import register_at
 
-    assert r.matches("fi", (-6.0, 0), (-6.2, 0))       # device quantisation
-    assert not r.matches("fi", (-6.0, 0), (-12.0, 0))
+    register = register_at(UCX2, "/mix/5/input/1")
+
+    assert r.matches("fi", (-6.0, 0), (-6.2, 0), register=register)       # device quantisation
+    assert not r.matches("fi", (-6.0, 0), (-12.0, 0), register=register)
     # And a real silence where audio was asked for is still a mismatch.
-    assert not r.matches("fi", (-6.0, 0), (float("-inf"), 0))
+    assert not r.matches("fi", (-6.0, 0), (float("-inf"), 0), register=register)
 
 
 def test_a_muted_input_route_verifies_instead_of_re_sending(session_mod):
@@ -285,4 +293,6 @@ def test_the_verifier_and_the_plan_share_one_definition_of_equal(session_mod):
     for want, got in ((( -65.0, 0), (float("-inf"), 0)),
                       ((-6.0, 0), (-6.2, 0)),
                       ((-6.0, 0), (-30.0, 0))):
-        assert v._register_matches("fi", want, got) == r.matches("fi", want, got)
+        register = registers.register_at(devices.UCX2, "/mix/5/input/1")
+        assert v._register_matches("fi", want, got, register) == r.matches(
+            "fi", want, got, register=register)

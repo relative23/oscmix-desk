@@ -133,7 +133,7 @@ the app menu.
 Edit `~/.config/oscmix/routing.conf`:
 
 ```ini
-[route:main-out]          # headphones on the front panel
+[route:main-out]          # rear line outputs 1/2
 playback = 1/2
 output = 1/2
 
@@ -143,6 +143,10 @@ output = 5/6
 level = 0.0               # mix gain in dB (0 = unity, -65 = mute)
 ```
 
+For a pair with `stereo = false`, the level range is -65 to 0 dB:
+compensation uses the available positive gain headroom. `level = -65`
+writes digital mute on both sides.
+
 Apply with `systemctl --user restart oscmix.service`. Mono routes
 (`playback = 3` / `output = 7`) work too. PipeWire and PulseAudio send
 stereo audio to playback channels 1/2, so most setups only route 1/2 to
@@ -150,8 +154,8 @@ wherever their speakers are connected.
 
 ### The rest of the strip
 
-Since 0.4.0 the file is not limited to routing. Anything the device
-exposes and oscmix can write can be declared:
+The file supports the options with a validated config domain in the
+device model, in addition to routing:
 
 ```ini
 [input:3]                 # per-channel state
@@ -179,15 +183,22 @@ Bounds come from the device: `compratio = 12.0` is refused because the
 register stops at 10, and the message says so. Values are checked before
 anything reaches the hardware.
 
-`oscmix-session --dump-config` writes the desk you already have as a file
-in exactly this shape, which is usually the easiest way to start.
+`oscmix-session --dump-config` exports the representable reported subset
+in this shape, naming omissions. Playback routes, channel names and
+loopback cannot be recovered this way. Phantom power has no config
+domain; sample rate and CC mode are read-only. Clock source is a
+configurable enum. The UCX II's front
+headphones are outputs **7/8**, not 1/2.
 
-**A route rewrites exactly the registers it declares, and nothing else.**
-Everything not named keeps whatever you set in the mixer and survives
-every restart. That is the default for *every* setting above, including
-the ones you can now express: writing them in the file shows them, a
-`[pin]` entry makes the file own them. The one route-level exception is
-opt-in: adding `volume = <dB>` to a route pins that output's fader, and
+**A config describes a partial desired state.** Omitting an old route
+does not mute its crosspoint. Declare its mute explicitly when required;
+linked-channel writes can also affect the partner channel.
+
+Initial applies write declared settings. Later selective reconciliation
+enforces PIN values and leaves REMEMBER values with the device. `[pin]`
+overrides apply only to flat input/output options; uncommenting a dump
+comment does not turn a setting into a pin. There is no continuous
+polling or automatic saving of GUI changes. Adding `volume = <dB>` to a route pins that output's fader, and
 every backend start forces it back to that value. That is what you want for a fixed installation, and
 what you do not want if you set your monitor level by hand -- in which
 case just leave the line out. Note that `level` is a different thing: it
@@ -231,13 +242,14 @@ warning
 One main config per directory: the profiles and the record of the
 active one belong to the directory.
 
-A switch reports exactly one of three things, and no partly valid
-config is ever half-applied:
+A switch validates the full config before its first write. It reports
+four outcomes; a transport failure can still interrupt valid writes:
 
 ```
 applied 'tracking' and verified it at the device
 applied 'tracking'; 1 register(s) this backend cannot report: /mix/1/playback/1
 refused 'tracking', nothing written: [route:x] output: channel 99 out of range 1..64
+written-in-part: lists written/unwritten paths; active marker unchanged
 ```
 
 **A refusal costs nothing.** The profile is parsed and validated in
@@ -246,7 +258,7 @@ message rather than your monitoring. That matters because there is no
 undo on a mixer: once a fader value is on the wire, the speakers already
 have it.
 
-The middle line is the normal outcome on a desktop, and it is not a
+The second line is the normal outcome on a desktop, and it is not a
 problem. The playback mix matrix is one of the few things oscmix never
 reports back, so a perfectly good switch still cannot confirm it -- and
 if you have the mixer GUI open it holds the port the read-back needs, so

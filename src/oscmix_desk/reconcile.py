@@ -62,6 +62,7 @@ from .model import (
     Route,
     SettingValue,
 )
+from .numeric import equal_float, finite, integer, number_value, report_value
 from .osc import (
     Args,
     Message,
@@ -69,12 +70,14 @@ from .osc import (
 )
 from .registers import (
     ENUM,
+    NUMBER,
     REESTABLISHED,
     VERIFIABLE,
     Device,
     Policy,
     Register,
     option_register,
+    register_at,
     register_policy,
     settable_globals,
     verify_class,
@@ -137,7 +140,10 @@ def mix_messages(route: Route) -> List[Message]:
             # halving is expected for an input source -- but expected is
             # not measured, and it needs a signal on a hardware input to
             # check. Flagged in the roadmap rather than assumed silently.
-            unlinked = min(route.level, 0.0) + UNLINKED_GAIN_OFFSET
+            # Mute must remain the backend's explicit zero. Adding the
+            # compensation to -65 dB produces a nonzero hardware gain.
+            unlinked = (LEVEL_MIN if route.level <= LEVEL_MIN
+                        else min(route.level, 0.0) + UNLINKED_GAIN_OFFSET)
             messages.append(("/mix/%d/%s/%d" % (left, kind, pb_left), "fi",
                              (unlinked, -100)))
             messages.append(("/mix/%d/%s/%d" % (right, kind, pb_left), "fi",
@@ -361,10 +367,12 @@ def _encode(path: str, register: "Register",
     if register.domain == ENUM:
         return Entry(path, "i", (_enum_value(register, value),),
                      PHASE_CHANNEL)
+    if register.domain == NUMBER:
+        number_value(value, register)
     if register.tags.startswith("f"):
         return Entry(path, "f", (float(value),),
                      PHASE_CHANNEL)
-    return Entry(path, "i", (int(value),), PHASE_CHANNEL)
+    return Entry(path, "i", (integer(value),), PHASE_CHANNEL)
 
 
 def _send_order(config: Config) -> Callable[[Entry], int]:
@@ -394,7 +402,7 @@ def observed(reports: Mapping[str, Sequence[Value]]) -> Dict[str, Args]:
 def plan(entries: Sequence[Entry],
          seen: Optional[Mapping[str, Args]] = None,
          device: Optional[Device] = None,
-         tolerance: float = 0.5) -> Plan:
+         tolerance: Optional[float] = None) -> Plan:
     """What to write to get from ``seen`` to ``entries``.
 
     ``seen=None`` means *nothing was observed* -- the dump could not be
@@ -406,8 +414,8 @@ def plan(entries: Sequence[Entry],
     entry is treated as comparable. That keeps an unmodelled interface
     behaving as it always did.
 
-    Floats compare with a tolerance because the device quantizes levels;
-    0.5 dB is the value the read-back has used since 0.1.2.
+    Float comparisons use each register's encoding. The logarithmic mix
+    gain keeps its measured tolerance; fixed-point scalars do not share it.
     """
     writes: List[Write] = []
     confirmed: List[str] = []
@@ -433,7 +441,8 @@ def plan(entries: Sequence[Entry],
             writes.append(Write(entry.path, entry.tags, entry.args,
                                 entry.phase, MISSING))
             continue
-        if matches(entry.tags, entry.args, observations[entry.path], tolerance):
+        if matches(entry.tags, entry.args, observations[entry.path], tolerance,
+                   register=register_at(device, entry.path)):
             confirmed.append(entry.path)
         else:
             writes.append(Write(entry.path, entry.tags, entry.args,
@@ -443,18 +452,9 @@ def plan(entries: Sequence[Entry],
     return Plan(tuple(writes), tuple(confirmed), tuple(unverifiable))
 
 
-def _both_muted(wanted: float, reported: float) -> bool:
-    """Whether both values mean "no signal", written differently.
-
-    Kept separate so the rule is one place and the citation above is
-    not repeated: at or below ``LEVEL_MIN`` upstream stores zero, and
-    zero is reported as -inf.
-    """
-    return wanted <= LEVEL_MIN and reported == float("-inf")
-
-
 def matches(tags: str, want: Args, got: Args,
-            tolerance: float = 0.5) -> bool:
+            tolerance: Optional[float] = None, *,
+            register: Optional[Register] = None) -> bool:
     """Whether a reported value satisfies a desired one.
 
     Extra trailing arguments in the report are ignored, so a richer
@@ -475,18 +475,30 @@ def matches(tags: str, want: Args, got: Args,
 
     The two are the same value expressed twice, so they compare equal.
     """
-    if len(got) < len(want):
+    if len(got) < len(want) or len(tags) != len(want) or not tags:
         return False
     for tag, wanted, reported in zip(tags, want, got):
         try:
             if tag == "f":
-                if _both_muted(float(wanted), float(reported)):
-                    continue
-                if abs(float(wanted) - float(reported)) > tolerance:
+                if not equal_float(wanted, reported, register, tolerance):
                     return False
-            elif int(wanted) != int(reported):
+            elif tag == "i":
+                if register is not None and register.domain is not None:
+                    report_value(reported, register)
+                if register is not None and register.mix_level:
+                    if not -100 <= integer(reported) <= 100:
+                        return False
+                    # calclevel reports pan=0 for a silent stereo source.
+                    # Once the level is digital zero, its balance cannot
+                    # differ audibly; malformed pan arguments still fail.
+                    if (finite(want[0]) <= LEVEL_MIN and got[0] == float("-inf")
+                            and -100 <= integer(wanted) <= 100):
+                        continue
+                if integer(wanted) != integer(reported):
+                    return False
+            else:
                 return False
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return False
     return True
 

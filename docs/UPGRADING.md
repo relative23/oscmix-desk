@@ -1,4 +1,41 @@
-# Upgrade and recovery for 0.7.0
+# Upgrade and recovery
+
+## Preparing for 0.7.1
+
+The source installer requires the systemd user manager's `HOME` and
+effective `XDG_CONFIG_HOME` to match the invocation before changing files
+or host integration. Run it from the intended user's login session. The
+uninstaller also refuses a different config base under the same home:
+both configurations share `~/.local/lib/oscmix-desk`, so deleting it could
+remove the running desk's code. A missing manager identity is no longer
+permission to enable or restart its service.
+
+0.7.1 is not yet released. Its stricter numeric validation rejects
+nonfinite values, fractional integer settings and wire/backend overflow
+that older versions accepted. Correct these values before applying a
+desk; run `--dry-run` on each config/profile first.
+
+Unlinked stereo pairs (`stereo = false`) reject `level > 0`, which was
+previously silently clamped to unity. Use a level in -65..0 dB. The mute
+value -65 now bypasses compensation and writes digital zero on both sides.
+
+Config exports now preserve sub-tenth quantities and identify omitted
+state. A partial or unusually panned matrix may produce fewer routes
+with explicit warnings. Merge into your original config; an omitted
+route is not a mute, and the unreadable playback matrix still needs its
+original declarations. Un-commenting a remembered value declares an
+initial setting, not a policy override.
+
+Room EQ delay retains its OSC values, but the old seconds label was not
+established by physical measurement. Do not infer physical duration from
+it; see [numeric contracts and evidence limits](NUMERIC-CONTRACT.md).
+Retain old evidence as historical data. Older snapshots rounded to one
+decimal place and cannot establish that smaller values were unchanged.
+
+The release qualification must exercise 0.7.0 → 0.7.1 → 0.7.0; this
+document is not evidence that the transition has already passed.
+
+## The 0.7.0 transition
 
 0.7.0 changes config validation and the Python API. The runtime still uses
 only the standard library and is installed by `install.sh`.

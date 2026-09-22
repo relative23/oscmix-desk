@@ -27,6 +27,11 @@ def observed_from(config, session_mod, *, linked=True):
     seen = {}
     for entry in reconcile.desired(config):
         seen[entry.path] = entry.args
+    # A refresh includes link reports even when a mono route writes none.
+    for entry in config.routes:
+        for family, channels in (entry.source, ("output", entry.output)):
+            odd = channels[0] - (channels[0] - 1) % 2
+            seen.setdefault("/%s/%d/stereo" % (family, odd), (0,))
     return seen
 
 
@@ -67,7 +72,7 @@ def test_dump_apply_dump_is_a_fixed_point(session_mod, kwargs):
     original = config_of(session_mod, route(session_mod, **kwargs))
     first = observed_from(original, session_mod)
 
-    recovered = config_of(session_mod, *dump.routes_from_observed(first))
+    recovered = config_of(session_mod, *dump.routes_from_observed(first, devices.UCX2))
     second = observed_from(recovered, session_mod)
 
     assert second == first, (
@@ -80,7 +85,7 @@ def test_the_recovered_route_carries_the_same_meaning(session_mod, kwargs):
     # that changes the device must not.
     original = route(session_mod, **kwargs)
     recovered, = dump.routes_from_observed(
-        observed_from(config_of(session_mod, original), session_mod))
+        observed_from(config_of(session_mod, original), session_mod), devices.UCX2)
     assert recovered.source == original.source
     assert recovered.output == original.output
     assert recovered.stereo == original.stereo
@@ -94,7 +99,7 @@ def test_several_routes_round_trip_together(session_mod):
         route(session_mod, name="b", input=(3, 4), output=(7, 8), level=-9.0),
         route(session_mod, name="c", input=(5,), output=(9,), level=0.0))
     first = observed_from(original, session_mod)
-    recovered = config_of(session_mod, *dump.routes_from_observed(first))
+    recovered = config_of(session_mod, *dump.routes_from_observed(first, devices.UCX2))
     assert len(recovered.routes) == 3
     assert observed_from(recovered, session_mod) == first
 
@@ -107,7 +112,7 @@ def test_the_rendered_file_parses_back(session_mod, tmp_path):
         route(session_mod, name="split", input=(3, 4), output=(7, 8),
               level=-3.0, stereo=False))
     recovered = config_of(session_mod, *dump.routes_from_observed(
-        observed_from(original, session_mod)))
+        observed_from(original, session_mod), devices.UCX2))
     text = dump.render_config(recovered, devices.UCX2)
 
     path = tmp_path / "routing.conf"
@@ -126,7 +131,7 @@ def test_a_muted_cell_is_not_a_route(session_mod):
         for src in range(1, 21):
             seen["/mix/%d/input/%d" % (out, src)] = (float("-inf"), 0)
     seen["/mix/5/input/1"] = (-6.0, 0)
-    routes = dump.routes_from_observed(seen)
+    routes = dump.routes_from_observed(seen, devices.UCX2)
     assert len(routes) == 1
     assert routes[0].output == (5, 6)
 
@@ -138,8 +143,8 @@ def test_the_order_is_deterministic(session_mod):
         route(session_mod, name="b", input=(3, 4), output=(7, 8)),
         route(session_mod, name="a", input=(1, 2), output=(5, 6)))
     seen = observed_from(original, session_mod)
-    first = [r.name for r in dump.routes_from_observed(seen)]
-    second = [r.name for r in dump.routes_from_observed(dict(seen))]
+    first = [r.name for r in dump.routes_from_observed(seen, devices.UCX2)]
+    second = [r.name for r in dump.routes_from_observed(dict(seen), devices.UCX2)]
     assert first == second == sorted(first)
 
 
@@ -169,7 +174,7 @@ def test_a_playback_route_cannot_be_recovered(session_mod):
     seen = observed_from(original, session_mod)
     # The device would not report the playback matrix at all.
     seen = {p: a for p, a in seen.items() if "/playback/" not in p}
-    assert dump.routes_from_observed(seen) == ()
+    assert dump.routes_from_observed(seen, devices.UCX2) == ()
 
 
 def test_volume_is_not_pinned_by_a_dump(session_mod):
@@ -179,7 +184,7 @@ def test_volume_is_not_pinned_by_a_dump(session_mod):
     original = config_of(session_mod,
                          route(session_mod, output=(5, 6), volume=-10.0))
     recovered, = dump.routes_from_observed(
-        observed_from(original, session_mod))
+        observed_from(original, session_mod), devices.UCX2)
     assert recovered.volume is None
     text = dump.render_config(config_of(session_mod, recovered),
                                    devices.UCX2)
@@ -193,5 +198,6 @@ def test_volume_is_not_pinned_by_a_dump(session_mod):
 
 def test_an_empty_device_says_so_rather_than_looking_broken(session_mod):
     text = dump.render_config(config_of(session_mod), devices.UCX2)
-    assert "No input routing was reported" in text
-    assert "not an error" in text
+    assert "No representable input route was recovered" in text
+    assert "does not" in text
+    assert "monitoring is absent" in text

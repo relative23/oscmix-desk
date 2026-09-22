@@ -189,7 +189,10 @@ def test_level_means_the_same_gain_linked_or_not(session_mod, level):
 
     linked, unlinked = mix_level(True), mix_level(False)
     # 20*log10(2) of headroom, which oscmix halves back to `level`.
-    assert unlinked - linked == pytest.approx(20.0 * math.log10(2.0), abs=1e-6)
+    if level <= -65:
+        assert linked == unlinked == -65
+    else:
+        assert unlinked - linked == pytest.approx(20.0 * math.log10(2.0), abs=1e-6)
 
 
 @settings(max_examples=300)

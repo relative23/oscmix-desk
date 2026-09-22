@@ -40,11 +40,11 @@ output = 9/10
 stereo = false
 level = -6.0
 
-[route:too-hot]
+[route:split-unity]
 playback = 11/12
 output = 13/14
 stereo = false
-level = 3.0
+level = 0.0
 
 [route:mono]
 playback = 15
@@ -85,7 +85,8 @@ LINKS = [
 
 #: A linked pair is one register on its left channel, balance 0. An
 #: unlinked pair is two, panned hard, 6.02 dB up because that path halves
-#: the gain -- and never above it: +3 dB asks for what 0 dB asks for.
+#: the gain. A split route's 0 dB ceiling consumes that headroom; boosts
+#: above unity are refused during config validation.
 MIX = [
     ("/mix/5/playback/1", "fi", (0.0, 0)),
     ("/output/5/volume", "f", (0.0,)),

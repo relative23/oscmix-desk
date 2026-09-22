@@ -49,6 +49,8 @@ port = 7222
 #   level     mix gain in dB   (0 = unity, -65 = mute; default 0)
 #   volume    optional: pins the hardware output fader, in dB
 #   stereo    stereo-link the output pair (default true for pairs)
+#             With stereo=false a pair supports level -65..0 dB;
+#             the compensation consumes its positive gain headroom.
 #
 # 'level' is the routing itself -- how much of the playback pair reaches
 # the output -- and is always written. 'volume' is the output fader, the
@@ -83,7 +85,7 @@ port = 7222
 # only need to route 1/2 to wherever their speakers are connected.
 # --------------------------------------------------------------------------
 
-# Main outputs (headphones on the UCX II front panel are outputs 1/2).
+# Rear line outputs 1/2. The UCX II front headphones are outputs 7/8.
 [route:main-out]
 playback = 1/2
 output = 1/2
@@ -192,11 +194,14 @@ level = 0.0
 # states them itself -- a profile that restates them is wrong the moment
 # it is copied to another machine, or silently right, which is worse.
 #
-# A switch reports exactly one of three outcomes and never half-applies:
+# A switch validates the whole file before sending. Transport failure can
+# still leave a partial write; this wire has no transaction/automatic undo.
+# Four outcomes:
 #
 #   applied 'tracking' and verified it at the device
 #   applied 'tracking'; 1 register(s) this backend cannot report: ...
 #   refused 'tracking', nothing written: [route:x] output: channel 99 ...
+#   written-in-part: reports written/unwritten paths; active marker unchanged
 #
 # A refusal costs nothing -- the config is parsed and validated in full
 # before the first datagram, so a typo costs you an error message and

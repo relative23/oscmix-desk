@@ -25,6 +25,7 @@ from .devices import device_for_name
 from .errors import ReceivePortError
 from .log import log
 from .model import Config
+from .numeric import integer
 from .osc import (
     Args,
     Message,
@@ -36,6 +37,7 @@ from .registers import (
     VERIFIABLE,
     Device,
     Policy,
+    Register,
     cold_plug_complete,
     register_at,
     verify_class,
@@ -79,7 +81,8 @@ def expected_registers(config: Config) -> Registers:
 
 
 def _register_matches(want_types: str, want_args: Sequence[Value],
-                      got_args: Sequence[Value]) -> bool:
+                      got_args: Sequence[Value],
+                      register: Optional[Register] = None) -> bool:
     """Compare a reported register against the expected value.
 
     Delegates to ``reconcile.matches`` so the read-back and the plan
@@ -87,7 +90,7 @@ def _register_matches(want_types: str, want_args: Sequence[Value],
     the moment one of them learned that a muted gain reads back as -inf
     and the other did not.
     """
-    return matches(want_types, tuple(want_args), tuple(got_args))
+    return matches(want_types, tuple(want_args), tuple(got_args), register=register)
 
 def register_ever_reported(path: str,
                            device: Optional[Device] = None) -> bool:
@@ -199,7 +202,7 @@ class VerifyResult:
 def _absorb(report: Message, registers: Registers,
             confirmed: Set[str], mismatched: Set[str],
             on_observed: Optional[Callable[[str, Sequence[Value]],
-                                           None]]) -> None:
+                                           None]], device: Optional[Device] = None) -> None:
     """Classify one reported register against what was expected.
 
     Decoding and the "skip a malformed message rather than end the dump"
@@ -212,7 +215,7 @@ def _absorb(report: Message, registers: Registers,
     expected = registers.get(path)
     if expected is None or path in confirmed:
         return
-    if _register_matches(expected[0], expected[1], args):
+    if _register_matches(expected[0], expected[1], args, register_at(device, path)):
         confirmed.add(path)
         mismatched.discard(path)
     else:
@@ -222,7 +225,8 @@ def _absorb(report: Message, registers: Registers,
 def _observe(listener: Listener, registers: Registers, prompt: Set[str],
              confirmed: Set[str], mismatched: Set[str],
              on_observed: Optional[Callable[[str, Sequence[Value]], None]],
-             should_stop: StopCheck, timeout: float) -> None:
+             should_stop: StopCheck, timeout: float,
+             device: Optional[Device] = None) -> None:
     """Read reports until the window closes, a stop is asked, or time runs out.
 
     A stop request ends the window at the top of the loop, so the longest
@@ -237,7 +241,7 @@ def _observe(listener: Listener, registers: Registers, prompt: Set[str],
         if _window_may_close(registers, prompt, confirmed, mismatched):
             return
         for report in listener.messages(0.25):
-            _absorb(report, registers, confirmed, mismatched, on_observed)
+            _absorb(report, registers, confirmed, mismatched, on_observed, device)
 
 
 def _window_may_close(registers: Registers, reportable: Set[str],
@@ -322,7 +326,7 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
         time.sleep(DUMP_LISTEN_SETTLE)   # see the constant: ICMP backlog
         device.request_dump()
         _observe(listener, registers, prompt, confirmed, mismatched,
-                 on_observed, should_stop, timeout)
+                 on_observed, should_stop, timeout, device_model)
         unobserved = [path for path in registers
                       if path not in confirmed and path not in mismatched]
         return VerifyResult(sorted(confirmed), sorted(mismatched),
@@ -351,7 +355,7 @@ def _link_sync_observer(config: Config, pending_links: Dict[str, int],
         # is right; a stale opposite value must not release the re-apply.
         if path in pending_links and args:
             try:
-                reported = int(args[0])
+                reported = integer(args[0])
             except (TypeError, ValueError):
                 return
             if reported != pending_links[path]:

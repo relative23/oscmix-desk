@@ -21,6 +21,7 @@ from .model import (
     GlobalSetting,
     SettingValue,
 )
+from .numeric import number_value
 from .registers import (
     BOOL,
     ENABLE_OPTION,
@@ -313,10 +314,9 @@ def _parse_number(raw: str, section: str, option: str,
     the only thing between a config file and the register.
 
     That makes it worth being right rather than strict. Where upstream
-    declares no bound neither does the model, and this only checks that
-    the text is a number -- inventing a range would reject values the
-    device accepts, which is a config that will not load rather than an
-    error the device reports.
+    declares no bound neither does the model. Finite values, integral
+    Int32 arguments and signed 16-bit scalar storage still apply: the
+    absence of a physical range cannot permit NaN, truncation or wraparound.
 
     What the *hardware* does with an out-of-range value has been measured
     once, and it clamps: `/output/5/lowcut/slope` returns 3 for 4, 7 and
@@ -331,12 +331,7 @@ def _parse_number(raw: str, section: str, option: str,
     except ValueError:
         raise ConfigError("[%s] %s: %r is not a number%s"
                           % (section, option, raw, suffix)) from None
-    lo = getattr(register, "lo", None)
-    hi = getattr(register, "hi", None)
-    if (lo is not None and value < lo) or (hi is not None and value > hi):
-        raise ConfigError(
-            "[%s] %s: %.1f%s out of range %s..%s"
-            % (section, option, value, (" " + unit) if unit else "",
-               "-inf" if lo is None else ("%.1f" % lo),
-               "inf" if hi is None else ("%.1f" % hi)))
-    return value
+    try:
+        return number_value(value, register)
+    except ValueError as exc:
+        raise ConfigError("[%s] %s: %s" % (section, option, exc)) from None

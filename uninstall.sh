@@ -60,14 +60,24 @@ warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
 # back.
 #
 # `systemctl --user show-environment` reports the session's own HOME, so
-# the two can be compared. When it reports nothing -- an unusual systemd,
-# or none -- this proceeds, which is what every earlier version did.
+# both the home and configuration base must match before touching its
+# service. A different config under the same home shares the runtime.
 manages_this_home() {
-    local session_home
-    session_home="$(systemctl --user show-environment 2>/dev/null |
-                    sed -n 's/^HOME=//p')" || true
-    [ -z "$session_home" ] || [ "$session_home" = "$HOME" ]
+    local environment session_home session_config
+    environment="$(systemctl --user show-environment 2>/dev/null)" || return 1
+    session_home="$(printf '%s\n' "$environment" | sed -n 's/^HOME=//p')"
+    session_config="$(printf '%s\n' "$environment" | sed -n 's/^XDG_CONFIG_HOME=//p')"
+    session_config="$(xdg_base "$session_config" "$session_home/.config")"
+    [ "$session_home" = "$HOME" ] && [ "$session_config" = "$CONFIG_HOME" ]
 }
+
+# With the same HOME but another config base, removing .local/lib would
+# remove the very runtime the unrelated desk may still be using.
+if ! manages_this_home && systemctl --user show-environment 2>/dev/null \
+    | sed -n 's/^HOME=//p' | grep -Fxq "$HOME"; then
+    warn "systemd's user manager uses another XDG_CONFIG_HOME; no files changed"
+    exit 1
+fi
 
 if manages_this_home; then
     info "stopping and disabling oscmix.service"

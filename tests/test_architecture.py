@@ -64,9 +64,9 @@ ALLOWED_IMPORTS = {
     # receive port that cannot be bound from one that is held (ADR 0025),
     # and the leaf is where that exception lives -- imported from there,
     # because `__init__` is the only module that re-exports.
-    "routing": {"backend", "constants", "errors", "log", "model", "reconcile"},
+    "routing": {"backend", "constants", "errors", "log", "model", "numeric", "reconcile"},
     "verify": {"backend", "constants", "devices", "errors", "log", "model",
-               "osc", "reconcile", "registers", "routing"},
+               "numeric", "osc", "reconcile", "registers", "routing"},
     "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "log"},
     # `locking` since 0.7.0: the unit takes the device lock itself around
@@ -129,7 +129,8 @@ ALLOWED_IMPORTS = {
     # what there is to say about a desk; `config` is the loader on top.
     "model": {"constants", "registers"},
     "paths": {"errors"},
-    "sections": {"devices", "errors", "log", "model", "registers"},
+    "sections": {"devices", "errors", "log", "model", "numeric", "registers"},
+    "numeric": {"constants", "registers"},
     "notices": {"devices", "log", "model"},
     # A leaf: the shape of a row and of a device, and the questions asked
     # of a table somebody hands it.
@@ -151,11 +152,11 @@ ALLOWED_IMPORTS = {
     # `osc` since 0.7.0, here and in whatever handles a register's value:
     # the leaf names what a value on this wire is, so that it is not an
     # `object` each reader casts past the type checker.
-    "reconcile": {"constants", "devices", "model", "osc", "registers"},
+    "reconcile": {"constants", "devices", "model", "numeric", "osc", "registers"},
     # The other direction, split out of reconcile in 0.7.0: what the device
     # reports, as a config and as its text. As pure as the reconciler,
     # whose message shapes and policy it reads.
-    "dump": {"constants", "model", "osc", "reconcile", "registers"},
+    "dump": {"constants", "model", "numeric", "osc", "reconcile", "registers"},
     # The supported surface and nothing else since 0.7.0: what it imports
     # is what it re-exports, and the leaves it used to pull in for the
     # sake of their internals are reached through their own modules.

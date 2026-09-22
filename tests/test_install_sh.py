@@ -51,7 +51,9 @@ def make_fake_home(tmp_path):
         stub = stub_bin / tool
         # The sudo stub must never execute its arguments -- uninstall.sh
         # would otherwise touch the real /etc/udev rule on dev machines.
-        stub.write_text('#!/bin/sh\necho "%s $@" >> "%s"\nexit 0\n'
+        stub.write_text('#!/bin/sh\necho "%s $@" >> "%s"\n'
+                        'case "$*" in *show-environment*) echo "HOME=$HOME"; '
+                        'echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" ;; esac\nexit 0\n'
                         % (tool, log))
         stub.chmod(0o755)
 
@@ -350,9 +352,8 @@ def test_the_installed_tree_carries_every_runtime_module(tmp_path):
 def session_home_stub(tmp_path, session_home):
     """A `systemctl` stub that answers show-environment with a HOME.
 
-    The default stub in `make_fake_home` answers nothing, which is the
-    "cannot tell" case the scripts treat as "proceed". This one lets a
-    test say *whose* session systemd is serving.
+    The default stub reports the scratch environment. This one names a
+    specific manager, including another HOME or an unknown identity.
     """
     stub = tmp_path / "stub-bin" / "systemctl"
     log = tmp_path / "calls.log"
@@ -401,14 +402,13 @@ def test_install_does_not_arm_another_session_service(tmp_path):
 
     result = run("install.sh", ["--no-build"], env)
 
-    assert result.returncode == 0
+    assert result.returncode != 0
     calls = log.read_text()
     assert "enable" not in calls
     assert "restart oscmix.service" not in calls
-    assert "not enabled" in result.stderr
-    assert "not restarting the backend" in result.stdout
-    # The unit is still installed; only arming it is withheld.
-    assert (home / ".config" / "systemd" / "user" / "oscmix.service").is_file()
+    assert "HOME and XDG_CONFIG_HOME" in result.stderr
+    assert "udevadm" not in calls
+    assert not (home / ".local/lib/oscmix-desk").exists()
 
 
 def test_install_arms_the_service_when_the_session_matches(tmp_path):
@@ -421,6 +421,32 @@ def test_install_arms_the_service_when_the_session_matches(tmp_path):
 
     assert result.returncode == 0
     assert "enable --quiet oscmix.service" in log.read_text()
+
+
+@pytest.mark.parametrize("script", ["install.sh", "uninstall.sh"])
+def test_same_home_with_another_config_never_changes_the_running_install(tmp_path, script):
+    home, env, log = make_fake_home(tmp_path)
+    session_home_stub(tmp_path, str(home))
+    env['XDG_CONFIG_HOME'] = str(tmp_path / 'other-config')
+    before = {path.relative_to(home): path.read_bytes()
+              for path in home.rglob('*') if path.is_file()}
+    result = run(script, ['--no-build'] if script == 'install.sh' else [], env)
+    assert result.returncode != 0
+    assert 'XDG_CONFIG_HOME' in result.stderr
+    assert {path.relative_to(home): path.read_bytes()
+            for path in home.rglob('*') if path.is_file()} == before
+    calls = log.read_text()
+    for forbidden in ('stop oscmix.service', 'enable', 'udevadm', 'sudo', 'restart'):
+        assert forbidden not in calls
+
+
+def test_unknown_manager_identity_never_permits_installation(tmp_path):
+    home, env, log = make_fake_home(tmp_path)
+    session_home_stub(tmp_path, '')
+    result = run('install.sh', ['--no-build'], env)
+    assert result.returncode != 0
+    assert not (home / '.local/lib/oscmix-desk').exists()
+    assert 'enable' not in log.read_text()
 
 
 def _fake_system_files(tmp_path, env):

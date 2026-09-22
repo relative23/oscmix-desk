@@ -171,7 +171,8 @@ def test_no_register_is_written_in_a_type_the_device_will_not_read():
     for register in UCX2.registers:
         if register.domain is None:
             continue
-        value = register.choices[0] if register.domain == ENUM else 1.0
+        value = (register.choices[0] if register.domain == ENUM else
+                 register.lo if register.lo is not None else 1.0)
         entry = _encode("/x", register, value)
         if register.domain == ENUM:
             assert entry.tags == "i", register.template

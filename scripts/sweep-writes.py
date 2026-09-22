@@ -1,36 +1,28 @@
 #!/usr/bin/env python3
-"""Ask the device whether a register it reports is a register it accepts.
+"""Measure writes and reported values against the pinned backend contract.
 
-Every settable register in the model is declared `verifiable`, which
-promises the device reports a write back. The read direction of that
-promise is measured -- the recordings prove the model matches the dump.
-The write direction never has been, and two of the unchecked promises
-turned out to be false: Room EQ accepts writes and ignores them
-(upstream #33), and output phase is never put on the wire at all
-(upstream #34). Both were found by accident.
+This changes live mixer state. Disconnect or physically mute monitoring
+before use. Probe steps may escalate to half a register's declared range;
+starting with a small step does not make a full sweep quiet.
 
-This walks every settable register, writes it a different legal value,
-and records whether the device answered.
+Refresh dumps, rather than unsolicited echoes, judge whether each value
+landed. Linked channels can report a partner's change, and small writes
+can quantise to the current value. A changed report must match the
+parameter's encoding, independently of the probe step's size. A mismatch
+does not by itself identify a clamp, firmware defect or backend defect.
 
-The subtlety is what silence means. The device reports only on *change*,
-so a write that quantises onto the value already held is answered with
-nothing, and that is correct behaviour rather than a defect. A larger
-step separates the two cases: if it reports, the first step was
-quantisation; if nothing reports anywhere inside the declared domain,
-the register is deaf. So the step size is not a parameter guessed in
-advance, it is the discriminator -- and starting small keeps the sweep
-quiet on families that sit in the signal path.
-
-`reflevel` is skipped by name. It is the only member of ADR 0016's
-dangerous class that is settable at all -- `48v` has no value domain, so
-neither a config nor this tool can reach it -- and changing a reference
-level on a live output is audible and potentially loud. Skipped
-registers are named in the artifact rather than omitted from it.
+Both probes and restoration refuse 48v, reflevel and read-only registers.
+Indirect changes to protected state remain visible as unrestored state.
+SIGINT/SIGTERM stop probing and attempt bounded restoration; device loss,
+SIGKILL, process failure or power loss can prevent that restoration.
 """
 
 import argparse
+import hashlib
 import json
 import os
+import signal
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -48,14 +40,26 @@ from oscmix_desk.constants import (
     DEFAULT_OSC_RECV_PORT,
     DEFAULT_USB_ID,
     DUMP_LISTEN_SETTLE,
+    __version__,
 )
 from oscmix_desk.discovery import (
+    Device,
     built_backend_revision,
     device_firmware,
     resolve_device,
 )
-from oscmix_desk.errors import DeviceAmbiguous, ReceivePortError
+from oscmix_desk.errors import DeviceAmbiguous
 from oscmix_desk.locking import take_device_lock
+from oscmix_desk.numeric import (
+    expected_report,
+    finite,
+    float32,
+    integer,
+    number_value,
+    report_value,
+)
+from oscmix_desk.process import port_holder
+from oscmix_desk.reconcile import matches
 
 #: Steps as a fraction of the declared range, smallest first. One percent
 #: is below the quantisation of several families, which is the point: it
@@ -80,7 +84,7 @@ WRITE_PACE = 0.010
 
 #: Registers this tool refuses to touch, matched on the last path
 #: segment. See ADR 0016.
-DANGEROUS = ("reflevel",)
+DANGEROUS = ("48v", "reflevel")
 
 #: What the artifact records about how the numbers were taken. In the
 #: artifact itself rather than only in the docs, because the file
@@ -92,12 +96,27 @@ METHOD = ("Each register is written a different legal value from its own "
           "one addressed. Passes are split by channel parity so a linked "
           "pair is never written against itself, writes are paced because "
           "a burst is dropped, and every register gets three attempts. "
-          "Each pass restores what it wrote before the next begins.")
+          "Each pass attempts to restore its direct writes; a final repair "
+          "also checks permitted partner effects. Protected changes are "
+          "reported, never written back. Judgement uses parameter encoding, "
+          "not a tolerance derived from the probe step. 'clamped' is the "
+          "legacy name for a changed-but-wrong report, not a diagnosis.")
 
 
 def is_dangerous(path: str) -> bool:
     """True for registers ADR 0016 keeps out of reach of a text file."""
     return path.rsplit("/", 1)[-1] in DANGEROUS
+
+
+def permitted(path: str, register: R.Register) -> bool:
+    """Explicit permission, shared by probes and all restoration paths.
+
+    A refresh includes protected and read-only registers too. Their
+    presence in a reference snapshot is never permission to write them.
+    Safe partner-channel changes remain restorable, not only probe paths.
+    """
+    return (register.domain is not None and register.verify == R.VERIFIABLE
+            and not is_dangerous(path))
 
 
 def _number_candidates(register: R.Register,
@@ -154,30 +173,37 @@ def candidates(register: R.Register, current: object) -> List[Tuple[object, floa
     which `verdict` needs to tell "the device followed the write" from
     "the device moved somewhere else of its own accord".
     """
+    try:
+        report_value(current, register)
+    except (TypeError, ValueError):
+        return []
     if register.domain == R.BOOL:
         return [(0 if current else 1, 1.0)]
     if register.domain == R.ENUM:
         return _enum_candidates(register, current)
     if register.domain == R.NUMBER:
-        try:
-            return list(_number_candidates(register, float(current)))
-        except (TypeError, ValueError):
-            return []
+        values = []
+        for value, step in _number_candidates(register, finite(current)):
+            try:
+                candidate = as_tag(value, register.tags)
+                number_value(candidate, register, reported=True)
+            except (TypeError, ValueError):
+                continue
+            if candidate != current:
+                values.append((candidate if register.tags == "i" else value, step))
+        return values
     return []
 
 
-def _followed(written: object, reported: object, step: float) -> bool:
+def _followed(path: str, written: object, reported: object) -> bool:
     """True when the report is the value that was asked for.
 
-    The test is whether the device landed nearer the written value than
-    half the distance the write moved, which reads the same for all three
-    domains: a fixed-point register quantises to within a fraction of the
-    step, and an enum or bool with a step of 1.0 has to match exactly.
+    A large probe step never licenses a large error. Quantisation comes
+    from the parameter's encoding, independently of how far it moved.
     """
-    try:
-        return abs(float(reported) - float(written)) < max(step, 1.0) / 2.0
-    except (TypeError, ValueError):
-        return reported == written
+    register = R.register_at(devices.UCX2, path)
+    tags = register.tags[:1] if register is not None else "f"
+    return matches(tags, (written,), (reported,), register=register)
 
 
 def verdict(path: str, current: object,
@@ -185,28 +211,32 @@ def verdict(path: str, current: object,
             bounded: bool = True) -> Dict[str, object]:
     """What a register's attempts mean.
 
-    Four outcomes, and the two in the middle are why this is worth
-    running. `clamped` is the device disagreeing with a bound *this
-    model* declares -- a defect in the table rather than in the stack.
+    The legacy label `clamped` means a changed-but-wrong report. This
+    observation alone cannot attribute the difference to the table,
+    firmware, backend, interference or actual clamping.
     `ignored` is a write that goes nowhere, which is what Room EQ and
     output phase both looked like from here until the pin moved in 0.6.0,
     for entirely different reasons and in different components. This
     tool does not attribute it; a trace does. It says only that the
     promise is not kept.
     """
-    finding: Dict[str, object] = {"path": path, "current": current,
-                                  "attempts": len(attempts)}
+    finding: Dict[str, object] = {
+        "path": path, "current": current, "attempts": len(attempts),
+        "observations": [_observation(path, value, step, got)
+                         for value, step, got in attempts],
+    }
     if not attempts:
         finding["verdict"] = "undetermined"
         finding["detail"] = "no legal alternative value exists"
         return finding
-    for index, (written, step, reported) in enumerate(attempts):
-        if reported is None:
+    for index, (written, _step, reported) in enumerate(attempts):
+        if reported is None or _unchanged(current, reported):
             continue
-        if _followed(written, reported, step):
+        if _followed(path, written, reported):
             finding["verdict"] = "confirmed"
             finding["step"] = index + 1
             finding["wrote"] = written
+            finding["reported"] = reported
             return finding
         finding["verdict"] = "clamped"
         finding["step"] = index + 1
@@ -231,6 +261,24 @@ def verdict(path: str, current: object,
     return finding
 
 
+def _observation(path: str, value: object, step: float,
+                  got: object) -> Dict[str, object]:
+    register = R.register_at(devices.UCX2, path)
+    tags = register.tags[:1] if register is not None else "f"
+    expected = None
+    if register is not None and register.domain == R.NUMBER:
+        try:
+            expected = expected_report(value, register)
+        except (TypeError, ValueError):
+            pass
+    return {"requested": value, "encoded": as_tag(value, tags),
+            "tags": tags, "probe_step": step, "reported": got,
+            "expected_report": expected,
+            "comparison": "parameter encoding; no probe-step tolerance",
+            "scale": register.scale if register is not None else None,
+            "truncates": register.truncates if register is not None else False}
+
+
 def skipped(path: str, reason: str) -> Dict[str, object]:
     """A register the sweep declined to touch, kept in the artifact.
 
@@ -243,16 +291,31 @@ def skipped(path: str, reason: str) -> Dict[str, object]:
 STREAMING = ("/level", "/meter")
 
 
+class Readback(dict):
+    """Scalar view for probes plus complete OSC messages for restoration.
+
+    A mix reports both level and pan. Comparing only args[0] would hide
+    a changed panorama when its level stayed the same. Enum names and
+    message types are retained too, including malformed empty reports.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.messages = {}
+
+
 def read_all(device, listener, seconds: float = 6.0) -> Dict[str, object]:
     """Every register the backend reports, as a path -> value map."""
-    seen: Dict[str, object] = {}
+    seen = Readback()
     time.sleep(DUMP_LISTEN_SETTLE)
     device.request_dump()
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
-        for path, _tags, args in listener.messages(0.25):
-            if not path.endswith(STREAMING) and args:
-                seen[path] = args[0]
+        for path, tags, args in listener.messages(0.25):
+            if not path.endswith(STREAMING):
+                seen.messages[path] = (tags, tuple(args))
+                if args:
+                    seen[path] = args[0]
     return seen
 
 
@@ -265,9 +328,9 @@ def as_tag(value: object, tags: str) -> object:
     it is looking for.
     """
     if tags[:1] == "i":
-        return round(float(value))
+        return integer(round(finite(value)))
     if tags[:1] == "f":
-        return float(value)
+        return float32(value)
     return value
 
 
@@ -282,7 +345,7 @@ def settable(limit: Optional[int] = None,
         if match and match not in path:
             continue
         out.append((path, register))
-    return out[:limit] if limit else out
+    return out if limit is None else out[:limit]
 
 
 def channel_of(path: str) -> Optional[int]:
@@ -311,9 +374,14 @@ def write_batch(device, writes: Sequence[Tuple[str, R.Register, object]],
     One datagram at a time with a gap between them. The gap is the whole
     reason this works: see `WRITE_PACE`.
     """
+    messages = []
     for path, register, value in writes:
-        device.send([(path, register.tags[:1],
-                      (as_tag(value, register.tags),))])
+        if not permitted(path, register):
+            raise ValueError("sweep write not permitted: %s" % path)
+        report_value(value, register)
+        messages.append((path, register.tags[:1], (as_tag(value, register.tags),)))
+    for message in messages:
+        device.send([message])
         time.sleep(pace)
 
 
@@ -349,9 +417,8 @@ def _pass(device, listener, group: Sequence[Tuple[str, R.Register]],
     settled = []
     for path, _register, value, size in writes:
         got = after.get(path)
-        reported = None if _unchanged(state[path], got) else got
-        attempts[path].append((value, size, reported))
-        if reported is not None:
+        attempts[path].append((value, size, got))
+        if got is not None and not _unchanged(state[path], got):
             settled.append(path)
     write_batch(device, [(p, r, state[p]) for p, r, _v, _s in writes])
     return read_all(device, listener), settled
@@ -374,11 +441,16 @@ def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
     say = note or (lambda _text: None)
     findings = []
     pending = []
+    reference = dict(state)
     for path, register in targets:
-        if is_dangerous(path):
-            findings.append(skipped(path, "dangerous: ADR 0016"))
+        if not permitted(path, register):
+            findings.append(skipped(path, "write not permitted: ADR 0016"))
         elif path not in state:
-            findings.append(skipped(path, "device did not report it"))
+            findings.append({"path": path, "verdict": "undetermined",
+                             "detail": "device did not report it"})
+        elif not candidates(register, state[path]):
+            findings.append({"path": path, "verdict": "undetermined",
+                             "detail": "no valid observation and legal alternative"})
         else:
             pending.append((path, register))
     attempts: Dict[str, list] = {path: [] for path, _r in pending}
@@ -399,7 +471,7 @@ def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
         if path in attempts:
             register = known[path]
             findings.append(verdict(
-                path, state.get(path), attempts[path],
+                path, reference.get(path), attempts[path],
                 bounded=register.domain != R.NUMBER or register.lo is not None))
     return findings
 
@@ -421,8 +493,10 @@ def drifted(before: Dict[str, object],
     touched: a write that moves a *neighbour* is the interesting failure,
     and one restricted to the touched set could not see it.
     """
-    return sorted(path for path in set(before) | set(after)
-                  if before.get(path) != after.get(path)
+    original = before.messages if isinstance(before, Readback) else before
+    current = after.messages if isinstance(after, Readback) else after
+    return sorted(path for path in set(original) | set(current)
+                  if original.get(path) != current.get(path)
                   and not path.endswith(STREAMING))
 
 
@@ -445,16 +519,151 @@ def repair(device, listener, reference: Dict[str, object],
         writes = []
         for path in wrong:
             register = R.register_at(devices.UCX2, path)
-            if register is not None and path in reference:
+            if (register is not None and path in reference
+                    and permitted(path, register)):
+                try:
+                    report_value(reference[path], register)
+                except (TypeError, ValueError):
+                    continue
                 writes.append((path, register, reference[path]))
         write_batch(device, writes)
         current = (readback or read_all)(device, listener)
     return current, drifted(reference, current)
 
 
+class CheckedBackend:
+    """Hold the sweep to the same single interface and backend throughout.
+
+    The cooperative lock does not stop hot-unplug or a foreign process
+    taking the UDP port. Recheck before sending, including restoration;
+    a lost identity is a reason to leave drift visible, never to guess.
+    """
+
+    def __init__(self, interface: Device, port: int, recv_port: int,
+                 proc_root: Path = Path("/proc")) -> None:
+        self.interface = interface
+        self.port = port
+        self.proc_root = proc_root
+        self.holder = port_holder(port, proc_root)
+        self.check_identity()
+        self.device = loopback(port, recv_port)
+        self.sent = []
+
+    def check_identity(self) -> None:
+        current = resolve_device(DEFAULT_USB_ID, DEFAULT_DEVICE_NAME, "", self.proc_root)
+        holder = port_holder(self.port, self.proc_root)
+        if (not current.serial or current.client is None or current != self.interface
+                or holder is None or not holder.oscmix or holder != self.holder
+                or holder.client != current.client
+                or (holder.serial is not None and holder.serial != current.serial)):
+            raise ValueError("sweep backend/interface identity cannot be confirmed")
+
+    def send(self, messages) -> None:
+        self.check_identity()
+        self.device.send(messages)
+        self.sent.extend(messages)
+
+    def request_dump(self) -> None:
+        self.check_identity()
+        self.device.request_dump()
+
+    def listen(self):
+        return self.device.listen()
+
+    def binary_evidence(self) -> Dict[str, object]:
+        if self.holder is None:
+            raise ValueError("no backend to identify")
+        executable = self.proc_root / str(self.holder.pid) / "exe"
+        built = Path(__file__).resolve().parent.parent / "build/oscmix/oscmix"
+        running_hash = hashlib.sha256(executable.read_bytes()).hexdigest()
+        build_hash = hashlib.sha256(built.read_bytes()).hexdigest()
+        if running_hash != build_hash:
+            raise ValueError("running backend differs from the recorded build")
+        return {"pid": self.holder.pid, "sha256": running_hash,
+                "matches_local_build": True}
+
+
+def measure_and_restore(device, listener, targets, before, note=None):
+    """Capture failure and restoration evidence even after an interrupted probe."""
+    findings = []
+    error = None
+    after = {}
+    unrestored = sorted(before)
+    previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+
+    def interrupted(number, _frame):
+        raise KeyboardInterrupt(signal.Signals(number).name)
+
+    for sig in previous:
+        signal.signal(sig, interrupted)
+    try:
+        findings = sweep(device, listener, targets, before, note)
+    except (Exception, KeyboardInterrupt) as exc:
+        error = "%s: %s" % (type(exc).__name__, exc)
+    finally:
+        # A second polite stop must not interrupt the bounded cleanup.
+        # SIGKILL remains available to the operator and cannot be handled.
+        for sig in previous:
+            signal.signal(sig, signal.SIG_IGN)
+        try:
+            after, unrestored = repair(device, listener, before,
+                                      read_all(device, listener))
+        except (Exception, KeyboardInterrupt) as exc:
+            error = "%s; restoration failed: %s: %s" % (
+                error or "probe finished", type(exc).__name__, exc)
+        finally:
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
+    return findings, after, unrestored, error
+
+
+def json_safe(value):
+    """Preserve invalid raw observations without emitting invalid JSON numbers."""
+    if isinstance(value, float):
+        try:
+            finite(value)
+        except ValueError:
+            return str(value)
+    if isinstance(value, dict):
+        return {key: json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(item) for item in value]
+    return value
+
+
+def positive_limit(text: str) -> int:
+    value = int(text)
+    if value <= 0:
+        raise argparse.ArgumentTypeError('--limit must be greater than zero')
+    return value
+
+
+def source_evidence():
+    """Identify all runtime code used by the comparison, not only this script."""
+    root = Path(__file__).resolve().parents[1]
+    package = Path(R.__file__).resolve().parent
+    commit = None
+    dirty = None
+    try:
+        top = subprocess.run(['git', '-C', str(root), 'rev-parse', '--show-toplevel'],
+                             capture_output=True, text=True, check=True).stdout.strip()
+        if Path(top).resolve() == root:
+            commit = subprocess.run(['git', '-C', str(root), 'rev-parse', 'HEAD'],
+                                    capture_output=True, text=True, check=True).stdout.strip()
+            dirty = bool(subprocess.run(['git', '-C', str(root), 'status', '--porcelain'],
+                                        capture_output=True, text=True, check=True).stdout.strip())
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    return {'version': __version__, 'commit': commit, 'dirty': dirty,
+            'python': sys.version,
+            'runtime_sha256': {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                               for path in sorted(package.glob('*.py'))},
+            'tool_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--limit", type=int, default=None,
+    parser.add_argument("--limit", type=positive_limit, default=None,
                         help="probe only the first N registers")
     parser.add_argument("--match", default="",
                         help="probe only paths containing this substring")
@@ -464,6 +673,10 @@ def main() -> int:
     parser.add_argument("--osc-recv-port", type=int,
                         default=DEFAULT_OSC_RECV_PORT)
     args = parser.parse_args()
+    targets = settable(args.limit, args.match)
+    if not targets:
+        parser.error('no settable register matches the selection; nothing was written')
+    source = source_evidence()
 
     # This walks every settable register and writes each one a different
     # value. It is the loudest writer in the repository, and until 0.6.8
@@ -485,12 +698,13 @@ def main() -> int:
                          "sweeping\n")
         return 1
 
-    device = loopback(args.osc_port, args.osc_recv_port)
     try:
+        device = CheckedBackend(interface, args.osc_port, args.osc_recv_port)
+        running_backend = device.binary_evidence()
         listener = device.listen()
-    except ReceivePortError as exc:
+    except (OSError, ValueError, DeviceAmbiguous) as exc:
         lock.release()
-        sys.stderr.write("%s\n" % exc.strerror)
+        sys.stderr.write("%s\n" % exc)
         return 1
     if listener is None:
         lock.release()
@@ -503,26 +717,34 @@ def main() -> int:
             sys.stderr.write("the backend reported nothing -- is it running, "
                              "and is the Fireface connected?\n")
             return 1
-        targets = settable(args.limit, args.match)
         sys.stderr.write("probing %d of %d settable registers\n"
                          % (len(targets), len(settable())))
         started = time.monotonic()
-        findings = sweep(device, listener, targets, before,
-                         lambda text: sys.stderr.write(text + "\n"))
+        findings, after, unrestored, failure = measure_and_restore(
+            device, listener, targets, before,
+            lambda text: sys.stderr.write(text + "\n"))
         elapsed = time.monotonic() - started
-        _after, unrestored = repair(device, listener, before,
-                                    read_all(device, listener))
     finally:
         listener.close()
         lock.release()
 
+    source_after = source_evidence()
+    if (source['runtime_sha256'] != source_after['runtime_sha256']
+            or source['tool_sha256'] != source_after['tool_sha256']):
+        failure = (failure + '; ' if failure else '') + 'source files changed during measurement'
+
     serial = interface.serial or None
     artifact = {
+        "schema": 2,
         "taken": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "device": ("Fireface UCX II, serial %s" % serial if serial
                    else "serial unknown"),
         "oscmix_revision": built_backend_revision(
             Path(__file__).resolve().parent.parent) or "unknown",
+        "running_backend": running_backend,
+        "sent": device.sent,
+        "tool_sha256": source['tool_sha256'],
+        "desk_source": source,
         "firmware": device_firmware(
             DEFAULT_USB_ID,
             Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")),
@@ -531,20 +753,33 @@ def main() -> int:
         "seconds": round(elapsed, 2),
         "write_pace": WRITE_PACE,
         "method": METHOD,
+        "error": failure,
+        "before": before,
+        "after": after,
+        "before_messages": before.messages if isinstance(before, Readback) else {},
+        "after_messages": after.messages if isinstance(after, Readback) else {},
         "summary": summarise(findings),
         "not_restored": unrestored,
         "findings": findings,
     }
-    text = json.dumps(artifact, indent=2, sort_keys=False)
-    if args.out:
-        args.out.write_text(text + "\n")
-        sys.stderr.write("wrote %s\n" % args.out)
-    else:
-        sys.stdout.write(text + "\n")
+    text = json.dumps(json_safe(artifact), indent=2, sort_keys=False, allow_nan=False)
     sys.stderr.write("%.1f s for %d registers; %s\n"
                      % (elapsed, len(targets), summarise(findings)))
     if artifact["not_restored"]:
         sys.stderr.write("NOT RESTORED: %s\n" % artifact["not_restored"])
+    try:
+        if args.out:
+            args.out.write_text(text + "\n")
+            sys.stderr.write("wrote %s\n" % args.out)
+        else:
+            sys.stdout.write(text + "\n")
+    except OSError as exc:
+        sys.stderr.write("could not save sweep evidence: %s\n" % exc)
+        return 1
+    if artifact["not_restored"]:
+        return 1
+    if failure or any(f["verdict"] not in ("confirmed", "skipped") for f in findings):
+        sys.stderr.write("sweep incomplete: %s\n" % (failure or summarise(findings)))
         return 1
     return 0
 

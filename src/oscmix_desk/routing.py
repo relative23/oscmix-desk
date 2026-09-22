@@ -19,6 +19,7 @@ from .constants import (
 from .errors import ReceivePortError, WriteFailed
 from .log import log
 from .model import Config, Route
+from .numeric import integer
 from .reconcile import Plan, desired, link_messages, plan
 
 # Asked before every write and between every phase of the background
@@ -123,7 +124,7 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
                 if path not in pending or not args:
                     continue
                 try:
-                    reported = int(args[0])
+                    reported = integer(args[0])
                 except (TypeError, ValueError):
                     continue
                 if reported == pending[path]:

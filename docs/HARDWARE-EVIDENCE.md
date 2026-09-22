@@ -5,6 +5,13 @@ Its measured backend pin is
 `f2fdd5ec78338848754aad32cc07f3440de63395`. Evidence describes that
 combination and the firmware it records, not every Fireface or firmware.
 
+**Historical numeric limits:** sweeps through 0.7.0 used a tolerance that
+could accept changed but incorrect scalar reports and omitted raw values
+for confirmations. Snapshots rounded floats to one decimal place. The
+counts and comparisons below describe those methods; they are not proof
+of exact scalar equality or absence of smaller drift. See the corrected
+[numeric contract](NUMERIC-CONTRACT.md). Original artifacts are retained.
+
 The historical fixtures retained from 2026-08-27 are:
 
 | Artifact | What it establishes | Provenance limit |
@@ -33,7 +40,9 @@ it reliably. No dump, sweep or `--diff` result converts it into verified
 state. Route evidence uses test tones and the device's own meters to check
 the effect; it is not an independent analog measurement at the output
 connectors. `48v` is readable but has no config write domain. The sweep
-never writes it and deliberately skips reference-level changes.
+excludes it from probing and deliberately skips reference-level changes.
+Before 0.7.1, restoration did not enforce the probe exclusions; the
+corrected tool applies the same permission checks to restoration/retries.
 
 Multi-device selection, locking, backend replacement and interrupted
 writes are exercised with simulated interfaces and real CLI processes.

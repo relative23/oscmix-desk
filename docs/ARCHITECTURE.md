@@ -2,8 +2,8 @@
 
 How oscmix-desk is built, in the present tense. It carries no history:
 why a thing is the way it is lives in [the decision
-records](decisions/), and what was measured to get there lives in
-[the roadmap](ROADMAP.md).
+records](decisions/), measurements live in [the evidence guide](HARDWARE-EVIDENCE.md)
+and [history](history/), and future work lives in [the roadmap](ROADMAP.md).
 
 **This page is checked against the code.** `tests/test_architecture.py`
 requires every runtime module to be named here and every module named
@@ -85,6 +85,7 @@ acyclic graph.
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
 | `registers` | what a register row and a device are -- path, tags, bounds, verification class, policy -- and the questions the parser, the reconciler and the verifier ask of a device's table |
+| `numeric` | finite values, OSC representation and the pinned backend’s scalar encodings; parameter-specific comparisons and lossless decimal formatting |
 | `devices` | the tables themselves: the UCX II's rows and channel map, the 802's channel map, and which of them a config names |
 | `model` | a desk as data: routes, channel and global settings, and the five settings that say where it goes |
 | `paths` | where a desk is looked for: the config, `profiles/` beside it, and what a profile name is |

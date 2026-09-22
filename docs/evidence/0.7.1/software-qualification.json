@@ -1,0 +1,408 @@
+{
+  "schema": 1,
+  "candidate": "0.7.1",
+  "status": "offline qualification passed; hardware and publication pending",
+  "base_commit": "cd7e5218430ce5901dd0f4d8a51a6fd6b659a049",
+  "source_state": "unreleased candidate worktree; identify tested files by SHA256, not by the base commit alone",
+  "host": {
+    "distribution": "Ubuntu 26.04.1 LTS",
+    "architecture": "x86_64",
+    "kernel": "7.0.0-31-generic",
+    "python": "3.14.4"
+  },
+  "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "gates": [
+    {
+      "gate": "check",
+      "exit": 0,
+      "seconds": 119.36
+    },
+    {
+      "gate": "coverage",
+      "exit": 0,
+      "seconds": 119.02
+    },
+    {
+      "gate": "flake",
+      "exit": 0,
+      "seconds": 604.81
+    },
+    {
+      "gate": "python-3.9",
+      "exit": 0,
+      "seconds": 123.68
+    },
+    {
+      "gate": "python-3.10",
+      "exit": 0,
+      "seconds": 122.43
+    },
+    {
+      "gate": "python-3.11",
+      "exit": 0,
+      "seconds": 121.65
+    },
+    {
+      "gate": "python-3.12",
+      "exit": 0,
+      "seconds": 120.08
+    },
+    {
+      "gate": "python-3.13",
+      "exit": 0,
+      "seconds": 118.71
+    },
+    {
+      "gate": "python-3.14",
+      "exit": 0,
+      "seconds": 119.07
+    },
+    {
+      "gate": "soak-200",
+      "exit": 0,
+      "seconds": 265.65
+    },
+    {
+      "gate": "fault-01",
+      "exit": 0,
+      "seconds": 32.83
+    },
+    {
+      "gate": "fault-02",
+      "exit": 0,
+      "seconds": 33.03
+    },
+    {
+      "gate": "fault-03",
+      "exit": 0,
+      "seconds": 33.03
+    },
+    {
+      "gate": "fault-04",
+      "exit": 0,
+      "seconds": 32.82
+    },
+    {
+      "gate": "fault-05",
+      "exit": 0,
+      "seconds": 32.62
+    },
+    {
+      "gate": "fault-06",
+      "exit": 0,
+      "seconds": 33.07
+    },
+    {
+      "gate": "fault-07",
+      "exit": 0,
+      "seconds": 33.08
+    },
+    {
+      "gate": "fault-08",
+      "exit": 0,
+      "seconds": 33.22
+    },
+    {
+      "gate": "fault-09",
+      "exit": 0,
+      "seconds": 33.22
+    },
+    {
+      "gate": "fault-10",
+      "exit": 0,
+      "seconds": 33.42
+    },
+    {
+      "gate": "fault-11",
+      "exit": 0,
+      "seconds": 32.82
+    },
+    {
+      "gate": "fault-12",
+      "exit": 0,
+      "seconds": 33.01
+    },
+    {
+      "gate": "fault-13",
+      "exit": 0,
+      "seconds": 32.81
+    },
+    {
+      "gate": "fault-14",
+      "exit": 0,
+      "seconds": 33.2
+    },
+    {
+      "gate": "fault-15",
+      "exit": 0,
+      "seconds": 33.22
+    },
+    {
+      "gate": "unit",
+      "exit": 0,
+      "seconds": 0.03
+    },
+    {
+      "gate": "mutation",
+      "exit": 0,
+      "seconds": 7687.54
+    }
+  ],
+  "final_tool_and_installer_checks": [
+    {
+      "gate": "check",
+      "exit": 0
+    },
+    {
+      "gate": "coverage",
+      "exit": 0
+    },
+    {
+      "gate": "extra-python39",
+      "exit": 0
+    },
+    {
+      "gate": "extra-python310",
+      "exit": 0
+    },
+    {
+      "gate": "extra-python311",
+      "exit": 0
+    },
+    {
+      "gate": "extra-python312",
+      "exit": 0
+    },
+    {
+      "gate": "extra-python313",
+      "exit": 0
+    },
+    {
+      "gate": "extra-python314",
+      "exit": 0
+    }
+  ],
+  "final_check": {
+    "passed": 1653,
+    "skipped": 2,
+    "seconds": 120.4,
+    "skip_reason": "empty READ_ONLY parameter sets, not missing hardware qualification"
+  },
+  "coverage": {
+    "covered_lines": 3344,
+    "num_statements": 3406,
+    "percent_covered": 97.57747708424269,
+    "percent_covered_display": "98",
+    "missing_lines": 62,
+    "excluded_lines": 4,
+    "percent_statements_covered": 98.17968291250735,
+    "percent_statements_covered_display": "98",
+    "num_branches": 1176,
+    "num_partial_branches": 47,
+    "covered_branches": 1127,
+    "missing_branches": 49,
+    "percent_branches_covered": 95.83333333333333,
+    "percent_branches_covered_display": "96"
+  },
+  "numeric_oracle": {
+    "cases": 34930,
+    "reports": 34930,
+    "mismatches": 0,
+    "first_mismatches": [],
+    "basis": "C float division/lroundf and input-gain truncation from pinned oscmix; no hardware claim"
+  },
+  "mutation": {
+    "full_run": {
+      "total": 8263,
+      "killed": 6571,
+      "survived": 1678,
+      "timeouts": 14,
+      "cache": "fresh mutants directory"
+    },
+    "after_numeric_boundary_recheck": {
+      "killed": 6585,
+      "survived": 1664,
+      "timeouts": 14,
+      "score": 0.7982785792217238
+    }
+  },
+  "scope_notes": [
+    "The full core suite passed on Python 3.9 through 3.14; five repeats, 200-cycle soak and fifteen fault repeats passed on the same runtime files.",
+    "Sweep tooling, installer identity checks and upgrade cases were completed afterward and passed a new full check/coverage plus their tests on Python 3.9 through 3.14.",
+    "Eleven final numeric boundary cases were added afterward; numeric tests and targeted mutation rejudgment passed, followed by the final 1653-test check. No runtime files changed between the full gates and this check.",
+    "Coverage 97.577477 percent includes branches and rounds to 98 percent. The 97 percent gate is unchanged; the measured value is less than one point above it.",
+    "No new UCX II write, signal-path, higher-rate or physically powered-off-interface qualification is claimed. Those remain release work.",
+    "Native packaging development is separate from the 0.7.1 correctness candidate and is not part of this artifact.",
+    "Logs are retained locally under the listed relative names and hashes; this is a candidate record, not a published release attestation."
+  ],
+  "tested_files_sha256": {
+    "Makefile": "4ff2727b26429ab0caa2d66138be6144f3e57fe948ef7b0ff8126a8bd5404b77",
+    "bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+    "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+    "install.sh": "462ea4dd56a42b6352df598bafb8c9f7bb9522be8dc910bf3b3a406116ef6794",
+    "pyproject.toml": "7073e89acdb78b7c824d5a6bd96af66ac32a7dcbf10de4e62a9709b607828208",
+    "scripts/build-release.py": "25064e838864df9eb1c68e0a600f58136a55ad20dccae11bfde370faee0bb929",
+    "scripts/mutation-policy.py": "8e47a4cf419bd73269a58b1f3717ca307fee7e01494963992b9e9ac6aa2ea43e",
+    "scripts/record-dump.py": "9764ff34f088caaa8b9552ae322862269adc99097de2e81cf80e317042e40da7",
+    "scripts/sweep-writes.py": "6220740fcf9690b3f0f43f3f9ecf292293ed68dd681ffda0080c4cc11521fe43",
+    "scripts/verify-hardware.py": "05db434cb003b251cf13e23a42ee8869fe7b08a4a0fcc1734c2c056a7f2f1101",
+    "scripts/verify-unit.sh": "dac71153da4a71487e335df5ef71dbdcdd326393440bd31cbe99cb5676727ef1",
+    "src/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+    "src/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+    "src/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+    "src/oscmix_desk/config.py": "4837963317667685c08799fff797ee22cb080f4d72e0a45536a193b31161c7b4",
+    "src/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+    "src/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+    "src/oscmix_desk/discovery.py": "02dcf0575ccda9b532800c72728aefd050924b6c875f16359df8d50da0a54c40",
+    "src/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+    "src/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+    "src/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+    "src/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+    "src/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+    "src/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+    "src/oscmix_desk/model.py": "386438e710a8bf6b602cdddc8823e06e2473af23c9b52506d2470ee86a8dbbce",
+    "src/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+    "src/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+    "src/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+    "src/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+    "src/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+    "src/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+    "src/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+    "src/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+    "src/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+    "src/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+    "src/oscmix_desk/reconcile.py": "ef5042b7753b781327db56c9f8fe1962ce0d810b637df3c38d3c9e575825cb2c",
+    "src/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+    "src/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+    "src/oscmix_desk/routing.py": "0d739d6497d4e815abc5adb01d867233439a63ea16981d6989616744a3443478",
+    "src/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+    "src/oscmix_desk/session.py": "3a8936a00d8c6e88184db6edf72b203ed31e1ceeaf89cbd8f141b6bbb4ba12af",
+    "src/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+    "tests/backend_doubles.py": "51edd716d5d3c3cef82b976bbcb16c6cc764a3bcad47e489e4f4f698cb5d8b9b",
+    "tests/conftest.py": "ece54e4d49759d6f756cd253cffd222f755aa849d4e46d909e2ffe90299ff48c",
+    "tests/data/cold-plug-timeline.json": "e4636bf14545c707e5d1297a36feb85e795e5e10ac5bdba6cf1c61034375e3c8",
+    "tests/data/refresh-dump.json": "37f4c1a032a85810134206200a9a69494380285187469b2109792a6897a35cf4",
+    "tests/data/two-routes.conf": "66a5bf6754ed80394d66b49b2955c47fb2b781b096aaa82ff9efb3958be330aa",
+    "tests/oracle.py": "a02843b2673ce52d9b95d64bd873a4a758d8c2b8732dc6fcd03f52ba6d4a82de",
+    "tests/oscmix_fakes.py": "b1fa8fa586395f66e223bf49dcd3343ef1e4a4b0f511966d24325b37110d798e",
+    "tests/profile_desk.py": "916168cb03797a36146edd706417cce1ea5892493c450f1b2c56cfdda1c81cdf",
+    "tests/reconcile_desk.py": "efe5b9eba358ed05d117c69ef45919d124ad08c22844a508aac4394915479b6a",
+    "tests/session_doubles.py": "4ad6f3dd7a882d402df87124416ef7b08d326c6c2a1fa24cca3034ddfa3311ee",
+    "tests/subprocess_coverage/sitecustomize.py": "c800eca1c3f28b427430ece3ea9d661afa56048c362b461532c6cdb434351e49",
+    "tests/support.py": "7da3efbfac65a5cd83f57ccec6d8f2f74c0f4cf3c622ed22538a78b8a2534892",
+    "tests/test_apply_routing.py": "2cfaa3bf60804418b5c0096a88db8a25765e26b57ac76d40415cb184d22265c3",
+    "tests/test_architecture.py": "036a69854cf823449afcfb19085dec50ba0a1430eb6c1054d457acb573b38136",
+    "tests/test_autolevel.py": "b365c3bbd82b0e3e66bd19085f59fe464161640bb661e49ffe8aa185ca140f91",
+    "tests/test_backend.py": "49169c36ad1134b6d5124f8bfba62e62266052fb9b6cf25f2e85b2454c0280bc",
+    "tests/test_channel_sections.py": "7401791395908c3c40ecd512af76577333d123309b5e890d9166eb74e171f205",
+    "tests/test_ci_workflow.py": "b49b4e9bbf2d55ec8c3d4175f001e958903fcb1449eea6f406f1203750ea4a7a",
+    "tests/test_cli_args.py": "e653c62e76cd67bde2df8decd0626442eb8c8a8493385ca66fd4c606381a73a6",
+    "tests/test_config.py": "b050549be2cb671d6bff0bd960a4139c10e3de45954adbebd6ac86f3b1012da1",
+    "tests/test_config_compatibility.py": "3c7a473e33f8030474f0a0f7c67f8bd0dc80d865678d62d4a8e9409f42d9134e",
+    "tests/test_config_device.py": "b0159a6f6bf59d615b034a53038aad7c4cbd21d2a91bedd895162d01f128032c",
+    "tests/test_contracts.py": "1c2e5fbb24bd2ab25cf20dd068588d0e2c7f0f4fae9e8a2852aad1967c0b2637",
+    "tests/test_crossfeed.py": "8ecb13d4c0f0b186e77b30c8d49f25db84bd851f824728e4e69e3f4a3da9a1fc",
+    "tests/test_desk_in_effect.py": "80f2d76fa2d1b1a4a917eb9193f5d686701757fbf06e00779209dc799cf8aa8d",
+    "tests/test_device_identity.py": "147344eae1ee13efd684d1880ef508a7532218c445b062f615b42b7cc354d285",
+    "tests/test_diff_cli.py": "6a155136697c7c0aa42558e9cff5f52516fd0a88ebb0dc0760a439ce83183e79",
+    "tests/test_dump_config.py": "71ea73743de97a8c688ac524758a8ccf703182a01a547fb68befc729e90f0c3e",
+    "tests/test_dump_config_cli.py": "c771a5b2c6cf85c5cce16fcafe4be6fdc9dd00c52b5e48f9f5c8f4627e4dcbc9",
+    "tests/test_dump_limits.py": "a7131cb96875c29685cc0818f3403d80a56cc7e035fc2ab5615f9be3f741eed5",
+    "tests/test_dump_sections.py": "47fcb8c429eb0c8dd2414c7cee0207085619fc72f2a334a2122aea6e9ce952f1",
+    "tests/test_dynamics.py": "3dd6487b44800f9e714b1dd4a94af818a7a2b0d53947bb7ab4f526ae12feb170",
+    "tests/test_faults.py": "d991d2cfbd77af0fb552c59fffe426de38cb0c9ea33f0d21f15cfba19d374506",
+    "tests/test_global_sections.py": "b11e2ddff255150cec20b44ad2fe4a0f2e5a4a1a599e407b6e864823a7d851f0",
+    "tests/test_golden_messages.py": "c0d092d29074abb90758489f45e726b2b33352bbf243abbe715db8c3bc8a7aa4",
+    "tests/test_hardware_verdicts.py": "0fa7f3055e861c0247348c8d7ef4078fac76a40b21fdfe2782a747cd6b2dc379",
+    "tests/test_input_routing.py": "ceb0eda713428ca527fc8ea87f21729e064d1dd2332ed1c090293e50767dfc6d",
+    "tests/test_install_sh.py": "ffab92341131fa48f9eff30d1f955b767c8c0513d39437c1d24afe3b327caf5c",
+    "tests/test_interface_resolution.py": "038375c4b878a5fe02032a17ed0fbfdb090ba3f62a2e1a9c4d7e7b424234e867",
+    "tests/test_launcher.py": "043e5ab47d6c5c6605fe84f1cbf9afdc4399c91f166cee0ea36db5d566015482",
+    "tests/test_lifecycle.py": "8bd09ebb5f8e87aeacd5b3f96355e7c51746da6b72565d833fa6247e8ae9526c",
+    "tests/test_lock_file.py": "4d2d7c453217d432c52c1bbc1e2ec69ab7f22264f79990e38dbaa3cbec922689",
+    "tests/test_locking.py": "22b9450f8e12e7e728cfb43502794c4bce470e16a5c981c0b6b8c60e5584d73b",
+    "tests/test_lowcut.py": "a034b1d652d5a988719bf7758c98fa90d5eda6d589293afd76eacb068f05cc87",
+    "tests/test_marker.py": "d9e9df02a43140b1bd7a4a6c49efb46aaaf51fd72214c644788dece0ce6b162d",
+    "tests/test_mix_reapply.py": "288dcb9fd4507a514cb8ea4ef269248bbac366da4ac3ca0162267ebec29a486d",
+    "tests/test_nested_sections.py": "d0f6f3542bde1d51ca2de1bb443d9dc11aaba89b825cfa764fcbeeb4b11892d7",
+    "tests/test_notify.py": "db64875d3c27547d7a5404102d19ca8182d6e3c2c037c0e6b44ac38f3608e1fa",
+    "tests/test_numeric.py": "7acd059fbe106276cc9b0180daf06b5783a0129081bc07ea597a45c1b8868b44",
+    "tests/test_osc.py": "168405d3ae074b8084e4bc0c2ab4d92da34d65ed89519c5a6a4ab751905f0024",
+    "tests/test_partial_write.py": "72df95e28366b9220761c14d21dd55489bc98ec8aae460a04cab2ddd2a62b89b",
+    "tests/test_performance.py": "e41410c8f3356e58cfe82d80bd9db0a0d2a95747ee67541c8e13341bd2edd71a",
+    "tests/test_pin_remember.py": "121ff9d85d71f1cf7fde086a39965068dc2ce98df1fe80510bd029bf66eb1bb2",
+    "tests/test_pipewire.py": "68285f8bf62156eda5e24fb61abec2e2710bee4049c304e167a0078c72ef89ac",
+    "tests/test_process.py": "710813b8a14bbca3e44379a9f2b147ab74a55ee50c81aa322d29a7a4cd35d7fd",
+    "tests/test_profile_machine.py": "6ec399cb222d25e62999e70b9ffd76055ef534a2d9f783ee0abba65e6b10c9c5",
+    "tests/test_profiles.py": "9fb60059e0cc792b70eb2fd46ef51006ada05551e6623f68882f0583be11496c",
+    "tests/test_profiles_cli.py": "4bfd0ce0002e43e8643da2c092e6efd222ab1e348c1c2d37873cabb63614943a",
+    "tests/test_readiness.py": "c4feefadec10f2713bc580ca417dfe6a3e094512e6b88c439747c88aad695976",
+    "tests/test_receive_port.py": "a01f0b7d63311e0be22a2cc5e010b5365e932db157cb218c2f06c6b6e80a37eb",
+    "tests/test_reconcile.py": "0d301ec653adb945645d043382585d8556c353ab96ed3e517c0344ef967018bd",
+    "tests/test_reconcile_triggers.py": "dc6fb423a76e895dd9e288cdce427770e216081bc2b3791a6d5e025122fd8a83",
+    "tests/test_reconcile_writes.py": "71e541ef20df9dab961f95df0a6b65a620dee529eda0ea7f6afc2c501e6c56e4",
+    "tests/test_recorded_dump.py": "faccc86046d24eec9e4f077a1cb981e16b75fcb0d8b7f8e91536322b2fb36dd4",
+    "tests/test_register_addresses.py": "f9fb627b3d12a13f9f161eae3810e6103a805ac06b65bf350c0bf1ca3aca7741",
+    "tests/test_registers.py": "3c6c335c7348eff2eade53e468151b7f0d81d798ef38d232226585c6c4559610",
+    "tests/test_release_archive.py": "3a28d507801b013467f99c8c640dc0fd1843623d1ed6437f17830743ac205104",
+    "tests/test_reload.py": "a97e8fc3405e47588310d146e21d1a9ed70fbde3dc26486650a329ace9d99921",
+    "tests/test_roomeq.py": "daea626bead062570ae539cd9e888c41ca79abe4fe11cb82df297bf224815591",
+    "tests/test_seq_clients.py": "9cd63dfa4c7772cdac8afff4ecf60d4a44baa471a53180eb5c440b18ed08e87f",
+    "tests/test_session_integration.py": "823de75ef64a8061bce3a26f14033a15c53c22065ab6f778d30065f4ed0bcd8e",
+    "tests/test_sighup.py": "cad312d5a625258d8d8b6dab8074186a2a4a457cc2547429c2db2bb13a8192eb",
+    "tests/test_soak.py": "0d41cbb6aa3658c901c0d39bd84053fac2e8130d3cdc460a55952edac6d3ce8a",
+    "tests/test_startup_helpers.py": "8fa20dc7accf6510c52bf54a47fa855aaa24d0d3a2a79cb9f822e915daa6dbdd",
+    "tests/test_startup_transaction.py": "dd3548526611f2a405915be28088315c6c183ca6f662c5b739134d623ad3ffbc",
+    "tests/test_sub_families.py": "8dbf0dbdbde629be7f72bfe9555019d3623a59431be9ab7c5115ae0647c2b900",
+    "tests/test_two_processes.py": "dc1f89fa5a9ff88df4604f8b95ebdf161240b57b7a22d1dadeaa9fdabc232012",
+    "tests/test_unit_file.py": "0d4e1a658f1dee5cd10ca329a181f974c3a217dde1655f918cfe9ab7ca6efaeb",
+    "tests/test_unit_lock.py": "a729f51b59329853fd20b1a71cb6b98a4285cc018b4d8d593573f47a64eba3f7",
+    "tests/test_upgrade.py": "9c703c53e5a686c40c0f3eb778c79de0dff2a8dd5708e9e79e2ea36426e1dab2",
+    "tests/test_usb.py": "989c0314b6899597da6dac0e3a2e6fd56f1a6165334e27761fef6530fbd7a579",
+    "tests/test_verify.py": "0beb4d1858b02b10c56e2ac684ea5dcceee397b893d19e91260e485fee0eb9ea",
+    "tests/test_whole_config_on_the_wire.py": "cc84bbaf1b7fb93733407c818875af1b71b5ed02843915e6b338202745c22dd5",
+    "tests/test_whose_backend.py": "f7b62d5afc75a53eabe9cb22d99eacec3bd8819bb68ceed58fd78842754ed8d1",
+    "tests/test_write_sweep.py": "319d24a898b32d7636007c7c4eae962a52d7b2f89d5c7fffea12db7275777b23",
+    "tests/two_boxes.py": "eac8042ecd2f78406524bd4dbaa7201f13a7c5bc4e20ec412c70b1e35b72d978",
+    "uninstall.sh": "123c3d18abfa96933b324470bb6e103c4f9685a2761646eb3e944c8da337e6a7"
+  },
+  "log_sha256": {
+    "gates/fault-09.log": "470f8e967e07b85959d2f41abb0672317e32468aed3e0fd28edbf36a1eaea878",
+    "gates/flake.log": "aaeee10654e3e9045a5803244e054cf4dc8b514a58d7b0fc0e0c1bdce9046cb8",
+    "gates/fault-13.log": "6b29583c89660b2faae0854730f96fc4235cb33c0ac76aa6a6ed52806b33d0ee",
+    "gates/python-3.12.log": "1ff92dd00c5bcf800e042dcf386246212a45977da8b06a13804d4b41d1f7d3c4",
+    "gates/fault-03.log": "796807cc153541a1d3b464100d185002eb72ff74fb0f8cfec5dbf5cde8534658",
+    "gates/fault-08.log": "470f8e967e07b85959d2f41abb0672317e32468aed3e0fd28edbf36a1eaea878",
+    "gates/python-3.13.log": "8441c4e9f87ba33c4d017a4342174f17abd9dd55dbd53aa21cef3ebc7f46b76f",
+    "gates/coverage.log": "8be0735c2189f2a6d6590292b037cc683168b9c8cd74a1d66167ee91ed7d28d7",
+    "gates/fault-07.log": "7db61c7442e0053da9cd0e796210a0d76e6cf9aea7038d0228b6765584463ea3",
+    "gates/mutation.log": "f3a743273f824e29597b7b3d5665d46bf7a8041c198b425d9a1b02ed9901383f",
+    "gates/fault-06.log": "5a21e350465ef1282aa3769b58410f3affa1b8da86a3e7d3415fff5d1119ff44",
+    "gates/fault-01.log": "a6cd32507a4082232c129b9eed2bf8226f74f421414509a93b6dad2f530c9935",
+    "gates/fault-11.log": "a6cd32507a4082232c129b9eed2bf8226f74f421414509a93b6dad2f530c9935",
+    "gates/fault-12.log": "6bf3cd8769f841100221a8df5d166690c49fb4d581956b65b2d7f4545a6061b7",
+    "gates/fault-14.log": "89318533646fe9ddfd811e4bf36dc1d5ab8fe2b87fd2f8f34cffd86ad43a4803",
+    "gates/fault-02.log": "796807cc153541a1d3b464100d185002eb72ff74fb0f8cfec5dbf5cde8534658",
+    "gates/check.log": "75e3e2d64462f92883cb3bb9ab079edbd8e34c015623e2a30f7fce247e06ceee",
+    "gates/soak-200.log": "fc389057be2aeaf9b64affae211255aeaefc4de69f9be510b560f57f036b8748",
+    "gates/python-3.9.log": "714242f74210d81e89c6c3e35ab853652b278145e2fdf06e7da65e13af59198b",
+    "gates/python-3.14.log": "510a7003703beeab1be9e57896d9fabc124d249c61f4097ab9c2d82ce2285158",
+    "gates/fault-15.log": "470f8e967e07b85959d2f41abb0672317e32468aed3e0fd28edbf36a1eaea878",
+    "gates/unit.log": "e83a665bf70fc1de761f8de74e46d109c95b4035359097a5966931c9ba0fa73f",
+    "gates/python-3.10.log": "16fed797e915e3a8fd391f7ce8fda87887eaa59ee6ba9f09b6446dfb17c68205",
+    "gates/fault-05.log": "35dcefcea108ff28c19a152d43d1fdbbc0eb65f44ebddf6798b0e76309573634",
+    "gates/python-3.11.log": "b53ed7e1415a63e8295d0767816afc30f939611c17c3c7333cef8f10b98079d9",
+    "gates/fault-10.log": "5f92076a1420fba3d817d7ed554b333e9ffbb701104cef16c0134b3530d1fea9",
+    "gates/fault-04.log": "a6cd32507a4082232c129b9eed2bf8226f74f421414509a93b6dad2f530c9935",
+    "final-offline/extra-python314.log": "99a53a09a54e5dbd34b115db8c08103e0a99744a50d8ba3ccdb34fc5c152644c",
+    "final-offline/extra-python312.log": "0207f5a46af4804107c68b737df880f207b0bede8c40ead127bed04dd9f3fe4c",
+    "final-offline/coverage.log": "27399efa0a778d5b262e5073e4c1dc816dd9722c039d7cae8da661b6b0e6f356",
+    "final-offline/extra-python311.log": "521c918d4c383cb7b7dd24253155028e9c925830f1b0b63f07417adb469c83d7",
+    "final-offline/extra-python310.log": "bfcf6dd2bf871781bd81c21c9e809039313e0b65ae7d13e17948060ef7732b3e",
+    "final-offline/check.log": "daec590f2a8a0728299288b00d4ca3aed30a76c2ffd821bd6c7a9eabbeac6760",
+    "final-offline/extra-python313.log": "b9a9d74c9660bcd8c2bfa9acc0bc9d86aa893408a9b07adb1b9f5dd70d12bb57",
+    "final-offline/extra-python39.log": "fe0c93d88eb22a6ab2d62fadc049be9c9154edbd2602e1f586c24c23a9a1cd60",
+    "check-boundaries.log": "364e9ebc15129c06fbe3deb53834fd112ceeac539dca5b01007ff04c5e3f0210",
+    "numeric-boundary-mutation.log": "2fa26211150ef5022b18acaeef54aa4486dc4b95955098a64dba7d39f95add66"
+  }
+}

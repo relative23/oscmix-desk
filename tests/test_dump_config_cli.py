@@ -115,7 +115,7 @@ def test_a_device_with_no_monitoring_is_not_an_error(session_mod, capsys):
         ("/mix/5/input/1", "fi", (float("-inf"), 0)),
     ])
     assert code == session_mod.EXIT_OK
-    assert "No input routing was reported" in out
+    assert "No representable input route was recovered" in out
     assert "[route:" not in out
 
 

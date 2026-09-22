@@ -2,6 +2,13 @@
 
 **Status:** accepted (0.4.0)
 
+**Clarification in 0.7.1:** REMEMBER does not mean “never written”. A
+declared value is sent on initial apply; selective reconciliation then
+leaves the device's value. Only dump rendering comments it out. The
+historical wording in decision 3 below refers to that export behavior.
+Sweep restoration now shares the probe permission checks, including
+the explicit exclusions for phantom power and reference level.
+
 ## Decision
 
 Three questions the roadmap carried as *"has to be decided, not

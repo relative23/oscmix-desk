@@ -125,9 +125,10 @@ def _band_registers(family: str, sub: str,
                              lo=20.0, hi=20000.0, unit="Hz"))
         rows.append(Register("%s/band%dgain" % (prefix, band), "f",
                              VERIFIABLE, family, NUMBER,
-                             lo=-20.0, hi=20.0, unit="dB"))
+                             lo=-20.0, hi=20.0, unit="dB", scale=0.1))
         rows.append(Register("%s/band%dq" % (prefix, band), "f",
-                             VERIFIABLE, family, NUMBER, lo=0.4, hi=9.9))
+                             VERIFIABLE, family, NUMBER, lo=0.4, hi=9.9,
+                             scale=0.1))
         if types is not None:
             rows.append(Register("%s/band%dtype" % (prefix, band), "is",
                                  VERIFIABLE, family, ENUM, types))
@@ -149,12 +150,15 @@ def _roomeq_registers() -> Tuple["Register", ...]:
     where it had always read 0.0 before. So the family now carries the
     same domains as the channel EQ (checked against both upstream
     trees), plus `delay` with upstream's own bounds: `.min=0 .max=425
-    .scale=0.001`, i.e. 0 to 0.425 s on the OSC side. `settable_nested`
+    .scale=0.001`, i.e. 0 to 0.425 in backend units. That does not
+    establish a physical duration: RME documents 42 ms, not 425 ms.
+    See docs/NUMERIC-CONTRACT.md. `settable_nested`
     answers for it, and `[roomeq:output:N]` sections load.
     """
     rows = list(_band_registers("output", "roomeq", _ROOMEQ_BANDS))
     rows.append(Register("/output/{ch}/roomeq/delay", "f", VERIFIABLE,
-                         "output", NUMBER, lo=0.0, hi=0.425, unit="s"))
+                         "output", NUMBER, lo=0.0, hi=0.425,
+                         unit="OSC units", scale=0.001))
     return tuple(rows)
 
 
@@ -218,7 +222,8 @@ def _sub_registers(family: str, sub: str,
     rows = [Register(prefix, "i", VERIFIABLE, family, BOOL)]
     for name, tags, lo, hi, unit in options:
         rows.append(Register("%s/%s" % (prefix, name), tags, VERIFIABLE,
-                             family, NUMBER, lo=lo, hi=hi, unit=unit))
+                             family, NUMBER, lo=lo, hi=hi, unit=unit,
+                             scale=0.1 if tags == "f" else None))
     return tuple(rows)
 
 
@@ -250,17 +255,17 @@ UCX2 = Device(
         Register("/output/{ch}/stereo", "i", VERIFIABLE, "output",
                  policy=PIN),
         Register("/output/{ch}/volume", "f", VERIFIABLE, "output", NUMBER,
-                 lo=LEVEL_MIN, hi=LEVEL_MAX, unit="dB"),
+                 lo=LEVEL_MIN, hi=LEVEL_MAX, unit="dB", scale=0.1),
         # The playback matrix: a /mix write draws no reply and the dump
         # omits it entirely. Re-established from a known link state.
         Register("/mix/{out}/playback/{pb}", "fi", REESTABLISHED, "output",
-                 policy=PIN),
+                 policy=PIN, mix_level=True),
 
         # --- the surface 0.3.0 declares --------------------------------
         # Reported, so almost all of the new surface is verifiable --
         # unlike the playback matrix this project started with.
         Register("/mix/{out}/input/{in_}", "fi", VERIFIABLE, "output",
-                 policy=PIN),
+                 policy=PIN, mix_level=True),
         # 48v deliberately has NO domain: it is readable by the code and not
         # settable from a routing.conf. See registers.settable_options and
         # the roadmap's rule -- phantom power is not exposed until a
@@ -279,11 +284,14 @@ UCX2 = Device(
         # UI). Measured here at f2fdd5e: /input/5/gain takes 12.0 dB
         # and reads it back.
         Register("/input/{ch}/gain", "f", VERIFIABLE, "input-gain-mic",
-                 NUMBER, lo=0.0, hi=75.0, unit="dB", policy=PIN),
+                 NUMBER, lo=0.0, hi=75.0, unit="dB", policy=PIN,
+                 scale=0.1, truncates=True),
         Register("/input/{ch}/gain", "f", VERIFIABLE, "input-gain-inst",
-                 NUMBER, lo=0.0, hi=24.0, unit="dB", policy=PIN),
+                 NUMBER, lo=0.0, hi=24.0, unit="dB", policy=PIN,
+                 scale=0.1, truncates=True),
         Register("/input/{ch}/gain", "f", VERIFIABLE, "input-gain-line",
-                 NUMBER, lo=0.0, hi=24.0, unit="dB", policy=PIN),
+                 NUMBER, lo=0.0, hi=24.0, unit="dB", policy=PIN,
+                 scale=0.1, truncates=True),
         Register("/input/{ch}/reflevel", "is", VERIFIABLE, "input-reflevel", ENUM,
                  ("+13dBu", "+19dBu"), policy=PIN),
         Register("/input/{ch}/mute", "i", VERIFIABLE, "input", BOOL),
@@ -332,12 +340,12 @@ UCX2 = Device(
         Register("/echo/type", "is", VERIFIABLE, GLOBAL, ENUM,
                  ("Stereo Echo", "Stereo Cross", "Pong Echo")),
         Register("/echo/delay", "f", VERIFIABLE, GLOBAL, NUMBER,
-                 lo=0.0, hi=2.0, unit="s"),
+                 lo=0.0, hi=2.0, unit="s", scale=0.001),
         Register("/echo/feedback", "i", VERIFIABLE, GLOBAL, NUMBER),
         Register("/echo/highcut", "is", VERIFIABLE, GLOBAL, ENUM,
                  ("Off", "16kHz", "12kHz", "8kHz", "4kHz", "2kHz")),
         Register("/echo/volume", "f", VERIFIABLE, GLOBAL, NUMBER,
-                 lo=LEVEL_MIN, hi=LEVEL_MAX, unit="dB"),
+                 lo=LEVEL_MIN, hi=LEVEL_MAX, unit="dB", scale=0.1),
         # Bounds upstream does not declare, measured here because the
         # device *rejects* rather than clamps: 1.02 leaves the register
         # where it was and reports nothing, so a config that asked for
@@ -347,7 +355,7 @@ UCX2 = Device(
         # 2026-08-25 by the write sweep and then bracketed: 1.0 and 0.0
         # accepted, 1.02 and -0.01 refused, on both width registers.
         Register("/echo/width", "f", VERIFIABLE, GLOBAL, NUMBER,
-                 lo=0.0, hi=1.0),
+                 lo=0.0, hi=1.0, scale=0.01),
 
         # The control room section. `dimreduction` and `recallvolume` are
         # `.scale=0.1, .min=-650, .max=0` -- dB down to the same floor a
@@ -369,9 +377,9 @@ UCX2 = Device(
                  values=(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1),
                  policy=PIN),
         Register("/controlroom/dimreduction", "f", VERIFIABLE, GLOBAL, NUMBER,
-                 lo=LEVEL_MIN, hi=0.0, unit="dB", policy=PIN),
+                 lo=LEVEL_MIN, hi=0.0, unit="dB", policy=PIN, scale=0.1),
         Register("/controlroom/recallvolume", "f", VERIFIABLE, GLOBAL, NUMBER,
-                 lo=LEVEL_MIN, hi=0.0, unit="dB", policy=PIN),
+                 lo=LEVEL_MIN, hi=0.0, unit="dB", policy=PIN, scale=0.1),
         Register("/controlroom/dim", "i", VERIFIABLE, GLOBAL, BOOL),
         Register("/controlroom/mainmono", "i", VERIFIABLE, GLOBAL, BOOL),
         Register("/controlroom/muteenable", "i", VERIFIABLE, GLOBAL, BOOL),
@@ -399,11 +407,11 @@ UCX2 = Device(
         # 0 and 100 accepted, -1 and 101 refused. Same measurement.
         Register("/reverb/smooth", "i", VERIFIABLE, GLOBAL, NUMBER,
                  lo=0.0, hi=100.0),
-        Register("/reverb/roomscale", "f", VERIFIABLE, GLOBAL, NUMBER),
-        Register("/reverb/time", "f", VERIFIABLE, GLOBAL, NUMBER),
-        Register("/reverb/volume", "f", VERIFIABLE, GLOBAL, NUMBER),
+        Register("/reverb/roomscale", "f", VERIFIABLE, GLOBAL, NUMBER, scale=0.01),
+        Register("/reverb/time", "f", VERIFIABLE, GLOBAL, NUMBER, scale=0.1),
+        Register("/reverb/volume", "f", VERIFIABLE, GLOBAL, NUMBER, scale=0.1),
         Register("/reverb/width", "f", VERIFIABLE, GLOBAL, NUMBER,
-                 lo=0.0, hi=1.0),
+                 lo=0.0, hi=1.0, scale=0.01),
 
         # The clock. All PIN: which clock a room runs on, and whether the
         # word clock output is terminated, describe the installation.
@@ -459,7 +467,7 @@ UCX2 = Device(
         #
         # REMEMBER throughout. An EQ curve is dialled in while listening;
         # a session that put one back would be arguing with whoever set
-        # it. A config that wants otherwise says so with [pin].
+        # it. Nested families do not have [pin] overrides.
         *_band_registers("input", "eq", _EQ_BANDS),
         *_band_registers("output", "eq", _EQ_BANDS),
         *_roomeq_registers(),
@@ -561,4 +569,3 @@ def device_for_name(name: str) -> Optional[Device]:
 def modelled_names() -> str:
     """The devices whose register table has rows, for the warnings."""
     return ", ".join(d.name for d in DEVICES if d.registers)
-

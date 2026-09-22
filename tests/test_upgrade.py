@@ -10,7 +10,10 @@ from test_install_sh import PROJECT_ROOT, make_fake_home, run
 
 from oscmix_desk import __version__
 
-BASE = "ddca339e808361f7114d3c2099a557a3859140c1"  # v0.6.11, peeled tag
+BASES = [
+    ("0.6.11", "ddca339e808361f7114d3c2099a557a3859140c1"),
+    ("0.7.0", "25eb57dff7a305b0e6452010ce15992c90ad144b"),
+]
 pytestmark = pytest.mark.skipif(
     bool(os.environ.get("MUTANT_UNDER_TEST")),
     reason="installed subprocesses do not load mutants",
@@ -18,7 +21,8 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("rootless", [True, False])
-def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless):
+@pytest.mark.parametrize(("previous_version", "base"), BASES)
+def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless, previous_version, base):
     home, env, _log = make_fake_home(tmp_path)
     if not rootless:
         # Only the three paths redirected by make_fake_home are written;
@@ -27,10 +31,12 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless):
     previous = tmp_path / "previous"
     previous.mkdir()
     archived = subprocess.run(
-        ["git", "archive", BASE], cwd=str(PROJECT_ROOT),
+        ["git", "archive", base], cwd=str(PROJECT_ROOT),
         capture_output=True, check=False)
     if archived.returncode:
-        pytest.skip("upgrade test needs the v0.6.11 commit (fetch-depth: 0 in CI)")
+        if os.environ.get("OSCMIX_REQUIRE_CONTRACTS"):
+            pytest.fail("upgrade test needs " + base + " (fetch-depth: 0 in CI)")
+        pytest.skip("upgrade test needs " + base + " (fetch-depth: 0 in CI)")
     subprocess.run(["tar", "-xf", "-", "-C", str(previous)],
                    input=archived.stdout, check=True)
     args = ["--no-build"] + (["--no-udev"] if rootless else [])
@@ -44,7 +50,7 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless):
         version = subprocess.run(
             [sys.executable, str(home / ".local" / "bin" / "oscmix-session"),
              "--version"], env=env, capture_output=True, text=True, check=True)
-        assert version.stdout.strip() == ("0.6.11" if tree == previous else __version__)
+        assert version.stdout.strip() == (previous_version if tree == previous else __version__)
         if not rootless:
             for variable, source in (
                     ("OSCMIX_UDEV_RULE", "udev/90-rme-fireface.rules"),

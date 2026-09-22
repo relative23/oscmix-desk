@@ -192,16 +192,16 @@ def test_a_blind_plan_writes_everything(session_mod):
 
 
 def test_floats_compare_with_the_devices_quantisation(session_mod):
-    # 0.5 dB, the value the read-back has used since 0.1.2. Without it a
-    # confirmed register reads as mismatched on every single run.
+    # The output fader uses signed fixed point in tenths, unlike the
+    # logarithmic input-mix gain. Float32 noise is not a different step.
     config = make_config(session_mod,
                          route(session_mod, output=(5, 6), volume=-10.0))
     entries = reconcile.desired(config)
     seen = {e.path: e.args for e in entries}
-    seen["/output/5/volume"] = (-10.3,)
+    seen["/output/5/volume"] = (-10.0000001,)
     assert "/output/5/volume" in reconcile.plan(
         entries, seen, devices.UCX2).confirmed
-    seen["/output/5/volume"] = (-12.0,)
+    seen["/output/5/volume"] = (-10.3,)
     assert "/output/5/volume" not in reconcile.plan(
         entries, seen, devices.UCX2).confirmed
 

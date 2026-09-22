@@ -112,10 +112,12 @@ require() {
 # The user manager belongs to the login session, not to an overridden
 # HOME. A scratch installation must not stop or restart the real desk.
 manages_this_home() {
-    local session_home
-    session_home="$(systemctl --user show-environment 2>/dev/null |
-                    sed -n 's/^HOME=//p')" || true
-    [ -z "$session_home" ] || [ "$session_home" = "$HOME" ]
+    local environment session_home session_config
+    environment="$(systemctl --user show-environment 2>/dev/null)" || return 1
+    session_home="$(printf '%s\n' "$environment" | sed -n 's/^HOME=//p')"
+    session_config="$(printf '%s\n' "$environment" | sed -n 's/^XDG_CONFIG_HOME=//p')"
+    session_config="$(xdg_base "$session_config" "$session_home/.config")"
+    [ "$session_home" = "$HOME" ] && [ "$session_config" = "$CONFIG_HOME" ]
 }
 
 # --------------------------------------------------------------------------
@@ -129,6 +131,8 @@ python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' \
 if ! systemctl --user show-environment >/dev/null 2>&1; then
     fail "cannot talk to the systemd user instance (is this a desktop session?)"
 fi
+manages_this_home \
+    || fail "systemd's user manager must match HOME and XDG_CONFIG_HOME; no files changed"
 
 # Hold this through the build too: two installers for the same home
 # must not replace its binaries or shared build checkout concurrently.
@@ -318,8 +322,8 @@ install -D -m 644 "$PROJECT_DIR/config/routing.conf.example" \
 # service that is not the one just installed.
 #
 # `systemctl --user show-environment` reports the session's own HOME, so
-# the two can be compared. When it reports nothing this proceeds, which
-# is what every earlier version did.
+# the home and configuration base must both match. Missing identity is
+# not evidence that this is the intended manager.
 info "installing systemd user service"
 install_file 644 "$PROJECT_DIR/systemd/oscmix.service" "$UNIT_DIR/oscmix.service"
 if manages_this_home; then

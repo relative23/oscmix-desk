@@ -185,6 +185,9 @@ def _parse_route(parser: configparser.ConfigParser, section: str) -> Route:
     stereo = True
     if parser.has_option(section, "stereo"):
         stereo = _parse_bool(parser.get(section, "stereo"), section, "stereo")
+    if len(output) == 2 and not stereo and level > 0:
+        raise ConfigError("[%s] level: an unlinked pair supports at most 0 dB; "
+                          "its gain compensation uses the available headroom" % section)
     return Route(name=name, playback=playback, input=inputs, output=output,
                  level=level, volume=volume, stereo=stereo)
 

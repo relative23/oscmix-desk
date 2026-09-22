@@ -34,7 +34,7 @@ particular binary (ADR 0008).
 - [ ] Python 3.9–3.14 all pass with the property-test dependencies
       present. Record environmental skips and investigate failures before
       counting a retry. The install transition tests require the actual
-      0.6.11 commit; use a full checkout, as CI does.
+      0.6.11 and 0.7.0 commits; use a full checkout, as CI does.
 - [ ] `make coverage` -- must pass the ratchet in `pyproject.toml`
       **and** be re-read: if the measured number is more than a point
       above the gate, raise the gate now rather than next release.
@@ -122,7 +122,7 @@ one that found all three defects in 0.1.3.
 - [ ] **If the register model changed** -- a row added, a domain or
       bound changed, a capability split -- the write sweep has run
       against the change: `python3 scripts/sweep-writes.py --out
-      docs/evidence/write-sweep-ucx2.json`, exit 0, and the committed
+      docs/evidence/<version>/write-sweep-ucx2.json`, exit 0, and the committed
       artifact is from that run. The sweep is what proved `verifiable`
       means what it says (0.5.0), and an artifact older than the model
       it vouches for is not evidence.
@@ -130,6 +130,10 @@ one that found all three defects in 0.1.3.
       register *added* without a fresh run; a changed bound or domain it
       cannot see, which is why this is a checklist item and not only a
       test.
+      Schema 2 must retain requested/encoded/reported values, comparison
+      rule, backend binary identity, original/final state and any error.
+      An interrupted run or residual drift is not release qualification.
+      Keep historical artifacts unchanged and label their method limits.
 
 ## 5. Install, from nothing
 
@@ -137,7 +141,7 @@ one that found all three defects in 0.1.3.
       --dry-run` from the installed tree. The 0.2.0 release moved the
       runtime from `lib/` to `src/` and rewrote that path in three
       places; nothing ran the installer end to end at the time.
-- [ ] The real 0.6.11 → candidate → 0.6.11 tests pass in rootless and
+- [ ] The real 0.6.11 and 0.7.0 → candidate → original-version tests pass in rootless and
       redirected system-file layouts. Config, profiles and marker survive;
       installed entry points and module inventory match the selected
       version. Failed staging and an interrupted activation recover by
