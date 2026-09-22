@@ -132,7 +132,7 @@ Detailed plan: [installation across Linux distributions](plans/installation.md).
 - [x] Build native DEB/RPM packages and an Arch recipe from a shared staging
   layout. Keep the source path for other distributions; define ownership
   and migration from existing per-user installs before publishing packages.
-- [ ] Verify install, upgrade, interrupted install, downgrade and uninstall
+- [x] Verify install, upgrade, interrupted install, downgrade and uninstall
   without losing config, profiles or the active marker. Detect shadowing
   binaries and user-unit overrides. Installation must not silently start
   writing a new default desk to an attached interface.
@@ -145,9 +145,15 @@ pass on Ubuntu 24.04, Fedora 44, openSUSE Leap 16 and Arch. An Ubuntu
 migration and return, SIGHUP with an explicit PIN, and a maintenance fence
 that survives a reboot and clears after successful package repair. These
 are software tests with a simulated backend, not hardware qualification
-on seven distributions. The reusable CI path passes all eleven source/native targets and creates
-release attestations only on a published release event. The additional
-per-target migration checks and package publication remain before I2 closes.
+on seven distributions. The reusable CI path passes all eleven source/native
+targets and creates release attestations only on a published release event.
+The actual 0.7.0 → native package → 0.7.0 file migration also passes on each
+native target with a simulated user bus; Ubuntu has the additional real
+user-manager VM check. Package publication remains before I2 closes.
+
+The separately qualified implementation and its software matrix are on
+[`feature/portable-install`](https://github.com/relative23/oscmix-desk/tree/feature/portable-install).
+It has not been merged into the 0.7.1 correctness release.
 
 **Packaging direction:** native packages where tested, a common source
 installer elsewhere. `pip`/`pipx` alone do not install the complete host
