@@ -26,6 +26,15 @@ browser login or additional personal token is needed. A release published
 with that token does not trigger another release-event workflow; any
 additional package workflow must also handle the tag explicitly.
 
+On the installation branch, the release workflow calls the distribution
+workflow directly and waits for all seven source targets and four native
+targets. It collects their packages, recipes, logs and checksums into the
+same asset set before publishing. There is no dependency on a second
+release event. Pushes to the installation branch exercise this complete
+build/collection path with development packages and retain CI artifacts;
+they do not create a release. Final package attestations require a matching
+release tag, and the tag path still requires fresh matching hardware evidence.
+
 ## Verify before installing
 
 After the release is published, download the archive, `SHA256SUMS`,
