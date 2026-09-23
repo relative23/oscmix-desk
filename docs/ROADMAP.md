@@ -102,12 +102,38 @@ work unless a reproduced regression in the existing supported setup makes
 a specific case necessary. Document stricter rejection of previously
 accepted invalid numbers and export omissions in the upgrade notes.
 
-## Following milestone: installation and sample-rate evidence
+## 0.7.2: playback-mode validation and remaining hardware evidence
 
-Implementation is being qualified separately from the correctness patch.
-A version number and publication date are not assigned yet. Completed
-checks below describe that development work, not features available in
-0.7.0 or the 0.7.1 installer. The desktop companion remains deferred.
+**In progress, not released.** Translate the recorded USB playback limits
+into runtime checks, qualify higher-rate link/gain/mute behavior, and
+retain the separate physical signal/clock evidence gaps below. The
+standard-library core, config format and backend pin remain unchanged.
+The maintainer's publication condition is completion of the required
+work: local commits do not imply permission to push an incomplete release.
+
+- [x] Validate the exact UCX II's active USB playback capacity before
+  writes, using recorded ALSA parameters and USB alternate settings.
+- [x] Define idle/unknown, inconsistent observation and mid-apply changes;
+  test refusals before the first write and exact partial-write outcomes.
+  Keep the planner pure and the profile marker unchanged on failure.
+- [x] Document offline-preview, register-diff and live-mode limits.
+- [ ] Finish H1's available high-rate link/mute and restoration checks.
+- [ ] Complete the physical H1/H2 measurements, or make a separate,
+  explicit release-scope decision. Missing equipment is not a passed test.
+- [ ] Complete fresh candidate release gates and installation checks.
+
+The current setup has a UCX II, monitors, headphones and a microphone,
+but no analog return cable or external digital/clock equipment. Physical
+output/delay, digital I/O and external-clock tests therefore remain open.
+GUI and two-physical-device qualification remain excluded by the maintainer.
+
+## Separate functionality milestone: installation
+
+Installation changes are prepared on their own branch, not included in
+the 0.7.2 runtime patch. Their release version and publication date are
+not assigned. Completed checks below describe development work, not
+features available in 0.7.0 or the 0.7.1 installer. The desktop companion
+remains deferred.
 
 The maintainer has requested execution of the installation and hardware
 work as well, following the correctness patch. GUI and physical
@@ -117,8 +143,7 @@ appropriate quiet connections and cannot be closed by simulation alone.
 | Order | Work | Result required before closing it |
 | --- | --- | --- |
 | 1 | **I1: installation across distributions** | A common install/staging contract, useful preflight diagnostics, explicit service modes, and a recorded distribution test matrix. |
-| 2 | **H1: higher sample rates** | Measurements at 88.2, 96, 176.4 and 192 kHz, with actual USB/ALSA and register mappings; any unsupported case is stated explicitly. |
-| 3 | **I2: native distribution packages** | Tested packages/recipes built from the same release and measured backend pin, including migration and recovery. |
+| 2 | **I2: native distribution packages** | Tested packages/recipes built from the same release and measured backend pin, including migration and recovery. |
 | Deferred | **G1: optional desktop companion** | Resume only when requested; complete the feature/interaction design before seeking implementation approval. |
 
 I1 and the read-only preparation for H1 can proceed independently. H1's
@@ -174,7 +199,7 @@ installer elsewhere. `pip`/`pipx` alone do not install the complete host
 integration. A Python package remains a possible separate deliverable if
 there is a concrete consumer; it is not the main installation project.
 
-### H1 -- Higher sample rates
+## H1 -- Higher sample rates (0.7.2)
 
 Detailed plan: [UCX II sample-rate qualification](plans/high-sample-rates.md).
 
@@ -186,9 +211,12 @@ Detailed plan: [UCX II sample-rate qualification](plans/high-sample-rates.md).
 - [ ] Check valid and unavailable routes, channel links, refresh/read-back,
   state retention and PipeWire mappings. Exercise the return to the
   baseline; preserve and verify the original configuration and state.
-- [ ] Derive any rate-aware validation/model change from those recordings,
-  add regressions for the actual failure cases and publish a per-mode
-  support table. Missing digital equipment means an explicit evidence gap.
+- [x] Derive live USB playback validation from the recordings, add
+  regressions for the actual failed combinations and publish a per-mode
+  support table. Keep register addresses separate from audio capacity.
+- [ ] Qualify physical digital ports, optical S/PDIF mode and external
+  clock transitions with the necessary connections. No such equipment
+  is present in the current setup.
 
 **Measured:** [24 USB/ALSA combinations](evidence/0.7.1/sample-rates.md),
 18 passing and six incomplete/failed, with full restoration after every
@@ -196,12 +224,29 @@ attempt and a final five-route PipeWire check. The 20-channel mode has
 only 16 active playback channels at Double Speed; Quad Speed passes with
 8/14 channels and fails with 16/20. Register addresses remain present.
 0.7.1 does not automatically select or validate the live USB/rate mode.
-Rate-aware refusal, separate high-rate link/mute cases, external digital
-connections and clock-source transitions remain outside this measurement.
+The 0.7.2 development code refuses known incompatible playback modes,
+checks again between write phases and explicitly reports an idle stream
+as unvalidated. It does not own or continuously enforce the hardware rate.
+Separate high-rate link/mute cases, external digital connections and
+clock-source transitions remain outside the 0.7.1 measurement.
 The explicit support table is complete for the combinations actually
 tested; it does not close those remaining H1 checks.
 
-### G1 -- Desktop companion proposal
+## H2 -- Independent signal and DSP measurements (0.7.2)
+
+- [ ] Measure an analog output through an independent return path,
+  including the physical duration of Room EQ delay versus backend units.
+- [ ] Compare captured PCM with input EQ/dynamics and `eqdrecord` disabled
+  and enabled, using a repeatable source and unchanged gain/clock.
+- [ ] Record restored state, actual connections and residual limitations.
+
+The existing microphone capture establishes capture and gain behavior;
+it does not establish a controlled EQ/dynamics transfer function. Device
+meters and register echoes cannot replace the missing independent signal
+path. These checks need additional connections or a repeatable source and
+remain open; no claim of physical seconds is added to the delay setting.
+
+## G1 -- Desktop companion proposal
 
 **Deferred by the maintainer on 2026-09-22.** Retain the design materials;
 no further GUI design or implementation is scheduled. The existing visual

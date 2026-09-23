@@ -95,6 +95,21 @@ Common findings in the journal:
   another model and routes to channels `<B>` does not have. Exit 2,
   nothing written. (0.6.11 validated for the file's device and warned
   that `--device` had replaced the name afterwards.)
+- `no active UCX II hardware playback stream is observable` (0.7.2
+  development) -- the PCM is stopped or absent, so the desk can check
+  register addresses but cannot validate a live USB mode. This is normal
+  at boot before playback starts; it is not evidence of a 48-kHz stream.
+- `route ... needs playback ... but ... carries playback 1..N` or
+  `failed the measured audio-transfer checks` -- choose an available
+  playback channel or a measured hardware stream. Check the UCX II's
+  `/proc/asound/cardN/stream0` and `pcm0p/sub0/hw_params`; a PipeWire client's
+  requested rate can differ from the hardware rate. See the
+  [measured mode table](evidence/0.7.1/sample-rates.md).
+- `cannot validate the active USB playback mode` or `USB playback mode
+  or identity changed during the apply` -- let the stream settle, then
+  retry. A refusal before the first write changes nothing; a later
+  refusal reports the writes already sent. The profile marker does not
+  advance. The desk never changes the clock to make a route fit.
 - `the desk now in effect is for another backend or interface -- ...`
   with `Status: running; reconcile skipped` -- `routing.conf`, or the
   active profile, now resolves to another device name, usb id, serial or

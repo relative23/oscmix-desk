@@ -70,8 +70,10 @@ since.
 - [Sample-rate measurements](docs/evidence/0.7.1/sample-rates.md) cover
   24 USB/ALSA combinations. At 88.2/96 kHz, the 20-channel stream has
   only 16 active playback channels; at 176.4/192 kHz, the 8/14-channel
-  modes pass while 16/20 fail. The desk does not select or validate
-  the active stream mode automatically. Digital connectors remain unmeasured.
+  modes pass while 16/20 fail. Released 0.7.1 does not validate the active
+  stream mode. Development toward 0.7.2 checks it before playback writes;
+  see [the behavior and its limits](docs/UPGRADING.md#preparing-for-072-unreleased).
+  The desk never selects a rate automatically. Digital connectors remain unmeasured.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
 - Twenty-seven [decision records](docs/decisions/) carry the reasoning and the

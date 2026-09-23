@@ -8,6 +8,17 @@ H1 in the [roadmap](../ROADMAP.md), not physical digital-port qualification
 or a rate-aware planner. The protocol below remains the contract for
 extending those measurements; the backend pin is unchanged.
 
+**0.7.2 development:** `streams.py` now enforces the recorded USB playback
+limits at the I/O boundary. It reads the exact ALSA card/serial and
+correlates two `stream0` observations with the active PCM's `hw_params`.
+Each nonempty write phase and verifier mix reapply is checked. Unknown
+idle mode is explicitly unvalidated; inconsistent observations are refused.
+A detected change between phases reports partial writes without advancing
+the profile marker. No PCM is opened or rate selected by this check, and
+the pure register planner is unchanged. The lock does not prevent an
+external clock/DAW change between observations or after the apply.
+See [upgrade behavior](../UPGRADING.md#preparing-for-072-unreleased).
+
 ## Question to answer
 
 At 88.2, 96, 176.4 and 192 kHz, which configurations can this measured

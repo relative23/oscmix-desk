@@ -97,6 +97,7 @@ acyclic graph.
 | `reconcile` | `desired` / `observed` / `plan`: what should be written, in what order, and why |
 | `dump` | the other direction: what the device reports, recovered as routes and settings and rendered as a `routing.conf` |
 | `backend` | the one place that opens a socket to the device; its `Traits` name the upstream behaviour the timing constants work around |
+| `streams` | observe the exact interface's active ALSA/USB playback mode and enforce measured playback limits before write phases; no PCM or clock changes |
 | `routing` | send a plan in two phases, with the link barrier between them |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
 | `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and say who holds a port and which interface that backend bridges |

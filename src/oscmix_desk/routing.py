@@ -21,6 +21,7 @@ from .log import log
 from .model import Config, Route
 from .numeric import integer
 from .reconcile import Plan, desired, link_messages, plan
+from .streams import PlaybackGuard
 
 # Asked before every write and between every phase of the background
 # verifier. See docs/decisions/0009-verifier-stop-contract.md: the
@@ -255,16 +256,25 @@ def _send_in_order(wanted: Plan, config: Config, recv_port: int,
     far the *apply* came is that plus the bursts on either side.
     """
     bursts = (wanted.links(), wanted.mix(), wanted.channel())
+    guard = PlaybackGuard(config)
     for index, burst in enumerate(bursts):
         if index == 1:
             _cross_the_barrier(config, recv_port, device)
         try:
+            if burst:
+                guard.check()
             device.send(w.message() for w in burst)
-        except WriteFailed as exc:
+        except OSError as exc:
             before = [w.path for done in bursts[:index] for w in done]
             after = [w.path for rest in bursts[index + 1:] for w in rest]
-            raise WriteFailed(exc, before + list(exc.written),
-                              list(exc.unwritten) + after) from exc
+            if isinstance(exc, WriteFailed):
+                before.extend(exc.written)
+                remaining = list(exc.unwritten)
+            else:
+                # A mode check refused this phase before it sent anything.
+                # Earlier phases are still partial writes, not a rollback.
+                remaining = [w.path for w in burst]
+            raise WriteFailed(exc, before, remaining + after) from exc
 
 
 def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
@@ -294,6 +304,7 @@ def send_mix(config: Config) -> None:
     describe the runtime as four overlapping paths long after the apply
     had moved over.
     """
+    PlaybackGuard(config).check()
     loopback(config.osc_port, config.osc_recv_port).send(
         write.message() for write in plan(desired(config)).mix())
     log.info("mix matrix re-applied against the synchronized link state")

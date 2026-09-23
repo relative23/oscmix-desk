@@ -71,6 +71,8 @@ def _print_dry_run(client: Optional[int], config: Config) -> None:
     reason: the guarantee is that they read one source, not that they
     read a particular one.
     """
+    log.info("dry run: live USB playback mode is not validated; "
+             "the active hardware stream is checked before writes")
     print("would run: alsaseqio %s:1 oscmix"
           % ("<client>" if client is None else client))
     for path, types, values in plan(desired(config)).messages():

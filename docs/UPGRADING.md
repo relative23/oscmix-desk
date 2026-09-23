@@ -1,5 +1,30 @@
 # Upgrade and recovery
 
+## Preparing for 0.7.2 (unreleased)
+
+The config format, backend pin and installation method are unchanged.
+An apply with playback routes now inspects the active UCX II hardware PCM.
+It rejects unavailable playback channels before sending the first write:
+8/14/16-channel streams have that many playback channels; at 88.2/96 kHz
+the 20-channel stream carries only playback 1--16. At 176.4/192 kHz,
+16/20-channel streams are refused because the recorded transfers failed.
+Select a measured hardware stream in the audio application or audio-server
+configuration; the desk does not change it automatically.
+
+A stopped or absent PCM remains usable for boot/offline routing, with an
+explicit warning that its live mode is unvalidated. An unreadable or
+inconsistent identified UCX II stream is refused. `--dry-run` checks the
+config and register plan, not a future active stream. `--diff` remains a
+register comparison, not an audio-transfer or physical-port qualification.
+
+The mode is rechecked before each write phase. If it changes mid-apply,
+the result names the writes already sent and leaves the profile marker
+unchanged. Let the hardware stream settle and apply again. There is no
+automatic rollback or continuous rate enforcement: the device lock cannot
+stop a DAW or the interface changing clocks between checks or afterwards.
+Input-only routes do not make USB playback-capacity claims. Physical
+digital I/O, external clocks and physical delay remain separately unmeasured.
+
 ## Upgrading to 0.7.1
 
 The source installer requires the systemd user manager's `HOME` and

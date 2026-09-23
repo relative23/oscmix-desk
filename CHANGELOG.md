@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased -- planned for 0.7.2
+
+### Fixed
+
+- Check the active UCX II USB playback stream before writes, using its
+  exact ALSA card/serial, alternate setting and hardware PCM parameters.
+  Reject playback channels beyond the measured stream capacity and the
+  16/20-channel Quad-Speed modes which failed audio-transfer measurements.
+  Double-Speed 20-channel streams retain their measured playback 1--16;
+  OSC register addresses and physical digital-port claims stay separate.
+- Recheck before each nonempty apply phase and before the verifier's mix
+  reapply. Refuse inconsistent observations; a mode/identity change between
+  phases reports the exact writes already sent and leaves the profile
+  marker unchanged. This cannot lock a DAW's clock or prevent a later change.
+- Preserve idle/startup routing while explicitly reporting that a stopped
+  or unobservable PCM has no validated live mode. Offline previews make
+  the same limit clear. The desk does not select a rate or open a PCM.
+
+Qualification and remaining physical measurements are tracked in the
+[roadmap](docs/ROADMAP.md). This section is development work, not a release.
+
 ## 0.7.1 -- 2026-09-23
 
 ### Fixed
