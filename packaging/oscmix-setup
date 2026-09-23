@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Inspect, migrate and explicitly activate a native oscmix-desk installation."""
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+PREFIX = Path(__file__).resolve().parents[1]
+
+
+def xdg(variable, fallback):
+    value = Path(os.environ.get(variable, ''))
+    return value if value.is_absolute() else fallback
+
+
+def service(*args, check=True):
+    return subprocess.run(['systemctl', '--user', *args], capture_output=True,
+                          text=True, check=check, timeout=120)
+
+
+def manager_for(home, config):
+    result = service('show-environment', check=False)
+    values = dict(line.split('=', 1) for line in result.stdout.splitlines() if '=' in line)
+    manager_config = Path(values.get('XDG_CONFIG_HOME', ''))
+    if not manager_config.is_absolute():
+        manager_config = Path(values.get('HOME', '/')) / '.config'
+    if result.returncode or values.get('HOME') != str(home) or manager_config != config:
+        raise ValueError('the systemd user manager must belong to this HOME and XDG_CONFIG_HOME')
+
+
+def legacy_files(home, config, data):
+    paths = [home / '.local/lib/oscmix-desk', home / '.local/lib/oscmix-autostart',
+             config / 'systemd/user/oscmix.service']
+    paths += [home / '.local/bin' / name for name in
+              ('oscmix-session', 'oscmix-launch', 'oscmix', 'alsaseqio', 'oscmix-gtk')]
+    paths += [data / relative for relative in
+              ('applications/oscmix-gtk.desktop', 'icons/hicolor/scalable/apps/oscmix.svg',
+               'glib-2.0/schemas/oscmix.gschema.xml')]
+    return [path for path in paths if path.exists() or path.is_symlink()]
+
+
+def live_processes(proc=Path('/proc')):
+    """Only this user's mixer processes; no commands taken from process data."""
+    found = []
+    names = {'oscmix-session', 'oscmix', 'alsaseqio', 'oscmix-gtk'}
+    for entry in proc.iterdir():
+        if not entry.name.isdigit() or int(entry.name) == os.getpid():
+            continue
+        try:
+            if entry.stat().st_uid != os.getuid():
+                continue
+            arguments = (entry / 'cmdline').read_bytes().split(b'\0')
+        except (OSError, ValueError):
+            continue
+        if any(Path(os.fsdecode(arg)).name in names for arg in arguments if arg):
+            found.append(entry.name)
+    return found
+
+
+def migrate(home, config, data):
+    manager_for(home, config)
+    if service('is-active', '--quiet', 'oscmix.service', check=False).returncode == 0:
+        raise ValueError('stop oscmix.service before migration; no files moved')
+    if service('is-enabled', '--quiet', 'oscmix.service', check=False).returncode == 0:
+        raise ValueError('disable oscmix.service before migration; no files moved')
+    if live_processes():
+        raise ValueError('close the mixer and stop manual mixer processes before migration')
+    paths = legacy_files(home, config, data)
+    if not paths:
+        print('No per-user installation to migrate.')
+        return
+    state = xdg('XDG_STATE_HOME', home / '.local/state') / 'oscmix-desk'
+    state.mkdir(parents=True, exist_ok=True)
+    backup = Path(tempfile.mkdtemp(prefix='source-install-', dir=str(state)))
+    manifest = [{'original': str(path), 'backup': str(backup / ('%02d-' % index + path.name))}
+                for index, path in enumerate(paths)]
+    # Record every intended move before the first one. Even a SIGKILL
+    # between rename and bookkeeping leaves an unambiguous recovery map.
+    (backup / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    print('Migration backup: ' + str(backup), flush=True)
+    moved = []
+    try:
+        for item in manifest:
+            path, destination = Path(item['original']), Path(item['backup'])
+            # rename preserves modes, symlinks and custom contents. Cross-
+            # filesystem moves are deliberately refused, never copy/delete.
+            path.rename(destination)
+            moved.append(item)
+    except OSError:
+        for item in reversed(moved):
+            Path(item['backup']).rename(item['original'])
+        raise
+    service('daemon-reload')
+    if (data / 'glib-2.0/schemas').is_dir() and shutil.which('glib-compile-schemas'):
+        subprocess.run(['glib-compile-schemas', str(data / 'glib-2.0/schemas')], check=True)
+    print('Previous installation preserved in ' + str(backup))
+    print('Config, profiles and active-profile were kept in ' + str(config / 'oscmix'))
+    print('Custom unit files in the backup need review before reusing their overrides.')
+    print('Open a new terminal or run hash -r to clear the shell command cache.')
+
+
+def restore(backup, home, config):
+    manager_for(home, config)
+    if service('is-active', '--quiet', 'oscmix.service', check=False).returncode == 0:
+        raise ValueError('disable the native service with oscmix-setup --disable '
+                         'before restoration')
+    if (service('is-enabled', '--quiet', 'oscmix.service', check=False).returncode == 0
+            or (config / 'oscmix/service-allowed').exists()):
+        raise ValueError('run oscmix-setup --disable before restoring the source installation')
+    if live_processes():
+        raise ValueError('stop mixer processes before restoring a per-user installation')
+    manifest = json.loads((backup / 'manifest.json').read_text())
+    moves = []
+    for item in manifest:
+        original, saved = Path(item['original']), Path(item['backup'])
+        if saved.exists() or saved.is_symlink():
+            if original.exists() or original.is_symlink():
+                raise ValueError('restore would overwrite an existing file: ' + str(original))
+            moves.append((saved, original))
+        elif not original.exists() and not original.is_symlink():
+            raise ValueError('both original and backup are missing: ' + str(original))
+    for saved, original in moves:
+        original.parent.mkdir(parents=True, exist_ok=True)
+        saved.rename(original)
+    service('daemon-reload')
+    print('Per-user installation restored without starting it. '
+          'Review before enabling its service.')
+    print('Open a new terminal or run hash -r to clear the shell command cache.')
+
+
+def inspect(home, config, data):
+    print('Native installation: ' + str(PREFIX / 'lib/oscmix-desk'))
+    print('Command on PATH: ' + str(shutil.which('oscmix-session') or 'not found'))
+    print('Configuration directory: ' + str(config / 'oscmix'))
+    print('Service opt-in: ' + str((config / 'oscmix/service-allowed').exists()))
+    files = legacy_files(home, config, data)
+    for path in files:
+        print('Per-user file may override the package: ' + str(path))
+    if files:
+        print('Stop and disable the old service, then run oscmix-setup --migrate-source.')
+    dropins = config / 'systemd/user/oscmix.service.d'
+    if dropins.exists():
+        print('Custom service drop-ins are preserved; review ' + str(dropins))
+    for path in (Path('/etc/udev/rules.d/90-rme-fireface.rules'),):
+        if path.exists():
+            print('Host override is preserved; review ' + str(path))
+    return files
+
+
+def enable(home, config, desk, overrides):
+    if overrides:
+        raise ValueError('migrate the per-user installation before enabling the native service')
+    if not desk.is_file():
+        raise ValueError('create and review routing.conf first (oscmix-setup --init-config)')
+    manager_for(home, config)
+    if Path('/var/lib/oscmix-desk/package-update').exists():
+        raise ValueError('finish or recover the package transaction before enabling its service')
+    if not os.access('/run/oscmix-desk', os.W_OK | os.X_OK):
+        raise ValueError('provision /run/oscmix-desk as root:audio mode 3770, '
+                         'join audio and start a new login session before enabling')
+    desk.with_name('service-allowed').write_text('Explicitly enabled with oscmix-setup\n')
+    service('daemon-reload')
+    service('enable', '--now', 'oscmix.service')
+    print('Service enabled; check oscmix-session --diff and the service journal.')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument('--check', action='store_true',
+                         help='show installation and overrides (default)')
+    actions.add_argument('--init-config', action='store_true',
+                         help='copy an example only if no config exists')
+    actions.add_argument('--migrate-source', action='store_true',
+                         help='back up a stopped per-user installation')
+    actions.add_argument('--restore-source', type=Path, metavar='BACKUP',
+                         help='restore a migration backup without overwriting existing files')
+    actions.add_argument('--enable', action='store_true',
+                         help='allow and enable the service; this applies your desk')
+    actions.add_argument('--disable', action='store_true',
+                         help='remove opt-in, stop and disable the service')
+    args = parser.parse_args()
+    home = Path(os.environ.get('HOME', ''))
+    if not home.is_absolute():
+        parser.error('HOME must be absolute')
+    if os.getuid() == 0:
+        parser.error('run setup as the intended desktop/audio user, without sudo')
+    config = xdg('XDG_CONFIG_HOME', home / '.config')
+    data = xdg('XDG_DATA_HOME', home / '.local/share')
+    try:
+        overrides = inspect(home, config, data)
+        desk = config / 'oscmix/routing.conf'
+        allowed = desk.with_name('service-allowed')
+        if args.init_config:
+            desk.parent.mkdir(parents=True, exist_ok=True)
+            example = (PREFIX / 'share/oscmix-desk/routing.conf.example').read_text()
+            with desk.open('x') as output:
+                output.write(example)
+            print('Review ' + str(desk) + ', then inspect oscmix-session --dry-run.')
+        elif args.migrate_source:
+            migrate(home, config, data)
+        elif args.restore_source:
+            restore(args.restore_source, home, config)
+        elif args.enable:
+            enable(home, config, desk, overrides)
+        elif args.disable:
+            manager_for(home, config)
+            allowed.unlink(missing_ok=True)
+            service('stop', 'oscmix.service')
+            service('disable', 'oscmix.service')
+            print('Automatic operation disabled; your desk files are kept.')
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print('oscmix-setup: ' + str(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

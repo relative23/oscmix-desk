@@ -3,7 +3,7 @@
 **Status: implementation and qualification in progress, 2026-09-22.**
 Target: UCX II across Linux distribution families. The common installer,
 manual mode, native packaging and migration helpers are implemented in
-separate development work following 0.7.1. They are not published package
+separate development work and are now being integrated for 0.7.2. They are not published package
 releases or changes to the 0.7.1 installer. See the [roadmap](../ROADMAP.md)
 for completed checks and the [current instructions](../../README.md#install)
 for what users can install now.

@@ -127,11 +127,12 @@ but no analog return cable or external digital/clock equipment. Physical
 output/delay, digital I/O and external-clock tests therefore remain open.
 GUI and two-physical-device qualification remain excluded by the maintainer.
 
-## Separate functionality milestone: installation
+## 0.7.2 integration: installation
 
-Installation changes are prepared on their own branch, not included in
-the 0.7.2 runtime patch. Their release version and publication date are
-not assigned. Completed checks below describe development work, not
+The separately prepared installation changes are being integrated with
+the 0.7.2 playback-mode patch in a local qualification branch. They have
+not been published; final combined qualification and release gates remain
+required. Completed checks below describe development work, not
 features available in 0.7.0 or the 0.7.1 installer. The desktop companion
 remains deferred.
 
@@ -152,7 +153,9 @@ I2 builds on I1's layout and ownership rules, not a second installer.
 
 ### I1 / I2 -- Installation comfort
 
-Detailed plan: [installation across Linux distributions](plans/installation.md).
+Usage: [installation and recovery](INSTALLATION.md).
+Qualification: [recorded software matrix](evidence/installation/).
+Design decisions: [installation across Linux distributions](plans/installation.md).
 
 - [x] Separate installing the files from enabling integration and applying
   a desk. Report dependencies, backend revision, active installation,
@@ -190,9 +193,11 @@ The actual 0.7.0 → native package → 0.7.0 file migration also passes on each
 native target with a simulated user bus; Ubuntu has the additional real
 user-manager VM check. Package publication remains before I2 closes.
 
-The separately qualified implementation and its software matrix are on
+The original separately qualified implementation and its software matrix are on
 [`feature/portable-install`](https://github.com/relative23/oscmix-desk/tree/feature/portable-install).
-It has not been merged into the 0.7.1 correctness release.
+It was not part of the 0.7.1 correctness release. The local
+`integration/0.7.2-installation` branch combines it with the 0.7.2 runtime
+changes for fresh qualification; publication remains pending.
 
 **Packaging direction:** native packages where tested, a common source
 installer elsewhere. `pip`/`pipx` alone do not install the complete host

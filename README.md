@@ -88,9 +88,9 @@ since.
 Out of the box, the UCX II works as a class-compliant USB audio device on
 Linux (`snd-usb-audio`), but the hardware mixer is a black box: whether you
 hear anything depends on whatever routing state the device happens to be
-in. PipeWire also maps the 8 analog outputs as "7.1 surround", so stereo
-audio only reaches outputs 1/2 -- if your monitors are connected elsewhere,
-you get silence.
+in. PipeWire profiles can expose the interface as surround audio or one
+multichannel device. A stereo application may therefore miss the playback
+channels routed to your monitors. Named stereo sinks make that choice explicit.
 
 oscmix-desk makes the state predictable: every time the device is
 plugged in or the machine boots, the routing you declared in a small config
@@ -99,10 +99,10 @@ independently of the host audio server.
 
 ## Requirements
 
-- Linux with systemd and udev (any mainstream distro)
+- Linux with ALSA; systemd and udev for automatic hotplug/resume operation
 - Python >= 3.9 (standard library only)
 - To build oscmix: `git`, `make`, a C compiler, `pkg-config`,
-  ALSA headers, and GTK 3 headers for the GUI
+  ALSA headers, and optionally GTK 3 headers for the existing upstream mixer
 
   ```sh
   # Debian/Ubuntu
@@ -116,29 +116,40 @@ independently of the host audio server.
 
 ## Install
 
+**The installation changes in this branch are not released yet.** For
+the currently published release, use the
+[0.7.1 installation instructions](https://github.com/relative23/oscmix-desk/tree/v0.7.1#install).
+The following sequence applies to this branch's new installer, after
+obtaining its source:
+
 ```sh
-git clone --branch v0.7.1 https://github.com/relative23/oscmix-desk
-cd oscmix-desk
+./install.sh --check
 ./install.sh
+~/.local/bin/oscmix-session --dry-run --timeout 0
 ```
 
-This selects [release 0.7.1](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.1).
-Read the [migration and rollback instructions](docs/UPGRADING.md) before
-upgrading from 0.6.x. The release also provides a
-[source archive with verification instructions](docs/RELEASE-ARTIFACTS.md).
-Use a released tag or verified archive; `main` can contain unreleased changes.
+Preflight names missing dependencies, permissions, the backend pin and
+service availability. A fresh installation copies files without starting
+the mixer. Review `~/.config/oscmix/routing.conf`, then explicitly activate
+automatic operation with `./install.sh --no-build --enable`. An upgrade
+preserves the old service's active/enabled state and existing configuration.
 
-The installer builds oscmix from upstream, installs everything into
-`~/.local` / `~/.config`, and asks for sudo once -- for the udev rule in
-`/etc/udev/rules.d/`, the resume hook and the tmpfiles.d entry that
-creates the lock directory `/run/oscmix-desk` for the group `audio`. Run
-`./install.sh --no-udev` for a rootless install (you lose hotplug
-autostart, the reconcile after suspend and the machine-wide lock; the
-launcher still starts the backend on demand). Existing files are backed up, an existing `routing.conf` is
-never overwritten.
+Use `--manual` for foreground operation without a systemd user manager;
+a missing manager selects that mode automatically. Use `--no-udev` to skip
+root integration, including the shared lock directory. The
+[installation and recovery guide](docs/INSTALLATION.md) describes these
+choices, prerequisites and limits.
 
-Then plug in the Fireface (or reboot) and open **RME Fireface Mixer** from
-the app menu.
+Native DEB/RPM/Arch artifacts are also in development. They include the
+pinned backend and use `oscmix-setup` for explicit per-user setup and
+migration. No native package is advertised as universal Linux support.
+`pip` alone does not install the required host integration.
+
+Prefer a [verified source release](docs/RELEASE-ARTIFACTS.md) or a package
+qualified for your distribution when this work is published. Read the
+[upgrade notes](docs/UPGRADING.md) before moving an existing desk. The
+existing upstream GTK mixer remains optional; the separate desktop
+companion is deferred.
 
 ## Configure your routing
 

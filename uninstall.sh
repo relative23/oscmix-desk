@@ -60,8 +60,8 @@ warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
 # back.
 #
 # `systemctl --user show-environment` reports the session's own HOME, so
-# both the home and configuration base must match before touching its
-# service. A different config under the same home shares the runtime.
+# the two can be compared. When it reports nothing -- an unusual systemd,
+# or none -- this proceeds, which is what every earlier version did.
 manages_this_home() {
     local environment session_home session_config
     environment="$(systemctl --user show-environment 2>/dev/null)" || return 1

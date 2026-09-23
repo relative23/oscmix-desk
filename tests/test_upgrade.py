@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from test_install_sh import PROJECT_ROOT, make_fake_home, run
+from test_install_sh import PROJECT_ROOT, make_fake_home, run, session_home_stub
 
 from oscmix_desk import __version__
 
@@ -60,6 +60,7 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless, previous_ver
         return package
 
     install(previous)
+    session_home_stub(tmp_path, str(home), enabled=True)
     config = home / ".config" / "oscmix"
     files = {config / "routing.conf": "# custom desk\n",
              config / "profiles" / "tracking.conf": "# custom profile\n",
