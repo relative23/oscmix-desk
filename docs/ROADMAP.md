@@ -102,7 +102,7 @@ work unless a reproduced regression in the existing supported setup makes
 a specific case necessary. Document stricter rejection of previously
 accepted invalid numbers and export omissions in the upgrade notes.
 
-## 0.7.2: playback-mode validation and remaining hardware evidence
+## 0.7.2: installation, playback-mode validation and hardware evidence
 
 **In progress, not released.** Translate the recorded USB playback limits
 into runtime checks, qualify higher-rate link/gain/mute behavior, and
@@ -127,20 +127,25 @@ work: local commits do not imply permission to push an incomplete release.
   the full suite with the interface physically off on the combined
   installation candidate, and verify the installed service's autostart
   and original readable state after power-on.
+- [x] Integrate the source/manual installer and native packaging; repeat
+  all eleven distribution targets and the actual 0.7.1 upgrade/rollback
+  on the combined development candidate.
 - [ ] Complete the physical H1/H2 measurements, or make a separate,
   explicit release-scope decision. Missing equipment is not a passed test.
-- [ ] Complete fresh candidate release gates and installation checks.
+- [ ] Complete final versioned release qualification and publish the
+  source/native artifacts with matching provenance. Development-package
+  checks do not by themselves qualify a release.
 
 The current setup has a UCX II, monitors, headphones and a microphone,
 but no analog return cable or external digital/clock equipment. Physical
 output/delay, digital I/O and external-clock tests therefore remain open.
 GUI and two-physical-device qualification remain excluded by the maintainer.
 
-## Separate functionality milestone: installation
+## 0.7.2 integration: installation
 
-Installation changes are prepared on their own branch, not included in
-the 0.7.2 runtime patch. Their release version and publication date are
-not assigned. Completed checks below describe development work, not
+The installation changes are integrated locally with the 0.7.2 playback-mode
+patch. They have not been published; final versioned release gates remain
+required. Completed checks below describe development work, not
 features available in 0.7.0 or the 0.7.1 installer. The desktop companion
 remains deferred.
 
@@ -161,7 +166,10 @@ I2 builds on I1's layout and ownership rules, not a second installer.
 
 ### I1 / I2 -- Installation comfort
 
-Detailed plan: [installation across Linux distributions](plans/installation.md).
+Usage: [installation and recovery](INSTALLATION.md).
+Qualification: [combined 0.7.2 development matrix](evidence/0.7.2/installation.json)
+and [earlier installation/VM records](evidence/installation/).
+Design decisions: [installation across Linux distributions](plans/installation.md).
 
 - [x] Separate installing the files from enabling integration and applying
   a desk. Report dependencies, backend revision, active installation,
@@ -182,6 +190,7 @@ Detailed plan: [installation across Linux distributions](plans/installation.md).
   without losing config, profiles or the active marker. Detect shadowing
   binaries and user-unit overrides. Installation must not silently start
   writing a new default desk to an attached interface.
+- [ ] Publish versioned native artifacts after final release qualification.
 
 **Qualification so far:** source build/install and simulated lifecycle on
 Debian 13, Ubuntu 24.04/26.04, Fedora 44, openSUSE Leap 16, Arch and
@@ -199,9 +208,15 @@ The actual 0.7.0 → native package → 0.7.0 file migration also passes on each
 native target with a simulated user bus; Ubuntu has the additional real
 user-manager VM check. Package publication remains before I2 closes.
 
-The separately qualified implementation and its software matrix are on
+The original separately qualified implementation and its software matrix are on
 [`feature/portable-install`](https://github.com/relative23/oscmix-desk/tree/feature/portable-install).
-It has not been merged into the 0.7.1 correctness release.
+It was not part of the 0.7.1 correctness release. Combined candidate
+`b537416` repeats all eleven container targets on 2026-09-23, with the
+current runtime. Its source archive builds identically twice, 51 installer
+checks pass from the extracted archive, and actual 0.7.1 upgrade/rollback
+passes in both file layouts. The earlier real-user-manager VM experiment
+was not repeated in this run. Package version strings still identify
+0.7.1 development builds; these are not publishable 0.7.2 assets.
 
 **Packaging direction:** native packages where tested, a common source
 installer elsewhere. `pip`/`pipx` alone do not install the complete host

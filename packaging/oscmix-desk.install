@@ -1,0 +1,15 @@
+#!/bin/bash
+post_install() {
+    getent group audio >/dev/null || groupadd -r audio || return 1
+    systemd-tmpfiles --create /usr/lib/tmpfiles.d/oscmix-desk.conf || return 1
+    /usr/lib/oscmix-desk/package-guard finish || return 1
+    echo 'Run oscmix-setup as your audio user; no service was started.'
+}
+
+post_upgrade() {
+    post_install
+}
+
+post_remove() {
+    rm -f /var/lib/oscmix-desk/package-update
+}

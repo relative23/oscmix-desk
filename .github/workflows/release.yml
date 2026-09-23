@@ -2,6 +2,7 @@ name: Release artifacts
 
 on:
   push:
+    branches: [feature/portable-install]
     tags: ['v*']
   release:
     types: [published]
@@ -15,10 +16,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  packages:
+    uses: ./.github/workflows/distributions.yml
+    with:
+      release_build: ${{ github.event_name == 'release' || github.ref_type == 'tag' }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
   source:
+    needs: packages
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      actions: read
       contents: write
       id-token: write
       attestations: write
@@ -40,6 +52,33 @@ jobs:
           mkdir build/extracted
           tar -xzf build/release/oscmix-desk-*.tar.gz -C build/extracted
           python -m pytest -q build/extracted/oscmix-desk-*/tests/test_install_sh.py
+          cd build/release
+          sha256sum --check SHA256SUMS
+      - name: Collect all qualified native packages before publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "$GITHUB_RUN_ID" --pattern 'native-*' --dir build/native-artifacts
+          python - <<'PY'
+          import hashlib, shutil, subprocess
+          from pathlib import Path
+          root = Path('build/native-artifacts')
+          output = Path('build/release')
+          for target in ('ubuntu2404', 'fedora44', 'opensuse16', 'arch'):
+              package = root / ('native-' + target) / 'package'
+              assert package.is_dir(), 'Missing qualified package: ' + target
+              files = sorted(package.iterdir())
+              assert len(files) >= 4, 'Incomplete package assets: ' + target
+              subprocess.run(['sha256sum', '--check', 'SHA256SUMS-' + target],
+                             cwd=package, check=True)
+              for source in files:
+                  assert source.is_file() and not source.is_symlink()
+                  assert not (output / source.name).exists(), 'Duplicate asset name: ' + source.name
+                  shutil.copy2(source, output / source.name)
+          (output / 'SHA256SUMS').write_text(''.join(
+              hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name + '\n'
+              for path in sorted(output.iterdir()) if path.name != 'SHA256SUMS'))
+          PY
           cd build/release
           sha256sum --check SHA256SUMS
       - name: Require the release tag and include its measured evidence
@@ -71,7 +110,9 @@ jobs:
           assert software['tested_files_sha256'] == tested, 'Software qualification predates these files'
           support = [Path('install.sh'), Path('uninstall.sh'), Path('quality/vulture-allowlist.py')]
           support += [path for directory in ('config', 'systemd', 'udev', 'packaging')
-                      for path in Path(directory).rglob('*') if path.is_file()]
+                      for path in Path(directory).rglob('*')
+                      if path.is_file() and '__pycache__' not in path.parts
+                      and path.suffix not in ('.pyc', '.pyo')]
           support_hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in support}
           assert software['supporting_files_sha256'] == support_hashes, 'Installation files changed after qualification'
           lifecycle = json.loads((evidence / 'lifecycle.json').read_text())

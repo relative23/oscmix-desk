@@ -1,0 +1,1249 @@
+{
+  "schema": 1,
+  "status": "development qualification; no native release published",
+  "scope": "x86_64 headless installation; no new hardware evidence",
+  "matrix": [
+    {
+      "target": "alpine322",
+      "platform": "linux/amd64",
+      "base": "alpine:3.22",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": false,
+      "development": false,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8",
+        "RepoTags": [
+          "alpine:3.22"
+        ],
+        "RepoDigests": [
+          "alpine@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-09-17T20:37:44.212246058Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ],
+          "Cmd": [
+            "/bin/sh"
+          ],
+          "WorkingDir": "/"
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 12759852,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:e477571b896b8d18635f33e4efb8851e6c4929111b0a4fe9b17b34a16fd9c37f"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:43:59.267674703Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8",
+          "size": 9218
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/alpine"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:27693f47aca162ed65a53ca23deca177122b421f87d3f69a5a5e89abcceefc36",
+      "result": "passed",
+      "seconds": 42.68,
+      "log_sha256": "adad2f3204b274291b567b2c1b4c0504e0210811df42ba912d0a2be28365044a",
+      "pytest_results": [
+        "144 passed in 22.03s"
+      ]
+    },
+    {
+      "target": "arch",
+      "platform": "linux/amd64",
+      "base": "archlinux:base",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": true,
+      "development": true,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+        "RepoTags": [
+          "archlinux:base"
+        ],
+        "RepoDigests": [
+          "archlinux@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-09-21T18:01:46.883591526Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "LANG=C.UTF-8"
+          ],
+          "Cmd": [
+            "/usr/bin/bash"
+          ],
+          "WorkingDir": "/",
+          "Labels": {
+            "org.opencontainers.image.authors": "Santiago Torres-Arias <santiago@archlinux.org> (@SantiagoTorres), Christian Rebischke <Chris.Rebischke@archlinux.org> (@shibumi), Justin Kromlinger <hashworks@archlinux.org> (@hashworks)",
+            "org.opencontainers.image.created": "2026-09-20T00:09:21+00:00",
+            "org.opencontainers.image.description": "Official containerd image of Arch Linux, a simple, lightweight Linux distribution aimed for flexibility.",
+            "org.opencontainers.image.documentation": "https://wiki.archlinux.org/title/Docker#Arch_Linux",
+            "org.opencontainers.image.licenses": "GPL-3.0-or-later",
+            "org.opencontainers.image.revision": "34b87485162b028c8d957bdcd2674359d883cd21",
+            "org.opencontainers.image.source": "https://gitlab.archlinux.org/archlinux/archlinux-docker",
+            "org.opencontainers.image.title": "Arch Linux base Image",
+            "org.opencontainers.image.url": "https://gitlab.archlinux.org/archlinux/archlinux-docker/-/blob/master/README.md",
+            "org.opencontainers.image.version": "20260920.0.596911"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 565110835,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:3bf4cd55fbcded5f3328d34e827f18beced322b7f8f134b96fadbd19341cc3c3",
+            "sha256:1caf601cb21966fbe7a9a3f974562f852aa5c47ea2513c11f78a1bc3b78f95b0"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:44:50.899375326Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+          "size": 1231
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/archlinux"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:8c51d84b14e17383db732a63bec7d34ad7b486d5ced07e36823322ba8bdc4613",
+      "result": "passed",
+      "seconds": 30.91,
+      "log_sha256": "3a6d5d5cb336ad092d31e30c1d6683f4696bf428a5cf59b00f04bbc593b11b16",
+      "pytest_results": []
+    },
+    {
+      "target": "arch",
+      "platform": "linux/amd64",
+      "base": "archlinux:base",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": false,
+      "development": false,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+        "RepoTags": [
+          "archlinux:base"
+        ],
+        "RepoDigests": [
+          "archlinux@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-09-21T18:01:46.883591526Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "LANG=C.UTF-8"
+          ],
+          "Cmd": [
+            "/usr/bin/bash"
+          ],
+          "WorkingDir": "/",
+          "Labels": {
+            "org.opencontainers.image.authors": "Santiago Torres-Arias <santiago@archlinux.org> (@SantiagoTorres), Christian Rebischke <Chris.Rebischke@archlinux.org> (@shibumi), Justin Kromlinger <hashworks@archlinux.org> (@hashworks)",
+            "org.opencontainers.image.created": "2026-09-20T00:09:21+00:00",
+            "org.opencontainers.image.description": "Official containerd image of Arch Linux, a simple, lightweight Linux distribution aimed for flexibility.",
+            "org.opencontainers.image.documentation": "https://wiki.archlinux.org/title/Docker#Arch_Linux",
+            "org.opencontainers.image.licenses": "GPL-3.0-or-later",
+            "org.opencontainers.image.revision": "34b87485162b028c8d957bdcd2674359d883cd21",
+            "org.opencontainers.image.source": "https://gitlab.archlinux.org/archlinux/archlinux-docker",
+            "org.opencontainers.image.title": "Arch Linux base Image",
+            "org.opencontainers.image.url": "https://gitlab.archlinux.org/archlinux/archlinux-docker/-/blob/master/README.md",
+            "org.opencontainers.image.version": "20260920.0.596911"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 565110835,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:3bf4cd55fbcded5f3328d34e827f18beced322b7f8f134b96fadbd19341cc3c3",
+            "sha256:1caf601cb21966fbe7a9a3f974562f852aa5c47ea2513c11f78a1bc3b78f95b0"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:43:19.872575649Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+          "size": 1231
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/archlinux"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:0e5a6b65ff32ae49ed390f53961c59a61b22ea4483ccf1798d515232a874bd79",
+      "result": "passed",
+      "seconds": 41.81,
+      "log_sha256": "785c612f957f4e4ae12cf6c7f2e79bc1ea9aad493ef9a920a04d7906c1bc8d48",
+      "pytest_results": [
+        "144 passed in 22.90s"
+      ]
+    },
+    {
+      "target": "debian13",
+      "platform": "linux/amd64",
+      "base": "debian:13",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": false,
+      "development": false,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c",
+        "RepoTags": [
+          "debian:13"
+        ],
+        "RepoDigests": [
+          "debian@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c"
+        ],
+        "Comment": "debuerreotype 0.17",
+        "Created": "2026-09-18T00:00:00Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ],
+          "Cmd": [
+            "bash"
+          ]
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 183586611,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:119aaab78849620efdb76820b1033715e7f2b6878dcb17494fc30f2bbc18ab64"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:41:57.950656631Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c",
+          "size": 8933
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/debian"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:fa44dbc2148d7087d04d8b67b5a53c05af1cb95444194d524578225ca091f340",
+      "result": "passed",
+      "seconds": 39.73,
+      "log_sha256": "5f2c29c6f74fb7b9bbdf8fe9f3c81c317c92c54732c23b85f392e4c1125db091",
+      "pytest_results": [
+        "144 passed in 19.20s"
+      ]
+    },
+    {
+      "target": "fedora44",
+      "platform": "linux/amd64",
+      "base": "fedora:44",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": true,
+      "development": true,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+        "RepoTags": [
+          "fedora:44"
+        ],
+        "RepoDigests": [
+          "fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-08-26T18:36:01.077156536Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "DISTTAG=f44container",
+            "FGC=f44",
+            "FBR=f44"
+          ],
+          "Cmd": [
+            "/bin/bash"
+          ],
+          "WorkingDir": "/",
+          "Labels": {
+            "maintainer": "Clement Verna <cverna@fedoraproject.org>"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 272781597,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:8fe4b47a217bc002f0c86b6150035f88b3931a8d54b12053ba2b9bca79d762f3"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:44:27.566546744Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+          "size": 4658
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/fedora"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:7182481564675baaf76911e517f35447e95189d1c4251ac8e5f7709f050ef4b5",
+      "result": "passed",
+      "seconds": 23.03,
+      "log_sha256": "c3c60042a967d0ef7d6ac7e0b390e54d71c34c7c63b9056b7d37ef4f77ffba9f",
+      "pytest_results": []
+    },
+    {
+      "target": "fedora44",
+      "platform": "linux/amd64",
+      "base": "fedora:44",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": false,
+      "development": false,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+        "RepoTags": [
+          "fedora:44"
+        ],
+        "RepoDigests": [
+          "fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-08-26T18:36:01.077156536Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "DISTTAG=f44container",
+            "FGC=f44",
+            "FBR=f44"
+          ],
+          "Cmd": [
+            "/bin/bash"
+          ],
+          "WorkingDir": "/",
+          "Labels": {
+            "maintainer": "Clement Verna <cverna@fedoraproject.org>"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 272781597,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:8fe4b47a217bc002f0c86b6150035f88b3931a8d54b12053ba2b9bca79d762f3"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:42:37.65261946Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+          "size": 4658
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/fedora"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:e30a2a815d509a152256b2e61082ae1e9904b08131b6a8470bd23653a7e493b3",
+      "result": "passed",
+      "seconds": 41.6,
+      "log_sha256": "2a9a5ef645b8f4110949e88d716264203a62f59f552082a4d82c533373f25079",
+      "pytest_results": [
+        "144 passed in 21.73s"
+      ]
+    },
+    {
+      "target": "opensuse16",
+      "platform": "linux/amd64",
+      "base": "opensuse/leap:16.0",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": true,
+      "development": true,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+        "RepoTags": [
+          "opensuse/leap:16.0"
+        ],
+        "RepoDigests": [
+          "opensuse/leap@sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6"
+        ],
+        "Comment": "openSUSE Leap 16.0 Base Container",
+        "Created": "2026-06-18T21:54:41Z",
+        "Author": "Fabian Vogt <fvogt@suse.com>",
+        "Config": {
+          "Cmd": [
+            "/bin/bash"
+          ],
+          "Labels": {
+            "org.openbuildservice.disturl": "obs://build.opensuse.org/openSUSE:Leap:16.0:Images/images/256975f9234c30e18c490ab7d766fcbc-opensuse-leap-image:docker",
+            "org.opencontainers.image.created": "2026-06-18T21:54:33.390164079Z",
+            "org.opencontainers.image.description": "Image containing a minimal environment for containers based on openSUSE Leap 16.0.",
+            "org.opencontainers.image.source": "https://build.opensuse.org/package/show/openSUSE:Leap:16.0:Images/opensuse-leap-image?rev=256975f9234c30e18c490ab7d766fcbc",
+            "org.opencontainers.image.title": "openSUSE Leap 16.0 Base Container",
+            "org.opencontainers.image.url": "https://www.opensuse.org/",
+            "org.opencontainers.image.vendor": "openSUSE Project",
+            "org.opencontainers.image.version": "16.0.6.171",
+            "org.opensuse.base.created": "2026-06-18T21:54:33.390164079Z",
+            "org.opensuse.base.description": "Image containing a minimal environment for containers based on openSUSE Leap 16.0.",
+            "org.opensuse.base.disturl": "obs://build.opensuse.org/openSUSE:Leap:16.0:Images/images/256975f9234c30e18c490ab7d766fcbc-opensuse-leap-image:docker",
+            "org.opensuse.base.lifecycle-url": "https://en.opensuse.org/Lifetime",
+            "org.opensuse.base.reference": "registry.opensuse.org/opensuse/leap:16.0.6.171",
+            "org.opensuse.base.source": "https://build.opensuse.org/package/show/openSUSE:Leap:16.0:Images/opensuse-leap-image?rev=256975f9234c30e18c490ab7d766fcbc",
+            "org.opensuse.base.title": "openSUSE Leap 16.0 Base Container",
+            "org.opensuse.base.url": "https://www.opensuse.org/",
+            "org.opensuse.base.vendor": "openSUSE Project",
+            "org.opensuse.base.version": "16.0.6.171",
+            "org.opensuse.lifecycle-url": "https://en.opensuse.org/Lifetime",
+            "org.opensuse.reference": "registry.opensuse.org/opensuse/leap:16.0.6.171"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 160304484,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:e70b7f3b8f8d855bfe9ecb74b0b538fd4784aca5ac6d2b3a765445d39540654f"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:44:42.007991691Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+          "digest": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+          "size": 1243
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/opensuse/leap"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:d28ac7f2d6e0b5377be10e103a7523c1f8b35fcc911ac14f514252a687477971",
+      "result": "passed",
+      "seconds": 24.66,
+      "log_sha256": "d8a77e4093b78101e69cd1104628af30ceb536c58da4c56a489f2c0e728d07a3",
+      "pytest_results": []
+    },
+    {
+      "target": "opensuse16",
+      "platform": "linux/amd64",
+      "base": "opensuse/leap:16.0",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": false,
+      "development": false,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+        "RepoTags": [
+          "opensuse/leap:16.0"
+        ],
+        "RepoDigests": [
+          "opensuse/leap@sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6"
+        ],
+        "Comment": "openSUSE Leap 16.0 Base Container",
+        "Created": "2026-06-18T21:54:41Z",
+        "Author": "Fabian Vogt <fvogt@suse.com>",
+        "Config": {
+          "Cmd": [
+            "/bin/bash"
+          ],
+          "Labels": {
+            "org.openbuildservice.disturl": "obs://build.opensuse.org/openSUSE:Leap:16.0:Images/images/256975f9234c30e18c490ab7d766fcbc-opensuse-leap-image:docker",
+            "org.opencontainers.image.created": "2026-06-18T21:54:33.390164079Z",
+            "org.opencontainers.image.description": "Image containing a minimal environment for containers based on openSUSE Leap 16.0.",
+            "org.opencontainers.image.source": "https://build.opensuse.org/package/show/openSUSE:Leap:16.0:Images/opensuse-leap-image?rev=256975f9234c30e18c490ab7d766fcbc",
+            "org.opencontainers.image.title": "openSUSE Leap 16.0 Base Container",
+            "org.opencontainers.image.url": "https://www.opensuse.org/",
+            "org.opencontainers.image.vendor": "openSUSE Project",
+            "org.opencontainers.image.version": "16.0.6.171",
+            "org.opensuse.base.created": "2026-06-18T21:54:33.390164079Z",
+            "org.opensuse.base.description": "Image containing a minimal environment for containers based on openSUSE Leap 16.0.",
+            "org.opensuse.base.disturl": "obs://build.opensuse.org/openSUSE:Leap:16.0:Images/images/256975f9234c30e18c490ab7d766fcbc-opensuse-leap-image:docker",
+            "org.opensuse.base.lifecycle-url": "https://en.opensuse.org/Lifetime",
+            "org.opensuse.base.reference": "registry.opensuse.org/opensuse/leap:16.0.6.171",
+            "org.opensuse.base.source": "https://build.opensuse.org/package/show/openSUSE:Leap:16.0:Images/opensuse-leap-image?rev=256975f9234c30e18c490ab7d766fcbc",
+            "org.opensuse.base.title": "openSUSE Leap 16.0 Base Container",
+            "org.opensuse.base.url": "https://www.opensuse.org/",
+            "org.opensuse.base.vendor": "openSUSE Project",
+            "org.opensuse.base.version": "16.0.6.171",
+            "org.opensuse.lifecycle-url": "https://en.opensuse.org/Lifetime",
+            "org.opensuse.reference": "registry.opensuse.org/opensuse/leap:16.0.6.171"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 160304484,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:e70b7f3b8f8d855bfe9ecb74b0b538fd4784aca5ac6d2b3a765445d39540654f"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:43:19.176983315Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+          "digest": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+          "size": 1243
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/opensuse/leap"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:615a999e842568179dcba1e190e6fb66e2976ff1601e7028e4b594d153a1c6d5",
+      "result": "passed",
+      "seconds": 39.96,
+      "log_sha256": "b6654b618ba253b25aeedb72fa05b34ec13f5c127e616cc5949f737b751a6a0e",
+      "pytest_results": [
+        "144 passed in 21.06s"
+      ]
+    },
+    {
+      "target": "ubuntu2404",
+      "platform": "linux/amd64",
+      "base": "ubuntu:24.04",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": true,
+      "development": true,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+        "RepoTags": [
+          "ubuntu:24.04"
+        ],
+        "RepoDigests": [
+          "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3"
+        ],
+        "Created": "2026-09-11T11:44:06.579973371Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ],
+          "Cmd": [
+            "/bin/bash"
+          ],
+          "Labels": {
+            "org.opencontainers.image.version": "24.04"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 117404607,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:65e5d715ea720349e6475f91651a0956279fc295a45fd73aa04f1cec046281a1"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:44:01.819575791Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+          "size": 6688
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/ubuntu"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:85bd1e13a6ea59d9fda4d027aff221a4a84ed3472f6a89bdd13a6b9c410ee295",
+      "result": "passed",
+      "seconds": 25.73,
+      "log_sha256": "96f08b8b3d2ef58b8f4a4e1d7f9685aa342a6dfbebe9b24c6ab838c34165799f",
+      "pytest_results": []
+    },
+    {
+      "target": "ubuntu2404",
+      "platform": "linux/amd64",
+      "base": "ubuntu:24.04",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": false,
+      "development": false,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+        "RepoTags": [
+          "ubuntu:24.04"
+        ],
+        "RepoDigests": [
+          "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3"
+        ],
+        "Created": "2026-09-11T11:44:06.579973371Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ],
+          "Cmd": [
+            "/bin/bash"
+          ],
+          "Labels": {
+            "org.opencontainers.image.version": "24.04"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 117404607,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:65e5d715ea720349e6475f91651a0956279fc295a45fd73aa04f1cec046281a1"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:41:57.942186641Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+          "size": 6688
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/ubuntu"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:af18f58c2deb9507c325a30d922b85a486b017d12f5fa063eecf8a2c9171fe80",
+      "result": "passed",
+      "seconds": 39.96,
+      "log_sha256": "58bf8f61b185d114fa255b98c27eb8196e788bfac8a60cea63bb470a699caa48",
+      "pytest_results": [
+        "144 passed in 19.27s"
+      ]
+    },
+    {
+      "target": "ubuntu2604",
+      "platform": "linux/amd64",
+      "base": "ubuntu:26.04",
+      "source_commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+      "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "native": false,
+      "development": false,
+      "hardware": false,
+      "service_manager": false,
+      "base_image": {
+        "Id": "sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78",
+        "RepoTags": [
+          "ubuntu:26.04"
+        ],
+        "RepoDigests": [
+          "ubuntu@sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78"
+        ],
+        "Comment": "Add rock control metadata",
+        "Created": "2026-09-12T10:24:38.361673881Z",
+        "Config": {
+          "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+          ],
+          "Cmd": [
+            "/bin/bash"
+          ],
+          "Labels": {
+            "org.opencontainers.image.created": "2026-09-12T10:25:59.825539+00:00",
+            "org.opencontainers.image.description": "The Ubuntu container image maintained by Canonical\n\nUbuntu is a Debian-based Linux operating system that runs from the desktop to the cloud, to all your internet connected things.\nIt is the world's most popular operating system across public clouds and OpenStack clouds.\nIt is the number one platform for containers; from Docker to Kubernetes to LXD, Ubuntu can run your containers at scale.\nFast, secure and simple, Ubuntu powers millions of PCs worldwide.\n",
+            "org.opencontainers.image.title": "ubuntu",
+            "org.opencontainers.image.version": "26.04"
+          }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 156779168,
+        "RootFS": {
+          "Type": "layers",
+          "Layers": [
+            "sha256:485d137fd3bfb545f1b417ea708e2281594be7a334e8a85ab75c5332db6089e9",
+            "sha256:598e8330e2e633ea6b06bbf1e8b80c275553b7c1de53899af154d1f480a7eefa"
+          ]
+        },
+        "Metadata": {
+          "LastTagTime": "2026-09-22T20:42:37.409597448Z"
+        },
+        "Descriptor": {
+          "mediaType": "application/vnd.oci.image.index.v1+json",
+          "digest": "sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78",
+          "size": 6694
+        },
+        "Identity": {
+          "Pull": [
+            {
+              "Repository": "docker.io/library/ubuntu"
+            }
+          ]
+        }
+      },
+      "image_id": "sha256:8f48ca7e58fae8cdf769490d34f82761e2bc2ee1e1571db043997a82d50656dc",
+      "result": "passed",
+      "seconds": 42.52,
+      "log_sha256": "2d9c5d375f1710463f46c43feb2e86ec414ed69f60db8ef3c74e3bbb5c419869",
+      "pytest_results": [
+        "144 passed in 22.03s"
+      ]
+    }
+  ],
+  "qualified_files_sha256": {
+    "src/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+    "src/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+    "src/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+    "src/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+    "src/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+    "src/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+    "src/oscmix_desk/discovery.py": "02dcf0575ccda9b532800c72728aefd050924b6c875f16359df8d50da0a54c40",
+    "src/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+    "src/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+    "src/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+    "src/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+    "src/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+    "src/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+    "src/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+    "src/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+    "src/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+    "src/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+    "src/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+    "src/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+    "src/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+    "src/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+    "src/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+    "src/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+    "src/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+    "src/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+    "src/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+    "src/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+    "src/oscmix_desk/routing.py": "0d739d6497d4e815abc5adb01d867233439a63ea16981d6989616744a3443478",
+    "src/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+    "src/oscmix_desk/session.py": "3a8936a00d8c6e88184db6edf72b203ed31e1ceeaf89cbd8f141b6bbb4ba12af",
+    "src/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+    "bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+    "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+    "scripts/build-package.py": "9ba5013de3d5166d26252468b60032ac0c018e15d3f53c4e5c1584324dffad83",
+    "scripts/build-release.py": "25064e838864df9eb1c68e0a600f58136a55ad20dccae11bfde370faee0bb929",
+    "scripts/install-payload.sh": "4ec50e3680717c6211903a36953573d6969b81f4dc0f27334e17756645c33ba2",
+    "scripts/install-preflight.py": "96e836cc9a50fa6ee4ffb9a1c6e7f55044211f223fe46317f32ca781c7674308",
+    "scripts/mutation-policy.py": "8e47a4cf419bd73269a58b1f3717ca307fee7e01494963992b9e9ac6aa2ea43e",
+    "scripts/package_formats.py": "879ddfb5b10638feeb3037b06d650b7701212ca765c4fcb453989774a88bcb71",
+    "scripts/qualify-distribution.py": "cc4246970ecea53ff26be82b6df2d514483c29d0be45692aec11b92533661f02",
+    "scripts/record-dump.py": "9764ff34f088caaa8b9552ae322862269adc99097de2e81cf80e317042e40da7",
+    "scripts/stage-install.sh": "116bf5c663a42b5a673d3b0eb7ea90c55c93ee0ba9344e4032b71d43f8fe2ba0",
+    "scripts/sweep-writes.py": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd",
+    "scripts/test-distribution.sh": "5aeedab3448e420d96e320fa12e1c4c7e545bd3e99c55d2f9bee3d94ea30b2c3",
+    "scripts/verify-hardware.py": "05db434cb003b251cf13e23a42ee8869fe7b08a4a0fcc1734c2c056a7f2f1101",
+    "scripts/verify-unit.sh": "dac71153da4a71487e335df5ef71dbdcdd326393440bd31cbe99cb5676727ef1",
+    "packaging/00-oscmix-desk-maintenance.hook": "532043192bd145149a46b96bea58069940f01c717bdb8b9f0ef34ed190773b45",
+    "packaging/oscmix-desk.install": "892ebeff88787e6f7f310675c7d12355635a31809d2e75436cd1495f85b1c39e",
+    "packaging/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+    "packaging/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+    "install.sh": "d0572d5d68ff8db0c8a397b44188d803137b850e6908f9e979812ee986180c77",
+    "uninstall.sh": "07edd0572840dfdfa07dfc58aefc5b0328548c6b36ec6b02cf6c7a2606cda5ee",
+    "tests/package_lifecycle.py": "365f87deb50e8628f24f0633b413441e77bedc5ba63dff4c9e9f7ba2c227a9d5",
+    "tests/package_migration.py": "81c6d223507c956042504bceb4e801df4c48961d15ad0484b365ffa8e29abd25"
+  },
+  "full_check": {
+    "commit": "93a04e8ab0ae7456cf0f5522816c365b95223833",
+    "passed": 1702,
+    "skipped": 2,
+    "seconds": 159.32982459501363,
+    "lint": "Ruff, shellcheck, strict mypy and vulture passed"
+  },
+  "vm": {
+    "distribution": "Ubuntu 24.04",
+    "service_manager": "real systemd user manager",
+    "backend": "simulated, no USB/audio passthrough",
+    "checks": [
+      "explicit opt-in",
+      "READY=1",
+      "busy package replacement refused",
+      "0.7.0 source migration and return",
+      "PIN SIGHUP updates with same session PID",
+      "persistent maintenance fence survives real guest reboot",
+      "successful repair clears fence"
+    ],
+    "limits": [
+      "Ubuntu/AppArmor did not establish a separate mount namespace for the user service; unit directives alone are not proof of enforcement.",
+      "No real-manager, desktop or hardware claim for the other container distributions."
+    ]
+  },
+  "remaining": [
+    "Publish native packages from a qualified release commit with authenticated build provenance.",
+    "Optional GTK desktop packages, other architectures/init adapters and immutable systems are not qualified by these headless x86_64 checks."
+  ],
+  "previous_matrix": {
+    "note": "Retained development qualification before the final mono-route correction; source/VM provenance is not backdated. Installer/package code is unchanged by this correction.",
+    "results": [
+      {
+        "target": "alpine322",
+        "platform": "linux/amd64",
+        "base": "alpine:3.22",
+        "source_commit": "5d5d33562c74a74f785f03c6e2f96217b76671b1",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:8fa80a7ed0c4a4b80e3c986f981d1508827613359e1a1c799935f046455c855a",
+        "result": "passed",
+        "seconds": 39.12,
+        "base_image": {
+          "Id": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8",
+          "RepoDigests": [
+            "alpine@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-09-17T20:37:44.212246058Z"
+        },
+        "log_sha256": "5626ee33ed7e2179b7727521f36d8b59e379ec61d20300ecee41553b8bcdcbd8",
+        "pytest_results": [
+          "144 passed in 20.38s"
+        ]
+      },
+      {
+        "target": "arch",
+        "platform": "linux/amd64",
+        "base": "archlinux:base",
+        "source_commit": "5d5d33562c74a74f785f03c6e2f96217b76671b1",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:054cba0edcdc229407b2b33f08fa0bab351a5e1ffdc3a9125560a036a2d5ea7f",
+        "result": "passed",
+        "seconds": 38.09,
+        "base_image": {
+          "Id": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+          "RepoDigests": [
+            "archlinux@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-09-21T18:01:46.883591526Z"
+        },
+        "log_sha256": "bf167b95cb0e1bd87f98587a1648b6115a0be58cb4581f5c5750ebd77b5638a3",
+        "pytest_results": [
+          "144 passed in 20.77s"
+        ]
+      },
+      {
+        "target": "debian13",
+        "platform": "linux/amd64",
+        "base": "debian:13",
+        "source_commit": "5d5d33562c74a74f785f03c6e2f96217b76671b1",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:17fd1073615100664e5b19a9c57b4c8ae4f0ed6f32e41f28ab8a7f39358cfaf4",
+        "result": "passed",
+        "seconds": 33.74,
+        "base_image": {
+          "Id": "sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c",
+          "RepoDigests": [
+            "debian@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-09-18T00:00:00Z"
+        },
+        "log_sha256": "e68521a4f74311c8cfde9976b69e46ca934cae27794ed7fb67321b3ef21339da",
+        "pytest_results": [
+          "144 passed in 18.21s"
+        ]
+      },
+      {
+        "target": "fedora44",
+        "platform": "linux/amd64",
+        "base": "fedora:44",
+        "source_commit": "5d5d33562c74a74f785f03c6e2f96217b76671b1",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:3ff6da15a79bd41fdf0c905190a1ee9fff7ffba1c4a686dc0aae00904a3dbd40",
+        "result": "passed",
+        "seconds": 34.33,
+        "base_image": {
+          "Id": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+          "RepoDigests": [
+            "fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-08-26T18:36:01.077156536Z"
+        },
+        "log_sha256": "64b5bb4e140cf15b89ae57095ff7e13c6a2303b5df069f6037091240abd7b2ff",
+        "pytest_results": [
+          "144 passed in 19.14s"
+        ]
+      },
+      {
+        "target": "opensuse16",
+        "platform": "linux/amd64",
+        "base": "opensuse/leap:16.0",
+        "source_commit": "5d5d33562c74a74f785f03c6e2f96217b76671b1",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:e24b38c79513a05602578a70d4f8ccde4b5803a795228b5d92f1413325fa4c30",
+        "result": "passed",
+        "seconds": 35.07,
+        "base_image": {
+          "Id": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+          "RepoDigests": [
+            "opensuse/leap@sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-06-18T21:54:41Z"
+        },
+        "log_sha256": "53764fc6e8523525e1046ad8118e979160523ac558f45145ae00f6d76a83e84c",
+        "pytest_results": [
+          "144 passed in 19.24s"
+        ]
+      },
+      {
+        "target": "ubuntu2404",
+        "platform": "linux/amd64",
+        "base": "ubuntu:24.04",
+        "source_commit": "5d5d33562c74a74f785f03c6e2f96217b76671b1",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:3278be7c3443f7d3f1cd58764986ceac0d8b0ae6546f89552f1ee3ac3b5963bd",
+        "result": "passed",
+        "seconds": 34.83,
+        "base_image": {
+          "Id": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+          "RepoDigests": [
+            "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-09-11T11:44:06.579973371Z"
+        },
+        "log_sha256": "718114b135d62a89a6a0bb43bbb06f0c815d02da49b02c7708783776e51c6188",
+        "pytest_results": [
+          "144 passed in 18.30s"
+        ]
+      },
+      {
+        "target": "ubuntu2604",
+        "platform": "linux/amd64",
+        "base": "ubuntu:26.04",
+        "source_commit": "5d5d33562c74a74f785f03c6e2f96217b76671b1",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:ed678729f416fac3535ca91aeecb11c90cf1c98ed4cd54b65015148e3521285b",
+        "result": "passed",
+        "seconds": 35.33,
+        "base_image": {
+          "Id": "sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78",
+          "RepoDigests": [
+            "ubuntu@sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-09-12T10:24:38.361673881Z"
+        },
+        "log_sha256": "4d2bf2ecb850b8db8160d3a9c4c50c993c26f8591d7ee7281934b9e065829650",
+        "pytest_results": [
+          "144 passed in 19.81s"
+        ]
+      },
+      {
+        "target": "arch",
+        "platform": "linux/amd64",
+        "base": "archlinux:base",
+        "source_commit": "b62bffd35989edce89afc4e04669979965dd4165",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": true,
+        "development": true,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:322f403e7d36a06fbe18c5be5f4e22966eb608abb5a6256f9fc170214be4fac4",
+        "result": "passed",
+        "seconds": 22.1,
+        "base_image": {
+          "Id": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+          "RepoDigests": [
+            "archlinux@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-09-21T18:01:46.883591526Z"
+        },
+        "log_sha256": "ef34c53f203a6c5f5dbd8b685c3fcc816ad393c4de713be0331984ca86f4a5ff",
+        "pytest_results": [],
+        "migration": "actual 0.7.0 source -> installed native setup -> restored source, simulated user bus",
+        "artifacts": {
+          "SHA256SUMS-arch": "31575fac68ce5eda866354e6a03b05c7fc16fa1b01754c0079ba685b3e552363",
+          "oscmix-desk-0.7.1.dev-1-x86_64.pkg.tar.zst": "2c5095eed0ba2b9e6b64c73e9946b089e7ad3ef89d61eaa15851a6d20325f9de",
+          "oscmix-desk-0.7.1.dev-1-x86_64.pkg.tar.zst.PKGBUILD": "e8bc84bedbb0d3d011b763401ffc78bbaaab6d18f4e12133f8f148bd9f7a1b61",
+          "oscmix-desk-0.7.1.dev-1-x86_64.pkg.tar.zst.build.log": "be0a203e59104e1898ee47994fba317894a317ccc2f83ddd32a7bed8c38c6c75",
+          "oscmix-desk-0.7.1.dev-1-x86_64.pkg.tar.zst.json": "8b1f4b999a3ea30bf30df4f0bfd8b13358905e865095c355697f1853c27964f5"
+        }
+      },
+      {
+        "target": "fedora44",
+        "platform": "linux/amd64",
+        "base": "fedora:44",
+        "source_commit": "b62bffd35989edce89afc4e04669979965dd4165",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": true,
+        "development": true,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:9b20e00ee76f488603bd6f09799b935055473e86c3939598a17dd8dea0151e30",
+        "result": "passed",
+        "seconds": 20.4,
+        "base_image": {
+          "Id": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+          "RepoDigests": [
+            "fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-08-26T18:36:01.077156536Z"
+        },
+        "log_sha256": "c663225e0eee5d8a08076ae1ae0a6e9704d56109bda9472b136184a69f04e387",
+        "pytest_results": [],
+        "migration": "actual 0.7.0 source -> installed native setup -> restored source, simulated user bus",
+        "artifacts": {
+          "SHA256SUMS-fedora44": "6c45e70e84bbeec8da84a7614c37e7935d94579db77016bf7adef0db4baa3f48",
+          "oscmix-desk-0.7.1-0.dev.1.x86_64_fedora44.rpm": "6dc240102a0eb2d9444590025c36665ff9aeafd3206cc0e3e5ef3bb85d11cca3",
+          "oscmix-desk-0.7.1-0.dev.1.x86_64_fedora44.rpm.build.log": "be0a203e59104e1898ee47994fba317894a317ccc2f83ddd32a7bed8c38c6c75",
+          "oscmix-desk-0.7.1-0.dev.1.x86_64_fedora44.rpm.json": "f930c46eef30b87bedd5d6af39048f05e89421d39aa5ff9e976c355373d01ec1",
+          "oscmix-desk-0.7.1-0.dev.1.x86_64_fedora44.spec": "493b89bccfbeb2f16739d5abc85126e2e9c7689906e397fcde3496a976cedb82"
+        }
+      },
+      {
+        "target": "opensuse16",
+        "platform": "linux/amd64",
+        "base": "opensuse/leap:16.0",
+        "source_commit": "b62bffd35989edce89afc4e04669979965dd4165",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": true,
+        "development": true,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:09b59c554c2ec0ede369b3e17cf667738ab80434ef349cd9a1593b3885e14217",
+        "result": "passed",
+        "seconds": 18.92,
+        "base_image": {
+          "Id": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+          "RepoDigests": [
+            "opensuse/leap@sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-06-18T21:54:41Z"
+        },
+        "log_sha256": "2be554b15bba667994a5dd27d939c48b3e541f261150fdfc96373a245e2e2267",
+        "pytest_results": [],
+        "migration": "actual 0.7.0 source -> installed native setup -> restored source, simulated user bus",
+        "artifacts": {
+          "SHA256SUMS-opensuse16": "ab639cbc8fd08e5575a8fb018a72b3329f6654d1766ce9ea7e1f2f530a04ebc9",
+          "oscmix-desk-0.7.1-0.dev.1.x86_64_opensuse-leap16.0.rpm": "1604093ff6050b18972104ff3162ee8cc4b232a61993260e7c0ba751dd254257",
+          "oscmix-desk-0.7.1-0.dev.1.x86_64_opensuse-leap16.0.rpm.build.log": "be0a203e59104e1898ee47994fba317894a317ccc2f83ddd32a7bed8c38c6c75",
+          "oscmix-desk-0.7.1-0.dev.1.x86_64_opensuse-leap16.0.rpm.json": "2d43991176c0257dfca1ac76e82af3d7a64f68d6a9b170fdd3b591d5ef2b9041",
+          "oscmix-desk-0.7.1-0.dev.1.x86_64_opensuse-leap16.0.spec": "493b89bccfbeb2f16739d5abc85126e2e9c7689906e397fcde3496a976cedb82"
+        }
+      },
+      {
+        "target": "ubuntu2404",
+        "platform": "linux/amd64",
+        "base": "ubuntu:24.04",
+        "source_commit": "b62bffd35989edce89afc4e04669979965dd4165",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": true,
+        "development": true,
+        "hardware": false,
+        "service_manager": false,
+        "image_id": "sha256:d5fde922d390e9778f2bf6f2839560fbc8120970986fd81536cedcef0121bcb1",
+        "result": "passed",
+        "seconds": 21.34,
+        "base_image": {
+          "Id": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+          "RepoDigests": [
+            "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3"
+          ],
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Created": "2026-09-11T11:44:06.579973371Z"
+        },
+        "log_sha256": "638bbb289bd787ad154e5c34469cf3b02073d403b59910d2ede3b2ae81ffe5a6",
+        "pytest_results": [],
+        "migration": "actual 0.7.0 source -> installed native setup -> restored source, simulated user bus",
+        "artifacts": {
+          "SHA256SUMS-ubuntu2404": "dd295ca22fd1cd9f2bdbb15b9cff979ce7e641bfafee355b13e603b1fcb6bf60",
+          "oscmix-desk_0.7.1~dev-1_amd64_ubuntu24.04.deb": "b9a9a1a50991b15874b61ebfaed41322cd6b812e00d86dbc6e9e5bc6effb2c71",
+          "oscmix-desk_0.7.1~dev-1_amd64_ubuntu24.04.deb.build.log": "be0a203e59104e1898ee47994fba317894a317ccc2f83ddd32a7bed8c38c6c75",
+          "oscmix-desk_0.7.1~dev-1_amd64_ubuntu24.04.deb.json": "c2caf23a3abfb54c2eb3981eb11c9317b6ddd0687f946d02e6373ea925381772"
+        }
+      }
+    ],
+    "full_check": {
+      "passed": 1678,
+      "skipped": 2,
+      "seconds": 127.08,
+      "lint": "Ruff, shellcheck, strict mypy and vulture passed"
+    },
+    "qualified_files_sha256": {
+      "src/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+      "src/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+      "src/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+      "src/oscmix_desk/config.py": "4837963317667685c08799fff797ee22cb080f4d72e0a45536a193b31161c7b4",
+      "src/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+      "src/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+      "src/oscmix_desk/discovery.py": "02dcf0575ccda9b532800c72728aefd050924b6c875f16359df8d50da0a54c40",
+      "src/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+      "src/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+      "src/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+      "src/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+      "src/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+      "src/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+      "src/oscmix_desk/model.py": "386438e710a8bf6b602cdddc8823e06e2473af23c9b52506d2470ee86a8dbbce",
+      "src/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+      "src/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+      "src/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+      "src/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+      "src/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+      "src/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+      "src/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+      "src/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+      "src/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+      "src/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+      "src/oscmix_desk/reconcile.py": "ef5042b7753b781327db56c9f8fe1962ce0d810b637df3c38d3c9e575825cb2c",
+      "src/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+      "src/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+      "src/oscmix_desk/routing.py": "0d739d6497d4e815abc5adb01d867233439a63ea16981d6989616744a3443478",
+      "src/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+      "src/oscmix_desk/session.py": "3a8936a00d8c6e88184db6edf72b203ed31e1ceeaf89cbd8f141b6bbb4ba12af",
+      "src/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+      "bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+      "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+      "scripts/build-package.py": "9ba5013de3d5166d26252468b60032ac0c018e15d3f53c4e5c1584324dffad83",
+      "scripts/build-release.py": "25064e838864df9eb1c68e0a600f58136a55ad20dccae11bfde370faee0bb929",
+      "scripts/install-payload.sh": "4ec50e3680717c6211903a36953573d6969b81f4dc0f27334e17756645c33ba2",
+      "scripts/install-preflight.py": "96e836cc9a50fa6ee4ffb9a1c6e7f55044211f223fe46317f32ca781c7674308",
+      "scripts/mutation-policy.py": "8e47a4cf419bd73269a58b1f3717ca307fee7e01494963992b9e9ac6aa2ea43e",
+      "scripts/package_formats.py": "879ddfb5b10638feeb3037b06d650b7701212ca765c4fcb453989774a88bcb71",
+      "scripts/qualify-distribution.py": "cc4246970ecea53ff26be82b6df2d514483c29d0be45692aec11b92533661f02",
+      "scripts/record-dump.py": "9764ff34f088caaa8b9552ae322862269adc99097de2e81cf80e317042e40da7",
+      "scripts/stage-install.sh": "116bf5c663a42b5a673d3b0eb7ea90c55c93ee0ba9344e4032b71d43f8fe2ba0",
+      "scripts/sweep-writes.py": "6220740fcf9690b3f0f43f3f9ecf292293ed68dd681ffda0080c4cc11521fe43",
+      "scripts/test-distribution.sh": "5aeedab3448e420d96e320fa12e1c4c7e545bd3e99c55d2f9bee3d94ea30b2c3",
+      "scripts/verify-hardware.py": "05db434cb003b251cf13e23a42ee8869fe7b08a4a0fcc1734c2c056a7f2f1101",
+      "scripts/verify-unit.sh": "dac71153da4a71487e335df5ef71dbdcdd326393440bd31cbe99cb5676727ef1",
+      "packaging/00-oscmix-desk-maintenance.hook": "532043192bd145149a46b96bea58069940f01c717bdb8b9f0ef34ed190773b45",
+      "packaging/oscmix-desk.install": "892ebeff88787e6f7f310675c7d12355635a31809d2e75436cd1495f85b1c39e",
+      "packaging/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+      "packaging/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+      "install.sh": "d0572d5d68ff8db0c8a397b44188d803137b850e6908f9e979812ee986180c77",
+      "uninstall.sh": "07edd0572840dfdfa07dfc58aefc5b0328548c6b36ec6b02cf6c7a2606cda5ee",
+      "tests/package_lifecycle.py": "365f87deb50e8628f24f0633b413441e77bedc5ba63dff4c9e9f7ba2c227a9d5",
+      "tests/package_migration.py": "81c6d223507c956042504bceb4e801df4c48961d15ad0484b365ffa8e29abd25"
+    }
+  },
+  "hardware_evidence": "The merged core at abd8594 was measured on the physical UCX II separately. The container and VM results here remain software-only.",
+  "publication_pipeline": {
+    "commit": "626f72a9f40e2f08087dd72747bb84677d398fbb",
+    "run": "https://github.com/relative23/oscmix-desk/actions/runs/35785269862",
+    "conclusion": "success",
+    "mode": "development candidate; no GitHub release created",
+    "source_targets_passed": 7,
+    "native_targets_passed": 4,
+    "collection": "The source job downloaded all four native artifacts, checked their producer SHA256SUMS and included them in a single attested candidate asset set.",
+    "qualification": "Reusable workflow call exercised on GitHub; package, installer and runtime content unchanged from the local matrix."
+  }
+}

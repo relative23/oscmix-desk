@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Exclude generated Python bytecode from release qualification's supporting
+  file fingerprints. Testing the package helpers under several Python
+  versions must not make unchanged installation sources appear different.
 - Read backend revision metadata only from its own Git directory. A
   broken nested checkout could previously report the containing desk
   repository's commit; an unborn checkout could report the word `HEAD`.
@@ -32,6 +35,22 @@
 
 Qualification and remaining physical measurements are tracked in the
 [roadmap](docs/ROADMAP.md). This section is development work, not a release.
+### Installation (not yet published)
+
+- Add a read-only installer preflight and manual foreground mode. Separate
+  a fresh file installation from explicit service activation; preserve an
+  existing service state during upgrades. Keep the standard-library core.
+- Stage source and native installations from a common payload. Build
+  distribution-specific DEB/RPM/Arch artifacts with the pinned backend,
+  checksums, file manifests and reproducible-build/lifecycle checks.
+- Add explicit native setup, source migration and recovery. Preserve user
+  desks and profiles, refuse changes while mixer processes run, and keep
+  automatic startup blocked across an interrupted update and reboot.
+- Qualify seven source targets and four native targets in the reusable CI
+  workflow. Test real user-service behavior and migration in an Ubuntu VM.
+  Containers and simulated backends do not qualify hardware on those OSes.
+- Keep native activation opt-in. New GUI and physical multi-device support
+  remain deferred. These changes are planned for 0.7.2; 0.7.1 remains unchanged.
 
 ## 0.7.1 -- 2026-09-23
 

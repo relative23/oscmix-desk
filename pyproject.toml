@@ -10,7 +10,8 @@ filterwarnings = ["error::pytest.PytestUnhandledThreadExceptionWarning"]
 [tool.ruff]
 # The runtime package plus the extension-less executables in bin/.
 include = ["src/**/*.py", "tests/**/*.py", "scripts/**/*.py",
-           "bin/oscmix-session", "bin/oscmix-launch"]
+           "bin/oscmix-session", "bin/oscmix-launch",
+           "packaging/oscmix-setup", "packaging/package-guard"]
 # mutants/ holds machine-rewritten copies of the source; linting them
 # measures the mutation engine, not this project.
 extend-exclude = ["mutants", "build"]
