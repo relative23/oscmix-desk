@@ -441,6 +441,13 @@ def built_backend_revision(repo_root: Path) -> Optional[str]:
     build = repo_root / "build" / "oscmix"
     if not (build / ".git").exists():
         return None
-    result = subprocess.run(["git", "-C", str(build), "rev-parse", "HEAD"],
-                            capture_output=True, text=True, check=False)
-    return result.stdout.strip() or None
+    # Without an explicit git-dir, a broken nested checkout makes Git
+    # walk upwards and report oscmix-desk's own revision as the backend's.
+    result = subprocess.run(
+        ["git", "-C", str(build), "--git-dir=.git", "rev-parse",
+         "--verify", "HEAD^{commit}"],
+        capture_output=True, text=True, check=False)
+    revision = result.stdout.strip()
+    if result.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", revision):
+        return None
+    return revision

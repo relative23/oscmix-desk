@@ -114,10 +114,48 @@ def test_a_broken_checkout_answers_none_not_an_exception(tmp_path):
     a half-cloned or corrupted build directory should degrade to
     "revision unknown" in the artifact, not abort the measurement.
     """
+    import subprocess
+
     from oscmix_desk.discovery import built_backend_revision
 
+    # A nested invalid checkout must not fall back to the containing
+    # oscmix-desk repository and attribute its HEAD to the backend.
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "-c", "user.email=t@t",
+                    "-c", "user.name=t", "commit", "-q", "--allow-empty",
+                    "-m", "containing desk repository"], check=True)
     (tmp_path / "build" / "oscmix" / ".git").mkdir(parents=True)
     assert built_backend_revision(tmp_path) is None
+
+
+def test_an_unborn_backend_checkout_has_no_revision(tmp_path):
+    import subprocess
+
+    from oscmix_desk.discovery import built_backend_revision
+
+    build = tmp_path / "build" / "oscmix"
+    build.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(build)], check=True)
+    assert built_backend_revision(tmp_path) is None
+
+
+def test_backend_revision_accepts_a_linked_worktree(tmp_path):
+    import subprocess
+
+    from oscmix_desk.discovery import built_backend_revision
+
+    source = tmp_path / "source"
+    subprocess.run(["git", "init", "-q", str(source)], check=True)
+    subprocess.run(["git", "-C", str(source), "-c", "user.email=t@t",
+                    "-c", "user.name=t", "commit", "-q", "--allow-empty",
+                    "-m", "backend"], check=True)
+    expected = subprocess.run(["git", "-C", str(source), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+    build = tmp_path / "build" / "oscmix"
+    subprocess.run(["git", "-C", str(source), "worktree", "add", "--detach",
+                    str(build)], capture_output=True, check=True)
+    assert (build / ".git").is_file()
+    assert built_backend_revision(tmp_path) == expected
 
 
 def test_device_serials_lists_every_box(tmp_path):

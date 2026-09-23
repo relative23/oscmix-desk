@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- Read backend revision metadata only from its own Git directory. A
+  broken nested checkout could previously report the containing desk
+  repository's commit; an unborn checkout could report the word `HEAD`.
+  Both now report an unknown revision, while linked worktrees still work.
+- Refuse incomplete mutation runs even when their partial score passes.
+  The policy now requires every generated mutant to have a completed
+  outcome and rejects skipped/interrupted/error outcomes and stale exports.
+  An interrupted local run exposed the previous false success.
 - Preserve each measured peak in the hardware evidence report independently.
   A right-tone peak of exactly 0 dBFS or a missing right-tone report could
   replace the even output's recorded left-tone value with 0 or null. The

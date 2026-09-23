@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Compare a mutation run against the recorded baseline.
 
-Fails when the *ratio* killed / (killed + survived) falls below
+Requires a fresh, complete result before judging its score. Fails when
+the *ratio* killed / (killed + survived) falls below
 min_score - tolerance. Absolute counts are deliberately not gated:
 every line added brings its own mutants, so a healthy change with good
 tests would trip a count-based rule. quality/mutation-baseline.json
@@ -38,16 +39,32 @@ def current_counts() -> dict:
     # PYTHON=.venv/bin/python` mutates 4885 mutants over an hour and
     # then dies here with FileNotFoundError, because the venv's bin is
     # not on PATH. CI hid it by activating the venv.
-    subprocess.run([sys.executable, "-m", "mutmut", "export-cicd-stats"],
-                   capture_output=True, text=True, check=False)
-    if not STATS.is_file():
+    # A failed export (including mutmut finding no metadata) must not
+    # reuse the JSON from an earlier run.
+    STATS.unlink(missing_ok=True)
+    exported = subprocess.run(
+        [sys.executable, "-m", "mutmut", "export-cicd-stats"],
+        capture_output=True, text=True, check=False)
+    if exported.returncode != 0 or not STATS.is_file():
         return {}
-    raw = json.loads(STATS.read_text())
+    try:
+        raw = json.loads(STATS.read_text())
+    except (OSError, ValueError):
+        return {}
+    fields = ("total", "killed", "survived", "no_tests", "timeout",
+              "skipped", "suspicious", "check_was_interrupted_by_user",
+              "segfault")
+    if not isinstance(raw, dict) or any(
+            type(raw.get(name)) is not int or raw[name] < 0
+            for name in fields):
+        return {}
     return {
-        "killed": raw.get("killed", 0),
-        "survived": raw.get("survived", 0),
-        "not_covered": raw.get("no_tests", 0),
-        "timeout": raw.get("timeout", 0),
+        "total": raw["total"],
+        "killed": raw["killed"],
+        "survived": raw["survived"],
+        "not_covered": raw["no_tests"],
+        "timeout": raw["timeout"],
+        "unresolved": sum(raw[name] for name in fields[5:]),
     }
 
 
@@ -55,7 +72,16 @@ def main() -> int:
     baseline = json.loads(BASELINE.read_text())
     counts = current_counts()
     if not any(counts.values()):
-        print("mutation-policy: no results found -- run `mutmut run` first",
+        print("mutation-policy: no fresh valid results -- run `mutmut run` first",
+              file=sys.stderr)
+        return 2
+
+    completed = sum(counts[name] for name in
+                    ("killed", "survived", "not_covered", "timeout"))
+    if completed != counts["total"] or counts["unresolved"]:
+        print("mutation-policy: incomplete or unresolved run: %d of %d "
+              "mutants completed; %d unresolved"
+              % (completed, counts["total"], counts["unresolved"]),
               file=sys.stderr)
         return 2
 
