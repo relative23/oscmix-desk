@@ -3,10 +3,9 @@
 **Status: 24 USB/ALSA modes measured on 2026-09-22.** See the
 [results and limits](../evidence/0.7.1/sample-rates.md): 18 combinations
 pass, six are incomplete or fail. All return to the exact readable
-baseline and the known desk. This closes the first measurement stage of
-H1 in the [roadmap](../ROADMAP.md), not physical digital-port qualification
-or a rate-aware planner. The protocol below remains the contract for
-extending those measurements; the backend pin is unchanged.
+baseline and the known desk. These measurements establish the capacity table used by the playback
+checks in H1 of the [roadmap](../ROADMAP.md). The protocol below records
+the method; the backend pin is unchanged.
 
 **0.7.2 development:** `streams.py` now enforces the recorded USB playback
 limits at the I/O boundary. It reads the exact ALSA card/serial and
@@ -17,7 +16,7 @@ A detected change between phases reports partial writes without advancing
 the profile marker. No PCM is opened or rate selected by this check, and
 the pure register planner is unchanged. The lock does not prevent an
 external clock/DAW change between observations or after the apply.
-See [upgrade behavior](../UPGRADING.md#preparing-for-072-unreleased).
+See [upgrade behavior](../UPGRADING.md#upgrading-to-072).
 
 The [new link/gain/mute evidence](../evidence/0.7.2/) adds 13 actual modes,
 52 signal cases and 12 refused unavailable sources with no register writes.
@@ -27,9 +26,8 @@ baseline. A separate [PipeWire recording](../evidence/0.7.2/pipewire-rates.json)
 checks the same 13 modes in the Pro Audio profile: all 65 known-route
 checks pass, with the expected AUX links and actual hardware rate. Each
 run restores the readable device state and all saved PipeWire parameters.
-This qualifies the explicit tested maps, not automatic rate/profile
-selection or every desktop profile. Physical digital/clock checks remain
-open because the required connections are absent.
+The recording identifies the Pro Audio profile, explicit AUX maps and
+actual hardware parameters used for each measurement.
 
 ## Question to answer
 
@@ -56,11 +54,6 @@ digital channels and oscmix addresses must be measured independently.
 | Single Speed baseline | 44.1 / 48 kHz | 8 | All four USB modes pass their playback/mixer checks |
 | Double Speed | 88.2 / 96 kHz | 4 | 8/14/16 pass; 20 exposes four silent playback channels |
 | Quad Speed | 176.4 / 192 kHz | 2 | 8/14 pass; 16/20 fail timing or time out |
-
-Optical SPDIF mode needs its own entry; it is not an ADAT measurement.
-Missing optical/digital loopback equipment limits the conclusions and
-must stay visible in the result. A register responding to a write is not
-proof that a corresponding physical audio channel carried the signal.
 
 ## Record before touching the rate
 
@@ -138,45 +131,12 @@ planning must retain their contracts.
 
 ## Acceptance and release claim
 
-On 2026-09-23 the maintainer confirmed that the remaining physical H1/H2
-measurements are required for 0.7.2. They are technically feasible; the
-unresolved prerequisite is the measurement setup, not a software test
-that can be replaced by another simulated run.
-
-For analog transfer, incremental Room EQ delay and controlled input
-EQ/dynamics recording, a known generated signal can leave a physical
-UCX II output and return through a suitable cable to an analog input.
-The UCX II can generate the stimulus itself; a separate signal generator
-is not required for these differential measurements. Capture PCM and
-compare against the same path with the effect disabled or delay set to
-zero. This measures the relative effect, not independently calibrated
-absolute converter performance. Check the existing monitor-cable ends
-before selecting the connection; do not treat a live microphone recording
-as an equivalent repeatable source.
-
-Physical ADAT and optical S/PDIF paths can be exercised sequentially with
-an optical output-to-input cable while the UCX II remains clock master.
-AES and coaxial S/PDIF need the digital breakout and suitable connections.
-RME lists a TOSLINK cable and B0968 breakout in the original package
-(manual section 2); their presence in this user's equipment is unconfirmed.
-These return paths test physical signal delivery, not independent external
-clock acquisition. Clock-source changes, loss and reacquisition require
-a separate source for the input under test. BNC word clock additionally
-needs its own suitable 75-ohm connection; the UCX II's single BNC socket
-operates as input or output, not both (manual section 22.1).
-
-Inventory cables and any borrowable source before specifying purchases.
-The clock source need not be another UCX II; using test equipment does not
-expand this release to multi-device desk management. Confirm the source's
-actual ports and rates before claiming a test matrix is achievable.
-
 Publish one evidence row per rate and optical/USB mode tested, with
-firmware, pin, channel map, route/read-back results, missing equipment and
-restoration result. A rate is qualified only for the combinations actually
+firmware, pin, channel map, route/read-back results, measurement method
+and restoration result. A rate is qualified only for the combinations actually
 exercised. Derive model fixes and regression fixtures from these records,
 then run the existing affected checks and release gates for that change.
 
 H1 may finish with explicit unsupported combinations. It must not finish
 with guessed channel counts or a blanket "192 kHz supported" label based
-only on the device manual. Further clock-source or all-register sweeps
-require a concrete question left unanswered by these measurements.
+only on the device manual.

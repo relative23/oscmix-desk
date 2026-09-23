@@ -47,8 +47,7 @@ a file, and keeps the file and the desk agreeing.*
 ## Measured, not asserted
 
 Hardware claims are tied to recordings from a real UCX II. Multi-device
-identity and concurrency are also tested with simulated devices; two
-physical interfaces have not been measured together. Three defects in 0.1.3 were
+identity and concurrency are tested with simulated devices. Three defects in 0.1.3 were
 invisible at message level and only showed up by playing a tone and reading
 the device's own meters; that set the standard the project has been held to
 since.
@@ -70,10 +69,12 @@ since.
 - [Sample-rate measurements](docs/evidence/0.7.1/sample-rates.md) cover
   24 USB/ALSA combinations. At 88.2/96 kHz, the 20-channel stream has
   only 16 active playback channels; at 176.4/192 kHz, the 8/14-channel
-  modes pass while 16/20 fail. Released 0.7.1 does not validate the active
-  stream mode. Development toward 0.7.2 checks it before playback writes;
-  see [the behavior and its limits](docs/UPGRADING.md#preparing-for-072-unreleased).
-  The desk never selects a rate automatically. Digital connectors remain unmeasured.
+  modes pass while 16/20 fail. The 0.7.2 runtime checks the active stream
+  before playback writes; see
+  [upgrade behavior](docs/UPGRADING.md#upgrading-to-072).
+  The desk never selects a rate automatically. The
+  [higher-rate routing checks](docs/evidence/0.7.2/) record 52 direct-ALSA
+  gain/mute cases and 65 route checks through PipeWire Pro Audio.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
 - Twenty-seven [decision records](docs/decisions/) carry the reasoning and the

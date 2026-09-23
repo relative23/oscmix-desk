@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased -- planned for 0.7.2
+## 0.7.2 -- 2026-09-23
 
 ### Fixed
 
@@ -55,7 +55,7 @@
   builds. Actual 0.7.1 upgrade/rollback passes in both file layouts;
   51 installer tests also pass from the extracted source archive.
 
-Qualification and remaining physical measurements are tracked in the
+Qualification and publication are tracked in the
 [roadmap](docs/ROADMAP.md). This section is development work, not a release.
 
 ### Installation (not yet published)

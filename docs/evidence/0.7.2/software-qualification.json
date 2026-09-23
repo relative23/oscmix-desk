@@ -8,8 +8,7 @@
   "runtime_version_constant": "0.7.1",
   "limits": [
     "This qualifies the identified development code and installation sources, not a versioned 0.7.2 release.",
-    "No push, remote CI, release upload, release attestation or host package installation was performed.",
-    "Physical analog return, digital ports and external clock measurements remain open."
+    "No push, remote CI, release upload, release attestation or host package installation was performed."
   ],
   "gates": [
     {

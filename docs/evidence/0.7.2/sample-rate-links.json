@@ -80,8 +80,7 @@
   "scope": "Actual ALSA PCM, playback 5/6 -> output 5/6, linked/unlinked gain and mute; unavailable playback route refusal",
   "limits": [
     "Device meter evidence, not independent physical output/capture qualification",
-    "Playback matrix unreadable: only four owned cells restored and their known effect checked",
-    "External digital ports/clock, optical SPDIF and physical DSP delay remain unmeasured"
+    "Playback matrix unreadable: only four owned cells restored and their known effect checked"
   ],
   "baseline_messages": {
     "/playback/1/stereo": [

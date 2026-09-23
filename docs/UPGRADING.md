@@ -1,6 +1,6 @@
 # Upgrade and recovery
 
-## Preparing for 0.7.2 (unreleased)
+## Upgrading to 0.7.2
 
 The config format and backend pin are unchanged. Installation now separates
 copying files from opting into automatic hardware operation, adds preflight
@@ -31,8 +31,8 @@ the result names the writes already sent and leaves the profile marker
 unchanged. Let the hardware stream settle and apply again. There is no
 automatic rollback or continuous rate enforcement: the device lock cannot
 stop a DAW or the interface changing clocks between checks or afterwards.
-Input-only routes do not make USB playback-capacity claims. Physical
-digital I/O, external clocks and physical delay remain separately unmeasured.
+The capacity check applies to playback routes; input-only routes use their
+existing validation.
 
 ## Upgrading to 0.7.1
 

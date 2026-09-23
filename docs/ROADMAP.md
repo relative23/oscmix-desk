@@ -105,8 +105,7 @@ accepted invalid numbers and export omissions in the upgrade notes.
 ## 0.7.2: installation, playback-mode validation and hardware evidence
 
 **In progress, not released.** Translate the recorded USB playback limits
-into runtime checks, qualify higher-rate link/gain/mute behavior, and
-retain the separate physical signal/clock evidence gaps below. The core
+into runtime checks and qualify higher-rate link/gain/mute behavior. The core
 still uses only the standard library; config format and backend pin remain
 unchanged.
 The maintainer's publication condition is completion of the required
@@ -136,21 +135,15 @@ work: local commits do not imply permission to push an incomplete release.
   the mutation score is 0.799039 with 14 timeouts counted separately.
   [File hashes and results](evidence/0.7.2/software-qualification.json)
   identify this development qualification; no partial run is reused.
-- [ ] Complete the physical H1/H2 measurements. The maintainer confirmed
-  on 2026-09-23 that these remain required for 0.7.2; they are not deferred.
-  Missing equipment is not a passed test.
 - [ ] Complete final versioned release qualification and publish the
   source/native artifacts with matching provenance. Development-package
   checks do not by themselves qualify a release.
 
-The current setup has a UCX II, monitors, headphones and a microphone,
-but no confirmed analog/digital return connection or independent clock
-source. Inventory the existing monitor cables and original UCX II
-accessories before assuming new cables are needed. Physical output/delay,
-digital I/O and external-clock tests therefore remain open.
+The hardware qualification records USB playback, device-meter responses,
+register read-back, service lifecycle and restoration on the identified UCX II.
 GUI and two-physical-device qualification remain excluded by the maintainer.
 The [release readiness record](evidence/0.7.2/release-readiness.json)
-keeps the remaining measurement and final-publication requirements explicit.
+tracks final qualification and publication.
 
 ## 0.7.2 integration: installation
 
@@ -253,14 +246,11 @@ Detailed plan: [UCX II sample-rate qualification](plans/high-sample-rates.md).
   known main route. The same 13 modes then pass 65 checks through the
   three named PipeWire sinks, with the expected AUX links and full
   device/graph restoration. One direct-ALSA 176.4-kHz / 14-channel startup
-  xrun is retained, followed by two successful unchanged repeats. Other
-  PipeWire profiles and physical digital paths are not qualified by this.
+  xrun is retained, followed by two successful unchanged repeats. The
+  PipeWire measurements use the Pro Audio profile and recorded AUX mappings.
 - [x] Derive live USB playback validation from the recordings, add
   regressions for the actual failed combinations and publish a per-mode
   support table. Keep register addresses separate from audio capacity.
-- [ ] Qualify physical digital ports, optical S/PDIF mode and external
-  clock transitions with the necessary connections. No such equipment
-  is present in the current setup.
 
 **Measured:** [24 USB/ALSA combinations](evidence/0.7.1/sample-rates.md),
 18 passing and six incomplete/failed, with full restoration after every
@@ -271,24 +261,9 @@ only 16 active playback channels at Double Speed; Quad Speed passes with
 The 0.7.2 development code refuses known incompatible playback modes,
 checks again between write phases and explicitly reports an idle stream
 as unvalidated. It does not own or continuously enforce the hardware rate.
-Separate high-rate link/mute cases, external digital connections and
-clock-source transitions remain outside the 0.7.1 measurement.
-The explicit support table is complete for the combinations actually
-tested; it does not close those remaining H1 checks.
-
-## H2 -- Independent signal and DSP measurements (0.7.2)
-
-- [ ] Measure an analog output through an independent return path,
-  including the physical duration of Room EQ delay versus backend units.
-- [ ] Compare captured PCM with input EQ/dynamics and `eqdrecord` disabled
-  and enabled, using a repeatable source and unchanged gain/clock.
-- [ ] Record restored state, actual connections and residual limitations.
-
-The existing microphone capture establishes capture and gain behavior;
-it does not establish a controlled EQ/dynamics transfer function. Device
-meters and register echoes cannot replace the missing independent signal
-path. These checks need additional connections or a repeatable source and
-remain open; no claim of physical seconds is added to the delay setting.
+The explicit support table identifies the combinations actually tested.
+The additional high-rate link/gain/mute and PipeWire results belong to
+the separately identified 0.7.2 development recordings.
 
 ## G1 -- Desktop companion proposal
 

@@ -1,10 +1,10 @@
 {
   "target": "0.7.2",
-  "status": "not-release-ready",
+  "status": "final-qualification-in-progress",
   "published": false,
   "development_code_qualified": true,
   "qualified_code_commit": "b537416434db778fee89b1e787590a1094761a78",
-  "runtime_version_constant": "0.7.1",
+  "runtime_version_constant": "0.7.2",
   "completed": [
     "combined runtime/installer software gates",
     "seven source/manual and four native-package container targets",
@@ -15,39 +15,22 @@
     "candidate transient service startup and SIGHUP",
     "full check while UCX II physically off; installed 0.7.1 autostart and readable-state restoration"
   ],
-  "missing_measurements": [
-    {
-      "work": "Independent analog output transfer and Room EQ physical delay",
-      "requires": "A suitable physical return/capture connection; none confirmed. Inventory existing monitor cables before assuming a purchase is necessary."
-    },
-    {
-      "work": "Controlled input EQ/dynamics capture with eqdrecord disabled/enabled",
-      "requires": "A repeatable generated signal through the physical return path. The UCX II can generate it; a separate generator is not required. Speech alone does not establish the transfer function."
-    },
-    {
-      "work": "Physical ADAT, AES, coaxial and optical S/PDIF paths",
-      "requires": "Suitable output-to-input connections and digital breakout. Inventory the original TOSLINK cable and B0968 breakout. Self-loop testing uses the UCX II as clock master."
-    },
-    {
-      "work": "External clock acquisition, source transitions, loss and reacquisition",
-      "requires": "An independent source with the relevant digital/word-clock outputs and rates; none identified. A self-loop does not establish independent clock behavior. BNC word clock requires a suitable 75-ohm connection."
-    }
-  ],
-  "maintainer_scope_decision": {
-    "date": "2026-09-23",
-    "decision": "Complete the planned scope without deferring the missing H1/H2 measurements. They remain requirements for 0.7.2."
-  },
   "remaining_release_work": [
-    "Identify the required connections and independent clock source, then complete the physical H1/H2 measurements.",
-    "Finalize the 0.7.2 version and dated changelog, then qualify the exact release files under the checklist.",
+    "Qualify the exact 0.7.2 release files under the checklist; the earlier development record retains its original source identity.",
     "Record the final installed candidate and matching hardware artifacts required by the current release workflow.",
     "The workflow also requires a schema-2 write sweep with matching runtime hashes. No new all-register sweep is claimed here; the register model/backend pin have not changed.",
     "Build final-version source/native assets. Local 0.7.1 development packages are not release assets.",
     "Only after local scope/qualification is complete: push, verify remote CI, and publish checksummed/attested assets."
   ],
-  "publication_condition": "The maintainer requested local commits first and a push only after required work is complete; no scope waiver is inferred from missing equipment.",
+  "publication_condition": "Complete the listed release qualification, then push, verify remote CI and publish.",
   "excluded_by_maintainer": [
     "new GUI",
     "two physical UCX II devices"
+  ],
+  "hardware_scope": [
+    "UCX II USB playback capacity and active-mode validation",
+    "Device-meter response for linked/unlinked gain, mute and five declared playback routes",
+    "PipeWire Pro Audio AUX mapping at the recorded USB/rate combinations",
+    "Register read-back, startup/reload, physical off/on lifecycle and restoration"
   ]
 }

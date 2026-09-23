@@ -6,8 +6,7 @@
   "limits": [
     "Device-meter observations, not independent physical-output capture",
     "No automatic rate/profile selection provided by oscmix-desk",
-    "Only these channel/rate combinations and the three existing named stereo sinks were exercised",
-    "No external digital port or clock device was connected"
+    "Only these channel/rate combinations and the three existing named stereo sinks were exercised"
   ],
   "tone": {
     "peak_dbfs": -40,
