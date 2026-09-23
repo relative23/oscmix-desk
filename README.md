@@ -92,8 +92,8 @@ you get silence.
 
 oscmix-desk makes the state predictable: every time the device is
 plugged in or the machine boots, the routing you declared in a small config
-file is applied to the hardware mixer. Zero-latency hardware routing,
-independent of the audio server.
+file is applied to the hardware mixer. Hardware direct monitoring works
+independently of the host audio server.
 
 ## Requirements
 
@@ -440,7 +440,7 @@ the bar `Device.supported` states in the data. Start with the
 ```sh
 pip install -r requirements-dev.txt
 
-make check            # everything CI enforces, fastest failure first
+make check            # lint, type checks, dead-code checks and tests
 make test             # pytest, no hardware needed
 make lint             # ruff + shellcheck + syntax check
 make typecheck        # mypy --strict over the runtime package
@@ -451,6 +451,10 @@ make soak             # restart cycles; the gate is the scheduled workflow
 make mutation         # do the assertions actually catch a wrong value?
 make verify-hardware  # measure the audio itself (needs a Fireface)
 ```
+
+Coverage, repeated-suite, soak and mutation checks are separate gates;
+`make check` does not run them. The [release checklist](docs/RELEASE-CHECKLIST.md)
+also requires the Python-version matrix, backend build and hardware checks.
 
 Install the dev requirements before trusting a green run. Without
 `hypothesis`, `tests/test_contracts.py` skips itself -- the suite says so
@@ -474,8 +478,9 @@ survived several consecutive green runs.
 
 A third runs nightly rather than per commit: `.github/workflows/soak.yml`
 restarts the session 200 times and checks the routing datagrams byte for
-byte every time. Every failure mode found in this project so far was a
-timing bug, and every one of them survived a green single run.
+byte every time. Timing defects have survived individual green runs.
+Numeric, export and validation defects also need independent semantic
+tests; repeating the suite alone does not establish correctness.
 
 The runtime itself has no Python dependencies -- `oscmix-session` uses only
 the standard library, so it runs before any package manager is involved.
