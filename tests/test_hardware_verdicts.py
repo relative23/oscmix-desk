@@ -118,6 +118,20 @@ def test_the_verdict_records_what_was_measured(harness):
     assert verdict["response_right_db"] == 124.0
 
 
+@pytest.mark.parametrize("right_peak", [0.0, None])
+def test_an_observed_peak_is_not_replaced_by_a_different_runs_zero_or_missing_value(
+        harness, right_peak):
+    right = {5: -144.0}
+    if right_peak is not None:
+        right[6] = right_peak
+    verdict = harness.check_route(
+        "monitors", (5, 6), left={5: -20.0, 6: -144.0},
+        right=right, silence=QUIET)
+    assert verdict["peaks_db"]["output_6"] == {
+        "left_tone": -144.0, "right_tone": right_peak, "silence": -144.0}
+    assert verdict["ok"] is (right_peak is not None)
+
+
 def test_tone_generation_puts_the_signal_on_one_side(harness, tmp_path):
     import struct
     import wave

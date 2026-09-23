@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Preserve each measured peak in the hardware evidence report independently.
+  A right-tone peak of exactly 0 dBFS or a missing right-tone report could
+  replace the even output's recorded left-tone value with 0 or null. The
+  verdict already used the original observations; the JSON now does too.
 - Check the active UCX II USB playback stream before writes, using its
   exact ALSA card/serial, alternate setting and hardware PCM parameters.
   Reject playback channels beyond the measured stream capacity and the
