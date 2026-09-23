@@ -40,13 +40,17 @@ release tag, and the tag path still requires fresh matching hardware evidence.
 
 ## Verify before installing
 
-After the release is published, download the archive, `SHA256SUMS`,
-`release-manifest.json` and `attestation.jsonl` from its GitHub release.
+After the release is published, download its assets into a new directory.
+`SHA256SUMS` covers the source archive, native packages, manifests and
+evidence, so the complete checksum check below needs all of those files.
 Use a GitHub CLI with `gh attestation verify` available (older distro
 versions may not provide it). Verify the expected repository, workflow
 and release tag, then the checksums:
 
 ```sh
+mkdir oscmix-desk-0.7.2-release
+cd oscmix-desk-0.7.2-release
+gh release download v0.7.2 --repo relative23/oscmix-desk
 gh attestation verify SHA256SUMS \
   --repo relative23/oscmix-desk \
   --signer-workflow relative23/oscmix-desk/.github/workflows/release.yml \

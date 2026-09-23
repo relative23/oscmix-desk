@@ -7,7 +7,7 @@ baseline and the known desk. These measurements establish the capacity table use
 checks in H1 of the [roadmap](../ROADMAP.md). The protocol below records
 the method; the backend pin is unchanged.
 
-**0.7.2 development:** `streams.py` now enforces the recorded USB playback
+**0.7.2 runtime:** `streams.py` enforces the recorded USB playback
 limits at the I/O boundary. It reads the exact ALSA card/serial and
 correlates two `stream0` observations with the active PCM's `hw_params`.
 Each nonempty write phase and verifier mix reapply is checked. Unknown

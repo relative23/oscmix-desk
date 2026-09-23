@@ -1,16 +1,16 @@
 # Installation across Linux distributions
 
-**Status: integrated locally for 0.7.2, 2026-09-23; not released.**
+**Status: installation qualification complete for 0.7.2, 2026-09-24;
+publication pending.**
 Target: UCX II across Linux distribution families. The common installer,
 manual mode, native packaging and migration helpers are implemented in
-separate development work and now share the 0.7.2 candidate. They are not published package
-releases or changes to the 0.7.1 installer. See the [roadmap](../ROADMAP.md)
-for completed checks and the [current instructions](../../README.md#install)
-for what users can install now.
+the final versioned candidate. See the [roadmap](../ROADMAP.md) for
+publication status and the [installation instructions](../INSTALLATION.md)
+for the 0.7.2 interfaces.
 
-The [combined development record](../evidence/0.7.2/installation.json)
+The [final installation record](../evidence/0.7.2/installation.json)
 repeats all eleven source/native container targets and source-archive
-upgrade/rollback checks. Final versioned artifacts and publication remain
+upgrade/rollback checks with version 0.7.2. Tagged publication remains
 pending; the earlier real-user-manager VM experiment keeps its original
 provenance in the [installation record](../evidence/installation/).
 
@@ -24,7 +24,7 @@ provide compatibility with every Linux distribution.
 
 | Route | Fit for oscmix-desk | Decision for this cycle |
 | --- | --- | --- |
-| Versioned archive + installer | Can deliver core, pinned C backend and host integration; currently needs build tools and systemd. | Common fallback; improve preflight, layout, service modes and recovery. |
+| Versioned archive + installer | Delivers core, pinned C backend and host integration; needs build tools. Manual mode works without systemd. | Common fallback with preflight, explicit activation and recovery. |
 | DEB / RPM / Arch recipe | Integrates dependency management, file ownership and normal OS upgrade/removal. Recipes and lifecycle tests cost maintenance. | Build on the same staging contract; publish only tested targets. |
 | `pip` / `pipx` | Suitable for a Python CLI/library; does not by itself provide the backend, udev rules, shared locks and service setup. | Not the primary whole-product installer. Revisit for a concrete Python-only consumer. |
 | Flatpak | Interesting for an optional desktop frontend; host integration still needs a separate solution. | Investigate after a stable local core boundary exists. |

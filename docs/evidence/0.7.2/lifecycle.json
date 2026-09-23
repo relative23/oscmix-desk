@@ -1,0 +1,120 @@
+{
+  "schema": 2,
+  "measured": "2026-09-23T22:42:02.945130+00:00",
+  "runtime_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
+  "installed_runtime_sha256": {
+    "profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+    "numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+    "verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+    "launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+    "streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+    "registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+    "outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+    "config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+    "discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+    "osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+    "reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+    "process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+    "pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+    "log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+    "reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+    "paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+    "sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+    "constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
+    "errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+    "model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+    "marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+    "backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+    "locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+    "session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+    "cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+    "dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+    "reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+    "routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+    "__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+    "notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+    "devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+    "notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893"
+  },
+  "installation": {
+    "from": "0.7.1",
+    "to": "0.7.2",
+    "method": "per-user source installer; --no-build --no-udev",
+    "backup_created": true,
+    "config_preserved": true,
+    "system_files_preserved": true,
+    "ready": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3098478",
+      "StatusText": "running; verifier finished at 00:16:32",
+      "Result": "success",
+      "ExecMainStatus": "0"
+    },
+    "sighup": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "MainPID": "3098478",
+      "StatusText": "running; reconciled at 00:16:41",
+      "Result": "success",
+      "ExecMainStatus": "0"
+    },
+    "same_pid_after_sighup": true,
+    "readable_messages_after_each": 2252,
+    "changed_paths": []
+  },
+  "physical_disconnect": {
+    "no_interface_check": {
+      "gate": "no-interface-check",
+      "exit": 0,
+      "seconds": 164.99,
+      "usb_devices_before": [],
+      "usb_devices_after": [],
+      "observations_every_half_second": 329,
+      "observed_present": [],
+      "ok": true,
+      "candidate": "e9ad292475c55c9bb965fc933191e13b30c4dcab"
+    },
+    "passed": 1798,
+    "skipped": 2,
+    "log_sha256": "8b6c3877283bda5356c099f61b4cd0d1b59f2d66331e02165b5cf16e392dfc8e",
+    "absence_observation": "USB identity checked every half second throughout make check"
+  },
+  "physical_reconnect": {
+    "automatic_start": true,
+    "manual_service_start": false,
+    "service": {
+      "ActiveState": "active",
+      "SubState": "running",
+      "UnitFileState": "enabled",
+      "ActiveEnterTimestamp": "Thu 2026-09-24 00:41:33 CEST",
+      "MainPID": "3217233",
+      "StatusText": "running; verifier finished at 00:41:34",
+      "Result": "success",
+      "ExecMainStatus": "0"
+    },
+    "backend": {
+      "pid": 3217305,
+      "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+      "matches_local_build": true
+    },
+    "complete_refreshes": 2,
+    "readable_state_paths": 2252,
+    "changed_paths": [],
+    "test_tones_after_replug": false
+  },
+  "restoration": {
+    "original_rate_hz": 48000,
+    "phantom_1_2": false,
+    "input_1_gain_db": 0,
+    "user_configuration_preserved": true,
+    "final_five_route_meter_check": true,
+    "full_state_reference": "write-sweep-ucx2.json#/after_messages",
+    "before_snapshot_sha256": "a96bdad55f97a7dbaca3d9f657446996d260eb5476d22a9df34d1fd66209a405",
+    "after_tests_snapshot_sha256": "865751adb970458448fe20bbf5e30dc9878eb13cfaaf7b309fa1c1efb79ecf52",
+    "after_reconnect_snapshot_sha256": "5297653d2c19587f863410977fb60d32abc181bc670441d024fdc24d359c1b78"
+  },
+  "ok": true
+}

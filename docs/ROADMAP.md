@@ -1,6 +1,6 @@
 # Roadmap
 
-Current plan after **0.7.1**, updated 2026-09-23. The correctness patch has
+Current plan for **0.7.2**, updated 2026-09-24. The 0.7.1 correctness patch has
 completed software and UCX II qualification, including corrected mono
 routing, numeric comparisons, export and measurement restoration.
 The desktop companion is deferred by the maintainer.
@@ -122,13 +122,17 @@ work: local commits do not imply permission to push an incomplete release.
 - [x] Check the same 13 modes through PipeWire Pro Audio: 65 known-route
   checks, actual hardware rates and AUX mapping, with device and graph
   state restored after every mode.
-- [x] Exercise candidate service startup and SIGHUP on the UCX II; repeat
-  the full suite with the interface physically off on the combined
-  installation candidate, and verify the installed service's autostart
-  and original readable state after power-on.
+- [x] Upgrade the actual installation from 0.7.1 to 0.7.2 and exercise
+  startup and SIGHUP on the UCX II. The final candidate passes all 1,798
+  tests with the interface physically off; after power-on the installed
+  0.7.2 service starts automatically and all 2,252 readable messages match
+  the original state. See the [lifecycle record](evidence/0.7.2/lifecycle.json).
+- [x] Repeat the register sweep and five declared routes on the final
+  runtime: 1,888 confirmed entries, 14 protected skips, five passing routes
+  and exact restoration of all readable messages.
 - [x] Integrate the source/manual installer and native packaging; repeat
   all eleven distribution targets and the actual 0.7.1 upgrade/rollback
-  on the combined development candidate.
+  on the final versioned candidate.
 - [x] Complete fresh software qualification on that combined candidate:
   1,798 tests, Python 3.9–3.14, five full repeats, the 200-cycle soak,
   fifteen fault-suite repeats and all 8,752 mutants. Coverage is 97.61%;
@@ -171,7 +175,7 @@ I2 builds on I1's layout and ownership rules, not a second installer.
 ### I1 / I2 -- Installation comfort
 
 Usage: [installation and recovery](INSTALLATION.md).
-Qualification: [combined 0.7.2 development matrix](evidence/0.7.2/installation.json)
+Qualification: [final 0.7.2 installation matrix](evidence/0.7.2/installation.json)
 and [earlier installation/VM records](evidence/installation/).
 Design decisions: [installation across Linux distributions](plans/installation.md).
 
@@ -214,13 +218,13 @@ user-manager VM check. Package publication remains before I2 closes.
 
 The original separately qualified implementation and its software matrix are on
 [`feature/portable-install`](https://github.com/relative23/oscmix-desk/tree/feature/portable-install).
-It was not part of the 0.7.1 correctness release. Combined candidate
-`b537416` repeats all eleven container targets on 2026-09-23, with the
-current runtime. Its source archive builds identically twice, 51 installer
-checks pass from the extracted archive, and actual 0.7.1 upgrade/rollback
-passes in both file layouts. The earlier real-user-manager VM experiment
-was not repeated in this run. Package version strings still identify
-0.7.1 development builds; these are not publishable 0.7.2 assets.
+It was not part of the 0.7.1 correctness release. Final candidate
+`e9ad292` repeats all eleven container targets with version 0.7.2.
+Its source archive builds identically twice, 51 installer checks pass
+from the extracted archive, and actual 0.7.1 upgrade/rollback passes in
+both file layouts. The earlier real-user-manager VM experiment retains
+its original source identity. The native artifacts carry version 0.7.2;
+tagged publication remains the final I2 step.
 
 **Packaging direction:** native packages where tested, a common source
 installer elsewhere. `pip`/`pipx` alone do not install the complete host

@@ -55,7 +55,7 @@ since.
 - **1888 sweep entries confirmed; 14 deliberately skipped.** The sweep
   covers 1902 settable entries, skips reference-level changes (ADR 0016),
   and records per-register verdicts in
-  [the corrected 0.7.1 sweep](docs/evidence/0.7.1/write-sweep-ucx2.json).
+  [the final 0.7.2 sweep](docs/evidence/0.7.2/write-sweep-ucx2.json).
   It preserves requested and reported values and restores all 2252
   readable messages exactly, including type tags and additional arguments.
   Playback matrix writes cannot be verified by this backend. The recorded

@@ -84,7 +84,7 @@ OpenRC/runit automation and immutable-system recipes remain separate adapters.
 ## Native packages
 
 Use a package built for your distribution release and architecture. The
-development qualification targets are Ubuntu 24.04 DEB, Fedora 44 RPM,
+qualified targets are Ubuntu 24.04 DEB, Fedora 44 RPM,
 openSUSE Leap 16 RPM and Arch on x86_64. A Fedora RPM is not an openSUSE
 binary, and a new Ubuntu binary is not implicitly compatible with an older
 Ubuntu libc. A published artifact must carry its checksum and authenticated

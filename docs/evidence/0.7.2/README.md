@@ -114,6 +114,17 @@ the measurement parameters; its correction and restoration are recorded.
 
 ## Service and physical disconnect
 
+[lifecycle.json](lifecycle.json) records the installed **0.7.2** candidate
+`e9ad292`: upgrade from 0.7.1, readiness, SIGHUP in the same process, and
+automatic startup after physically switching the UCX II off and on.
+The complete check while it was off passes **1,798 tests, two skipped**,
+in **164.99 seconds** including lint, types and dead-code checks. All 329
+half-second observations find the USB device absent. After power-on,
+the installed service starts without a manual start and completes its
+verifier. Two complete refreshes match all **2,252 original messages**,
+including every type tag and argument. No tone is played after power-on.
+
+Earlier development measurements retain their original source identities:
 [candidate-service.json](candidate-service.json) records startup and SIGHUP
 of `0ade75f` in a transient user service with the normal sandbox settings
 and the user's existing five-route config. It reaches readiness, reloads
@@ -121,7 +132,7 @@ in the same process and preserves all 2,252 baseline messages after both
 operations. The original installed 0.7.1 service is then restored. This
 is a real service/hardware check, not a host package migration.
 
-[power-cycle.json](power-cycle.json) records the final combined candidate's
+[power-cycle.json](power-cycle.json) records development candidate `b537416`'s
 `make check` with the UCX II physically off: **1,798 passed, two skipped**,
 174.68 seconds including the other checks. USB absence is checked every
 half second. After the user switches the device on, the installed 0.7.1
@@ -156,7 +167,8 @@ source identity, checksums and the 0.7.1 upgrade/rollback in both layouts.
 [software-qualification.json](software-qualification.json) records all
 **27 passing gates** on combined candidate `b537416`, including log hashes,
 durations and fingerprints of the 146 tested files and 12 installation
-support files. Those sources match the current development tree exactly.
+support files. The final-version rerun is in progress; this earlier record
+retains its original source identity.
 
 - `make check`: **1,798 passed, two skipped**. Coverage is **97.6096%**
   across statements and branches, above the unchanged 97% gate.
