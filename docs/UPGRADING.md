@@ -2,7 +2,16 @@
 
 ## Preparing for 0.7.2 (unreleased)
 
-The config format, backend pin and installation method are unchanged.
+The config format and backend pin are unchanged. Installation now separates
+copying files from opting into automatic hardware operation, adds preflight
+and manual operation, and includes native-package migration/recovery tools.
+A source upgrade preserves the existing service's active/enabled state;
+a fresh install waits for explicit activation. Native installation does
+not remove a previous per-user installation: follow the
+[migration and recovery procedure](INSTALLATION.md#migrating-an-existing-source-installation)
+before enabling the package's service. These changes are not yet published;
+use the instructions shipped with the version you downloaded.
+
 An apply with playback routes now inspects the active UCX II hardware PCM.
 It rejects unavailable playback channels before sending the first write:
 8/14/16-channel streams have that many playback channels; at 88.2/96 kHz

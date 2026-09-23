@@ -33,6 +33,22 @@
   or unobservable PCM has no validated live mode. Offline previews make
   the same limit clear. The desk does not select a rate or open a PCM.
 
+### Development qualification
+
+- Measure 13 USB/rate combinations with direct ALSA: 52 linked/unlinked
+  gain/mute cases and 12 unavailable-source refusals. Retain one startup
+  xrun and its two successful unchanged repeats. A separate PipeWire
+  Pro Audio run passes all 65 known-route checks across the same modes.
+- Restore all 2,252 readable messages and saved PipeWire parameters after
+  each completed mode. Exercise the candidate's real service startup and
+  SIGHUP, then restore the installed release and verify its physical
+  off/on autostart. The final combined candidate passes 1,798 tests with
+  the interface physically absent.
+- Repeat seven source/manual and four native-package container targets
+  on the combined candidate, including package recovery and reproducible
+  builds. Actual 0.7.1 upgrade/rollback passes in both file layouts;
+  51 installer tests also pass from the extracted source archive.
+
 Qualification and remaining physical measurements are tracked in the
 [roadmap](docs/ROADMAP.md). This section is development work, not a release.
 ### Installation (not yet published)
