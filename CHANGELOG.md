@@ -35,6 +35,12 @@
 
 ### Development qualification
 
+- Pass all 27 software gates on the combined runtime/installation
+  candidate: 1,798 tests, Python 3.9–3.14, five full repeats, the 200-cycle
+  soak and fifteen fault-suite repeats. Coverage is 97.61%. A fresh,
+  complete 8,752-mutant run scores 0.799039, with 14 timeouts separate
+  from the score and no uncovered mutants. Preserve exact source and
+  log hashes; incomplete earlier runs are not qualification evidence.
 - Measure 13 USB/rate combinations with direct ALSA: 52 linked/unlinked
   gain/mute cases and 12 unavailable-source refusals. Retain one startup
   xrun and its two successful unchanged repeats. A separate PipeWire
@@ -51,6 +57,7 @@
 
 Qualification and remaining physical measurements are tracked in the
 [roadmap](docs/ROADMAP.md). This section is development work, not a release.
+
 ### Installation (not yet published)
 
 - Add a read-only installer preflight and manual foreground mode. Separate

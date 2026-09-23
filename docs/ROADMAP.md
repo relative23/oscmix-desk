@@ -130,6 +130,12 @@ work: local commits do not imply permission to push an incomplete release.
 - [x] Integrate the source/manual installer and native packaging; repeat
   all eleven distribution targets and the actual 0.7.1 upgrade/rollback
   on the combined development candidate.
+- [x] Complete fresh software qualification on that combined candidate:
+  1,798 tests, Python 3.9–3.14, five full repeats, the 200-cycle soak,
+  fifteen fault-suite repeats and all 8,752 mutants. Coverage is 97.61%;
+  the mutation score is 0.799039 with 14 timeouts counted separately.
+  [File hashes and results](evidence/0.7.2/software-qualification.json)
+  identify this development qualification; no partial run is reused.
 - [ ] Complete the physical H1/H2 measurements, or make a separate,
   explicit release-scope decision. Missing equipment is not a passed test.
 - [ ] Complete final versioned release qualification and publish the
@@ -140,6 +146,8 @@ The current setup has a UCX II, monitors, headphones and a microphone,
 but no analog return cable or external digital/clock equipment. Physical
 output/delay, digital I/O and external-clock tests therefore remain open.
 GUI and two-physical-device qualification remain excluded by the maintainer.
+The [release readiness record](evidence/0.7.2/release-readiness.json)
+keeps the remaining measurement and final-publication requirements explicit.
 
 ## 0.7.2 integration: installation
 

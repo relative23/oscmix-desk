@@ -1,0 +1,502 @@
+{
+  "schema": 1,
+  "candidate": "0.7.2-unreleased",
+  "status": "development-qualified",
+  "release_ready": false,
+  "tested_on": "2026-09-23",
+  "tested_code_commit": "b537416434db778fee89b1e787590a1094761a78",
+  "runtime_version_constant": "0.7.1",
+  "limits": [
+    "This qualifies the identified development code and installation sources, not a versioned 0.7.2 release.",
+    "No push, remote CI, release upload, release attestation or host package installation was performed.",
+    "Physical analog return, digital ports and external clock measurements remain open."
+  ],
+  "gates": [
+    {
+      "gate": "check",
+      "exit": 0,
+      "seconds": 166.08,
+      "log_sha256": "3e9f0ddb48552061b244f74dd0c53bcff6e359171686183bf65c36b5ee886100",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 163.03s (0:02:43)"
+      ]
+    },
+    {
+      "gate": "coverage",
+      "exit": 0,
+      "seconds": 164.02,
+      "log_sha256": "db50df04aeccde86ac049cf4b575a65cfab420d7116c06c61141a2934b621596",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 163.26s (0:02:43)"
+      ]
+    },
+    {
+      "gate": "flake",
+      "exit": 0,
+      "seconds": 863.92,
+      "log_sha256": "1d52839f749dc6faa47e7104fbde4cbbb31dc83efa1decfa8806d127b1882028",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 173.75s (0:02:53)",
+        "1798 passed, 2 skipped in 171.30s (0:02:51)",
+        "1798 passed, 2 skipped in 155.97s (0:02:35)",
+        "1798 passed, 2 skipped in 180.64s (0:03:00)",
+        "1798 passed, 2 skipped in 180.77s (0:03:00)"
+      ]
+    },
+    {
+      "gate": "python-3.9",
+      "exit": 0,
+      "seconds": 179.07,
+      "log_sha256": "032aa411ef38d8c88728df72617b2246872ff984a4b45dcb6184e8b5e6507202",
+      "pytest_summaries": [
+        "1766 passed, 34 skipped in 178.33s (0:02:58)"
+      ]
+    },
+    {
+      "gate": "python-3.10",
+      "exit": 0,
+      "seconds": 191.13,
+      "log_sha256": "691b7036e973ee049b99e386ddf767a18c26e950f2598aaa9a79a32233197836",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 190.89s (0:03:10)"
+      ]
+    },
+    {
+      "gate": "python-3.11",
+      "exit": 0,
+      "seconds": 182.27,
+      "log_sha256": "125e046f54af7b4382791815b74d138109744fa779e9ddbd2122762373525e20",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 181.95s (0:03:01)"
+      ]
+    },
+    {
+      "gate": "python-3.12",
+      "exit": 0,
+      "seconds": 179.85,
+      "log_sha256": "37bd596587442a4cfb641a544fec69876e58234c519b0ccb6783328d7e730187",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 179.35s (0:02:59)"
+      ]
+    },
+    {
+      "gate": "python-3.13",
+      "exit": 0,
+      "seconds": 177.15,
+      "log_sha256": "dd01691a1dc026fba255b3e472f44450f9de1d08d2c5519ea1784e8e08127ee2",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 176.80s (0:02:56)"
+      ]
+    },
+    {
+      "gate": "python-3.14",
+      "exit": 0,
+      "seconds": 169.11,
+      "log_sha256": "e287160a54a0edfd498259ac303bfccc82bd8961318e9511713c192c9ed520be",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 168.68s (0:02:48)"
+      ]
+    },
+    {
+      "gate": "soak-200",
+      "exit": 0,
+      "seconds": 285.26,
+      "log_sha256": "f0ed4484e38993bdff9d7f861ff2c23f310e11bb971fe7946cf2bd8a9710480b",
+      "pytest_summaries": [
+        "3 passed in 284.93s (0:04:44)"
+      ]
+    },
+    {
+      "gate": "fault-01",
+      "exit": 0,
+      "seconds": 36.04,
+      "log_sha256": "245c544a8320554e3f3c5b12c8bbc4bb28b10b0ca2dc5cb3a7d721f96a49239a",
+      "pytest_summaries": [
+        "70 passed in 35.84s"
+      ]
+    },
+    {
+      "gate": "fault-02",
+      "exit": 0,
+      "seconds": 36.52,
+      "log_sha256": "3c87e9ae252c8482cf1e216a2f638ccfd7a54f72f02f42b42f2132bd0193fa7f",
+      "pytest_summaries": [
+        "70 passed in 36.33s"
+      ]
+    },
+    {
+      "gate": "fault-03",
+      "exit": 0,
+      "seconds": 34.37,
+      "log_sha256": "ebc3b9083bc13dfc0f7b2689de2396479510b9ad254a9e66821fd89d41e460d1",
+      "pytest_summaries": [
+        "70 passed in 34.13s"
+      ]
+    },
+    {
+      "gate": "fault-04",
+      "exit": 0,
+      "seconds": 35.86,
+      "log_sha256": "df6d733fd78a6ca36ff2c7e9f4f7e47ab0f0a375c8e79b535a736d2a1b18a092",
+      "pytest_summaries": [
+        "70 passed in 35.67s"
+      ]
+    },
+    {
+      "gate": "fault-05",
+      "exit": 0,
+      "seconds": 36.16,
+      "log_sha256": "3ab0ea6c839161cce7d4433965dd7025984dee138795b32727f867399109809e",
+      "pytest_summaries": [
+        "70 passed in 35.93s"
+      ]
+    },
+    {
+      "gate": "fault-06",
+      "exit": 0,
+      "seconds": 33.77,
+      "log_sha256": "3a56f664cf9035fec723a784a6826c76dff815d7eb6f522c8d894dc090ec61b0",
+      "pytest_summaries": [
+        "70 passed in 33.62s"
+      ]
+    },
+    {
+      "gate": "fault-07",
+      "exit": 0,
+      "seconds": 34.54,
+      "log_sha256": "3d728061684146fe80ca22a0c46b48580f4ff5e0075b48c908d756854770a94f",
+      "pytest_summaries": [
+        "70 passed in 34.38s"
+      ]
+    },
+    {
+      "gate": "fault-08",
+      "exit": 0,
+      "seconds": 36.07,
+      "log_sha256": "7294da2406c6049840db9147d192fe1f6f3409a12ba32bf7c02223d2f249840a",
+      "pytest_summaries": [
+        "70 passed in 35.82s"
+      ]
+    },
+    {
+      "gate": "fault-09",
+      "exit": 0,
+      "seconds": 35.8,
+      "log_sha256": "1bab1a7f299c7b68fa762f62d8a96de27f85b27fc82ab812f1e9001134f4b814",
+      "pytest_summaries": [
+        "70 passed in 35.57s"
+      ]
+    },
+    {
+      "gate": "fault-10",
+      "exit": 0,
+      "seconds": 35.95,
+      "log_sha256": "0ed930e5c45fc4f0613c973af10240f3f81d00692daaf8dedaf0fd9322af18e0",
+      "pytest_summaries": [
+        "70 passed in 35.80s"
+      ]
+    },
+    {
+      "gate": "fault-11",
+      "exit": 0,
+      "seconds": 34.56,
+      "log_sha256": "513f946cef53c136235441799cd0061e0503b9aa5d9da56b7084c45d5ee9ac70",
+      "pytest_summaries": [
+        "70 passed in 34.24s"
+      ]
+    },
+    {
+      "gate": "fault-12",
+      "exit": 0,
+      "seconds": 36.03,
+      "log_sha256": "defcb000777ba052b14a5e5fcaad18cffac358712a9e206beb3e0eadb1125eca",
+      "pytest_summaries": [
+        "70 passed in 35.83s"
+      ]
+    },
+    {
+      "gate": "fault-13",
+      "exit": 0,
+      "seconds": 35.3,
+      "log_sha256": "63fe1c9fdf812e530c6f8c424930e567ba11634ed817cc664399e965c75c9266",
+      "pytest_summaries": [
+        "70 passed in 35.12s"
+      ]
+    },
+    {
+      "gate": "fault-14",
+      "exit": 0,
+      "seconds": 35.98,
+      "log_sha256": "245c544a8320554e3f3c5b12c8bbc4bb28b10b0ca2dc5cb3a7d721f96a49239a",
+      "pytest_summaries": [
+        "70 passed in 35.84s"
+      ]
+    },
+    {
+      "gate": "fault-15",
+      "exit": 0,
+      "seconds": 33.14,
+      "log_sha256": "84ed54a4f14ec34d95c1d53fc02257a302e130cd60ed202f397cd98e7c03dd70",
+      "pytest_summaries": [
+        "70 passed in 33.01s"
+      ]
+    },
+    {
+      "gate": "unit",
+      "exit": 0,
+      "seconds": 0.04,
+      "log_sha256": "e83a665bf70fc1de761f8de74e46d109c95b4035359097a5966931c9ba0fa73f",
+      "pytest_summaries": []
+    },
+    {
+      "gate": "mutation",
+      "exit": 0,
+      "seconds": 10099.61,
+      "log_sha256": "fa9420e09a2de4088d620a9d17d06dcf7081ca334adfd411049163695203bb82",
+      "pytest_summaries": []
+    }
+  ],
+  "tested_files_sha256": {
+    "Makefile": "d37c086820790aa79fd3929a8a9888ee74a4bec592363d63288b97e69b811b2a",
+    "bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+    "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+    "pyproject.toml": "9ff637629bff73564592c8eeb9f7114604667c05c214789486a6637904f71cdf",
+    "requirements-dev.txt": "5dc851cd475b05fd0f1042c9f9e2cfe0bfce290946a04cdd1a233f95a657e63b",
+    "scripts/build-package.py": "9ba5013de3d5166d26252468b60032ac0c018e15d3f53c4e5c1584324dffad83",
+    "scripts/build-release.py": "25064e838864df9eb1c68e0a600f58136a55ad20dccae11bfde370faee0bb929",
+    "scripts/install-payload.sh": "4ec50e3680717c6211903a36953573d6969b81f4dc0f27334e17756645c33ba2",
+    "scripts/install-preflight.py": "96e836cc9a50fa6ee4ffb9a1c6e7f55044211f223fe46317f32ca781c7674308",
+    "scripts/mutation-policy.py": "e4d9dbd7be8ef09939a6ac018d5ea2d8bc653526369e2b6c585716325d3842c6",
+    "scripts/package_formats.py": "879ddfb5b10638feeb3037b06d650b7701212ca765c4fcb453989774a88bcb71",
+    "scripts/qualify-distribution.py": "cc4246970ecea53ff26be82b6df2d514483c29d0be45692aec11b92533661f02",
+    "scripts/record-dump.py": "9764ff34f088caaa8b9552ae322862269adc99097de2e81cf80e317042e40da7",
+    "scripts/stage-install.sh": "116bf5c663a42b5a673d3b0eb7ea90c55c93ee0ba9344e4032b71d43f8fe2ba0",
+    "scripts/sweep-writes.py": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd",
+    "scripts/test-distribution.sh": "5aeedab3448e420d96e320fa12e1c4c7e545bd3e99c55d2f9bee3d94ea30b2c3",
+    "scripts/verify-hardware.py": "9fa3001f5c4bcc35f1201118aba6776c9d06d950ba504065377d5eb03ae1f3fc",
+    "scripts/verify-unit.sh": "dac71153da4a71487e335df5ef71dbdcdd326393440bd31cbe99cb5676727ef1",
+    "src/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+    "src/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+    "src/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+    "src/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+    "src/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+    "src/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+    "src/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+    "src/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+    "src/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+    "src/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+    "src/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+    "src/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+    "src/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+    "src/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+    "src/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+    "src/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+    "src/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+    "src/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+    "src/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+    "src/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+    "src/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+    "src/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+    "src/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+    "src/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+    "src/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+    "src/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+    "src/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+    "src/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+    "src/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+    "src/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+    "src/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+    "src/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+    "tests/backend_doubles.py": "51edd716d5d3c3cef82b976bbcb16c6cc764a3bcad47e489e4f4f698cb5d8b9b",
+    "tests/conftest.py": "ece54e4d49759d6f756cd253cffd222f755aa849d4e46d909e2ffe90299ff48c",
+    "tests/data/cold-plug-timeline.json": "e4636bf14545c707e5d1297a36feb85e795e5e10ac5bdba6cf1c61034375e3c8",
+    "tests/data/refresh-dump.json": "37f4c1a032a85810134206200a9a69494380285187469b2109792a6897a35cf4",
+    "tests/data/two-routes.conf": "66a5bf6754ed80394d66b49b2955c47fb2b781b096aaa82ff9efb3958be330aa",
+    "tests/data/ucx2-playback-modes.json": "a386ae396cb5c8a28455e2a670c79dbf38dbef890fc3068eb2400580ea9bccc6",
+    "tests/oracle.py": "a02843b2673ce52d9b95d64bd873a4a758d8c2b8732dc6fcd03f52ba6d4a82de",
+    "tests/oscmix_fakes.py": "b1fa8fa586395f66e223bf49dcd3343ef1e4a4b0f511966d24325b37110d798e",
+    "tests/package_lifecycle.py": "365f87deb50e8628f24f0633b413441e77bedc5ba63dff4c9e9f7ba2c227a9d5",
+    "tests/package_migration.py": "81c6d223507c956042504bceb4e801df4c48961d15ad0484b365ffa8e29abd25",
+    "tests/profile_desk.py": "916168cb03797a36146edd706417cce1ea5892493c450f1b2c56cfdda1c81cdf",
+    "tests/reconcile_desk.py": "efe5b9eba358ed05d117c69ef45919d124ad08c22844a508aac4394915479b6a",
+    "tests/session_doubles.py": "4ad6f3dd7a882d402df87124416ef7b08d326c6c2a1fa24cca3034ddfa3311ee",
+    "tests/subprocess_coverage/sitecustomize.py": "c800eca1c3f28b427430ece3ea9d661afa56048c362b461532c6cdb434351e49",
+    "tests/support.py": "7da3efbfac65a5cd83f57ccec6d8f2f74c0f4cf3c622ed22538a78b8a2534892",
+    "tests/test_apply_routing.py": "6410f3ec403df3383e55c9a89c70ac3bc83dac24c76380778646eb3b36fd550e",
+    "tests/test_architecture.py": "439ef1227e4bec3431fb3609e50a9921700e699e28d2e6f17fbd85fdb87fe7b8",
+    "tests/test_autolevel.py": "b365c3bbd82b0e3e66bd19085f59fe464161640bb661e49ffe8aa185ca140f91",
+    "tests/test_backend.py": "49169c36ad1134b6d5124f8bfba62e62266052fb9b6cf25f2e85b2454c0280bc",
+    "tests/test_channel_sections.py": "7401791395908c3c40ecd512af76577333d123309b5e890d9166eb74e171f205",
+    "tests/test_ci_workflow.py": "b49b4e9bbf2d55ec8c3d4175f001e958903fcb1449eea6f406f1203750ea4a7a",
+    "tests/test_cli_args.py": "e653c62e76cd67bde2df8decd0626442eb8c8a8493385ca66fd4c606381a73a6",
+    "tests/test_config.py": "b050549be2cb671d6bff0bd960a4139c10e3de45954adbebd6ac86f3b1012da1",
+    "tests/test_config_compatibility.py": "3c7a473e33f8030474f0a0f7c67f8bd0dc80d865678d62d4a8e9409f42d9134e",
+    "tests/test_config_device.py": "b0159a6f6bf59d615b034a53038aad7c4cbd21d2a91bedd895162d01f128032c",
+    "tests/test_contracts.py": "1c2e5fbb24bd2ab25cf20dd068588d0e2c7f0f4fae9e8a2852aad1967c0b2637",
+    "tests/test_crossfeed.py": "8ecb13d4c0f0b186e77b30c8d49f25db84bd851f824728e4e69e3f4a3da9a1fc",
+    "tests/test_desk_in_effect.py": "80f2d76fa2d1b1a4a917eb9193f5d686701757fbf06e00779209dc799cf8aa8d",
+    "tests/test_device_identity.py": "147344eae1ee13efd684d1880ef508a7532218c445b062f615b42b7cc354d285",
+    "tests/test_diff_cli.py": "6a155136697c7c0aa42558e9cff5f52516fd0a88ebb0dc0760a439ce83183e79",
+    "tests/test_dump_config.py": "71ea73743de97a8c688ac524758a8ccf703182a01a547fb68befc729e90f0c3e",
+    "tests/test_dump_config_cli.py": "c771a5b2c6cf85c5cce16fcafe4be6fdc9dd00c52b5e48f9f5c8f4627e4dcbc9",
+    "tests/test_dump_limits.py": "a7131cb96875c29685cc0818f3403d80a56cc7e035fc2ab5615f9be3f741eed5",
+    "tests/test_dump_sections.py": "47fcb8c429eb0c8dd2414c7cee0207085619fc72f2a334a2122aea6e9ce952f1",
+    "tests/test_dynamics.py": "3dd6487b44800f9e714b1dd4a94af818a7a2b0d53947bb7ab4f526ae12feb170",
+    "tests/test_faults.py": "d991d2cfbd77af0fb552c59fffe426de38cb0c9ea33f0d21f15cfba19d374506",
+    "tests/test_global_sections.py": "b11e2ddff255150cec20b44ad2fe4a0f2e5a4a1a599e407b6e864823a7d851f0",
+    "tests/test_golden_messages.py": "a24f3d4e7c49c349b88d2e3e3b2fbeb3049511643f2e9269de24fbc260d16ee7",
+    "tests/test_hardware_verdicts.py": "2fb623f31e5aba1c1ab18341fd766f3132eaef21f876189e7a062e2e449ae600",
+    "tests/test_input_routing.py": "506a372554ad47c33de213a6e7f05d6c9e1096ce6bec4269215ce7131ffe8121",
+    "tests/test_install_modes.py": "39bec7782590b171376f500f2e302a0f93e3143ccb09f9918e43d07f04429429",
+    "tests/test_install_sh.py": "40d729c4e6648f01897843192e9502f0f0fc670271d60acdffbe7c874805626b",
+    "tests/test_interface_resolution.py": "038375c4b878a5fe02032a17ed0fbfdb090ba3f62a2e1a9c4d7e7b424234e867",
+    "tests/test_launcher.py": "043e5ab47d6c5c6605fe84f1cbf9afdc4399c91f166cee0ea36db5d566015482",
+    "tests/test_lifecycle.py": "8bd09ebb5f8e87aeacd5b3f96355e7c51746da6b72565d833fa6247e8ae9526c",
+    "tests/test_lock_file.py": "4d2d7c453217d432c52c1bbc1e2ec69ab7f22264f79990e38dbaa3cbec922689",
+    "tests/test_locking.py": "22b9450f8e12e7e728cfb43502794c4bce470e16a5c981c0b6b8c60e5584d73b",
+    "tests/test_lowcut.py": "a034b1d652d5a988719bf7758c98fa90d5eda6d589293afd76eacb068f05cc87",
+    "tests/test_marker.py": "d9e9df02a43140b1bd7a4a6c49efb46aaaf51fd72214c644788dece0ce6b162d",
+    "tests/test_mix_reapply.py": "288dcb9fd4507a514cb8ea4ef269248bbac366da4ac3ca0162267ebec29a486d",
+    "tests/test_mono_routes.py": "3035f67f9c9fd30ce5f54f022566349969f0ceaccb02bd16602c37a50b777344",
+    "tests/test_mutation_policy.py": "69ca7a1f9172943b5ac27de2ed22424350a2f627ebb420f97c35ea071b011a82",
+    "tests/test_nested_sections.py": "d0f6f3542bde1d51ca2de1bb443d9dc11aaba89b825cfa764fcbeeb4b11892d7",
+    "tests/test_notify.py": "db64875d3c27547d7a5404102d19ca8182d6e3c2c037c0e6b44ac38f3608e1fa",
+    "tests/test_numeric.py": "7acd059fbe106276cc9b0180daf06b5783a0129081bc07ea597a45c1b8868b44",
+    "tests/test_osc.py": "168405d3ae074b8084e4bc0c2ab4d92da34d65ed89519c5a6a4ab751905f0024",
+    "tests/test_package_guard.py": "9283a80c8564c569a552d4098967b88defde20440b0fdffc1e8ad6a2ab88534d",
+    "tests/test_package_setup.py": "6645469dd6db2c5340110f959c401e763fd5f7948ec417dcae521fd84e289efb",
+    "tests/test_package_stage.py": "ce600ba8fb16eaf0d4a8774442f2b086af4728b281a938cbb7042d81a848d9e5",
+    "tests/test_partial_write.py": "72df95e28366b9220761c14d21dd55489bc98ec8aae460a04cab2ddd2a62b89b",
+    "tests/test_performance.py": "e41410c8f3356e58cfe82d80bd9db0a0d2a95747ee67541c8e13341bd2edd71a",
+    "tests/test_pin_remember.py": "121ff9d85d71f1cf7fde086a39965068dc2ce98df1fe80510bd029bf66eb1bb2",
+    "tests/test_pipewire.py": "68285f8bf62156eda5e24fb61abec2e2710bee4049c304e167a0078c72ef89ac",
+    "tests/test_process.py": "710813b8a14bbca3e44379a9f2b147ab74a55ee50c81aa322d29a7a4cd35d7fd",
+    "tests/test_profile_machine.py": "6ec399cb222d25e62999e70b9ffd76055ef534a2d9f783ee0abba65e6b10c9c5",
+    "tests/test_profiles.py": "9fb60059e0cc792b70eb2fd46ef51006ada05551e6623f68882f0583be11496c",
+    "tests/test_profiles_cli.py": "4bfd0ce0002e43e8643da2c092e6efd222ab1e348c1c2d37873cabb63614943a",
+    "tests/test_readiness.py": "c4feefadec10f2713bc580ca417dfe6a3e094512e6b88c439747c88aad695976",
+    "tests/test_receive_port.py": "a01f0b7d63311e0be22a2cc5e010b5365e932db157cb218c2f06c6b6e80a37eb",
+    "tests/test_reconcile.py": "bb37314e20a2d184a56f45e7c71a273d710fe4efb1f93e210f635ef69b30f045",
+    "tests/test_reconcile_triggers.py": "dc6fb423a76e895dd9e288cdce427770e216081bc2b3791a6d5e025122fd8a83",
+    "tests/test_reconcile_writes.py": "71e541ef20df9dab961f95df0a6b65a620dee529eda0ea7f6afc2c501e6c56e4",
+    "tests/test_recorded_dump.py": "faccc86046d24eec9e4f077a1cb981e16b75fcb0d8b7f8e91536322b2fb36dd4",
+    "tests/test_register_addresses.py": "f9fb627b3d12a13f9f161eae3810e6103a805ac06b65bf350c0bf1ca3aca7741",
+    "tests/test_registers.py": "3c6c335c7348eff2eade53e468151b7f0d81d798ef38d232226585c6c4559610",
+    "tests/test_release_archive.py": "3a28d507801b013467f99c8c640dc0fd1843623d1ed6437f17830743ac205104",
+    "tests/test_reload.py": "a97e8fc3405e47588310d146e21d1a9ed70fbde3dc26486650a329ace9d99921",
+    "tests/test_roomeq.py": "daea626bead062570ae539cd9e888c41ca79abe4fe11cb82df297bf224815591",
+    "tests/test_seq_clients.py": "cb35bc6c6973d99bb56ff952177c0d9ee5c0f9657dc0476a84070976d99778b9",
+    "tests/test_session_integration.py": "823de75ef64a8061bce3a26f14033a15c53c22065ab6f778d30065f4ed0bcd8e",
+    "tests/test_sighup.py": "cad312d5a625258d8d8b6dab8074186a2a4a457cc2547429c2db2bb13a8192eb",
+    "tests/test_soak.py": "0d41cbb6aa3658c901c0d39bd84053fac2e8130d3cdc460a55952edac6d3ce8a",
+    "tests/test_startup_helpers.py": "8fa20dc7accf6510c52bf54a47fa855aaa24d0d3a2a79cb9f822e915daa6dbdd",
+    "tests/test_startup_transaction.py": "dd3548526611f2a405915be28088315c6c183ca6f662c5b739134d623ad3ffbc",
+    "tests/test_streams.py": "88daeae61abc26f93d9325be434369a80cfee9571c8823684fa601bcf17887c0",
+    "tests/test_sub_families.py": "8dbf0dbdbde629be7f72bfe9555019d3623a59431be9ab7c5115ae0647c2b900",
+    "tests/test_two_processes.py": "dc1f89fa5a9ff88df4604f8b95ebdf161240b57b7a22d1dadeaa9fdabc232012",
+    "tests/test_unit_file.py": "0d4e1a658f1dee5cd10ca329a181f974c3a217dde1655f918cfe9ab7ca6efaeb",
+    "tests/test_unit_lock.py": "a729f51b59329853fd20b1a71cb6b98a4285cc018b4d8d593573f47a64eba3f7",
+    "tests/test_upgrade.py": "578cc423a572bf8129794c9714b1839136e03925925b6ecf4d1b3770e622a217",
+    "tests/test_usb.py": "989c0314b6899597da6dac0e3a2e6fd56f1a6165334e27761fef6530fbd7a579",
+    "tests/test_verify.py": "0beb4d1858b02b10c56e2ac684ea5dcceee397b893d19e91260e485fee0eb9ea",
+    "tests/test_whole_config_on_the_wire.py": "cc84bbaf1b7fb93733407c818875af1b71b5ed02843915e6b338202745c22dd5",
+    "tests/test_whose_backend.py": "f7b62d5afc75a53eabe9cb22d99eacec3bd8819bb68ceed58fd78842754ed8d1",
+    "tests/test_write_sweep.py": "b2d2da084a511abc251fc82ef8aa4eb2135f7baa428ea904e36d983c9048154e",
+    "tests/two_boxes.py": "eac8042ecd2f78406524bd4dbaa7201f13a7c5bc4e20ec412c70b1e35b72d978"
+  },
+  "supporting_files_sha256": {
+    "config/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+    "install.sh": "d0572d5d68ff8db0c8a397b44188d803137b850e6908f9e979812ee986180c77",
+    "packaging/00-oscmix-desk-maintenance.hook": "532043192bd145149a46b96bea58069940f01c717bdb8b9f0ef34ed190773b45",
+    "packaging/oscmix-desk.install": "892ebeff88787e6f7f310675c7d12355635a31809d2e75436cd1495f85b1c39e",
+    "packaging/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+    "packaging/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+    "quality/vulture-allowlist.py": "5c37f4dc275491dc46c6f70040c4c50b43777c95388ad9c4ed6eef7d92b2f6df",
+    "systemd/oscmix.service": "e82f8149ff121cccc4dbe2ca1128c1fc9a6e0c39a3ffe6482ad78413c191d938",
+    "systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+    "systemd/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+    "udev/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+    "uninstall.sh": "07edd0572840dfdfa07dfc58aefc5b0328548c6b36ec6b02cf6c7a2606cda5ee"
+  },
+  "coverage": {
+    "covered_lines": 3502,
+    "num_statements": 3567,
+    "percent_covered": 97.6096445645396,
+    "percent_covered_display": "98",
+    "missing_lines": 65,
+    "excluded_lines": 4,
+    "percent_statements_covered": 98.17774039809363,
+    "percent_statements_covered_display": "98",
+    "num_branches": 1244,
+    "num_partial_branches": 48,
+    "covered_branches": 1194,
+    "missing_branches": 50,
+    "percent_branches_covered": 95.9807073954984,
+    "percent_branches_covered_display": "96"
+  },
+  "mutation": {
+    "killed": 6982,
+    "survived": 1756,
+    "total": 8752,
+    "no_tests": 0,
+    "skipped": 0,
+    "suspicious": 0,
+    "timeout": 14,
+    "check_was_interrupted_by_user": 0,
+    "segfault": 0,
+    "score": 0.7990386816205082,
+    "cache": "Fresh mutants directory; no previous verdicts reused.",
+    "score_formula": "killed / (killed + survived); timeouts are retained separately"
+  },
+  "skips": {
+    "all_normal_suites": {
+      "count": 2,
+      "reason": "The two read-only sub-family parameter sets are empty; every currently declared sub-family has a config section.",
+      "tests": [
+        "tests/test_sub_families.py::test_a_read_only_family_offers_no_config_section[NOTSET]",
+        "tests/test_sub_families.py::test_a_read_only_family_is_still_declared_and_reported[NOTSET]"
+      ]
+    },
+    "python_3_9_additional": {
+      "count": 32,
+      "reason": "sys.stdlib_module_names exists only from Python 3.10; each runtime-module import check runs on all five later interpreters."
+    },
+    "property_tests": "OSCMIX_REQUIRE_CONTRACTS=1; missing hypothesis is an error, not an accepted skip."
+  },
+  "environment": {
+    "mutation_tmpdir": "/home/relative/.oi/m",
+    "other_tmpdir": "/home/relative/.oi/o",
+    "note": "Short paths on ext4 avoid the earlier tmpfs user quota and Unix socket path-length failures. No verdicts from those attempts are reused."
+  },
+  "superseded_attempts": [
+    {
+      "qualified": false,
+      "reason": "Stopped after actual /tmp quota failure in concurrent coverage; suppressed mutation test output cannot exclude spurious kills. Incomplete outcomes were incorrectly accepted by the old policy, now fixed."
+    },
+    {
+      "qualified": false,
+      "reason": "First coverage attempt: /tmp user quota. Second: long AF_UNIX paths and discovered nested Git revision bug. Superseded after fixes."
+    },
+    {
+      "qualified": false,
+      "reason": "Clean completed core gates retained, but combined installation/runtime qualification on b537416 supersedes this parallel run. Stopped before complete mutation/Python matrix; no complete-run score claimed."
+    }
+  ],
+  "no_interface": {
+    "gate": "no-interface-check",
+    "exit": 0,
+    "seconds": 174.68,
+    "usb_devices_before": [],
+    "usb_devices_after": [],
+    "observations_every_half_second": 348,
+    "observed_present": [],
+    "ok": true,
+    "candidate": "b537416434db778fee89b1e787590a1094761a78"
+  },
+  "additional_workflow_check": {
+    "file_sha256": "8d9a2c2d24b27db486898c12216b80138af44a9c080cf7b4fbc982d491319ed4",
+    "actionlint": "1.7.12; release and distribution workflows passed",
+    "workflow_tests": "8 passed",
+    "fingerprint_probe": "Actual workflow support-hashing AST evaluated on both the source tree without caches and the multi-interpreter test tree with caches; all 12 source hashes identical."
+  }
+}

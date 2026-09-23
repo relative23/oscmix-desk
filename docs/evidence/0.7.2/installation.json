@@ -1495,5 +1495,36 @@
     "systemd/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
     "udev/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
     "uninstall.sh": "07edd0572840dfdfa07dfc58aefc5b0328548c6b36ec6b02cf6c7a2606cda5ee"
+  },
+  "combined_main_archive": {
+    "target": "0.7.2-unreleased",
+    "release_ready": false,
+    "manifest": {
+      "version": "0.7.1",
+      "desk_commit": "7ae0fea84556b2e8c23fa9fc646ad4299bd3afdf",
+      "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "archive": "oscmix-desk-0.7.1.tar.gz",
+      "archive_sha256": "e2724c056575df5264fcb177c5e86de5be0f9808e17be11ba7bb015994a95381"
+    },
+    "identical_rebuild": true,
+    "private_material_absent": true,
+    "extracted_installer_tests": {
+      "exit": 0,
+      "passed": 51,
+      "command": [
+        "/home/relative/dev/projects/oscmix-desk/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_install_sh.py",
+        "tests/test_install_modes.py",
+        "tests/test_package_stage.py",
+        "tests/test_package_setup.py",
+        "tests/test_package_guard.py"
+      ],
+      "log_sha256": "e490792d2f75effbaff1d966936a7882cdde414f4a69072db7b785caadb7208c"
+    },
+    "seconds": 15.98,
+    "note": "Committed combined development tree including current public evidence and upgrade instructions. Host integration is simulated; no host installation or release publication."
   }
 }

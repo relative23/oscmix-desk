@@ -1,0 +1,45 @@
+{
+  "target": "0.7.2",
+  "status": "not-release-ready",
+  "published": false,
+  "development_code_qualified": true,
+  "qualified_code_commit": "b537416434db778fee89b1e787590a1094761a78",
+  "runtime_version_constant": "0.7.1",
+  "completed": [
+    "combined runtime/installer software gates",
+    "seven source/manual and four native-package container targets",
+    "source archive reproducibility and extracted installer tests",
+    "0.7.1 source upgrade and rollback in both file layouts",
+    "13 direct-ALSA modes with 52 gain/mute cases and 12 zero-write refusals",
+    "13 PipeWire Pro Audio modes with 65 known-route checks",
+    "candidate transient service startup and SIGHUP",
+    "full check while UCX II physically off; installed 0.7.1 autostart and readable-state restoration"
+  ],
+  "missing_measurements": [
+    {
+      "work": "Independent analog output transfer and Room EQ physical delay",
+      "requires": "A suitable physical return/capture connection; none available."
+    },
+    {
+      "work": "Controlled input EQ/dynamics capture with eqdrecord disabled/enabled",
+      "requires": "A repeatable signal source and capture path; speech alone does not establish the transfer function."
+    },
+    {
+      "work": "Digital ports, optical S/PDIF and external clock transitions",
+      "requires": "The respective digital connections and an independent clock/audio source; none available."
+    }
+  ],
+  "remaining_release_work": [
+    "Complete those measurements or obtain an explicit decision to move them outside this release scope.",
+    "Finalize the 0.7.2 version and dated changelog, then qualify the exact release files under the checklist.",
+    "Record the final installed candidate and matching hardware artifacts required by the current release workflow.",
+    "The workflow also requires a schema-2 write sweep with matching runtime hashes. No new all-register sweep is claimed here; the register model/backend pin have not changed.",
+    "Build final-version source/native assets. Local 0.7.1 development packages are not release assets.",
+    "Only after local scope/qualification is complete: push, verify remote CI, and publish checksummed/attested assets."
+  ],
+  "publication_condition": "The maintainer requested local commits first and a push only after required work is complete; no scope waiver is inferred from missing equipment.",
+  "excluded_by_maintainer": [
+    "new GUI",
+    "two physical UCX II devices"
+  ]
+}
