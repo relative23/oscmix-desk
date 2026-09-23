@@ -1,5 +1,5 @@
 {
-  "measured": "2026-09-23T10:55:08",
+  "measured": "2026-09-24T00:18:14",
   "device": "Fireface UCX II",
   "sinks": {
     "1/2": "oscmix.krk-monitors",
@@ -234,8 +234,8 @@
   "ok": true,
   "complete": true,
   "desk_source": {
-    "version": "0.7.1",
-    "commit": "a16730f49d0dd3700d88038c18447c49f4e3fd46",
+    "version": "0.7.2",
+    "commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
     "dirty": false,
     "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
     "runtime_sha256": {
@@ -243,9 +243,9 @@
       "backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
       "cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
       "config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-      "constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+      "constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
       "devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
-      "discovery.py": "02dcf0575ccda9b532800c72728aefd050924b6c875f16359df8d50da0a54c40",
+      "discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
       "dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
       "errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
       "launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
@@ -275,49 +275,49 @@
     "tool_sha256": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd"
   },
   "backend": {
-    "pid": 3065115,
+    "pid": 3098482,
     "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
     "matches_local_build": true
   },
-  "adapter_sha256": "74e44b2ae8e7c569df01b9927dc606a6a73b7f9845886d365073d6c0e46c0b95",
+  "adapter_sha256": "0562bf8f5981d4e8c6e3e3c3b3b50012fa0e9bcd387b49c1e89e21241da5bdcb",
   "adapter": "amplitude 0.01; pw-play checked and bounded to tone length + 10 seconds",
-  "physical_setup": "KRK powered off; headphones unplugged; BETA 58A input 1; 48V off; no external loopback",
+  "physical_setup": "KRK powered off; headphones unplugged; BETA 58A input 1; 48V off",
   "playback_commands": [
     [
       "pw-play",
       "--target",
       "oscmix.krk-monitors",
-      "/tmp/tmpgmns341o/l.wav"
+      "/tmp/tmp9k3uyze2/l.wav"
     ],
     [
       "pw-play",
       "--target",
       "oscmix.krk-monitors",
-      "/tmp/tmpgmns341o/r.wav"
+      "/tmp/tmp9k3uyze2/r.wav"
     ],
     [
       "pw-play",
       "--target",
       "oscmix.main",
-      "/tmp/tmpgmns341o/l.wav"
+      "/tmp/tmp9k3uyze2/l.wav"
     ],
     [
       "pw-play",
       "--target",
       "oscmix.main",
-      "/tmp/tmpgmns341o/r.wav"
+      "/tmp/tmp9k3uyze2/r.wav"
     ],
     [
       "pw-play",
       "--target",
       "oscmix.phones",
-      "/tmp/tmpgmns341o/l.wav"
+      "/tmp/tmp9k3uyze2/l.wav"
     ],
     [
       "pw-play",
       "--target",
       "oscmix.phones",
-      "/tmp/tmpgmns341o/r.wav"
+      "/tmp/tmp9k3uyze2/r.wav"
     ]
   ]
 }

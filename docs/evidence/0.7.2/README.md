@@ -1,9 +1,23 @@
-# 0.7.2 development evidence
+# 0.7.2 qualification
 
-**Release qualification in progress.** These development measurements
-identify their original source commits, which carried version 0.7.1.
-They record USB playback, device-meter responses, register read-back and
-restoration. The [roadmap](../../ROADMAP.md) tracks release qualification.
+**Release qualification in progress.** The final runtime is `e9ad292`.
+Each recording identifies its own source, firmware and measurement method.
+The [roadmap](../../ROADMAP.md) tracks final qualification and publication.
+
+## Final runtime, installation and hardware
+
+[write-sweep-ucx2.json](write-sweep-ucx2.json) is the fresh schema-2 sweep
+from the final 0.7.2 runtime: **1,888 confirmed, 14 protected entries
+skipped**, with all **2,252 readable messages** restored exactly.
+[hardware-evidence.json](hardware-evidence.json) passes all five declared
+routes using a -40 dBFS stimulus through the named stereo PipeWire sinks.
+Both identify UCX II 24216011, USB 3.01 / DSP 36 and backend
+`f2fdd5ec78338848754aad32cc07f3440de63395`.
+
+The actual per-user upgrade from 0.7.1 to 0.7.2 preserves configuration
+and the existing udev/resume/tmpfiles integration. Startup and SIGHUP
+pass, with all readable messages equal to the baseline after each.
+Two further complete refreshes after the route tests also match exactly.
 
 ## Active playback and higher-rate links
 
@@ -69,8 +83,7 @@ unknown routes. The [final comparison](restoration.json) also matches two
 initial and two final complete refreshes, including every type tag and
 argument; phantom power remains off.
 
-[hardware-evidence.json](hardware-evidence.json), collected with corrected
-reporting tool `a16730f`, then passes all five declared routes through the
+The earlier check with corrected reporting tool `a16730f` passed all five declared routes through the
 named stereo PipeWire sinks at baseline. This checks channel response and
 isolation; the separate controlled 5/6 cases above check absolute route
 gain and mute. The runtime files are byte-identical between these two
@@ -118,8 +131,8 @@ The earlier off/on run and its different candidate are retained separately.
 
 ## Installation integration
 
-[installation.json](installation.json) records combined candidate
-`b537416`: seven distribution containers pass source/manual installation
+[installation.json](installation.json) records final candidate
+`e9ad292`: seven distribution containers pass source/manual installation
 and simulated lifecycle checks; four pass native-package lifecycle and
 byte-identical repeated builds. The targets are Debian 13, Ubuntu
 24.04/26.04, Fedora 44, openSUSE Leap 16, Arch and Alpine 3.22; native
@@ -130,18 +143,13 @@ The source archive is reproducible, its extracted installer tests pass,
 and actual 0.7.1 → candidate → 0.7.1 transitions pass in both per-user and
 redirected system-file layouts. Native tests also exercise migration from
 0.7.0, interrupted-install recovery, downgrade and removal. These are
-development packages carrying the existing 0.7.1 version constant, not
-published 0.7.2 assets. The earlier Ubuntu VM experiment remains historical;
-the containers do not provide a real user manager or physical hardware.
+packages carrying version 0.7.2. The containers use isolated homes and
+a simulated backend/user bus. The earlier Ubuntu VM experiment records
+its real user-manager and reboot checks under its original source identity.
 
-The runtime and hardware-measurement tools in `b537416` are byte-identical
-to `0ade75f`. The integration adds installer/package behavior; it does not
-retroactively change the source identity of earlier hardware recordings.
-
-The later combined-main archive at `7ae0fea` includes the integrated
-documentation and public evidence. Two builds are byte-identical and all
-51 extracted installer tests pass again. Its separate source identity and
-archive checksum are retained in the installation record.
+The final candidate's source archive builds identically twice and all
+51 extracted installer tests pass. The installation record includes its
+source identity, checksums and the 0.7.1 upgrade/rollback in both layouts.
 
 ## Complete software qualification
 
@@ -177,9 +185,8 @@ These records identify the tested USB-playback and device-meter behavior,
 including the PipeWire Pro Audio configuration described above.
 
 Final release qualification and publication remain separate from these
-development checks. The final 0.7.2 candidate is being qualified; the
-combined candidate has not replaced the host installation, and no new
-all-register sweep is claimed. The current release workflow requires
+development checks. The final 0.7.2 candidate is installed and has a fresh
+register sweep. The current release workflow requires
 matching final software, installed-runtime, hardware and sweep evidence;
 older artifacts cannot be relabelled to satisfy it.
 The [release readiness record](release-readiness.json) separates completed

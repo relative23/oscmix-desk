@@ -9,8 +9,8 @@ A source upgrade preserves the existing service's active/enabled state;
 a fresh install waits for explicit activation. Native installation does
 not remove a previous per-user installation: follow the
 [migration and recovery procedure](INSTALLATION.md#migrating-an-existing-source-installation)
-before enabling the package's service. These changes are not yet published;
-use the instructions shipped with the version you downloaded.
+before enabling the package's service. Use the instructions shipped
+with the version you downloaded.
 
 An apply with playback routes now inspects the active UCX II hardware PCM.
 It rejects unavailable playback channels before sending the first write:

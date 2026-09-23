@@ -117,11 +117,9 @@ independently of the host audio server.
 
 ## Install
 
-**The installation changes in this branch are not released yet.** For
-the currently published release, use the
-[0.7.1 installation instructions](https://github.com/relative23/oscmix-desk/tree/v0.7.1#install).
-The following sequence applies to this branch's new installer, after
-obtaining its source:
+**0.7.2 adds installer preflight, manual operation and native packages.**
+Obtain a [verified source release](docs/RELEASE-ARTIFACTS.md), unpack it,
+and run:
 
 ```sh
 ./install.sh --check
@@ -141,13 +139,14 @@ root integration, including the shared lock directory. The
 [installation and recovery guide](docs/INSTALLATION.md) describes these
 choices, prerequisites and limits.
 
-Native DEB/RPM/Arch artifacts are also in development. They include the
-pinned backend and use `oscmix-setup` for explicit per-user setup and
-migration. No native package is advertised as universal Linux support.
+Native packages are built for Ubuntu 24.04, Fedora 44, openSUSE Leap 16
+and Arch on x86_64. They include the pinned backend and use `oscmix-setup`
+for explicit per-user setup and migration. Use the
+[package installation guide](docs/INSTALLATION.md) for the matching target.
 `pip` alone does not install the required host integration.
 
 Prefer a [verified source release](docs/RELEASE-ARTIFACTS.md) or a package
-qualified for your distribution when this work is published. Read the
+qualified for your distribution. Read the
 [upgrade notes](docs/UPGRADING.md) before moving an existing desk. The
 existing upstream GTK mixer remains optional; the separate desktop
 companion is deferred.

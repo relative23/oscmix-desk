@@ -5,7 +5,22 @@ Its measured backend pin is
 `f2fdd5ec78338848754aad32cc07f3440de63395`. Evidence describes that
 combination and the firmware it records, not every Fireface or firmware.
 
-## Current measurements for 0.7.1
+## Current measurements for 0.7.2
+
+The [0.7.2 records](evidence/0.7.2/) identify the final runtime `e9ad292`
+and its USB 3.01 / DSP 36 device. A fresh schema-2 sweep confirms 1,888
+entries and skips 14 protected reference-level entries. Every one of the
+2,252 readable messages matches the baseline after restoration. All five
+declared playback routes pass the quiet device-meter check. The installed
+0.7.2 service passes startup and SIGHUP with the same readable state and
+preserved user configuration.
+
+Separately identified development recordings measure 13 USB/rate modes:
+52 linked/unlinked gain/mute cases, 12 unavailable-source refusals and
+65 route checks through the three PipeWire Pro Audio stereo sinks. These
+records preserve the original source identity and per-case observations.
+
+## 0.7.1 measurements
 
 The [0.7.1 evidence](evidence/0.7.1/) measures the corrected runtime
 `abd8594` on USB 3.01 / DSP 36. The schema-2 sweep confirms 1,888 entries,
@@ -26,8 +41,7 @@ quality. Original gain and mixer state are restored.
 The [sample-rate table](evidence/0.7.1/sample-rates.md) records 24 actual
 USB/ALSA combinations, including six incomplete/failed cases, with a
 return to the original state after every attempt. It qualifies playback
-and output-meter paths. External digital connectors, optical S/PDIF mode,
-physical Room EQ delay and high-rate ADC content are not measured.
+and output-meter paths.
 
 ## Historical evidence
 
@@ -72,8 +86,7 @@ corrected tool applies the same permission checks to restoration/retries.
 
 Multi-device selection, locking, backend replacement and interrupted
 writes are exercised with simulated interfaces and real CLI processes.
-Two physical UCX IIs have not been measured together. The 802 has only a
-channel map; the pinned backend cannot operate it and no register model
+The 802 has only a channel map; the pinned backend cannot operate it and no register model
 or hardware evidence establishes support.
 
 ## Reporting another device
@@ -90,5 +103,5 @@ records shapes and timing without mixer values. The write sweep is a
 UCX-II-specific writer, not a discovery tool for unknown hardware: do not
 run it on a new model until its register domains and dangerous operations
 have been reviewed. A supported model needs its own register/capability
-data and measured write and route evidence. Keep unmeasured controls
-explicit rather than copying UCX II assumptions into a support claim.
+data and measured write and route evidence. Tie each support claim to
+the corresponding source and recorded measurement.

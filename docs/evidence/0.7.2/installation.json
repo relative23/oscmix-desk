@@ -1,29 +1,21 @@
 {
-  "schema": 1,
-  "target": "0.7.2-unreleased",
-  "release_ready": false,
-  "candidate": "b537416434db778fee89b1e787590a1094761a78",
-  "tested_on": "2026-09-23",
-  "scope": "x86_64 source/manual installation and simulated lifecycle in seven distribution containers; native lifecycle in four",
-  "development_flag": "The runner records --development for native package versioning only. All source and native rows here test an unreleased development commit.",
-  "limits": [
-    "Development packages still identify the 0.7.1 version constant; not 0.7.2 release assets.",
-    "No physical sound device, host home or real user service manager is passed into these containers.",
-    "Headless backend packaging; optional upstream GTK GUI build is not qualified by this matrix.",
-    "The earlier Ubuntu 24.04 VM user-manager/reboot experiment was not repeated here; its original provenance remains in ../installation/qualification.json.",
-    "No host package migration and no release upload, signing or attestation were performed."
-  ],
+  "schema": 2,
+  "target": "0.7.2",
+  "status": "qualified",
+  "candidate": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
+  "tested_on": "2026-09-24",
+  "scope": "x86_64 source/manual installation and simulated lifecycle in seven distribution containers; native package lifecycle and reproducibility in four",
   "all_targets_passed": true,
   "distributions": [
     {
       "target": "debian13-source",
       "exit": 0,
-      "seconds": 44.65,
+      "seconds": 39.15,
       "environment": {
         "target": "debian13",
         "platform": "linux/amd64",
         "base": "debian:13",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": false,
         "development": false,
@@ -57,7 +49,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:35:46.459281809Z"
+            "LastTagTime": "2026-09-23T22:04:38.230967905Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -72,13 +64,13 @@
             ]
           }
         },
-        "image_id": "sha256:b2b749b6210e5c6f31998803fe731439b2fc6c07bffbb386c34c2ff947b9e4c4",
+        "image_id": "sha256:b1ca764072165ce83924996a4992a2b8eb982dc449d53cf32e3314f0b50d96e9",
         "result": "passed",
-        "seconds": 44.59
+        "seconds": 39.12
       },
-      "log_sha256": "ceff678e0a73bcc83e1db7963ba8c530d9414c6dcc0261b82f82eea961539ae0",
+      "log_sha256": "c3ebf6f783383034f934e136955cedd9ba1e086dbc0e96694dc148e8bf70c3c9",
       "pytest_summaries": [
-        "144 passed in 20.18s"
+        "144 passed in 18.16s"
       ],
       "checks": [
         "pinned backend build",
@@ -92,12 +84,12 @@
     {
       "target": "ubuntu2404-source",
       "exit": 0,
-      "seconds": 48.13,
+      "seconds": 39.62,
       "environment": {
         "target": "ubuntu2404",
         "platform": "linux/amd64",
         "base": "ubuntu:24.04",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": false,
         "development": false,
@@ -133,7 +125,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:35:46.49935004Z"
+            "LastTagTime": "2026-09-23T22:04:38.249965263Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -148,13 +140,13 @@
             ]
           }
         },
-        "image_id": "sha256:b92f825271dd8975f50e4768c84ac72fd0d9f83bec1311aa808f35e71c0fef30",
+        "image_id": "sha256:7f0b3098d435ea5e2668dd28bf3ef6fee06c0251dd68b8ecc4ba764cd17b4f63",
         "result": "passed",
-        "seconds": 48.08
+        "seconds": 39.58
       },
-      "log_sha256": "0ef8ab7e7dc98ea6fcf07ce710e3bec6e9b3d1b379c783eb8465ae80cc71bc82",
+      "log_sha256": "205accb69e7b2e2e73bb29e6fec1938d1995226d86e39ca02450b9ef86475cc8",
       "pytest_summaries": [
-        "144 passed in 21.05s"
+        "144 passed in 18.31s"
       ],
       "checks": [
         "pinned backend build",
@@ -168,12 +160,12 @@
     {
       "target": "ubuntu2604-source",
       "exit": 0,
-      "seconds": 39.5,
+      "seconds": 37.9,
       "environment": {
         "target": "ubuntu2604",
         "platform": "linux/amd64",
         "base": "ubuntu:26.04",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": false,
         "development": false,
@@ -214,7 +206,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:36:30.558280236Z"
+            "LastTagTime": "2026-09-23T22:05:16.127363131Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -229,13 +221,13 @@
             ]
           }
         },
-        "image_id": "sha256:2dcb0cdecd46c86168d2c67a9c61f5dac7d1c256fe23a021941e70b56d51fddd",
+        "image_id": "sha256:740dc56009c928b0b6d45416744d856fc0b7d83671bd289ff835e3c8cd44b061",
         "result": "passed",
-        "seconds": 39.44
+        "seconds": 37.87
       },
-      "log_sha256": "ed2a35ddcff48238c7c40fdae5653a5f6a0e796cdcbd35a2ebd891b82bdfcf56",
+      "log_sha256": "0d44db8d5c57e8dc71c9527bf31bc05b4206ef66ee0d4fe02d315c38619364d3",
       "pytest_summaries": [
-        "144 passed in 19.94s"
+        "144 passed in 19.81s"
       ],
       "checks": [
         "pinned backend build",
@@ -249,12 +241,12 @@
     {
       "target": "fedora44-source",
       "exit": 0,
-      "seconds": 38.06,
+      "seconds": 37.06,
       "environment": {
         "target": "fedora44",
         "platform": "linux/amd64",
         "base": "fedora:44",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": false,
         "development": false,
@@ -295,7 +287,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:36:33.898022314Z"
+            "LastTagTime": "2026-09-23T22:05:16.638924246Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -310,13 +302,13 @@
             ]
           }
         },
-        "image_id": "sha256:362ca71354c4d05e0413b67c62bacaaafca5c97a504b2fe2d10807d00d837736",
+        "image_id": "sha256:246c16e8c4322f0e362d3a02a556131f1e87adda68a1ebf57db9d7a3126b83ca",
         "result": "passed",
-        "seconds": 37.99
+        "seconds": 37.02
       },
-      "log_sha256": "d8800c7694474274d540a1880b4c607541ae783f50fee7fe479047ae23764370",
+      "log_sha256": "88073a93b3a7e5a6319044f11d4dbf8a8fb14f52c3c1dbf2ef38774c39470195",
       "pytest_summaries": [
-        "144 passed in 19.32s"
+        "144 passed in 19.16s"
       ],
       "checks": [
         "pinned backend build",
@@ -330,12 +322,12 @@
     {
       "target": "opensuse16-source",
       "exit": 0,
-      "seconds": 40.62,
+      "seconds": 37.75,
       "environment": {
         "target": "opensuse16",
         "platform": "linux/amd64",
         "base": "opensuse/leap:16.0",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": false,
         "development": false,
@@ -389,7 +381,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:37:09.531124251Z"
+            "LastTagTime": "2026-09-23T22:05:53.607460603Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
@@ -404,13 +396,13 @@
             ]
           }
         },
-        "image_id": "sha256:91063fa9c77c9e977a648c6089394c2b1543e94ebb5afbc8b384296d45af969d",
+        "image_id": "sha256:f0cac97f69be87f24a01db43f182b877170b0704bc277198f14c35198310e910",
         "result": "passed",
-        "seconds": 40.57
+        "seconds": 37.71
       },
-      "log_sha256": "b0b181c5bde67a89bbc08a098f9cb561b88f5b697482bb779de6e9fc075c6fa7",
+      "log_sha256": "0b85ff5706f8f451754cebc459d671742a5eaa525a2242f823ab34125e190374",
       "pytest_summaries": [
-        "144 passed in 20.81s"
+        "144 passed in 18.85s"
       ],
       "checks": [
         "pinned backend build",
@@ -424,12 +416,12 @@
     {
       "target": "arch-source",
       "exit": 0,
-      "seconds": 42.6,
+      "seconds": 39.14,
       "environment": {
         "target": "arch",
         "platform": "linux/amd64",
         "base": "archlinux:base",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": false,
         "development": false,
@@ -478,7 +470,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:37:11.90921807Z"
+            "LastTagTime": "2026-09-23T22:05:54.112487726Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -493,13 +485,13 @@
             ]
           }
         },
-        "image_id": "sha256:84c728ceb7d7b6a1570db7ce3f9c79655327013ba8b037ef757987553f0e4eb4",
+        "image_id": "sha256:4f169780fc8f504d8781b721c489327caedda91d7f91ed9addc17ffafd66f11f",
         "result": "passed",
-        "seconds": 42.55
+        "seconds": 39.11
       },
-      "log_sha256": "6ec1c41b9d041adc34209b54ee10d498d4610e5e72e2f9f40d0efa9ab3975aec",
+      "log_sha256": "0e84d3507ea34ee287ab2ab7ae5425ab0f3ba50854e71544eacad0e5294c35ed",
       "pytest_summaries": [
-        "144 passed in 21.78s"
+        "144 passed in 20.60s"
       ],
       "checks": [
         "pinned backend build",
@@ -513,12 +505,12 @@
     {
       "target": "alpine322-source",
       "exit": 0,
-      "seconds": 39.08,
+      "seconds": 39.46,
       "environment": {
         "target": "alpine322",
         "platform": "linux/amd64",
         "base": "alpine:3.22",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": false,
         "development": false,
@@ -553,7 +545,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:37:50.269223122Z"
+            "LastTagTime": "2026-09-23T22:06:31.408671872Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -568,13 +560,13 @@
             ]
           }
         },
-        "image_id": "sha256:41a7add3f6cd2ed4ab3bd4902ed9bf5219144fd94aac76a167f526c155403317",
+        "image_id": "sha256:5f2c7c6cde36881bdfbd430f68dee2b59d703e83c31b166bac05098a66238558",
         "result": "passed",
-        "seconds": 39.04
+        "seconds": 39.43
       },
-      "log_sha256": "3309a15d7055d46bf1c368d8f5856c47b41aba751bc6b2d8eb8ec0621e52ed29",
+      "log_sha256": "3a6e1f46489f6e512a70a01fdcb63336a61d071aa642d1da5b61a2167e810628",
       "pytest_summaries": [
-        "144 passed in 20.22s"
+        "144 passed in 19.65s"
       ],
       "checks": [
         "pinned backend build",
@@ -588,15 +580,15 @@
     {
       "target": "ubuntu2404-native",
       "exit": 0,
-      "seconds": 23.74,
+      "seconds": 22.86,
       "environment": {
         "target": "ubuntu2404",
         "platform": "linux/amd64",
         "base": "ubuntu:24.04",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": true,
-        "development": true,
+        "development": false,
         "hardware": false,
         "service_manager": false,
         "base_image": {
@@ -629,7 +621,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:37:54.548425129Z"
+            "LastTagTime": "2026-09-23T22:06:33.270804908Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -644,22 +636,22 @@
             ]
           }
         },
-        "image_id": "sha256:f08d54b355edb599ae9601a7db727aeb9fc8794aa08396db252dfeebbf1eb851",
+        "image_id": "sha256:364f92e4fa7dfb5a1ceae95151428fc241e0950a8a56b5d371bc963ab1668db4",
         "result": "passed",
-        "seconds": 23.7
+        "seconds": 22.83
       },
-      "log_sha256": "bb7af3cf19cc5403f87ec16f4b157f776116703a70fcea5390052be8d9d908da",
+      "log_sha256": "054e5df7b4bb1d1a7b0f2822583b491c330ea34c5a2eae37a5594559bf4849ac",
       "package": {
-        "name": "oscmix-desk_0.7.1~dev-1_amd64_ubuntu24.04.deb",
-        "sha256": "9e2283bab3968e2a41d64278adf587961af088d1f717d982262bfb29a46a52ab",
-        "bytes": 157404,
+        "name": "oscmix-desk_0.7.2-1_amd64_ubuntu24.04.deb",
+        "sha256": "9f867c18a30792e3d21cc419eaf8928d7e5a5eac29ecce211581b0a9b78c0fff",
+        "bytes": 157446,
         "manifest": {
-          "version": "0.7.1",
-          "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+          "version": "0.7.2",
+          "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
           "dirty": false,
-          "development": true,
+          "development": false,
           "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
-          "source_date_epoch": 1790156033,
+          "source_date_epoch": 1790198522,
           "package_revision": 1,
           "format": "deb",
           "build_flags": {
@@ -680,7 +672,7 @@
             "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
             "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
             "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
             "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
             "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
             "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -714,13 +706,13 @@
             "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
             "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
             "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
-            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/doc/oscmix-desk/README.md": "aa19495cd4cd8478d88492770aa83c756a29ce3a1973a2b2f133c67ad09f0ea8",
             "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
             "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
-            "usr/share/oscmix-desk/package.json": "ec58dcf11d691532fa568f22e5b7237b34d869b6078c84b6c1522e64d6a3e43d",
+            "usr/share/oscmix-desk/package.json": "5e352e01a40192538098210390eb652fb9f3c01b781fa441270fcf2648c9b1a4",
             "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
           },
-          "package_version": "0.7.1~dev-1",
+          "package_version": "0.7.2-1",
           "architecture": "amd64",
           "payload": {
             "usr/bin/alsaseqio": "5b235e4c84c3767f7d974f711e8117e3d7b781e9279f3a0db652d27897038347",
@@ -732,7 +724,7 @@
             "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
             "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
             "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
             "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
             "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
             "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -766,19 +758,19 @@
             "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
             "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
             "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
-            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/doc/oscmix-desk/README.md": "aa19495cd4cd8478d88492770aa83c756a29ce3a1973a2b2f133c67ad09f0ea8",
             "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
             "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
-            "usr/share/oscmix-desk/package.json": "ec58dcf11d691532fa568f22e5b7237b34d869b6078c84b6c1522e64d6a3e43d",
+            "usr/share/oscmix-desk/package.json": "5e352e01a40192538098210390eb652fb9f3c01b781fa441270fcf2648c9b1a4",
             "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
           },
-          "artifact": "oscmix-desk_0.7.1~dev-1_amd64_ubuntu24.04.deb",
-          "sha256": "9e2283bab3968e2a41d64278adf587961af088d1f717d982262bfb29a46a52ab"
+          "artifact": "oscmix-desk_0.7.2-1_amd64_ubuntu24.04.deb",
+          "sha256": "9f867c18a30792e3d21cc419eaf8928d7e5a5eac29ecce211581b0a9b78c0fff"
         }
       },
       "checks": [
         "native fresh install",
-        "actual 0.7.0 source migration and return with simulated user bus",
+        "0.7.0 source migration and return with simulated user bus",
         "active-writer refusal",
         "upgrade",
         "interrupted-install recovery",
@@ -791,15 +783,15 @@
     {
       "target": "fedora44-native",
       "exit": 0,
-      "seconds": 23.14,
+      "seconds": 19.72,
       "environment": {
         "target": "fedora44",
         "platform": "linux/amd64",
         "base": "fedora:44",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": true,
-        "development": true,
+        "development": false,
         "hardware": false,
         "service_manager": false,
         "base_image": {
@@ -837,7 +829,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:38:18.062992254Z"
+            "LastTagTime": "2026-09-23T22:06:56.032963143Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -852,22 +844,22 @@
             ]
           }
         },
-        "image_id": "sha256:570e9b60dcd58149e7773ad6155e8ee65dce39bb80603c4ece8c69455673d5c3",
+        "image_id": "sha256:bc65e77a1066ead50339ad2013ec453b7420cc0b4f60c9b6a49b542ead9a039a",
         "result": "passed",
-        "seconds": 23.11
+        "seconds": 19.69
       },
-      "log_sha256": "a0a2936621c786ed2455c6dfbe724a51daf740181d9af5eabdfa6fc4754c78e7",
+      "log_sha256": "1efaff5511f7630a403f974ade35d3f5361e10ee3c3522a60931766c57991757",
       "package": {
-        "name": "oscmix-desk-0.7.1-0.dev.1.x86_64_fedora44.rpm",
-        "sha256": "d1365ed2b301f02875eb6a0f521302580816cd5da2fd39d904aec39bdc6f24bd",
-        "bytes": 175835,
+        "name": "oscmix-desk-0.7.2-1.x86_64_fedora44.rpm",
+        "sha256": "b187ecbd30af686a650f87ca38c1b02e13718e8999176cee565d7df7829d3287",
+        "bytes": 175807,
         "manifest": {
-          "version": "0.7.1",
-          "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+          "version": "0.7.2",
+          "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
           "dirty": false,
-          "development": true,
+          "development": false,
           "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
-          "source_date_epoch": 1790156033,
+          "source_date_epoch": 1790198522,
           "package_revision": 1,
           "format": "rpm",
           "build_flags": {
@@ -888,7 +880,7 @@
             "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
             "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
             "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
             "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
             "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
             "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -922,13 +914,13 @@
             "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
             "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
             "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
-            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/doc/oscmix-desk/README.md": "aa19495cd4cd8478d88492770aa83c756a29ce3a1973a2b2f133c67ad09f0ea8",
             "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
             "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
-            "usr/share/oscmix-desk/package.json": "496267cced8416d3d618093c78c816ab51e2346b8dc9987d2fe1e7eeb80162c3",
+            "usr/share/oscmix-desk/package.json": "c59c30ceca628eb28250fcf87b97ff62bff84595dbd653b81549e2d5efef23b9",
             "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
           },
-          "package_version": "0.7.1-0.dev.1",
+          "package_version": "0.7.2-1",
           "architecture": "x86_64",
           "payload": {
             "usr/bin/alsaseqio": "5e7c10aa607be91593fc1679ef1b3911a7fdacf4b44633acba7d778f9cde3ed4",
@@ -940,7 +932,7 @@
             "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
             "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
             "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
             "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
             "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
             "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -974,19 +966,19 @@
             "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
             "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
             "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
-            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/doc/oscmix-desk/README.md": "aa19495cd4cd8478d88492770aa83c756a29ce3a1973a2b2f133c67ad09f0ea8",
             "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
             "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
-            "usr/share/oscmix-desk/package.json": "496267cced8416d3d618093c78c816ab51e2346b8dc9987d2fe1e7eeb80162c3",
+            "usr/share/oscmix-desk/package.json": "c59c30ceca628eb28250fcf87b97ff62bff84595dbd653b81549e2d5efef23b9",
             "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
           },
-          "artifact": "oscmix-desk-0.7.1-0.dev.1.x86_64_fedora44.rpm",
-          "sha256": "d1365ed2b301f02875eb6a0f521302580816cd5da2fd39d904aec39bdc6f24bd"
+          "artifact": "oscmix-desk-0.7.2-1.x86_64_fedora44.rpm",
+          "sha256": "b187ecbd30af686a650f87ca38c1b02e13718e8999176cee565d7df7829d3287"
         }
       },
       "checks": [
         "native fresh install",
-        "actual 0.7.0 source migration and return with simulated user bus",
+        "0.7.0 source migration and return with simulated user bus",
         "active-writer refusal",
         "upgrade",
         "interrupted-install recovery",
@@ -999,15 +991,15 @@
     {
       "target": "opensuse16-native",
       "exit": 0,
-      "seconds": 24.62,
+      "seconds": 20.48,
       "environment": {
         "target": "opensuse16",
         "platform": "linux/amd64",
         "base": "opensuse/leap:16.0",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": true,
-        "development": true,
+        "development": false,
         "hardware": false,
         "service_manager": false,
         "base_image": {
@@ -1058,7 +1050,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:38:29.420171974Z"
+            "LastTagTime": "2026-09-23T22:07:10.681155056Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
@@ -1073,22 +1065,22 @@
             ]
           }
         },
-        "image_id": "sha256:e20bd0cde6c65992bf419786cd4722d108b2f2e875e359880786dcb20a3d7521",
+        "image_id": "sha256:e057145ab91cad6f01e047457a07e5f5fba591e6c43a63555c4857c3dd0d87b6",
         "result": "passed",
-        "seconds": 24.57
+        "seconds": 20.45
       },
-      "log_sha256": "34cb2a82abeab87cf7aa4d98108b3b5eba7cf3e008e7d4658d8abcc36dde9898",
+      "log_sha256": "8e80a40addd087be66068478f55c9d75a0e2ab7e0790815147408a0cf8c08646",
       "package": {
-        "name": "oscmix-desk-0.7.1-0.dev.1.x86_64_opensuse-leap16.0.rpm",
-        "sha256": "4f36ef6998c90a6f63d4592d497e7e7ce0c53ba7073617cba8a13746f4b7be5c",
-        "bytes": 176050,
+        "name": "oscmix-desk-0.7.2-1.x86_64_opensuse-leap16.0.rpm",
+        "sha256": "cea1316246e35658f68e5d6ac68c91bcb1fe6484ee66c0376e59c7b27345f702",
+        "bytes": 176020,
         "manifest": {
-          "version": "0.7.1",
-          "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+          "version": "0.7.2",
+          "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
           "dirty": false,
-          "development": true,
+          "development": false,
           "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
-          "source_date_epoch": 1790156033,
+          "source_date_epoch": 1790198522,
           "package_revision": 1,
           "format": "rpm",
           "build_flags": {
@@ -1109,7 +1101,7 @@
             "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
             "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
             "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
             "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
             "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
             "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -1143,13 +1135,13 @@
             "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
             "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
             "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
-            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/doc/oscmix-desk/README.md": "aa19495cd4cd8478d88492770aa83c756a29ce3a1973a2b2f133c67ad09f0ea8",
             "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
             "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
-            "usr/share/oscmix-desk/package.json": "79f2cdb87d3e0a9e0803b0417c72449340905aa46235ca2260e898ac2991260b",
+            "usr/share/oscmix-desk/package.json": "b8ab00203df68483da7a60bed4f830fa691976bbe915f33b173d5cf0457591bc",
             "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
           },
-          "package_version": "0.7.1-0.dev.1",
+          "package_version": "0.7.2-1",
           "architecture": "x86_64",
           "payload": {
             "usr/bin/alsaseqio": "5516da41693c7a433efc14f6ad3b86e58ae4a1c41c6e7b995f007eb3f990cf0c",
@@ -1161,7 +1153,7 @@
             "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
             "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
             "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
             "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
             "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
             "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -1195,19 +1187,19 @@
             "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
             "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
             "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
-            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/doc/oscmix-desk/README.md": "aa19495cd4cd8478d88492770aa83c756a29ce3a1973a2b2f133c67ad09f0ea8",
             "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
             "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
-            "usr/share/oscmix-desk/package.json": "79f2cdb87d3e0a9e0803b0417c72449340905aa46235ca2260e898ac2991260b",
+            "usr/share/oscmix-desk/package.json": "b8ab00203df68483da7a60bed4f830fa691976bbe915f33b173d5cf0457591bc",
             "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
           },
-          "artifact": "oscmix-desk-0.7.1-0.dev.1.x86_64_opensuse-leap16.0.rpm",
-          "sha256": "4f36ef6998c90a6f63d4592d497e7e7ce0c53ba7073617cba8a13746f4b7be5c"
+          "artifact": "oscmix-desk-0.7.2-1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "cea1316246e35658f68e5d6ac68c91bcb1fe6484ee66c0376e59c7b27345f702"
         }
       },
       "checks": [
         "native fresh install",
-        "actual 0.7.0 source migration and return with simulated user bus",
+        "0.7.0 source migration and return with simulated user bus",
         "active-writer refusal",
         "upgrade",
         "interrupted-install recovery",
@@ -1220,15 +1212,15 @@
     {
       "target": "arch-native",
       "exit": 0,
-      "seconds": 32.32,
+      "seconds": 24.02,
       "environment": {
         "target": "arch",
         "platform": "linux/amd64",
         "base": "archlinux:base",
-        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
         "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
         "native": true,
-        "development": true,
+        "development": false,
         "hardware": false,
         "service_manager": false,
         "base_image": {
@@ -1274,7 +1266,7 @@
             ]
           },
           "Metadata": {
-            "LastTagTime": "2026-09-23T09:38:41.289430925Z"
+            "LastTagTime": "2026-09-23T22:07:16.269211957Z"
           },
           "Descriptor": {
             "mediaType": "application/vnd.oci.image.index.v1+json",
@@ -1289,22 +1281,22 @@
             ]
           }
         },
-        "image_id": "sha256:508315babfae58d0d512abb56f7b1a1d8a7caaba3140503dbb3f4542020c39ad",
+        "image_id": "sha256:4787e17d21fcdc71640947b555d22620660692a709fe59a0ed3ae9f9a692824d",
         "result": "passed",
-        "seconds": 32.29
+        "seconds": 23.99
       },
-      "log_sha256": "652ed3143b192ae8046a0eb5263ac4f156982e62b707a971161b036d8cfec949",
+      "log_sha256": "5acfe8a5ead220036df25cdb3d801b2ac3e62c4ed4c688ebd01521312a6af457",
       "package": {
-        "name": "oscmix-desk-0.7.1.dev-1-x86_64.pkg.tar.zst",
-        "sha256": "ef17d76b2891a3d0923616f8431703ab9045b8392125d5e081a70d850e311200",
-        "bytes": 192127,
+        "name": "oscmix-desk-0.7.2-1-x86_64.pkg.tar.zst",
+        "sha256": "bc481a1b1422fd76193c02187ecfd8fcc25e1495f320673633ea5ae07a5b4978",
+        "bytes": 192096,
         "manifest": {
-          "version": "0.7.1",
-          "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+          "version": "0.7.2",
+          "source_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
           "dirty": false,
-          "development": true,
+          "development": false,
           "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
-          "source_date_epoch": 1790156033,
+          "source_date_epoch": 1790198522,
           "package_revision": 1,
           "format": "arch",
           "build_flags": {
@@ -1325,7 +1317,7 @@
             "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
             "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
             "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
             "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
             "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
             "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -1359,13 +1351,13 @@
             "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
             "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
             "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
-            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/doc/oscmix-desk/README.md": "aa19495cd4cd8478d88492770aa83c756a29ce3a1973a2b2f133c67ad09f0ea8",
             "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
             "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
-            "usr/share/oscmix-desk/package.json": "52a8b0a4ab7dad14e5f6b28a4634239541baa9c1222b2a134eee3988a2867d6c",
+            "usr/share/oscmix-desk/package.json": "ff6b03a6ba5fcdb19081fc555b48e0f967b387b1fac1a6e05fa28eb9f1250722",
             "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
           },
-          "package_version": "0.7.1.dev-1",
+          "package_version": "0.7.2-1",
           "architecture": "x86_64",
           "payload": {
             "usr/bin/alsaseqio": "868dd8c67bdb2a138c1060b6a77ebb44892eb0db523ed891146bfd84f6770ee3",
@@ -1377,7 +1369,7 @@
             "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
             "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
             "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
             "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
             "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
             "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -1411,20 +1403,20 @@
             "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
             "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
             "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
-            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/doc/oscmix-desk/README.md": "aa19495cd4cd8478d88492770aa83c756a29ce3a1973a2b2f133c67ad09f0ea8",
             "usr/share/libalpm/hooks/00-oscmix-desk-maintenance.hook": "532043192bd145149a46b96bea58069940f01c717bdb8b9f0ef34ed190773b45",
             "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
             "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
-            "usr/share/oscmix-desk/package.json": "52a8b0a4ab7dad14e5f6b28a4634239541baa9c1222b2a134eee3988a2867d6c",
+            "usr/share/oscmix-desk/package.json": "ff6b03a6ba5fcdb19081fc555b48e0f967b387b1fac1a6e05fa28eb9f1250722",
             "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
           },
-          "artifact": "oscmix-desk-0.7.1.dev-1-x86_64.pkg.tar.zst",
-          "sha256": "ef17d76b2891a3d0923616f8431703ab9045b8392125d5e081a70d850e311200"
+          "artifact": "oscmix-desk-0.7.2-1-x86_64.pkg.tar.zst",
+          "sha256": "bc481a1b1422fd76193c02187ecfd8fcc25e1495f320673633ea5ae07a5b4978"
         }
       },
       "checks": [
         "native fresh install",
-        "actual 0.7.0 source migration and return with simulated user bus",
+        "0.7.0 source migration and return with simulated user bus",
         "active-writer refusal",
         "upgrade",
         "interrupted-install recovery",
@@ -1436,15 +1428,46 @@
     }
   ],
   "source_archive": {
-    "candidate": "b537416434db778fee89b1e787590a1094761a78",
-    "target": "0.7.2-unreleased",
-    "note": "Development commit still carries 0.7.1 in constants; these archives are not release assets.",
+    "target": "0.7.2",
+    "release_ready": false,
     "manifest": {
-      "version": "0.7.1",
-      "desk_commit": "b537416434db778fee89b1e787590a1094761a78",
+      "version": "0.7.2",
+      "desk_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
       "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
-      "archive": "oscmix-desk-0.7.1.tar.gz",
-      "archive_sha256": "e96396867e760d88e687eb631978554a007c83d19e8a4f4825cc8631b6f7c488"
+      "archive": "oscmix-desk-0.7.2.tar.gz",
+      "archive_sha256": "ad1d7653be933eed81337d9bf948fe15a9b4547d85b40bc13b109ea7a518fcea"
+    },
+    "identical_rebuild": true,
+    "private_material_absent": true,
+    "extracted_installer_tests": {
+      "exit": 0,
+      "passed": 51,
+      "command": [
+        "/tmp/oscmix-desk-release-0.7.2/.venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_install_sh.py",
+        "tests/test_install_modes.py",
+        "tests/test_package_stage.py",
+        "tests/test_package_setup.py",
+        "tests/test_package_guard.py"
+      ],
+      "log_sha256": "1407d615c06f48e0f821d8b13474505d87c7ef89b93f9278cc21565e8bfb3741"
+    },
+    "seconds": 11.41,
+    "note": "Final-version candidate source archive and extracted installer checks; host integration in these extracted tests is simulated."
+  },
+  "source_upgrade_and_rollback": {
+    "candidate": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
+    "target": "0.7.2",
+    "note": "Final-version candidate source reproducibility and isolated 0.7.1 upgrade/rollback in both file layouts.",
+    "manifest": {
+      "version": "0.7.2",
+      "desk_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
+      "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "archive": "oscmix-desk-0.7.2.tar.gz",
+      "archive_sha256": "ad1d7653be933eed81337d9bf948fe15a9b4547d85b40bc13b109ea7a518fcea"
     },
     "identical_rebuild": true,
     "private_review_and_gui_files_absent": true,
@@ -1460,27 +1483,8 @@
         "ok": true
       }
     ],
-    "seconds": 3.37,
-    "adapter_sha256": "fce345dc755e05e5ec8f02c48a6824df7944589af071941916df394f30e6a788"
-  },
-  "extracted_archive_installer_tests": {
-    "archive": "oscmix-desk-0.7.1.tar.gz",
-    "archive_sha256": "e96396867e760d88e687eb631978554a007c83d19e8a4f4825cc8631b6f7c488",
-    "exit": 0,
-    "seconds": 13.89,
-    "command": [
-      "/tmp/oscmix-desk-0.7.2-installation/.venv/bin/python",
-      "-m",
-      "pytest",
-      "-q",
-      "tests/test_install_sh.py",
-      "tests/test_install_modes.py",
-      "tests/test_package_stage.py",
-      "tests/test_package_setup.py",
-      "tests/test_package_guard.py"
-    ],
-    "log_sha256": "181923d28b08cfd25b87fecfe14a62ac6f1bfaf71d07f2e49aba3615a8a0d0a9",
-    "passed": 51
+    "seconds": 2.2,
+    "adapter_sha256": "ed910ee15d78b61b435a1d9d36641ec5094e28fc219b3bedadbaed79250d31ee"
   },
   "supporting_files_sha256": {
     "config/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
@@ -1495,36 +1499,5 @@
     "systemd/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
     "udev/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
     "uninstall.sh": "07edd0572840dfdfa07dfc58aefc5b0328548c6b36ec6b02cf6c7a2606cda5ee"
-  },
-  "combined_main_archive": {
-    "target": "0.7.2-unreleased",
-    "release_ready": false,
-    "manifest": {
-      "version": "0.7.1",
-      "desk_commit": "7ae0fea84556b2e8c23fa9fc646ad4299bd3afdf",
-      "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
-      "archive": "oscmix-desk-0.7.1.tar.gz",
-      "archive_sha256": "e2724c056575df5264fcb177c5e86de5be0f9808e17be11ba7bb015994a95381"
-    },
-    "identical_rebuild": true,
-    "private_material_absent": true,
-    "extracted_installer_tests": {
-      "exit": 0,
-      "passed": 51,
-      "command": [
-        "/home/relative/dev/projects/oscmix-desk/.venv/bin/python",
-        "-m",
-        "pytest",
-        "-q",
-        "tests/test_install_sh.py",
-        "tests/test_install_modes.py",
-        "tests/test_package_stage.py",
-        "tests/test_package_setup.py",
-        "tests/test_package_guard.py"
-      ],
-      "log_sha256": "e490792d2f75effbaff1d966936a7882cdde414f4a69072db7b785caadb7208c"
-    },
-    "seconds": 15.98,
-    "note": "Committed combined development tree including current public evidence and upgrade instructions. Host integration is simulated; no host installation or release publication."
   }
 }

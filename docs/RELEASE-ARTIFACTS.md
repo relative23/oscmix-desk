@@ -1,6 +1,6 @@
-# Source release artifacts
+# Release artifacts
 
-The 0.7.1 release workflow builds `oscmix-desk-0.7.1.tar.gz` from its Git
+The 0.7.2 release workflow builds `oscmix-desk-0.7.2.tar.gz` from its Git
 commit. It contains `install.sh`, the Python runtime, system integration,
 tests and documentation. It also produces `release-manifest.json` with
 the desk commit, pinned oscmix SHA and archive digest, plus `SHA256SUMS`.
@@ -29,7 +29,7 @@ browser login or additional personal token is needed. A release published
 with that token does not trigger another release-event workflow; any
 additional package workflow must also handle the tag explicitly.
 
-On the installation branch, the release workflow calls the distribution
+The 0.7.2 release workflow calls the distribution
 workflow directly and waits for all seven source targets and four native
 targets. It collects their packages, recipes, logs and checksums into the
 same asset set before publishing. There is no dependency on a second
@@ -50,11 +50,11 @@ and release tag, then the checksums:
 gh attestation verify SHA256SUMS \
   --repo relative23/oscmix-desk \
   --signer-workflow relative23/oscmix-desk/.github/workflows/release.yml \
-  --source-ref refs/tags/v0.7.1 \
+  --source-ref refs/tags/v0.7.2 \
   --deny-self-hosted-runners --bundle attestation.jsonl
 sha256sum --check SHA256SUMS
-tar -xzf oscmix-desk-0.7.1.tar.gz
-cd oscmix-desk-0.7.1
+tar -xzf oscmix-desk-0.7.2.tar.gz
+cd oscmix-desk-0.7.2
 ./install.sh
 ```
 
@@ -75,8 +75,8 @@ attestation**. The qualification record must distinguish these states.
 From a checkout containing the selected commit:
 
 ```sh
-python3 scripts/build-release.py --ref v0.7.1 --output build/first
-python3 scripts/build-release.py --ref v0.7.1 --output build/second
+python3 scripts/build-release.py --ref v0.7.2 --output build/first
+python3 scripts/build-release.py --ref v0.7.2 --output build/second
 diff -r build/first build/second
 ```
 

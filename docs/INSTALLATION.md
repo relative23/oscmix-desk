@@ -1,9 +1,8 @@
 # Installation and package recovery
 
-This installation work is in development after the 0.7.1 correctness
-patch. Native test packages are not published releases. Use the instructions
-for the version you actually downloaded; 0.7.0/0.7.1 installers do not have
-the new `--check`, `--manual`, `--enable` or `oscmix-setup` interface.
+These instructions describe 0.7.2. Use the instructions for the version
+you downloaded; 0.7.0/0.7.1 installers do not have the `--check`,
+`--manual`, `--enable` or `oscmix-setup` interface.
 
 The common runtime needs Python 3.9 or newer and the pinned `oscmix` C
 backend. It has no third-party Python dependencies. `pip` alone does not
