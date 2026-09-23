@@ -1,0 +1,557 @@
+{
+  "taken": "2026-09-23T09:54:23.588999+00:00",
+  "commands": [
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=3723841\nStatusText=running; verifier finished at 11:07:01\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=not-found\nActiveState=inactive\nSubState=dead\nType=\nMainPID=0\nStatusText=\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "stop",
+        "oscmix.service"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemd-run",
+        "--user",
+        "--unit=oscmix-072-qualification.service",
+        "--collect",
+        "--property=Type=notify",
+        "--property=RuntimeDirectory=oscmix-desk",
+        "--property=RuntimeDirectoryPreserve=yes",
+        "--property=RestartPreventExitStatus=2",
+        "--property=TimeoutStartSec=100",
+        "--property=TimeoutStopSec=10",
+        "--property=NoNewPrivileges=yes",
+        "--property=PrivateTmp=yes",
+        "--property=ProtectSystem=strict",
+        "--property=ProtectHome=read-only",
+        "--property=LockPersonality=yes",
+        "--property=MemoryDenyWriteExecute=yes",
+        "--property=SystemCallArchitectures=native",
+        "--property=RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6",
+        "--property=UMask=0077",
+        "--property=KeyringMode=private",
+        "--property=RestrictNamespaces=yes",
+        "--property=RestrictSUIDSGID=yes",
+        "--property=RestrictRealtime=yes",
+        "--property=ProtectKernelTunables=yes",
+        "--property=ProtectControlGroups=yes",
+        "--property=SystemCallFilter=@system-service",
+        "--property=SystemCallErrorNumber=EPERM",
+        "--property=ReadWritePaths=-/run/oscmix-desk",
+        "--property=Restart=no",
+        "/tmp/oscmix-desk-hardware-0.7.2/bin/oscmix-session",
+        "--config",
+        "/home/relative/.config/oscmix/routing.conf"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "Running as unit: oscmix-072-qualification.service; invocation ID: 7b45f17ae06849528f0c265e23b54ce1\n"
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=applying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=applying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=verifying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=verifying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=verifying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=running; verifier finished at 11:54:32\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "kill",
+        "--kill-whom=main",
+        "--signal=HUP",
+        "oscmix-072-qualification.service"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=running; verifier finished at 11:54:32\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=running; verifier finished at 11:54:32\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=reconciling (SIGHUP)\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix-072-qualification.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4181367\nStatusText=running; reconciled at 11:54:41\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "journalctl",
+        "--user",
+        "-u",
+        "oscmix-072-qualification.service",
+        "--no-pager",
+        "--output=short-iso",
+        "-n",
+        "150"
+      ],
+      "exit": 0,
+      "stdout": "2026-09-23T11:54:29+02:00 studio systemd[5282]: Starting oscmix-072-qualification.service - [systemd-run] /tmp/oscmix-desk-hardware-0.7.2/bin/oscmix-session --config /home/relative/.config/oscmix/routing.conf...\n2026-09-23T11:54:29+02:00 studio oscmix-session[4181367]: INFO: configuration: /home/relative/.config/oscmix/routing.conf (5 route(s), 0 channel setting(s), 0 global setting(s))\n2026-09-23T11:54:29+02:00 studio oscmix-session[4181367]: INFO: waiting for 'Fireface UCX II' (ALSA sequencer, timeout 30s)\n2026-09-23T11:54:29+02:00 studio oscmix-session[4181367]: INFO: found 'Fireface UCX II' as ALSA sequencer client 24\n2026-09-23T11:54:29+02:00 studio oscmix-session[4181367]: INFO: starting: /home/relative/.local/bin/alsaseqio 24:1 /home/relative/.local/bin/oscmix -r udp!127.0.0.1!7222 -s udp!127.0.0.1!8222\n2026-09-23T11:54:30+02:00 studio oscmix-session[4181367]: INFO: oscmix is listening on UDP 7222\n2026-09-23T11:54:30+02:00 studio oscmix-session[4181367]: WARNING: no active UCX II hardware playback stream is observable; live USB mode is not validated (register addresses are checked)\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: no link change reported within 1.5s; mix matrix will be re-applied after the register sync\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'krk-monitors': playback 1/2 -> output 1/2 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'phones': playback 7/8 -> output 7/8 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'main': playback 5/6 -> output 5/6 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'main-to-krk': playback 5/6 -> output 1/2 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'main-to-phones': playback 5/6 -> output 7/8 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio systemd[5282]: Started oscmix-072-qualification.service - [systemd-run] /tmp/oscmix-desk-hardware-0.7.2/bin/oscmix-session --config /home/relative/.config/oscmix/routing.conf.\n2026-09-23T11:54:32+02:00 studio oscmix-session[4181367]: WARNING: no active UCX II hardware playback stream is observable; live USB mode is not validated (register addresses are checked)\n2026-09-23T11:54:32+02:00 studio oscmix-session[4181367]: INFO: mix matrix re-applied against the synchronized link state\n2026-09-23T11:54:32+02:00 studio oscmix-session[4181367]: INFO: routing verified against device state (8 confirmed; 5 not reported by the device dump)\n2026-09-23T11:54:39+02:00 studio systemd[5282]: oscmix-072-qualification.service: Sent signal SIGHUP to main process 4181367 (python3) on client request.\n2026-09-23T11:54:39+02:00 studio oscmix-session[4181367]: INFO: SIGHUP: reloaded /home/relative/.config/oscmix/routing.conf (5 route(s), 0 channel setting(s))\n2026-09-23T11:54:40+02:00 studio oscmix-session[4181367]: INFO: reconcile (SIGHUP): 8 confirmed, 0 drifted; re-applying\n2026-09-23T11:54:40+02:00 studio oscmix-session[4181367]: WARNING: no active UCX II hardware playback stream is observable; live USB mode is not validated (register addresses are checked)\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: no link change reported within 1.5s; mix matrix will be re-applied after the register sync\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'krk-monitors': playback 1/2 -> output 1/2 at +0.0 dB\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'phones': playback 7/8 -> output 7/8 at +0.0 dB\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'main': playback 5/6 -> output 5/6 at +0.0 dB\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'main-to-krk': playback 5/6 -> output 1/2 at +0.0 dB\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'main-to-phones': playback 5/6 -> output 7/8 at +0.0 dB\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "stop",
+        "oscmix-072-qualification.service"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "start",
+        "oscmix.service"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4182942\nStatusText=applying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4182942\nStatusText=applying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4182942\nStatusText=verifying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4182942\nStatusText=verifying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4182942\nStatusText=verifying routing\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "systemctl",
+        "--user",
+        "show",
+        "oscmix.service",
+        "--property=LoadState,ActiveState,SubState,MainPID,Result,ExecMainStatus,StatusText,Type"
+      ],
+      "exit": 0,
+      "stdout": "LoadState=loaded\nActiveState=active\nSubState=running\nType=notify\nMainPID=4182942\nStatusText=running; verifier finished at 11:54:51\nResult=success\nExecMainStatus=0\n",
+      "stderr": ""
+    }
+  ],
+  "restoration_errors": [],
+  "ok": true,
+  "error": null,
+  "audio_played": false,
+  "config_sha256": "e37b847864cde8c1d54c71e11511fc6a367c748188f6b71b6eb9627b953c0192",
+  "desk_source": {
+    "version": "0.7.1",
+    "commit": "0ade75fcbb83ec1b606006a991b6ffdc84cd1810",
+    "dirty": false,
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "runtime_sha256": {
+      "__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+      "backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+      "cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+      "config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+      "constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+      "devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+      "discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+      "dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+      "errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+      "launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+      "locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+      "log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+      "marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+      "model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+      "notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+      "notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+      "numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+      "osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+      "outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+      "paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+      "pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+      "process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+      "profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+      "reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+      "reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+      "registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+      "reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+      "routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+      "sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+      "session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+      "streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+      "verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f"
+    },
+    "tool_sha256": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd"
+  },
+  "adapter_sha256": "7985070fd691ba9e03f05200c0ba9d07adafc2f3efdd142f54d5e8dbf85776dc",
+  "original_service": {
+    "LoadState": "loaded",
+    "ActiveState": "active",
+    "SubState": "running",
+    "Type": "notify",
+    "MainPID": "3723841",
+    "StatusText": "running; verifier finished at 11:07:01",
+    "Result": "success",
+    "ExecMainStatus": "0"
+  },
+  "before": {
+    "messages": {
+      "reference": "sample-rate-links.json:baseline_messages",
+      "count": 2252,
+      "identical": true
+    },
+    "backend": {
+      "pid": 3723866,
+      "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+      "matches_local_build": true
+    }
+  },
+  "candidate_ready": {
+    "LoadState": "loaded",
+    "ActiveState": "active",
+    "SubState": "running",
+    "Type": "notify",
+    "MainPID": "4181367",
+    "StatusText": "running; verifier finished at 11:54:32",
+    "Result": "success",
+    "ExecMainStatus": "0"
+  },
+  "after_start": {
+    "messages": {
+      "reference": "sample-rate-links.json:baseline_messages",
+      "count": 2252,
+      "identical": true
+    },
+    "backend": {
+      "pid": 4181369,
+      "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+      "matches_local_build": true
+    }
+  },
+  "candidate_reloaded": {
+    "LoadState": "loaded",
+    "ActiveState": "active",
+    "SubState": "running",
+    "Type": "notify",
+    "MainPID": "4181367",
+    "StatusText": "running; reconciled at 11:54:41",
+    "Result": "success",
+    "ExecMainStatus": "0"
+  },
+  "after_reload": {
+    "messages": {
+      "reference": "sample-rate-links.json:baseline_messages",
+      "count": 2252,
+      "identical": true
+    },
+    "backend": {
+      "pid": 4181369,
+      "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+      "matches_local_build": true
+    }
+  },
+  "candidate_journal": "2026-09-23T11:54:29+02:00 studio systemd[5282]: Starting oscmix-072-qualification.service - [systemd-run] /tmp/oscmix-desk-hardware-0.7.2/bin/oscmix-session --config /home/relative/.config/oscmix/routing.conf...\n2026-09-23T11:54:29+02:00 studio oscmix-session[4181367]: INFO: configuration: /home/relative/.config/oscmix/routing.conf (5 route(s), 0 channel setting(s), 0 global setting(s))\n2026-09-23T11:54:29+02:00 studio oscmix-session[4181367]: INFO: waiting for 'Fireface UCX II' (ALSA sequencer, timeout 30s)\n2026-09-23T11:54:29+02:00 studio oscmix-session[4181367]: INFO: found 'Fireface UCX II' as ALSA sequencer client 24\n2026-09-23T11:54:29+02:00 studio oscmix-session[4181367]: INFO: starting: /home/relative/.local/bin/alsaseqio 24:1 /home/relative/.local/bin/oscmix -r udp!127.0.0.1!7222 -s udp!127.0.0.1!8222\n2026-09-23T11:54:30+02:00 studio oscmix-session[4181367]: INFO: oscmix is listening on UDP 7222\n2026-09-23T11:54:30+02:00 studio oscmix-session[4181367]: WARNING: no active UCX II hardware playback stream is observable; live USB mode is not validated (register addresses are checked)\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: no link change reported within 1.5s; mix matrix will be re-applied after the register sync\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'krk-monitors': playback 1/2 -> output 1/2 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'phones': playback 7/8 -> output 7/8 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'main': playback 5/6 -> output 5/6 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'main-to-krk': playback 5/6 -> output 1/2 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio oscmix-session[4181367]: INFO: route 'main-to-phones': playback 5/6 -> output 7/8 at +0.0 dB\n2026-09-23T11:54:31+02:00 studio systemd[5282]: Started oscmix-072-qualification.service - [systemd-run] /tmp/oscmix-desk-hardware-0.7.2/bin/oscmix-session --config /home/relative/.config/oscmix/routing.conf.\n2026-09-23T11:54:32+02:00 studio oscmix-session[4181367]: WARNING: no active UCX II hardware playback stream is observable; live USB mode is not validated (register addresses are checked)\n2026-09-23T11:54:32+02:00 studio oscmix-session[4181367]: INFO: mix matrix re-applied against the synchronized link state\n2026-09-23T11:54:32+02:00 studio oscmix-session[4181367]: INFO: routing verified against device state (8 confirmed; 5 not reported by the device dump)\n2026-09-23T11:54:39+02:00 studio systemd[5282]: oscmix-072-qualification.service: Sent signal SIGHUP to main process 4181367 (python3) on client request.\n2026-09-23T11:54:39+02:00 studio oscmix-session[4181367]: INFO: SIGHUP: reloaded /home/relative/.config/oscmix/routing.conf (5 route(s), 0 channel setting(s))\n2026-09-23T11:54:40+02:00 studio oscmix-session[4181367]: INFO: reconcile (SIGHUP): 8 confirmed, 0 drifted; re-applying\n2026-09-23T11:54:40+02:00 studio oscmix-session[4181367]: WARNING: no active UCX II hardware playback stream is observable; live USB mode is not validated (register addresses are checked)\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: no link change reported within 1.5s; mix matrix will be re-applied after the register sync\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'krk-monitors': playback 1/2 -> output 1/2 at +0.0 dB\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'phones': playback 7/8 -> output 7/8 at +0.0 dB\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'main': playback 5/6 -> output 5/6 at +0.0 dB\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'main-to-krk': playback 5/6 -> output 1/2 at +0.0 dB\n2026-09-23T11:54:41+02:00 studio oscmix-session[4181367]: INFO: route 'main-to-phones': playback 5/6 -> output 7/8 at +0.0 dB\n",
+  "restored_service": {
+    "LoadState": "loaded",
+    "ActiveState": "active",
+    "SubState": "running",
+    "Type": "notify",
+    "MainPID": "4182942",
+    "StatusText": "running; verifier finished at 11:54:51",
+    "Result": "success",
+    "ExecMainStatus": "0"
+  },
+  "after": {
+    "messages": {
+      "reference": "sample-rate-links.json:baseline_messages",
+      "count": 2252,
+      "identical": true
+    },
+    "backend": {
+      "pid": 4182944,
+      "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+      "matches_local_build": true
+    }
+  },
+  "not_restored": [],
+  "target": "0.7.2-unreleased",
+  "release_ready": false,
+  "installation_note": "Candidate executed from the isolated checkout in a transient service. The original installed 0.7.1 service was restored; this is not a host package migration."
+}

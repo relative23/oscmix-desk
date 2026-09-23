@@ -1,0 +1,38 @@
+{
+  "before_taken": "2026-09-23T08:08:40.397425+00:00",
+  "after_taken": "2026-09-23T08:55:58.503736+00:00",
+  "device": {
+    "usb_id": "2a39:3fd9",
+    "serial": "24216011",
+    "client": 24
+  },
+  "backend_before": {
+    "pid": 3065115,
+    "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+    "matches_local_build": true
+  },
+  "backend_after": {
+    "pid": 3065115,
+    "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+    "matches_local_build": true
+  },
+  "readable_messages": 2252,
+  "changed_paths": [],
+  "sample_rate": 48000,
+  "phantom_input_1": [
+    "i",
+    [
+      0
+    ]
+  ],
+  "phantom_input_2": [
+    "i",
+    [
+      0
+    ]
+  ],
+  "comparison": "All type tags and every argument compare exactly across both initial and both final refreshes.",
+  "reference": "sample-rate-links.json baseline_messages contains the same 2252 messages.",
+  "known_playback_routes": "hardware-evidence.json: five routes complete and passing",
+  "unknown_playback_state": "Not readable; no claim of restoring arbitrary unobserved cells."
+}

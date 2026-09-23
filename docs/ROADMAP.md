@@ -106,8 +106,9 @@ accepted invalid numbers and export omissions in the upgrade notes.
 
 **In progress, not released.** Translate the recorded USB playback limits
 into runtime checks, qualify higher-rate link/gain/mute behavior, and
-retain the separate physical signal/clock evidence gaps below. The
-standard-library core, config format and backend pin remain unchanged.
+retain the separate physical signal/clock evidence gaps below. The core
+still uses only the standard library; config format and backend pin remain
+unchanged.
 The maintainer's publication condition is completion of the required
 work: local commits do not imply permission to push an incomplete release.
 
@@ -117,7 +118,15 @@ work: local commits do not imply permission to push an incomplete release.
   test refusals before the first write and exact partial-write outcomes.
   Keep the planner pure and the profile marker unchanged on failure.
 - [x] Document offline-preview, register-diff and live-mode limits.
-- [ ] Finish H1's available high-rate link/mute and restoration checks.
+- [x] Measure H1's direct-ALSA high-rate link/gain/mute cases and
+  unavailable-source refusal, with full restoration after each attempt.
+- [x] Check the same 13 modes through PipeWire Pro Audio: 65 known-route
+  checks, actual hardware rates and AUX mapping, with device and graph
+  state restored after every mode.
+- [x] Exercise candidate service startup and SIGHUP on the UCX II; repeat
+  the full suite with the interface physically off on the combined
+  installation candidate, and verify the installed service's autostart
+  and original readable state after power-on.
 - [ ] Complete the physical H1/H2 measurements, or make a separate,
   explicit release-scope decision. Missing equipment is not a passed test.
 - [ ] Complete fresh candidate release gates and installation checks.
@@ -208,9 +217,18 @@ Detailed plan: [UCX II sample-rate qualification](plans/high-sample-rates.md).
 - [x] Measure 88.2/96 and 176.4/192 kHz separately. Distinguish physical
   ADAT capacity, USB stream channels, playback numbering and OSC register
   addresses; do not halve the whole device's channel count by assumption.
-- [ ] Check valid and unavailable routes, channel links, refresh/read-back,
-  state retention and PipeWire mappings. Exercise the return to the
+- [x] Check known analog-output playback routes, unavailable playback
+  sources, channel links, refresh/read-back, state retention and the
+  explicit PipeWire Pro Audio mappings. Exercise the return to the
   baseline; preserve and verify the original configuration and state.
+  **Progress:** the [0.7.2 development recordings](evidence/0.7.2/) cover
+  13 direct-ALSA modes, 52 linked/unlinked gain/mute cases and 12 refused
+  unavailable playback sources. All restore the 2,252 readable values and
+  known main route. The same 13 modes then pass 65 checks through the
+  three named PipeWire sinks, with the expected AUX links and full
+  device/graph restoration. One direct-ALSA 176.4-kHz / 14-channel startup
+  xrun is retained, followed by two successful unchanged repeats. Other
+  PipeWire profiles and physical digital paths are not qualified by this.
 - [x] Derive live USB playback validation from the recordings, add
   regressions for the actual failed combinations and publish a per-mode
   support table. Keep register addresses separate from audio capacity.

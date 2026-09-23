@@ -1,0 +1,836 @@
+{
+  "schema": 1,
+  "target": "0.7.2-unreleased",
+  "release_ready": false,
+  "check_without_interface": {
+    "gate": "no-interface-check",
+    "exit": 0,
+    "seconds": 174.68,
+    "usb_devices_before": [],
+    "usb_devices_after": [],
+    "observations_every_half_second": 348,
+    "observed_present": [],
+    "ok": true,
+    "candidate": "b537416434db778fee89b1e787590a1094761a78"
+  },
+  "check_summary": {
+    "passed": 1798,
+    "skipped": 2,
+    "log_sha256": "a142ce86285ec69b77d61661fe64a0aa425cb82fbd3f8a6d10bf1f725037dc16"
+  },
+  "user_confirmed_power_off": true,
+  "user_confirmed_power_on": true,
+  "service": {
+    "unit": "oscmix.service",
+    "ActiveState": "active",
+    "SubState": "running",
+    "ActiveEnterTimestamp": "Wed 2026-09-23 12:02:21 CEST",
+    "MainPID": "74741",
+    "StatusText": "running; verifier finished at 12:02:22",
+    "Result": "success",
+    "installed_version": "0.7.1",
+    "note": "Autostart of the existing installed release; candidate service startup/reload is recorded separately."
+  },
+  "after": {
+    "taken": "2026-09-23T10:02:47.678878+00:00",
+    "device": {
+      "usb_id": "2a39:3fd9",
+      "serial": "24216011",
+      "client": 24
+    },
+    "backend": {
+      "pid": 74776,
+      "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+      "matches_local_build": true
+    },
+    "commands_sent": [
+      "/refresh",
+      "/refresh"
+    ],
+    "audio_recorded": false,
+    "states": {
+      "reference": "sample-rate-links.json:baseline_messages",
+      "refreshes": 2,
+      "count_each": 2252,
+      "all_identical": true
+    },
+    "changed_paths": []
+  },
+  "raw_read_record_sha256": "79f24341a62d499f0988783fda5fabcebd3da5ccb3b083dde4b5f0debddee17c",
+  "matches_pre_measurement_baseline": true,
+  "restored_readable_registers": 2252,
+  "audio_played": false,
+  "limits": [
+    "Playback matrix is not readable; no new tone was played after this power cycle.",
+    "Not a host installation of the combined development candidate."
+  ],
+  "earlier_cycles": [
+    {
+      "target": "0.7.2-unreleased",
+      "check_without_interface": {
+        "gate": "no-interface-check",
+        "exit": 0,
+        "seconds": 163.22,
+        "usb_devices_before": [],
+        "usb_devices_after": [],
+        "ok": true,
+        "candidate": "a16730f49d0dd3700d88038c18447c49f4e3fd46"
+      },
+      "user_confirmed_power_off": true,
+      "user_confirmed_power_on": true,
+      "service": {
+        "active": "active",
+        "substate": "running",
+        "main_pid": 3723841,
+        "active_since": "2026-09-23 11:07:00 CEST",
+        "result": "success",
+        "installed_version": "0.7.1",
+        "note": "Existing installed release service, not an installation of the development candidate."
+      },
+      "after": {
+        "taken": "2026-09-23T09:08:01.436308+00:00",
+        "device": {
+          "usb_id": "2a39:3fd9",
+          "serial": "24216011",
+          "client": 24
+        },
+        "backend": {
+          "pid": 3723866,
+          "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+          "matches_local_build": true
+        },
+        "commands_sent": [
+          "/refresh",
+          "/refresh"
+        ],
+        "audio_recorded": false,
+        "states": {
+          "reference": "sample-rate-links.json:baseline_messages",
+          "refreshes": 2,
+          "count_each": 2252,
+          "all_identical": true
+        },
+        "changed_paths": [],
+        "meters": {
+          "/input/1/autolevel/meter": {
+            "tags": "i",
+            "messages": 472,
+            "maximum": [
+              0
+            ]
+          },
+          "/input/2/autolevel/meter": {
+            "tags": "i",
+            "messages": 472,
+            "maximum": [
+              0
+            ]
+          },
+          "/input/1/dynamics/meter": {
+            "tags": "i",
+            "messages": 472,
+            "maximum": [
+              112
+            ]
+          },
+          "/input/2/dynamics/meter": {
+            "tags": "i",
+            "messages": 472,
+            "maximum": [
+              112
+            ]
+          },
+          "/playback/1/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/2/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/3/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/4/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/5/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/6/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/7/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/8/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/9/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/10/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/11/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/12/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/13/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/14/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/15/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/16/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/17/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/18/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/19/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/20/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              0
+            ]
+          },
+          "/playback/21/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              -147.642578125,
+              0
+            ]
+          },
+          "/playback/22/level": {
+            "tags": "ffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              -147.642578125,
+              0
+            ]
+          },
+          "/input/1/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              -93.91606140136719,
+              -102.77506256103516,
+              -93.91606140136719,
+              -102.49266815185547,
+              0
+            ]
+          },
+          "/input/2/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              -102.08291625976562,
+              -112.98707580566406,
+              -102.08291625976562,
+              -113.03758239746094,
+              0
+            ]
+          },
+          "/input/3/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              -102.21553039550781,
+              -112.61417388916016,
+              -102.21553039550781,
+              -112.59542083740234,
+              0
+            ]
+          },
+          "/input/4/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              -101.08916473388672,
+              -112.5650634765625,
+              -101.08916473388672,
+              -112.5571517944336,
+              0
+            ]
+          },
+          "/input/5/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              -100.19751739501953,
+              -109.66564178466797,
+              -100.19751739501953,
+              -110.43440246582031,
+              0
+            ]
+          },
+          "/input/6/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              -102.08291625976562,
+              -112.70134735107422,
+              -102.08291625976562,
+              -112.65373992919922,
+              0
+            ]
+          },
+          "/input/7/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              -101.95230102539062,
+              -112.60779571533203,
+              -101.95230102539062,
+              -112.59783172607422,
+              0
+            ]
+          },
+          "/input/8/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              -101.57183837890625,
+              -112.49620056152344,
+              -101.57183837890625,
+              -112.4959487915039,
+              0
+            ]
+          },
+          "/input/9/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/10/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/11/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/12/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/13/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/14/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/15/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/16/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/17/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/18/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/19/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/20/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/input/21/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              -147.642578125,
+              null,
+              -147.642578125,
+              0
+            ]
+          },
+          "/input/22/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              -147.642578125,
+              null,
+              -147.642578125,
+              0
+            ]
+          },
+          "/output/1/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/2/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/3/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/4/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/5/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/6/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/7/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/8/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/9/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/10/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/11/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/12/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/13/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/14/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/15/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/16/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/17/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/18/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/19/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/20/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              null,
+              null,
+              null,
+              0
+            ]
+          },
+          "/output/21/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              -147.642578125,
+              null,
+              -147.642578125,
+              0
+            ]
+          },
+          "/output/22/level": {
+            "tags": "ffffi",
+            "messages": 123,
+            "maximum": [
+              null,
+              -147.642578125,
+              null,
+              -147.642578125,
+              0
+            ]
+          }
+        }
+      },
+      "restored_readable_registers": 2252,
+      "matches_pre_measurement_baseline": true,
+      "audio_played": false,
+      "limits": [
+        "Readable state only; playback matrix cannot be compared from a refresh.",
+        "The automatic start is of the existing 0.7.1 installation."
+      ]
+    }
+  ]
+}

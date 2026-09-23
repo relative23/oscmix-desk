@@ -1,0 +1,1509 @@
+{
+  "schema": 1,
+  "target": "0.7.2-unreleased",
+  "release_ready": false,
+  "candidate": "b537416434db778fee89b1e787590a1094761a78",
+  "tested_on": "2026-09-23",
+  "scope": "x86_64 source/manual installation and simulated lifecycle in seven distribution containers; native lifecycle in four",
+  "development_flag": "The runner records --development for native package versioning only. All source and native rows here test an unreleased development commit.",
+  "limits": [
+    "Development packages still identify the 0.7.1 version constant; not 0.7.2 release assets.",
+    "No physical sound device, host home or real user service manager is passed into these containers.",
+    "Headless backend packaging; optional upstream GTK GUI build is not qualified by this matrix.",
+    "The earlier Ubuntu 24.04 VM user-manager/reboot experiment was not repeated here; its original provenance remains in ../installation/qualification.json.",
+    "No host package migration and no release upload, signing or attestation were performed."
+  ],
+  "all_targets_passed": true,
+  "distributions": [
+    {
+      "target": "debian13-source",
+      "exit": 0,
+      "seconds": 44.65,
+      "environment": {
+        "target": "debian13",
+        "platform": "linux/amd64",
+        "base": "debian:13",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c",
+          "RepoTags": [
+            "debian:13"
+          ],
+          "RepoDigests": [
+            "debian@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c"
+          ],
+          "Comment": "debuerreotype 0.17",
+          "Created": "2026-09-18T00:00:00Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+              "bash"
+            ]
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 183586611,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:119aaab78849620efdb76820b1033715e7f2b6878dcb17494fc30f2bbc18ab64"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:35:46.459281809Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c",
+            "size": 8933
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/debian"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:b2b749b6210e5c6f31998803fe731439b2fc6c07bffbb386c34c2ff947b9e4c4",
+        "result": "passed",
+        "seconds": 44.59
+      },
+      "log_sha256": "ceff678e0a73bcc83e1db7963ba8c530d9414c6dcc0261b82f82eea961539ae0",
+      "pytest_summaries": [
+        "144 passed in 20.18s"
+      ],
+      "checks": [
+        "pinned backend build",
+        "source preflight and manual install",
+        "installed offline CLI",
+        "simulated lifecycle",
+        "staged payload",
+        "uninstall preserves config"
+      ]
+    },
+    {
+      "target": "ubuntu2404-source",
+      "exit": 0,
+      "seconds": 48.13,
+      "environment": {
+        "target": "ubuntu2404",
+        "platform": "linux/amd64",
+        "base": "ubuntu:24.04",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+          "RepoTags": [
+            "ubuntu:24.04"
+          ],
+          "RepoDigests": [
+            "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3"
+          ],
+          "Created": "2026-09-11T11:44:06.579973371Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+              "/bin/bash"
+            ],
+            "Labels": {
+              "org.opencontainers.image.version": "24.04"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 117404607,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:65e5d715ea720349e6475f91651a0956279fc295a45fd73aa04f1cec046281a1"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:35:46.49935004Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+            "size": 6688
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/ubuntu"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:b92f825271dd8975f50e4768c84ac72fd0d9f83bec1311aa808f35e71c0fef30",
+        "result": "passed",
+        "seconds": 48.08
+      },
+      "log_sha256": "0ef8ab7e7dc98ea6fcf07ce710e3bec6e9b3d1b379c783eb8465ae80cc71bc82",
+      "pytest_summaries": [
+        "144 passed in 21.05s"
+      ],
+      "checks": [
+        "pinned backend build",
+        "source preflight and manual install",
+        "installed offline CLI",
+        "simulated lifecycle",
+        "staged payload",
+        "uninstall preserves config"
+      ]
+    },
+    {
+      "target": "ubuntu2604-source",
+      "exit": 0,
+      "seconds": 39.5,
+      "environment": {
+        "target": "ubuntu2604",
+        "platform": "linux/amd64",
+        "base": "ubuntu:26.04",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78",
+          "RepoTags": [
+            "ubuntu:26.04"
+          ],
+          "RepoDigests": [
+            "ubuntu@sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78"
+          ],
+          "Comment": "Add rock control metadata",
+          "Created": "2026-09-12T10:24:38.361673881Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+              "/bin/bash"
+            ],
+            "Labels": {
+              "org.opencontainers.image.created": "2026-09-12T10:25:59.825539+00:00",
+              "org.opencontainers.image.description": "The Ubuntu container image maintained by Canonical\n\nUbuntu is a Debian-based Linux operating system that runs from the desktop to the cloud, to all your internet connected things.\nIt is the world's most popular operating system across public clouds and OpenStack clouds.\nIt is the number one platform for containers; from Docker to Kubernetes to LXD, Ubuntu can run your containers at scale.\nFast, secure and simple, Ubuntu powers millions of PCs worldwide.\n",
+              "org.opencontainers.image.title": "ubuntu",
+              "org.opencontainers.image.version": "26.04"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 156779168,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:485d137fd3bfb545f1b417ea708e2281594be7a334e8a85ab75c5332db6089e9",
+              "sha256:598e8330e2e633ea6b06bbf1e8b80c275553b7c1de53899af154d1f480a7eefa"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:36:30.558280236Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78",
+            "size": 6694
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/ubuntu"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:2dcb0cdecd46c86168d2c67a9c61f5dac7d1c256fe23a021941e70b56d51fddd",
+        "result": "passed",
+        "seconds": 39.44
+      },
+      "log_sha256": "ed2a35ddcff48238c7c40fdae5653a5f6a0e796cdcbd35a2ebd891b82bdfcf56",
+      "pytest_summaries": [
+        "144 passed in 19.94s"
+      ],
+      "checks": [
+        "pinned backend build",
+        "source preflight and manual install",
+        "installed offline CLI",
+        "simulated lifecycle",
+        "staged payload",
+        "uninstall preserves config"
+      ]
+    },
+    {
+      "target": "fedora44-source",
+      "exit": 0,
+      "seconds": 38.06,
+      "environment": {
+        "target": "fedora44",
+        "platform": "linux/amd64",
+        "base": "fedora:44",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+          "RepoTags": [
+            "fedora:44"
+          ],
+          "RepoDigests": [
+            "fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80"
+          ],
+          "Comment": "buildkit.dockerfile.v0",
+          "Created": "2026-08-26T18:36:01.077156536Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "DISTTAG=f44container",
+              "FGC=f44",
+              "FBR=f44"
+            ],
+            "Cmd": [
+              "/bin/bash"
+            ],
+            "WorkingDir": "/",
+            "Labels": {
+              "maintainer": "Clement Verna <cverna@fedoraproject.org>"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 272781597,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:8fe4b47a217bc002f0c86b6150035f88b3931a8d54b12053ba2b9bca79d762f3"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:36:33.898022314Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+            "size": 4658
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/fedora"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:362ca71354c4d05e0413b67c62bacaaafca5c97a504b2fe2d10807d00d837736",
+        "result": "passed",
+        "seconds": 37.99
+      },
+      "log_sha256": "d8800c7694474274d540a1880b4c607541ae783f50fee7fe479047ae23764370",
+      "pytest_summaries": [
+        "144 passed in 19.32s"
+      ],
+      "checks": [
+        "pinned backend build",
+        "source preflight and manual install",
+        "installed offline CLI",
+        "simulated lifecycle",
+        "staged payload",
+        "uninstall preserves config"
+      ]
+    },
+    {
+      "target": "opensuse16-source",
+      "exit": 0,
+      "seconds": 40.62,
+      "environment": {
+        "target": "opensuse16",
+        "platform": "linux/amd64",
+        "base": "opensuse/leap:16.0",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+          "RepoTags": [
+            "opensuse/leap:16.0"
+          ],
+          "RepoDigests": [
+            "opensuse/leap@sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6"
+          ],
+          "Comment": "openSUSE Leap 16.0 Base Container",
+          "Created": "2026-06-18T21:54:41Z",
+          "Author": "Fabian Vogt <fvogt@suse.com>",
+          "Config": {
+            "Cmd": [
+              "/bin/bash"
+            ],
+            "Labels": {
+              "org.openbuildservice.disturl": "obs://build.opensuse.org/openSUSE:Leap:16.0:Images/images/256975f9234c30e18c490ab7d766fcbc-opensuse-leap-image:docker",
+              "org.opencontainers.image.created": "2026-06-18T21:54:33.390164079Z",
+              "org.opencontainers.image.description": "Image containing a minimal environment for containers based on openSUSE Leap 16.0.",
+              "org.opencontainers.image.source": "https://build.opensuse.org/package/show/openSUSE:Leap:16.0:Images/opensuse-leap-image?rev=256975f9234c30e18c490ab7d766fcbc",
+              "org.opencontainers.image.title": "openSUSE Leap 16.0 Base Container",
+              "org.opencontainers.image.url": "https://www.opensuse.org/",
+              "org.opencontainers.image.vendor": "openSUSE Project",
+              "org.opencontainers.image.version": "16.0.6.171",
+              "org.opensuse.base.created": "2026-06-18T21:54:33.390164079Z",
+              "org.opensuse.base.description": "Image containing a minimal environment for containers based on openSUSE Leap 16.0.",
+              "org.opensuse.base.disturl": "obs://build.opensuse.org/openSUSE:Leap:16.0:Images/images/256975f9234c30e18c490ab7d766fcbc-opensuse-leap-image:docker",
+              "org.opensuse.base.lifecycle-url": "https://en.opensuse.org/Lifetime",
+              "org.opensuse.base.reference": "registry.opensuse.org/opensuse/leap:16.0.6.171",
+              "org.opensuse.base.source": "https://build.opensuse.org/package/show/openSUSE:Leap:16.0:Images/opensuse-leap-image?rev=256975f9234c30e18c490ab7d766fcbc",
+              "org.opensuse.base.title": "openSUSE Leap 16.0 Base Container",
+              "org.opensuse.base.url": "https://www.opensuse.org/",
+              "org.opensuse.base.vendor": "openSUSE Project",
+              "org.opensuse.base.version": "16.0.6.171",
+              "org.opensuse.lifecycle-url": "https://en.opensuse.org/Lifetime",
+              "org.opensuse.reference": "registry.opensuse.org/opensuse/leap:16.0.6.171"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 160304484,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:e70b7f3b8f8d855bfe9ecb74b0b538fd4784aca5ac6d2b3a765445d39540654f"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:37:09.531124251Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+            "digest": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+            "size": 1243
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/opensuse/leap"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:91063fa9c77c9e977a648c6089394c2b1543e94ebb5afbc8b384296d45af969d",
+        "result": "passed",
+        "seconds": 40.57
+      },
+      "log_sha256": "b0b181c5bde67a89bbc08a098f9cb561b88f5b697482bb779de6e9fc075c6fa7",
+      "pytest_summaries": [
+        "144 passed in 20.81s"
+      ],
+      "checks": [
+        "pinned backend build",
+        "source preflight and manual install",
+        "installed offline CLI",
+        "simulated lifecycle",
+        "staged payload",
+        "uninstall preserves config"
+      ]
+    },
+    {
+      "target": "arch-source",
+      "exit": 0,
+      "seconds": 42.6,
+      "environment": {
+        "target": "arch",
+        "platform": "linux/amd64",
+        "base": "archlinux:base",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+          "RepoTags": [
+            "archlinux:base"
+          ],
+          "RepoDigests": [
+            "archlinux@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6"
+          ],
+          "Comment": "buildkit.dockerfile.v0",
+          "Created": "2026-09-21T18:01:46.883591526Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "LANG=C.UTF-8"
+            ],
+            "Cmd": [
+              "/usr/bin/bash"
+            ],
+            "WorkingDir": "/",
+            "Labels": {
+              "org.opencontainers.image.authors": "Santiago Torres-Arias <santiago@archlinux.org> (@SantiagoTorres), Christian Rebischke <Chris.Rebischke@archlinux.org> (@shibumi), Justin Kromlinger <hashworks@archlinux.org> (@hashworks)",
+              "org.opencontainers.image.created": "2026-09-20T00:09:21+00:00",
+              "org.opencontainers.image.description": "Official containerd image of Arch Linux, a simple, lightweight Linux distribution aimed for flexibility.",
+              "org.opencontainers.image.documentation": "https://wiki.archlinux.org/title/Docker#Arch_Linux",
+              "org.opencontainers.image.licenses": "GPL-3.0-or-later",
+              "org.opencontainers.image.revision": "34b87485162b028c8d957bdcd2674359d883cd21",
+              "org.opencontainers.image.source": "https://gitlab.archlinux.org/archlinux/archlinux-docker",
+              "org.opencontainers.image.title": "Arch Linux base Image",
+              "org.opencontainers.image.url": "https://gitlab.archlinux.org/archlinux/archlinux-docker/-/blob/master/README.md",
+              "org.opencontainers.image.version": "20260920.0.596911"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 565110835,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:3bf4cd55fbcded5f3328d34e827f18beced322b7f8f134b96fadbd19341cc3c3",
+              "sha256:1caf601cb21966fbe7a9a3f974562f852aa5c47ea2513c11f78a1bc3b78f95b0"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:37:11.90921807Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+            "size": 1231
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/archlinux"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:84c728ceb7d7b6a1570db7ce3f9c79655327013ba8b037ef757987553f0e4eb4",
+        "result": "passed",
+        "seconds": 42.55
+      },
+      "log_sha256": "6ec1c41b9d041adc34209b54ee10d498d4610e5e72e2f9f40d0efa9ab3975aec",
+      "pytest_summaries": [
+        "144 passed in 21.78s"
+      ],
+      "checks": [
+        "pinned backend build",
+        "source preflight and manual install",
+        "installed offline CLI",
+        "simulated lifecycle",
+        "staged payload",
+        "uninstall preserves config"
+      ]
+    },
+    {
+      "target": "alpine322-source",
+      "exit": 0,
+      "seconds": 39.08,
+      "environment": {
+        "target": "alpine322",
+        "platform": "linux/amd64",
+        "base": "alpine:3.22",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": false,
+        "development": false,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8",
+          "RepoTags": [
+            "alpine:3.22"
+          ],
+          "RepoDigests": [
+            "alpine@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+          ],
+          "Comment": "buildkit.dockerfile.v0",
+          "Created": "2026-09-17T20:37:44.212246058Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+              "/bin/sh"
+            ],
+            "WorkingDir": "/"
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 12759852,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:e477571b896b8d18635f33e4efb8851e6c4929111b0a4fe9b17b34a16fd9c37f"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:37:50.269223122Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8",
+            "size": 9218
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/alpine"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:41a7add3f6cd2ed4ab3bd4902ed9bf5219144fd94aac76a167f526c155403317",
+        "result": "passed",
+        "seconds": 39.04
+      },
+      "log_sha256": "3309a15d7055d46bf1c368d8f5856c47b41aba751bc6b2d8eb8ec0621e52ed29",
+      "pytest_summaries": [
+        "144 passed in 20.22s"
+      ],
+      "checks": [
+        "pinned backend build",
+        "source preflight and manual install",
+        "installed offline CLI",
+        "simulated lifecycle",
+        "staged payload",
+        "uninstall preserves config"
+      ]
+    },
+    {
+      "target": "ubuntu2404-native",
+      "exit": 0,
+      "seconds": 23.74,
+      "environment": {
+        "target": "ubuntu2404",
+        "platform": "linux/amd64",
+        "base": "ubuntu:24.04",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": true,
+        "development": true,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+          "RepoTags": [
+            "ubuntu:24.04"
+          ],
+          "RepoDigests": [
+            "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3"
+          ],
+          "Created": "2026-09-11T11:44:06.579973371Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+              "/bin/bash"
+            ],
+            "Labels": {
+              "org.opencontainers.image.version": "24.04"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 117404607,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:65e5d715ea720349e6475f91651a0956279fc295a45fd73aa04f1cec046281a1"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:37:54.548425129Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
+            "size": 6688
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/ubuntu"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:f08d54b355edb599ae9601a7db727aeb9fc8794aa08396db252dfeebbf1eb851",
+        "result": "passed",
+        "seconds": 23.7
+      },
+      "log_sha256": "bb7af3cf19cc5403f87ec16f4b157f776116703a70fcea5390052be8d9d908da",
+      "package": {
+        "name": "oscmix-desk_0.7.1~dev-1_amd64_ubuntu24.04.deb",
+        "sha256": "9e2283bab3968e2a41d64278adf587961af088d1f717d982262bfb29a46a52ab",
+        "bytes": 157404,
+        "manifest": {
+          "version": "0.7.1",
+          "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+          "dirty": false,
+          "development": true,
+          "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "source_date_epoch": 1790156033,
+          "package_revision": 1,
+          "format": "deb",
+          "build_flags": {
+            "CC": null,
+            "CFLAGS": null,
+            "CPPFLAGS": null,
+            "LDFLAGS": null
+          },
+          "compiler": "cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+          "staged_payload": {
+            "usr/bin/alsaseqio": "5b235e4c84c3767f7d974f711e8117e3d7b781e9279f3a0db652d27897038347",
+            "usr/bin/oscmix": "ed9f08ed0af430c56e92bee69e1d9a2aa57b4d9e07c748d73487f58372bf2a2f",
+            "usr/bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+            "usr/bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+            "usr/bin/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+            "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+            "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+            "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+            "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+            "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+            "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+            "usr/lib/oscmix-desk/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+            "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+            "usr/lib/oscmix-desk/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+            "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+            "usr/lib/oscmix-desk/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+            "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+            "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+            "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+            "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+            "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+            "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+            "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+            "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+            "usr/lib/oscmix-desk/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+            "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+            "usr/lib/oscmix-desk/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+            "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+            "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+            "usr/lib/oscmix-desk/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+            "usr/lib/oscmix-desk/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+            "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+            "usr/lib/oscmix-desk/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+            "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+            "usr/lib/oscmix-desk/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+            "usr/lib/oscmix-desk/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+            "usr/lib/systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+            "usr/lib/systemd/user/oscmix.service": "90e0ac4510e6c959f093f8a4fef31488aea7f26dcc7dbab9c45e1dfb2f7d91bd",
+            "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+            "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+            "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
+            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+            "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+            "usr/share/oscmix-desk/package.json": "ec58dcf11d691532fa568f22e5b7237b34d869b6078c84b6c1522e64d6a3e43d",
+            "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+          },
+          "package_version": "0.7.1~dev-1",
+          "architecture": "amd64",
+          "payload": {
+            "usr/bin/alsaseqio": "5b235e4c84c3767f7d974f711e8117e3d7b781e9279f3a0db652d27897038347",
+            "usr/bin/oscmix": "ed9f08ed0af430c56e92bee69e1d9a2aa57b4d9e07c748d73487f58372bf2a2f",
+            "usr/bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+            "usr/bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+            "usr/bin/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+            "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+            "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+            "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+            "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+            "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+            "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+            "usr/lib/oscmix-desk/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+            "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+            "usr/lib/oscmix-desk/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+            "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+            "usr/lib/oscmix-desk/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+            "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+            "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+            "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+            "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+            "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+            "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+            "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+            "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+            "usr/lib/oscmix-desk/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+            "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+            "usr/lib/oscmix-desk/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+            "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+            "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+            "usr/lib/oscmix-desk/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+            "usr/lib/oscmix-desk/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+            "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+            "usr/lib/oscmix-desk/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+            "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+            "usr/lib/oscmix-desk/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+            "usr/lib/oscmix-desk/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+            "usr/lib/systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+            "usr/lib/systemd/user/oscmix.service": "90e0ac4510e6c959f093f8a4fef31488aea7f26dcc7dbab9c45e1dfb2f7d91bd",
+            "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+            "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+            "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
+            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+            "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+            "usr/share/oscmix-desk/package.json": "ec58dcf11d691532fa568f22e5b7237b34d869b6078c84b6c1522e64d6a3e43d",
+            "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+          },
+          "artifact": "oscmix-desk_0.7.1~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "9e2283bab3968e2a41d64278adf587961af088d1f717d982262bfb29a46a52ab"
+        }
+      },
+      "checks": [
+        "native fresh install",
+        "actual 0.7.0 source migration and return with simulated user bus",
+        "active-writer refusal",
+        "upgrade",
+        "interrupted-install recovery",
+        "downgrade",
+        "uninstall",
+        "payload hashes",
+        "byte-identical repeated build"
+      ]
+    },
+    {
+      "target": "fedora44-native",
+      "exit": 0,
+      "seconds": 23.14,
+      "environment": {
+        "target": "fedora44",
+        "platform": "linux/amd64",
+        "base": "fedora:44",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": true,
+        "development": true,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+          "RepoTags": [
+            "fedora:44"
+          ],
+          "RepoDigests": [
+            "fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80"
+          ],
+          "Comment": "buildkit.dockerfile.v0",
+          "Created": "2026-08-26T18:36:01.077156536Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "DISTTAG=f44container",
+              "FGC=f44",
+              "FBR=f44"
+            ],
+            "Cmd": [
+              "/bin/bash"
+            ],
+            "WorkingDir": "/",
+            "Labels": {
+              "maintainer": "Clement Verna <cverna@fedoraproject.org>"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 272781597,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:8fe4b47a217bc002f0c86b6150035f88b3931a8d54b12053ba2b9bca79d762f3"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:38:18.062992254Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+            "size": 4658
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/fedora"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:570e9b60dcd58149e7773ad6155e8ee65dce39bb80603c4ece8c69455673d5c3",
+        "result": "passed",
+        "seconds": 23.11
+      },
+      "log_sha256": "a0a2936621c786ed2455c6dfbe724a51daf740181d9af5eabdfa6fc4754c78e7",
+      "package": {
+        "name": "oscmix-desk-0.7.1-0.dev.1.x86_64_fedora44.rpm",
+        "sha256": "d1365ed2b301f02875eb6a0f521302580816cd5da2fd39d904aec39bdc6f24bd",
+        "bytes": 175835,
+        "manifest": {
+          "version": "0.7.1",
+          "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+          "dirty": false,
+          "development": true,
+          "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "source_date_epoch": 1790156033,
+          "package_revision": 1,
+          "format": "rpm",
+          "build_flags": {
+            "CC": null,
+            "CFLAGS": null,
+            "CPPFLAGS": null,
+            "LDFLAGS": null
+          },
+          "compiler": "cc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+          "os_release": "NAME=\"Fedora Linux\"\nVERSION=\"44 (Container Image)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44 (Container Image)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://fedoraproject.org/\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora/f44/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Container Image\"\nVARIANT_ID=container\n",
+          "staged_payload": {
+            "usr/bin/alsaseqio": "45e3bb3acea84666dcaafdc921461b9cca38276f4898004995dbf0202ddb9548",
+            "usr/bin/oscmix": "35f557fe30aec8bcbd17be26aaea6d6e078431c1f48d9abac1b84f96e0eaa7f9",
+            "usr/bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+            "usr/bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+            "usr/bin/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+            "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+            "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+            "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+            "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+            "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+            "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+            "usr/lib/oscmix-desk/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+            "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+            "usr/lib/oscmix-desk/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+            "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+            "usr/lib/oscmix-desk/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+            "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+            "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+            "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+            "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+            "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+            "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+            "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+            "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+            "usr/lib/oscmix-desk/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+            "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+            "usr/lib/oscmix-desk/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+            "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+            "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+            "usr/lib/oscmix-desk/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+            "usr/lib/oscmix-desk/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+            "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+            "usr/lib/oscmix-desk/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+            "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+            "usr/lib/oscmix-desk/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+            "usr/lib/oscmix-desk/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+            "usr/lib/systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+            "usr/lib/systemd/user/oscmix.service": "90e0ac4510e6c959f093f8a4fef31488aea7f26dcc7dbab9c45e1dfb2f7d91bd",
+            "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+            "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+            "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
+            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+            "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+            "usr/share/oscmix-desk/package.json": "496267cced8416d3d618093c78c816ab51e2346b8dc9987d2fe1e7eeb80162c3",
+            "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+          },
+          "package_version": "0.7.1-0.dev.1",
+          "architecture": "x86_64",
+          "payload": {
+            "usr/bin/alsaseqio": "5e7c10aa607be91593fc1679ef1b3911a7fdacf4b44633acba7d778f9cde3ed4",
+            "usr/bin/oscmix": "9f0f64ae56b4acd9d63e21ff5cb9379d978f44dc62d45d21876e6214deab65db",
+            "usr/bin/oscmix-launch": "a791b5e936f1a54fc7c77640e88d05a9f37562bfb0e5a1de7f9197617a10356b",
+            "usr/bin/oscmix-session": "072eeb8fff972a1b3864790785b2186285ebd2bb9eb7b21155bf286314a287de",
+            "usr/bin/oscmix-setup": "552913db38324de40e44167377744f7c7ff0a65c29241b82a8a9acb5fdcb22dc",
+            "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+            "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+            "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+            "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+            "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+            "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+            "usr/lib/oscmix-desk/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+            "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+            "usr/lib/oscmix-desk/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+            "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+            "usr/lib/oscmix-desk/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+            "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+            "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+            "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+            "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+            "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+            "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+            "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+            "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+            "usr/lib/oscmix-desk/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+            "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+            "usr/lib/oscmix-desk/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+            "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+            "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+            "usr/lib/oscmix-desk/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+            "usr/lib/oscmix-desk/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+            "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+            "usr/lib/oscmix-desk/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+            "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+            "usr/lib/oscmix-desk/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+            "usr/lib/oscmix-desk/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+            "usr/lib/systemd/system-sleep/oscmix": "8037c4d5c7700fcf5855dce5d263085ff56c52042421c81acad2bbf97c056b4a",
+            "usr/lib/systemd/user/oscmix.service": "90e0ac4510e6c959f093f8a4fef31488aea7f26dcc7dbab9c45e1dfb2f7d91bd",
+            "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+            "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+            "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
+            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+            "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+            "usr/share/oscmix-desk/package.json": "496267cced8416d3d618093c78c816ab51e2346b8dc9987d2fe1e7eeb80162c3",
+            "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+          },
+          "artifact": "oscmix-desk-0.7.1-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "d1365ed2b301f02875eb6a0f521302580816cd5da2fd39d904aec39bdc6f24bd"
+        }
+      },
+      "checks": [
+        "native fresh install",
+        "actual 0.7.0 source migration and return with simulated user bus",
+        "active-writer refusal",
+        "upgrade",
+        "interrupted-install recovery",
+        "downgrade",
+        "uninstall",
+        "payload hashes",
+        "byte-identical repeated build"
+      ]
+    },
+    {
+      "target": "opensuse16-native",
+      "exit": 0,
+      "seconds": 24.62,
+      "environment": {
+        "target": "opensuse16",
+        "platform": "linux/amd64",
+        "base": "opensuse/leap:16.0",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": true,
+        "development": true,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+          "RepoTags": [
+            "opensuse/leap:16.0"
+          ],
+          "RepoDigests": [
+            "opensuse/leap@sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6"
+          ],
+          "Comment": "openSUSE Leap 16.0 Base Container",
+          "Created": "2026-06-18T21:54:41Z",
+          "Author": "Fabian Vogt <fvogt@suse.com>",
+          "Config": {
+            "Cmd": [
+              "/bin/bash"
+            ],
+            "Labels": {
+              "org.openbuildservice.disturl": "obs://build.opensuse.org/openSUSE:Leap:16.0:Images/images/256975f9234c30e18c490ab7d766fcbc-opensuse-leap-image:docker",
+              "org.opencontainers.image.created": "2026-06-18T21:54:33.390164079Z",
+              "org.opencontainers.image.description": "Image containing a minimal environment for containers based on openSUSE Leap 16.0.",
+              "org.opencontainers.image.source": "https://build.opensuse.org/package/show/openSUSE:Leap:16.0:Images/opensuse-leap-image?rev=256975f9234c30e18c490ab7d766fcbc",
+              "org.opencontainers.image.title": "openSUSE Leap 16.0 Base Container",
+              "org.opencontainers.image.url": "https://www.opensuse.org/",
+              "org.opencontainers.image.vendor": "openSUSE Project",
+              "org.opencontainers.image.version": "16.0.6.171",
+              "org.opensuse.base.created": "2026-06-18T21:54:33.390164079Z",
+              "org.opensuse.base.description": "Image containing a minimal environment for containers based on openSUSE Leap 16.0.",
+              "org.opensuse.base.disturl": "obs://build.opensuse.org/openSUSE:Leap:16.0:Images/images/256975f9234c30e18c490ab7d766fcbc-opensuse-leap-image:docker",
+              "org.opensuse.base.lifecycle-url": "https://en.opensuse.org/Lifetime",
+              "org.opensuse.base.reference": "registry.opensuse.org/opensuse/leap:16.0.6.171",
+              "org.opensuse.base.source": "https://build.opensuse.org/package/show/openSUSE:Leap:16.0:Images/opensuse-leap-image?rev=256975f9234c30e18c490ab7d766fcbc",
+              "org.opensuse.base.title": "openSUSE Leap 16.0 Base Container",
+              "org.opensuse.base.url": "https://www.opensuse.org/",
+              "org.opensuse.base.vendor": "openSUSE Project",
+              "org.opensuse.base.version": "16.0.6.171",
+              "org.opensuse.lifecycle-url": "https://en.opensuse.org/Lifetime",
+              "org.opensuse.reference": "registry.opensuse.org/opensuse/leap:16.0.6.171"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 160304484,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:e70b7f3b8f8d855bfe9ecb74b0b538fd4784aca5ac6d2b3a765445d39540654f"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:38:29.420171974Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+            "digest": "sha256:f239b4819f4dd322d99509f1b5b14f2107bf23857f9ccd3c14333f0928a2bcc6",
+            "size": 1243
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/opensuse/leap"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:e20bd0cde6c65992bf419786cd4722d108b2f2e875e359880786dcb20a3d7521",
+        "result": "passed",
+        "seconds": 24.57
+      },
+      "log_sha256": "34cb2a82abeab87cf7aa4d98108b3b5eba7cf3e008e7d4658d8abcc36dde9898",
+      "package": {
+        "name": "oscmix-desk-0.7.1-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+        "sha256": "4f36ef6998c90a6f63d4592d497e7e7ce0c53ba7073617cba8a13746f4b7be5c",
+        "bytes": 176050,
+        "manifest": {
+          "version": "0.7.1",
+          "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+          "dirty": false,
+          "development": true,
+          "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "source_date_epoch": 1790156033,
+          "package_revision": 1,
+          "format": "rpm",
+          "build_flags": {
+            "CC": null,
+            "CFLAGS": null,
+            "CPPFLAGS": null,
+            "LDFLAGS": null
+          },
+          "compiler": "cc (SUSE Linux) 15.2.0",
+          "os_release": "NAME=\"openSUSE Leap\"\nVERSION=\"16.0\"\nID=\"opensuse-leap\"\nID_LIKE=\"suse opensuse\"\nVERSION_ID=\"16.0\"\nPRETTY_NAME=\"openSUSE Leap 16.0\"\nANSI_COLOR=\"0;32\"\nCPE_NAME=\"cpe:/o:opensuse:leap:16.0\"\nBUG_REPORT_URL=\"https://bugs.opensuse.org\"\nHOME_URL=\"https://www.opensuse.org/\"\nDOCUMENTATION_URL=\"https://en.opensuse.org/Portal:Leap\"\nLOGO=\"distributor-logo-Leap\"\n",
+          "staged_payload": {
+            "usr/bin/alsaseqio": "5516da41693c7a433efc14f6ad3b86e58ae4a1c41c6e7b995f007eb3f990cf0c",
+            "usr/bin/oscmix": "ddfa83ec9f8ecfd539827abe264f3b5cae5bc9c8874d76cb75871968897d762f",
+            "usr/bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+            "usr/bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+            "usr/bin/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+            "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+            "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+            "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+            "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+            "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+            "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+            "usr/lib/oscmix-desk/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+            "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+            "usr/lib/oscmix-desk/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+            "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+            "usr/lib/oscmix-desk/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+            "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+            "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+            "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+            "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+            "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+            "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+            "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+            "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+            "usr/lib/oscmix-desk/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+            "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+            "usr/lib/oscmix-desk/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+            "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+            "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+            "usr/lib/oscmix-desk/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+            "usr/lib/oscmix-desk/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+            "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+            "usr/lib/oscmix-desk/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+            "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+            "usr/lib/oscmix-desk/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+            "usr/lib/oscmix-desk/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+            "usr/lib/systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+            "usr/lib/systemd/user/oscmix.service": "90e0ac4510e6c959f093f8a4fef31488aea7f26dcc7dbab9c45e1dfb2f7d91bd",
+            "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+            "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+            "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
+            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+            "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+            "usr/share/oscmix-desk/package.json": "79f2cdb87d3e0a9e0803b0417c72449340905aa46235ca2260e898ac2991260b",
+            "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+          },
+          "package_version": "0.7.1-0.dev.1",
+          "architecture": "x86_64",
+          "payload": {
+            "usr/bin/alsaseqio": "5516da41693c7a433efc14f6ad3b86e58ae4a1c41c6e7b995f007eb3f990cf0c",
+            "usr/bin/oscmix": "ddfa83ec9f8ecfd539827abe264f3b5cae5bc9c8874d76cb75871968897d762f",
+            "usr/bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+            "usr/bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+            "usr/bin/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+            "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+            "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+            "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+            "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+            "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+            "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+            "usr/lib/oscmix-desk/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+            "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+            "usr/lib/oscmix-desk/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+            "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+            "usr/lib/oscmix-desk/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+            "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+            "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+            "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+            "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+            "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+            "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+            "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+            "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+            "usr/lib/oscmix-desk/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+            "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+            "usr/lib/oscmix-desk/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+            "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+            "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+            "usr/lib/oscmix-desk/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+            "usr/lib/oscmix-desk/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+            "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+            "usr/lib/oscmix-desk/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+            "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+            "usr/lib/oscmix-desk/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+            "usr/lib/oscmix-desk/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+            "usr/lib/systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+            "usr/lib/systemd/user/oscmix.service": "90e0ac4510e6c959f093f8a4fef31488aea7f26dcc7dbab9c45e1dfb2f7d91bd",
+            "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+            "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+            "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
+            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+            "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+            "usr/share/oscmix-desk/package.json": "79f2cdb87d3e0a9e0803b0417c72449340905aa46235ca2260e898ac2991260b",
+            "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+          },
+          "artifact": "oscmix-desk-0.7.1-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "4f36ef6998c90a6f63d4592d497e7e7ce0c53ba7073617cba8a13746f4b7be5c"
+        }
+      },
+      "checks": [
+        "native fresh install",
+        "actual 0.7.0 source migration and return with simulated user bus",
+        "active-writer refusal",
+        "upgrade",
+        "interrupted-install recovery",
+        "downgrade",
+        "uninstall",
+        "payload hashes",
+        "byte-identical repeated build"
+      ]
+    },
+    {
+      "target": "arch-native",
+      "exit": 0,
+      "seconds": 32.32,
+      "environment": {
+        "target": "arch",
+        "platform": "linux/amd64",
+        "base": "archlinux:base",
+        "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+        "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "native": true,
+        "development": true,
+        "hardware": false,
+        "service_manager": false,
+        "base_image": {
+          "Id": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+          "RepoTags": [
+            "archlinux:base"
+          ],
+          "RepoDigests": [
+            "archlinux@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6"
+          ],
+          "Comment": "buildkit.dockerfile.v0",
+          "Created": "2026-09-21T18:01:46.883591526Z",
+          "Config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "LANG=C.UTF-8"
+            ],
+            "Cmd": [
+              "/usr/bin/bash"
+            ],
+            "WorkingDir": "/",
+            "Labels": {
+              "org.opencontainers.image.authors": "Santiago Torres-Arias <santiago@archlinux.org> (@SantiagoTorres), Christian Rebischke <Chris.Rebischke@archlinux.org> (@shibumi), Justin Kromlinger <hashworks@archlinux.org> (@hashworks)",
+              "org.opencontainers.image.created": "2026-09-20T00:09:21+00:00",
+              "org.opencontainers.image.description": "Official containerd image of Arch Linux, a simple, lightweight Linux distribution aimed for flexibility.",
+              "org.opencontainers.image.documentation": "https://wiki.archlinux.org/title/Docker#Arch_Linux",
+              "org.opencontainers.image.licenses": "GPL-3.0-or-later",
+              "org.opencontainers.image.revision": "34b87485162b028c8d957bdcd2674359d883cd21",
+              "org.opencontainers.image.source": "https://gitlab.archlinux.org/archlinux/archlinux-docker",
+              "org.opencontainers.image.title": "Arch Linux base Image",
+              "org.opencontainers.image.url": "https://gitlab.archlinux.org/archlinux/archlinux-docker/-/blob/master/README.md",
+              "org.opencontainers.image.version": "20260920.0.596911"
+            }
+          },
+          "Architecture": "amd64",
+          "Os": "linux",
+          "Size": 565110835,
+          "RootFS": {
+            "Type": "layers",
+            "Layers": [
+              "sha256:3bf4cd55fbcded5f3328d34e827f18beced322b7f8f134b96fadbd19341cc3c3",
+              "sha256:1caf601cb21966fbe7a9a3f974562f852aa5c47ea2513c11f78a1bc3b78f95b0"
+            ]
+          },
+          "Metadata": {
+            "LastTagTime": "2026-09-23T09:38:41.289430925Z"
+          },
+          "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6",
+            "size": 1231
+          },
+          "Identity": {
+            "Pull": [
+              {
+                "Repository": "docker.io/library/archlinux"
+              }
+            ]
+          }
+        },
+        "image_id": "sha256:508315babfae58d0d512abb56f7b1a1d8a7caaba3140503dbb3f4542020c39ad",
+        "result": "passed",
+        "seconds": 32.29
+      },
+      "log_sha256": "652ed3143b192ae8046a0eb5263ac4f156982e62b707a971161b036d8cfec949",
+      "package": {
+        "name": "oscmix-desk-0.7.1.dev-1-x86_64.pkg.tar.zst",
+        "sha256": "ef17d76b2891a3d0923616f8431703ab9045b8392125d5e081a70d850e311200",
+        "bytes": 192127,
+        "manifest": {
+          "version": "0.7.1",
+          "source_commit": "b537416434db778fee89b1e787590a1094761a78",
+          "dirty": false,
+          "development": true,
+          "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "source_date_epoch": 1790156033,
+          "package_revision": 1,
+          "format": "arch",
+          "build_flags": {
+            "CC": null,
+            "CFLAGS": null,
+            "CPPFLAGS": null,
+            "LDFLAGS": null
+          },
+          "compiler": "cc (GCC) 16.2.1 20260810",
+          "os_release": "NAME=\"Arch Linux\"\nPRETTY_NAME=\"Arch Linux\"\nID=arch\nBUILD_ID=rolling\nVERSION_ID=20260920.0.596911\nANSI_COLOR=\"38;2;23;147;209\"\nHOME_URL=\"https://archlinux.org/\"\nDOCUMENTATION_URL=\"https://wiki.archlinux.org/\"\nSUPPORT_URL=\"https://bbs.archlinux.org/\"\nBUG_REPORT_URL=\"https://gitlab.archlinux.org/groups/archlinux/-/issues\"\nPRIVACY_POLICY_URL=\"https://terms.archlinux.org/docs/privacy-policy/\"\nLOGO=archlinux-logo\n",
+          "staged_payload": {
+            "usr/bin/alsaseqio": "868dd8c67bdb2a138c1060b6a77ebb44892eb0db523ed891146bfd84f6770ee3",
+            "usr/bin/oscmix": "cc306c82e19c7079a0252d4cc11e805368fe09659bc8acba2d363e484e068467",
+            "usr/bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+            "usr/bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+            "usr/bin/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+            "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+            "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+            "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+            "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+            "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+            "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+            "usr/lib/oscmix-desk/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+            "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+            "usr/lib/oscmix-desk/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+            "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+            "usr/lib/oscmix-desk/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+            "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+            "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+            "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+            "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+            "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+            "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+            "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+            "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+            "usr/lib/oscmix-desk/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+            "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+            "usr/lib/oscmix-desk/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+            "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+            "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+            "usr/lib/oscmix-desk/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+            "usr/lib/oscmix-desk/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+            "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+            "usr/lib/oscmix-desk/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+            "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+            "usr/lib/oscmix-desk/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+            "usr/lib/oscmix-desk/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+            "usr/lib/systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+            "usr/lib/systemd/user/oscmix.service": "90e0ac4510e6c959f093f8a4fef31488aea7f26dcc7dbab9c45e1dfb2f7d91bd",
+            "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+            "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+            "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
+            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+            "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+            "usr/share/oscmix-desk/package.json": "52a8b0a4ab7dad14e5f6b28a4634239541baa9c1222b2a134eee3988a2867d6c",
+            "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+          },
+          "package_version": "0.7.1.dev-1",
+          "architecture": "x86_64",
+          "payload": {
+            "usr/bin/alsaseqio": "868dd8c67bdb2a138c1060b6a77ebb44892eb0db523ed891146bfd84f6770ee3",
+            "usr/bin/oscmix": "cc306c82e19c7079a0252d4cc11e805368fe09659bc8acba2d363e484e068467",
+            "usr/bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
+            "usr/bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+            "usr/bin/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+            "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+            "usr/lib/oscmix-desk/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+            "usr/lib/oscmix-desk/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
+            "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+            "usr/lib/oscmix-desk/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+            "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+            "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+            "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+            "usr/lib/oscmix-desk/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+            "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "fadffe52e55a4829c60e8b9247ea8ffbbadc289928f6efc29e6f89897d90e37e",
+            "usr/lib/oscmix-desk/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+            "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+            "usr/lib/oscmix-desk/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+            "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+            "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+            "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+            "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+            "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+            "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+            "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+            "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+            "usr/lib/oscmix-desk/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+            "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+            "usr/lib/oscmix-desk/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+            "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+            "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+            "usr/lib/oscmix-desk/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+            "usr/lib/oscmix-desk/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+            "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+            "usr/lib/oscmix-desk/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+            "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+            "usr/lib/oscmix-desk/oscmix_desk/verify.py": "2417b474fd0175de833e872c637993481def2998b8acedc944a6a670bafc8d5f",
+            "usr/lib/oscmix-desk/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+            "usr/lib/systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+            "usr/lib/systemd/user/oscmix.service": "90e0ac4510e6c959f093f8a4fef31488aea7f26dcc7dbab9c45e1dfb2f7d91bd",
+            "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+            "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+            "usr/share/doc/oscmix-desk/INSTALLATION.md": "70e2dc6e2a958cdf3371966a028c45cb8db8f04506dd25bb3e70d7ba55f54bc4",
+            "usr/share/doc/oscmix-desk/README.md": "51f88ee235ed480121b8f25096db37a88b184351f7e86d9fe45a1d54599d8e92",
+            "usr/share/libalpm/hooks/00-oscmix-desk-maintenance.hook": "532043192bd145149a46b96bea58069940f01c717bdb8b9f0ef34ed190773b45",
+            "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+            "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+            "usr/share/oscmix-desk/package.json": "52a8b0a4ab7dad14e5f6b28a4634239541baa9c1222b2a134eee3988a2867d6c",
+            "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+          },
+          "artifact": "oscmix-desk-0.7.1.dev-1-x86_64.pkg.tar.zst",
+          "sha256": "ef17d76b2891a3d0923616f8431703ab9045b8392125d5e081a70d850e311200"
+        }
+      },
+      "checks": [
+        "native fresh install",
+        "actual 0.7.0 source migration and return with simulated user bus",
+        "active-writer refusal",
+        "upgrade",
+        "interrupted-install recovery",
+        "downgrade",
+        "uninstall",
+        "payload hashes",
+        "byte-identical repeated build"
+      ]
+    }
+  ],
+  "source_archive": {
+    "candidate": "b537416434db778fee89b1e787590a1094761a78",
+    "target": "0.7.2-unreleased",
+    "note": "Development commit still carries 0.7.1 in constants; these archives are not release assets.",
+    "manifest": {
+      "version": "0.7.1",
+      "desk_commit": "b537416434db778fee89b1e787590a1094761a78",
+      "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+      "archive": "oscmix-desk-0.7.1.tar.gz",
+      "archive_sha256": "e96396867e760d88e687eb631978554a007c83d19e8a4f4825cc8631b6f7c488"
+    },
+    "identical_rebuild": true,
+    "private_review_and_gui_files_absent": true,
+    "upgrade_and_rollback": [
+      {
+        "previous": "0.7.1",
+        "rootless": true,
+        "ok": true
+      },
+      {
+        "previous": "0.7.1",
+        "rootless": false,
+        "ok": true
+      }
+    ],
+    "seconds": 3.37,
+    "adapter_sha256": "fce345dc755e05e5ec8f02c48a6824df7944589af071941916df394f30e6a788"
+  },
+  "extracted_archive_installer_tests": {
+    "archive": "oscmix-desk-0.7.1.tar.gz",
+    "archive_sha256": "e96396867e760d88e687eb631978554a007c83d19e8a4f4825cc8631b6f7c488",
+    "exit": 0,
+    "seconds": 13.89,
+    "command": [
+      "/tmp/oscmix-desk-0.7.2-installation/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/test_install_sh.py",
+      "tests/test_install_modes.py",
+      "tests/test_package_stage.py",
+      "tests/test_package_setup.py",
+      "tests/test_package_guard.py"
+    ],
+    "log_sha256": "181923d28b08cfd25b87fecfe14a62ac6f1bfaf71d07f2e49aba3615a8a0d0a9",
+    "passed": 51
+  },
+  "supporting_files_sha256": {
+    "config/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+    "install.sh": "d0572d5d68ff8db0c8a397b44188d803137b850e6908f9e979812ee986180c77",
+    "packaging/00-oscmix-desk-maintenance.hook": "532043192bd145149a46b96bea58069940f01c717bdb8b9f0ef34ed190773b45",
+    "packaging/__pycache__/oscmix-setupcpython-310.pyc": "184f12a3b21b78fc3f28ecb7b8bca98e25a72a1453a19973957f3d28b81f68f5",
+    "packaging/__pycache__/oscmix-setupcpython-311.pyc": "4acfd29128e44ee6e1989c9ba991713b6b19b828645c222f3aac8981790faadf",
+    "packaging/__pycache__/oscmix-setupcpython-312.pyc": "d1c76358ffed824b22263efc76d5d6eade08c3cb64b7c2b8ee03a053dd7ccd03",
+    "packaging/__pycache__/oscmix-setupcpython-314.pyc": "f9e74db1915ef9ccf52affd526fdaa2556cdf89a983e488afae3dcdb56f8afa1",
+    "packaging/__pycache__/oscmix-setupcpython-39.pyc": "1de606413d14944407daecb3b0e191b78e784e4c60aa47af5cb4afd9ab9fbaec",
+    "packaging/__pycache__/package-guardcpython-310.pyc": "4eebb883db7d3dd4685903725c44439ab333d635e7f17c52f79a708b9fefbbf2",
+    "packaging/__pycache__/package-guardcpython-311.pyc": "204e0fb93de3ec41bff4db4c582d3b4c8fbe138609250105348b8b23a503c060",
+    "packaging/__pycache__/package-guardcpython-312.pyc": "5db8841e53e569f6bc36e467834e7c16587054e590e8fa969debf3c750866a4e",
+    "packaging/__pycache__/package-guardcpython-314.pyc": "68df78fd39e5bdff04afbd90db5934e77f7c00b31905f3719fde9a710f978474",
+    "packaging/__pycache__/package-guardcpython-39.pyc": "f55e799c010ffd8bef5dd2608cba1ffba02e430b2c376805a2d2e643446af218",
+    "packaging/oscmix-desk.install": "892ebeff88787e6f7f310675c7d12355635a31809d2e75436cd1495f85b1c39e",
+    "packaging/oscmix-setup": "d807ca3e6636993132c66b6ac720674cb9f095d56be0d522fa285991f795970f",
+    "packaging/package-guard": "f5ef11d16e3a9873076a685c3edafaa4ba64eb7b48d5d5559c97fbbf7bf6ac33",
+    "quality/vulture-allowlist.py": "5c37f4dc275491dc46c6f70040c4c50b43777c95388ad9c4ed6eef7d92b2f6df",
+    "systemd/oscmix.service": "e82f8149ff121cccc4dbe2ca1128c1fc9a6e0c39a3ffe6482ad78413c191d938",
+    "systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+    "systemd/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+    "udev/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+    "uninstall.sh": "07edd0572840dfdfa07dfc58aefc5b0328548c6b36ec6b02cf6c7a2606cda5ee"
+  }
+}

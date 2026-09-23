@@ -19,6 +19,18 @@ the pure register planner is unchanged. The lock does not prevent an
 external clock/DAW change between observations or after the apply.
 See [upgrade behavior](../UPGRADING.md#preparing-for-072-unreleased).
 
+The [new link/gain/mute evidence](../evidence/0.7.2/) adds 13 actual modes,
+52 signal cases and 12 refused unavailable sources with no register writes.
+It retains one startup xrun and both successful repetitions rather than
+claiming every attempt passed. Every completed attempt returns to the
+baseline. A separate [PipeWire recording](../evidence/0.7.2/pipewire-rates.json)
+checks the same 13 modes in the Pro Audio profile: all 65 known-route
+checks pass, with the expected AUX links and actual hardware rate. Each
+run restores the readable device state and all saved PipeWire parameters.
+This qualifies the explicit tested maps, not automatic rate/profile
+selection or every desktop profile. Physical digital/clock checks remain
+open because the required connections are absent.
+
 ## Question to answer
 
 At 88.2, 96, 176.4 and 192 kHz, which configurations can this measured
