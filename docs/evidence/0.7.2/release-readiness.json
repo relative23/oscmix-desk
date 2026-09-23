@@ -18,19 +18,27 @@
   "missing_measurements": [
     {
       "work": "Independent analog output transfer and Room EQ physical delay",
-      "requires": "A suitable physical return/capture connection; none available."
+      "requires": "A suitable physical return/capture connection; none confirmed. Inventory existing monitor cables before assuming a purchase is necessary."
     },
     {
       "work": "Controlled input EQ/dynamics capture with eqdrecord disabled/enabled",
-      "requires": "A repeatable signal source and capture path; speech alone does not establish the transfer function."
+      "requires": "A repeatable generated signal through the physical return path. The UCX II can generate it; a separate generator is not required. Speech alone does not establish the transfer function."
     },
     {
-      "work": "Digital ports, optical S/PDIF and external clock transitions",
-      "requires": "The respective digital connections and an independent clock/audio source; none available."
+      "work": "Physical ADAT, AES, coaxial and optical S/PDIF paths",
+      "requires": "Suitable output-to-input connections and digital breakout. Inventory the original TOSLINK cable and B0968 breakout. Self-loop testing uses the UCX II as clock master."
+    },
+    {
+      "work": "External clock acquisition, source transitions, loss and reacquisition",
+      "requires": "An independent source with the relevant digital/word-clock outputs and rates; none identified. A self-loop does not establish independent clock behavior. BNC word clock requires a suitable 75-ohm connection."
     }
   ],
+  "maintainer_scope_decision": {
+    "date": "2026-09-23",
+    "decision": "Complete the planned scope without deferring the missing H1/H2 measurements. They remain requirements for 0.7.2."
+  },
   "remaining_release_work": [
-    "Complete those measurements or obtain an explicit decision to move them outside this release scope.",
+    "Identify the required connections and independent clock source, then complete the physical H1/H2 measurements.",
     "Finalize the 0.7.2 version and dated changelog, then qualify the exact release files under the checklist.",
     "Record the final installed candidate and matching hardware artifacts required by the current release workflow.",
     "The workflow also requires a schema-2 write sweep with matching runtime hashes. No new all-register sweep is claimed here; the register model/backend pin have not changed.",

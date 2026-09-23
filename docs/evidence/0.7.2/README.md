@@ -184,8 +184,10 @@ development checks. The version has not been advanced or tagged, the
 combined candidate has not replaced the host installation, and no new
 all-register sweep is claimed. The current release workflow requires
 matching final software, installed-runtime, hardware and sweep evidence;
-older artifacts cannot be relabelled to satisfy it. Missing physical
-H1/H2 measurements require equipment or an explicit release-scope decision.
+older artifacts cannot be relabelled to satisfy it. The maintainer confirmed
+on 2026-09-23 that the missing physical H1/H2 measurements remain required
+for 0.7.2. They need suitable connections and an independent clock source;
+the existing monitor cables and original accessories still need inventory.
 The [release readiness record](release-readiness.json) separates completed
 development work, missing measurements and the remaining publication steps.
 

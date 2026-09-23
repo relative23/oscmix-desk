@@ -138,6 +138,38 @@ planning must retain their contracts.
 
 ## Acceptance and release claim
 
+On 2026-09-23 the maintainer confirmed that the remaining physical H1/H2
+measurements are required for 0.7.2. They are technically feasible; the
+unresolved prerequisite is the measurement setup, not a software test
+that can be replaced by another simulated run.
+
+For analog transfer, incremental Room EQ delay and controlled input
+EQ/dynamics recording, a known generated signal can leave a physical
+UCX II output and return through a suitable cable to an analog input.
+The UCX II can generate the stimulus itself; a separate signal generator
+is not required for these differential measurements. Capture PCM and
+compare against the same path with the effect disabled or delay set to
+zero. This measures the relative effect, not independently calibrated
+absolute converter performance. Check the existing monitor-cable ends
+before selecting the connection; do not treat a live microphone recording
+as an equivalent repeatable source.
+
+Physical ADAT and optical S/PDIF paths can be exercised sequentially with
+an optical output-to-input cable while the UCX II remains clock master.
+AES and coaxial S/PDIF need the digital breakout and suitable connections.
+RME lists a TOSLINK cable and B0968 breakout in the original package
+(manual section 2); their presence in this user's equipment is unconfirmed.
+These return paths test physical signal delivery, not independent external
+clock acquisition. Clock-source changes, loss and reacquisition require
+a separate source for the input under test. BNC word clock additionally
+needs its own suitable 75-ohm connection; the UCX II's single BNC socket
+operates as input or output, not both (manual section 22.1).
+
+Inventory cables and any borrowable source before specifying purchases.
+The clock source need not be another UCX II; using test equipment does not
+expand this release to multi-device desk management. Confirm the source's
+actual ports and rates before claiming a test matrix is achievable.
+
 Publish one evidence row per rate and optical/USB mode tested, with
 firmware, pin, channel map, route/read-back results, missing equipment and
 restoration result. A rate is qualified only for the combinations actually
