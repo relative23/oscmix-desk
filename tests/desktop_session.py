@@ -38,6 +38,8 @@ def session(args):
     env.pop('WAYLAND_DISPLAY', None)
     env.pop('GDK_BACKEND', None)
     env.pop('SESSION_MANAGER', None)
+    for key in ('HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME'):
+        Path(env[key]).mkdir(mode=0o700)
     if args.desktop == 'gnome':
         executable = 'gnome-shell'
         command = [executable, '--wayland', '--wayland-display=wayland-test', '--no-x11']

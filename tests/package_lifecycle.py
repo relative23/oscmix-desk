@@ -123,6 +123,10 @@ run(['runuser', '-u', 'tester', '--', 'env', 'OSCMIX_QUALIFY_DESKTOP=1', 'GDK_BA
      '--schema', '/usr/share/glib-2.0/schemas/oscmix.gschema.xml',
      '--output', '/work/build/qualification/desktop'])
 if 'ID=ubuntu' in Path('/etc/os-release').read_text():
+    # A nested shell still needs a system bus, even though this disposable
+    # container has no systemd service manager or hardware devices.
+    Path('/run/dbus').mkdir(exist_ok=True)
+    run(['dbus-daemon', '--system', '--fork'])
     for desktop in ('gnome', 'kde', 'xfce'):
         run(['runuser', '-u', 'tester', '--', 'env', 'OSCMIX_QUALIFY_DESKTOP=1',
              'xvfb-run', '-a', 'dbus-run-session', '--', '/usr/bin/python3',

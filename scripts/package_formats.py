@@ -184,7 +184,11 @@ package() {
     (recipe / 'PKGBUILD').write_text(pkgbuild)
     environment = dict(os.environ, SOURCE_DATE_EPOCH=str(record['source_date_epoch']),
                        PACKAGER='oscmix-desk reproducible build')
-    run(['makepkg', '--noconfirm'], cwd=recipe, env=environment)
+    # The staged companion needs the matching core when installed, not
+    # while archiving its prebuilt payload. Do not install our own core
+    # onto the build host merely to satisfy makepkg's dependency check.
+    run(['makepkg', '--noconfirm', *(['--nodeps'] if gtk else [])],
+        cwd=recipe, env=environment)
     packages = list(recipe.glob('*.pkg.tar.*'))
     if len(packages) != 1:
         raise ValueError('expected exactly one Arch package, got ' + str(packages))

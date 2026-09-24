@@ -38,7 +38,7 @@ TARGETS = {
                    ('zypper --non-interactive install python3 python3-pip git gcc make pkg-config '
                     'alsa-devel util-linux diffutils ca-certificates bash shadow procps'),
                    'rpm', ('zypper --non-interactive install rpm-build systemd gtk3-devel '
-                           'xorg-x11-server-Xvfb xauth dbus-1-x11 python3-gobject '
+                           'xorg-x11-server-Xvfb xvfb-run xauth dbus-1-x11 python3-gobject '
                            'typelib-1_0-Atspi-2_0')),
     'arch': ('archlinux:base',
              ('pacman -Syu --noconfirm python python-pip git gcc make pkgconf alsa-lib util-linux '
