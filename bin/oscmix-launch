@@ -3,10 +3,10 @@
 
 Invoked by the "RME Fireface Mixer" desktop entry. It
 
-  1. checks that the Fireface is connected (desktop notification if not),
-  2. makes sure the oscmix backend service is running,
-  3. waits briefly until the backend listens on its OSC port, and
-  4. replaces itself with oscmix-gtk.
+  1. checks the GTK binary, schema and configured connection,
+  2. reuses the exact device's backend or starts its approved service,
+  3. checks that the reply port is available, and
+  4. replaces itself with oscmix-gtk, or explains why it could not.
 
 The logic lives in the ``oscmix_desk`` package next to this file;
 this is only the entry point. Only the Python standard library is used.

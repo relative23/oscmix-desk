@@ -40,77 +40,6 @@ def write_conf(path, body):
     return path
 
 
-# --------------------------------------------------------------------------
-# load_settings -- must never fail, whatever the file contains
-# --------------------------------------------------------------------------
-
-def test_settings_fall_back_to_the_compiled_in_defaults(launch_mod, clean_env,
-                                                        tmp_path):
-    clean_env.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    usb_id, ports = launch_mod.load_settings()
-    assert usb_id == launch_mod.DEFAULT_USB_ID
-    assert ports == (launch_mod.DEFAULT_OSC_PORT,)
-
-
-def test_settings_are_read_from_the_configured_file(launch_mod, clean_env,
-                                                    tmp_path):
-    conf = write_conf(tmp_path / "routing.conf",
-                      "[device]\nusb-id = 2A39:3FD9\n\n[osc]\nport = 9001\n")
-    clean_env.setenv("OSCMIX_CONFIG", str(conf))
-    assert launch_mod.load_settings() == ("2a39:3fd9", (9001,))
-
-
-def test_an_unparseable_usb_id_is_ignored_rather_than_fatal(launch_mod,
-                                                            clean_env,
-                                                            tmp_path):
-    # The backend reports config problems properly and exits 2. The
-    # launcher's job is to open the mixer, so a bad value falls back.
-    conf = write_conf(tmp_path / "routing.conf",
-                      "[device]\nusb-id = not-a-usb-id\n")
-    clean_env.setenv("OSCMIX_CONFIG", str(conf))
-    usb_id, ports = launch_mod.load_settings()
-    assert usb_id == launch_mod.DEFAULT_USB_ID
-    assert ports == (launch_mod.DEFAULT_OSC_PORT,)
-
-
-def test_a_broken_config_warns_and_keeps_the_defaults(launch_mod, clean_env,
-                                                      tmp_path, caplog):
-    conf = write_conf(tmp_path / "routing.conf",
-                      "[osc]\nport = not-a-number\n")
-    clean_env.setenv("OSCMIX_CONFIG", str(conf))
-    with caplog.at_level("WARNING"):
-        assert launch_mod.load_settings() == (launch_mod.DEFAULT_USB_ID,
-                                              (launch_mod.DEFAULT_OSC_PORT,))
-    assert "ignoring unreadable config" in caplog.text
-
-
-def test_only_the_first_existing_config_is_read(launch_mod, clean_env,
-                                                tmp_path):
-    # OSCMIX_CONFIG comes before the XDG path; a second file must not be
-    # able to override what the first one said (or did not say).
-    first = write_conf(tmp_path / "explicit.conf", "[osc]\nport = 9002\n")
-    xdg = tmp_path / "xdg"
-    (xdg / "oscmix").mkdir(parents=True)
-    write_conf(xdg / "oscmix" / "routing.conf",
-               "[device]\nusb-id = 1111:2222\n[osc]\nport = 9003\n")
-    clean_env.setenv("OSCMIX_CONFIG", str(first))
-    clean_env.setenv("XDG_CONFIG_HOME", str(xdg))
-    assert launch_mod.load_settings() == (launch_mod.DEFAULT_USB_ID, (9002,))
-    # A missing OSCMIX_CONFIG is not a reason to look further: the backend
-    # refuses to start on it, and the XDG file is not what it would run.
-    clean_env.setenv("OSCMIX_CONFIG", str(tmp_path / "missing.conf"))
-    assert launch_mod.load_settings() == (launch_mod.DEFAULT_USB_ID,
-                                          (launch_mod.DEFAULT_OSC_PORT,))
-
-
-def test_the_xdg_config_is_used_when_no_override_is_set(launch_mod, clean_env,
-                                                        tmp_path):
-    (tmp_path / "oscmix").mkdir()
-    write_conf(tmp_path / "oscmix" / "routing.conf", "[osc]\nport = 9004\n")
-    clean_env.setenv("XDG_CONFIG_HOME", str(tmp_path))
-    assert launch_mod.load_settings()[1] == (9004,)
-
-
 def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
                                                        tmp_path):
     """paths_mod.discover_config_path's rule, repeated in a module that may
@@ -191,10 +120,6 @@ def test_both_modules_default_to_the_same_system_config(launch_mod,
     assert paths_mod.system_config({}) == tmp_path / "a"
 
 
-# --------------------------------------------------------------------------
-# notify / systemctl_user -- thin, and both swallow OSError on purpose
-# --------------------------------------------------------------------------
-
 def test_notify_calls_notify_send_with_the_urgency_it_was_given(
         launch_mod, clean_env):
     calls = []
@@ -243,77 +168,6 @@ def test_a_missing_systemctl_reports_failure_rather_than_raising(launch_mod,
     clean_env.setattr(subprocess, "run", boom)
     assert launch_mod.systemctl_user("start", "x.service") == 1
 
-
-# --------------------------------------------------------------------------
-# ensure_backend -- the poll that bounds the wait
-# --------------------------------------------------------------------------
-
-def test_a_running_backend_is_not_started_again(launch_mod, clean_env,
-                                                tmp_path):
-    verbs = []
-    clean_env.setattr(launch_mod, "systemctl_user",
-                      lambda *v: verbs.append(v) or 0)
-    clean_env.setattr(launch_mod, "udp_port_listening", lambda *_a: True)
-    assert launch_mod.ensure_backend((7222,), tmp_path) is True
-    assert verbs == [("is-active", "--quiet", launch_mod.SERVICE)]
-
-
-def test_an_inactive_backend_is_started_without_blocking(launch_mod,
-                                                         clean_env, tmp_path):
-    verbs = []
-
-    def systemctl(*verb):
-        verbs.append(verb)
-        return 1 if verb[0] == "is-active" else 0
-
-    clean_env.setattr(launch_mod, "systemctl_user", systemctl)
-    clean_env.setattr(launch_mod, "udp_port_listening", lambda *_a: True)
-    assert launch_mod.ensure_backend((7222,), tmp_path) is True
-    # --no-block: the unit is Type=notify and a plain start would block
-    # until READY, which is what the port poll is for.
-    assert ("start", "--no-block", launch_mod.SERVICE) in verbs
-    assert ("reset-failed", launch_mod.SERVICE) in verbs
-
-
-def test_a_backend_that_never_listens_gives_up_after_the_wait(launch_mod,
-                                                              clean_env,
-                                                              tmp_path):
-    clean_env.setattr(launch_mod, "systemctl_user", lambda *_v: 0)
-    clean_env.setattr(launch_mod, "udp_port_listening", lambda *_a: False)
-    clean_env.setattr(launch_mod, "BACKEND_WAIT", 0.05)
-    clean_env.setattr(launch_mod.time, "sleep", lambda _s: None)
-    assert launch_mod.ensure_backend((7222,), tmp_path) is False
-
-
-def test_a_backend_that_appears_late_is_still_found(launch_mod, clean_env,
-                                                    tmp_path):
-    states = iter([False, False, True])
-    clean_env.setattr(launch_mod, "systemctl_user", lambda *_v: 0)
-    clean_env.setattr(launch_mod, "udp_port_listening",
-                      lambda *_a: next(states, True))
-    clean_env.setattr(launch_mod, "BACKEND_WAIT", 5.0)
-    clean_env.setattr(launch_mod.time, "sleep", lambda _s: None)
-    assert launch_mod.ensure_backend((7222,), tmp_path) is True
-
-
-def test_a_backend_on_any_of_the_ports_is_found(launch_mod, clean_env,
-                                                tmp_path):
-    """The active profile's port first, then routing.conf's: a profile that
-    no longer loads leaves the backend on the second (ADR 0018)."""
-    polled = []
-    clean_env.setattr(launch_mod, "systemctl_user", lambda *_v: 0)
-    clean_env.setattr(launch_mod, "udp_port_listening",
-                      lambda port, root: polled.append((port, root))
-                      or port == 9001)
-    clean_env.setattr(launch_mod.time, "sleep", lambda _s: None)
-    assert launch_mod.ensure_backend((9100, 9001), tmp_path) is True
-    assert polled[:2] == [(9100, tmp_path), (9001, tmp_path)], \
-        "each port, in the proc tree it was given"
-
-
-# --------------------------------------------------------------------------
-# resolve_gtk_binary -- including the refusals
-# --------------------------------------------------------------------------
 
 def test_an_executable_override_wins(launch_mod, clean_env, tmp_path):
     gtk = tmp_path / "oscmix-gtk"
@@ -387,109 +241,6 @@ def test_no_binary_anywhere_resolves_to_none(launch_mod, clean_env, tmp_path):
     assert launch_mod.resolve_gtk_binary() is None
 
 
-# --------------------------------------------------------------------------
-# main -- what a user sees when something is missing
-# --------------------------------------------------------------------------
-
-@pytest.fixture
-def launcher_world(launch_mod, clean_env, tmp_path):
-    """main() with every outside effect captured rather than performed."""
-    notifications = []
-    execs = []
-    clean_env.setattr(launch_mod, "load_settings",
-                      lambda: (launch_mod.DEFAULT_USB_ID, (7222,)))
-    clean_env.setattr(launch_mod, "notify",
-                      lambda s, b, urgency="normal":
-                      notifications.append((s, b, urgency)))
-    clean_env.setattr(launch_mod, "usb_device_present", lambda *_a: True)
-    clean_env.setattr(launch_mod, "ensure_backend", lambda *_a: True)
-    clean_env.setattr(launch_mod, "resolve_gtk_binary", lambda: "/usr/bin/oscmix-gtk")
-    clean_env.setattr(launch_mod.os, "execv",
-                      lambda path, argv: execs.append((path, argv)))
-    return launch_mod, clean_env, notifications, execs
-
-
-def test_a_disconnected_interface_is_reported_and_nothing_is_started(
-        launcher_world):
-    mod, monkey, notifications, execs = launcher_world
-    monkey.setattr(mod, "usb_device_present", lambda *_a: False)
-    assert mod.main() == 1
-    assert execs == []
-    assert len(notifications) == 1
-    assert notifications[0][2] == "critical"
-    assert "not connected" in notifications[0][1]
-
-
-def test_an_unreachable_backend_still_opens_the_mixer(launcher_world):
-    # The GUI is useful without the backend -- it says so itself -- and a
-    # user who asked for the mixer should get the mixer.
-    mod, monkey, notifications, execs = launcher_world
-    monkey.setattr(mod, "ensure_backend", lambda *_a: False)
-    mod.main()
-    assert execs == [("/usr/bin/oscmix-gtk", ["/usr/bin/oscmix-gtk"])]
-    assert any("journalctl" in body for _s, body, _u in notifications)
-
-
-def test_a_missing_gtk_binary_is_reported_as_such(launcher_world):
-    mod, monkey, notifications, execs = launcher_world
-    monkey.setattr(mod, "resolve_gtk_binary", lambda: None)
-    assert mod.main() == 1
-    assert execs == []
-    assert any("not installed" in body for _s, body, _u in notifications)
-
-
-def test_the_happy_path_replaces_the_process_with_the_mixer(launcher_world):
-    mod, _monkey, notifications, execs = launcher_world
-    mod.main()
-    assert execs == [("/usr/bin/oscmix-gtk", ["/usr/bin/oscmix-gtk"])]
-    assert notifications == []
-
-
-def test_a_failing_exec_reports_the_reason_instead_of_a_traceback(
-        launcher_world, caplog):
-    # execv only returns by failing. 0.1.3 dumped a traceback on a user
-    # who had launched this from a desktop icon.
-    mod, monkey, notifications, _execs = launcher_world
-
-    def boom(_path, _argv):
-        raise OSError("Exec format error")
-
-    monkey.setattr(mod.os, "execv", boom)
-    with caplog.at_level("ERROR"):
-        assert mod.main() == 1
-    assert "Exec format error" in caplog.text
-    assert "Traceback" not in caplog.text
-    assert any("Exec format error" in body for _s, body, _u in notifications)
-
-
-def test_the_device_and_proc_roots_are_overridable(launcher_world):
-    # The integration tests and this suite both need to point the
-    # launcher at a fake /sys and /proc.
-    mod, monkey, _notifications, _execs = launcher_world
-    seen = {}
-    monkey.setattr(mod, "usb_device_present",
-                   lambda usb_id, root: seen.setdefault("sysfs", root) or True)
-    monkey.setattr(mod, "ensure_backend",
-                   lambda ports, root: seen.setdefault("proc", root) or True)
-    monkey.setenv("OSCMIX_SYSFS_USB", "/fake/sys")
-    monkey.setenv("OSCMIX_PROC_ROOT", "/fake/proc")
-    mod.main()
-    assert str(seen["sysfs"]) == "/fake/sys"
-    assert str(seen["proc"]) == "/fake/proc"
-
-
-def test_the_launcher_logs_to_stderr_not_stdout(launch_mod, capsys, clean_env):
-    # It is exec'd from a .desktop entry; stdout goes to the journal only
-    # by accident, and a mixer that prints to stdout confuses anything
-    # piping it.
-    clean_env.setattr(launch_mod, "load_settings",
-                      lambda: (launch_mod.DEFAULT_USB_ID, (7222,)))
-    clean_env.setattr(launch_mod, "usb_device_present", lambda *_a: False)
-    clean_env.setattr(launch_mod, "notify", lambda *_a, **_kw: None)
-    assert launch_mod.main() == 1
-    assert capsys.readouterr().out == ""
-
-
 def test_the_backend_wait_is_configurable_from_the_environment(launch_mod):
     # BACKEND_WAIT is read at import time, so this asserts the shape of
     # the knob rather than re-importing the module: a float, and long
@@ -499,55 +250,165 @@ def test_the_backend_wait_is_configurable_from_the_environment(launch_mod):
     assert os.environ.get("OSCMIX_BACKEND_WAIT") is None
 
 
-def test_the_port_of_the_active_profile_wins(launch_mod, clean_env, tmp_path):
-    """The backend runs on the active profile's port; the launcher polled
-    routing.conf's (0.6.9), warned, and started the GUI against nothing."""
-    conf = write_conf(tmp_path / "routing.conf", "[osc]\nport = 9001\n")
-    (tmp_path / "profiles").mkdir()
-    write_conf(tmp_path / "profiles" / "live.conf", "[osc]\nport = 9100\n")
-    write_conf(tmp_path / "profiles" / "quiet.conf", "[route:x]\noutput = 1/2\nplayback = 1/2\n")
-    clean_env.setenv("OSCMIX_CONFIG", str(conf))
-    (tmp_path / "active-profile").write_text("live\n")
-    # The profile's port first, routing.conf's after it: where the
-    # backend runs if that profile no longer loads.
-    assert launch_mod.load_settings()[1] == (9100, 9001)
-    (tmp_path / "active-profile").write_text("quiet\n")      # inherits
-    assert launch_mod.load_settings()[1] == (9001,)
-    (tmp_path / "active-profile").write_text("../evil\n")   # never a path
-    assert launch_mod.load_settings()[1] == (9001,)
+
+@pytest.fixture
+def launcher_world(launch_mod, clean_env, tmp_path):
+    from oscmix_desk.desktop import DesktopStatus
+    from oscmix_desk.diagnostics import BackendStatus
+    from oscmix_desk.discovery import Device
+
+    calls, notifications, execs = [], [], []
+    clean_env.setattr(launch_mod, 'resolve_gtk_binary', lambda: '/usr/bin/oscmix-gtk')
+    clean_env.setattr(launch_mod, 'inspect_desktop', lambda *_: DesktopStatus(
+        '/usr/bin/oscmix-gtk', None))
+    clean_env.setattr(launch_mod, 'backend_status', lambda *_: BackendStatus(
+        'ready', 'matched', Device('2a39:3fd9', '24216011', 24), 40000))
+    clean_env.setattr(launch_mod, 'port_state', lambda *_: 'free')
+    clean_env.setattr(launch_mod, 'systemctl_user', lambda *args: calls.append(args) or 0)
+    clean_env.setattr(launch_mod, 'notify', lambda title, body, urgency='normal':
+                      notifications.append(body))
+    clean_env.setattr(launch_mod.os, 'execv', lambda path, args: execs.append((path, args)))
+    clean_env.setattr(launch_mod, 'MAINTENANCE_FILE', tmp_path / 'maintenance')
+    clean_env.setattr(launch_mod, 'GTK_MAINTENANCE_FILE', tmp_path / 'gtk-maintenance')
+    return launch_mod, clean_env, calls, notifications, execs
 
 
-def test_settings_read_like_the_backend_reads_them(launch_mod, clean_env,
-                                                  tmp_path):
-    """Inline comments are comments, as in config.load_config, and a profile
-    name may start with a capital, as paths_mod.profile_path allows."""
-    conf = write_conf(tmp_path / "routing.conf",
-                      "[device]\nusb-id = 2a39:3fd9  # UCX II\n"
-                      "[osc]\nport = 9001 ; the desk\n")
-    (tmp_path / "profiles").mkdir()
-    write_conf(tmp_path / "profiles" / "Live.conf",
-               "[osc]\nport = 9100  # the live rig\n")
-    clean_env.setenv("OSCMIX_CONFIG", str(conf))
-    assert launch_mod.load_settings() == ("2a39:3fd9", (9001,))
-    (tmp_path / "active-profile").write_text("Live\n")
-    assert launch_mod.load_settings() == ("2a39:3fd9", (9100, 9001))
+def test_matching_manual_backend_opens_gui_without_systemd(launcher_world):
+    mod, _, calls, notices, execs = launcher_world
+    assert mod.main() == 0
+    assert execs == [('/usr/bin/oscmix-gtk', ['/usr/bin/oscmix-gtk'])]
+    assert calls == []
+    assert notices == []
 
 
-def test_the_backend_poll_asks_the_given_proc(launch_mod, clean_env, tmp_path):
-    asked = []
-    clean_env.setattr(launch_mod, "systemctl_user", lambda *_v: 0)
-    clean_env.setattr(launch_mod, "udp_port_listening",
-                      lambda port, root: asked.append((port, root)) and False)
-    clean_env.setattr(launch_mod, "BACKEND_WAIT", 0.0)
-    assert launch_mod.ensure_backend((9100, 9001), tmp_path) is False
-    assert asked == [(9100, tmp_path), (9001, tmp_path)]
+@pytest.mark.parametrize('kind', ['binary', 'schema', 'connection', 'maintenance',
+                                'gtk-maintenance'])
+def test_desktop_prerequisites_are_checked_before_starting_any_backend(launcher_world, kind):
+    from oscmix_desk.desktop import DesktopStatus
+
+    mod, monkey, calls, notices, execs = launcher_world
+    monkey.setattr(mod, 'backend_status', lambda *_: pytest.fail('backend inspected too early'))
+    if kind == 'binary':
+        monkey.setattr(mod, 'resolve_gtk_binary', lambda: None)
+    elif kind == 'maintenance':
+        mod.MAINTENANCE_FILE.write_text('pending')
+    elif kind == 'gtk-maintenance':
+        mod.GTK_MAINTENANCE_FILE.write_text('pending')
+    else:
+        monkey.setattr(mod, 'inspect_desktop', lambda *_: DesktopStatus('gtk', kind + ' failed'))
+    assert mod.main() == 1
+    assert notices
+    assert calls == []
+    assert execs == []
 
 
-def test_the_launcher_and_the_session_agree_on_what_a_profile_name_is():
-    import inspect
+@pytest.mark.parametrize('state', ['conflict', 'unknown'])
+def test_unrelated_or_unidentified_listener_cannot_open_the_gui(launcher_world, state):
+    from oscmix_desk.diagnostics import BackendStatus
 
-    from oscmix_desk import launcher
+    mod, monkey, calls, notices, execs = launcher_world
+    monkey.setattr(mod, 'backend_status', lambda *_: BackendStatus(state, 'wrong target'))
+    assert mod.main() == 1
+    assert notices == ['wrong target']
+    assert calls == []
+    assert execs == []
 
-    rule = 'r"[A-Za-z0-9][A-Za-z0-9._-]*"'
-    assert rule in inspect.getsource(paths_mod.profile_path)
-    assert rule in inspect.getsource(launcher._active_profile_port)
+
+def test_disconnected_interface_does_not_start_a_service(launcher_world):
+    from oscmix_desk.diagnostics import BackendStatus
+    from oscmix_desk.discovery import Device
+
+    mod, monkey, calls, notices, _ = launcher_world
+    monkey.setattr(mod, 'backend_status', lambda *_: BackendStatus(
+        'absent', 'no listener', Device('2a39:3fd9', '', None)))
+    assert mod.main() == 1
+    assert 'not connected' in notices[0]
+    assert calls == []
+
+
+def test_busy_reply_port_is_an_actionable_refusal(launcher_world):
+    mod, monkey, calls, notices, execs = launcher_world
+    monkey.setattr(mod, 'port_state', lambda *_: 'occupied')
+    assert mod.main() == 1
+    assert '8222' in notices[0]
+    assert 'verification' in notices[0]
+    assert execs == calls == []
+
+
+def test_invalid_main_configuration_does_not_fall_back_to_another_device(
+        launcher_world, tmp_path):
+    mod, monkey, calls, notices, execs = launcher_world
+    path = write_conf(tmp_path / 'routing.conf', '[device]\nusb-id=not-an-id\n')
+    monkey.setenv('OSCMIX_CONFIG', str(path))
+    assert mod.main() == 1
+    assert 'usb-id' in notices[0]
+    assert execs == calls == []
+
+
+def test_profile_machine_values_do_not_redirect_the_launcher(launcher_world, tmp_path):
+    mod, monkey, _, _, _ = launcher_world
+    path = write_conf(tmp_path / 'routing.conf', '[osc]\nport=9001\nrecv-port=9002\n')
+    (tmp_path / 'profiles').mkdir()
+    write_conf(tmp_path / 'profiles/old.conf', '[osc]\nport=9003\n')
+    write_conf(tmp_path / 'active-profile', 'old\n')
+    monkey.setenv('OSCMIX_CONFIG', str(path))
+    observed = []
+    from oscmix_desk.desktop import DesktopStatus
+    monkey.setattr(mod, 'inspect_desktop', lambda config, gtk:
+                    observed.append((config.osc_port, config.osc_recv_port)) or
+                    DesktopStatus(gtk, None))
+    assert mod.main() == 0
+    assert observed == [(9001, 9002)]
+
+
+def test_failing_exec_is_a_message_without_a_traceback(launcher_world, caplog):
+    mod, monkey, _, notices, _ = launcher_world
+    def fail(*_args):
+        raise OSError('bad executable format')
+    monkey.setattr(mod.os, 'execv', fail)
+    assert mod.main() == 1
+    assert 'could not execute' in notices[0]
+    assert 'Traceback' not in caplog.text
+
+
+@pytest.mark.parametrize('problem', [None, 'manual session required'])
+def test_only_an_enabled_matching_service_may_be_started(launcher_world, problem):
+    from oscmix_desk.diagnostics import BackendStatus
+    from oscmix_desk.discovery import Device
+
+    mod, monkey, calls, notices, execs = launcher_world
+    device = Device('2a39:3fd9', '24216011', 24)
+    states = iter([BackendStatus('absent', 'no listener', device),
+                   BackendStatus('ready', 'matched', device)])
+    monkey.setattr(mod, 'backend_status', lambda *_: next(states))
+    monkey.setattr(mod, 'service_status', lambda: {'state': 'observed'})
+    monkey.setattr(mod, 'service_start_problem', lambda *_: problem)
+    assert mod.main() == (1 if problem else 0)
+    if problem:
+        assert notices == [problem]
+        assert calls == execs == []
+    else:
+        assert calls == [('reset-failed', mod.SERVICE), ('start', '--no-block', mod.SERVICE)]
+        assert len(execs) == 1
+
+
+@pytest.mark.parametrize('failure', ['start', 'timeout', 'replaced'])
+def test_backend_start_failure_never_falls_through_to_gtk(launcher_world, failure):
+    from oscmix_desk.diagnostics import BackendStatus
+    from oscmix_desk.discovery import Device
+
+    mod, monkey, _, notices, execs = launcher_world
+    device = Device('2a39:3fd9', '24216011', 24)
+    replies = [BackendStatus('absent', 'no listener', device)]
+    if failure == 'replaced':
+        replies.append(BackendStatus('conflict', 'wrong backend', device))
+    monkey.setattr(mod, 'backend_status', lambda *_: replies.pop(0) if len(replies) > 1
+                    else replies[0])
+    monkey.setattr(mod, 'service_status', dict)
+    monkey.setattr(mod, 'service_start_problem', lambda *_: None)
+    monkey.setattr(mod, 'BACKEND_WAIT', 0)
+    if failure == 'start':
+        monkey.setattr(mod, 'systemctl_user', lambda *_: 1)
+    assert mod.main() == 1
+    assert notices
+    assert execs == []

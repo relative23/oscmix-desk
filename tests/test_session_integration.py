@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 import pytest
-from support import free_udp_port, read_until_ready
+from support import fake_proc, free_udp_port, read_until_ready
 
 from oscmix_desk import osc
 
@@ -508,9 +508,26 @@ def test_dry_run_prints_plan_without_starting(tmp_path):
     assert not (stub_dir / "argv.json").exists()  # nothing was spawned
 
 
+def launch_env(tmp_path, *, connected=True):
+    """A real launcher process with isolated process and desktop metadata."""
+    env, _, _ = make_env(tmp_path, with_client=connected, with_usb=connected)
+    proc = fake_proc(tmp_path / 'launch-proc',
+                     boxes=[(42, '00000000')] if connected else [],
+                     bound=[(7222, 'oscmix', 42)] if connected else [])
+    gsettings = tmp_path / 'guard-bin/gsettings'
+    gsettings.write_text("#!/bin/sh\ncat <<'SETTINGS'\n"
+                        "oscmix send-host '127.0.0.1'\noscmix send-port 7222\n"
+                        "oscmix recv-host '127.0.0.1'\noscmix recv-port 8222\nSETTINGS\n")
+    gsettings.chmod(0o755)
+    config = tmp_path / 'launcher.conf'
+    config.write_text('')
+    env.update(OSCMIX_PROC_ROOT=str(proc), OSCMIX_CONFIG=str(config),
+               OSCMIX_NO_NOTIFY='1', OSCMIX_BACKEND_WAIT='0.3', OSCMIX_BIN_GTK='/bin/true')
+    return env
+
+
 def test_launcher_exits_one_without_device(tmp_path):
-    env, _, _ = make_env(tmp_path, with_client=False, with_usb=False)
-    env["OSCMIX_NO_NOTIFY"] = "1"
+    env = launch_env(tmp_path, connected=False)
     result = subprocess.run(
         [sys.executable, str(LAUNCH_BIN)],
         env=env, capture_output=True, text=True, timeout=30,
@@ -519,41 +536,20 @@ def test_launcher_exits_one_without_device(tmp_path):
     assert "not connected" in result.stderr
 
 
-def test_launcher_starts_backend_and_execs_gui(tmp_path):
-    env, _, _ = make_env(tmp_path, with_client=True, with_usb=True)
-    stub_bin = tmp_path / "stub-bin"
-    stub_bin.mkdir()
-    systemctl_log = tmp_path / "systemctl.log"
-    systemctl = stub_bin / "systemctl"
-    systemctl.write_text(
-        "#!/bin/sh\n"
-        'echo "$@" >> "%s"\n'
-        'case "$2" in is-active) exit 1 ;; esac\n'
-        "exit 0\n" % systemctl_log
-    )
-    systemctl.chmod(0o755)
-    env.update({
-        "PATH": "%s:%s" % (stub_bin, env["PATH"]),
-        "OSCMIX_NO_NOTIFY": "1",
-        "OSCMIX_BACKEND_WAIT": "0.3",
-        "OSCMIX_BIN_GTK": "/bin/true",
-    })
+def test_launcher_reuses_a_matching_backend_and_execs_gui(tmp_path):
+    env = launch_env(tmp_path)
     result = subprocess.run(
         [sys.executable, str(LAUNCH_BIN)],
         env=env, capture_output=True, text=True, timeout=30,
     )
     assert result.returncode == 0
-    calls = systemctl_log.read_text().splitlines()
-    assert "--user is-active --quiet oscmix.service" in calls
-    assert "--user reset-failed oscmix.service" in calls
-    # --no-block: a plain start would block on the Type=notify unit.
-    assert "--user start --no-block oscmix.service" in calls
+    assert not (tmp_path / 'systemctl-guard.log').exists()
 
 
 def test_launcher_reports_a_failing_exec_instead_of_crashing(tmp_path):
     # os.execv only returns by failing. A desktop-icon launch must end in
     # a readable error, not a traceback.
-    env, _, _ = make_env(tmp_path, with_client=True, with_usb=True)
+    env = launch_env(tmp_path)
     broken = tmp_path / "broken-gtk"
     broken.write_text("#!/nonexistent/interpreter\n")
     broken.chmod(0o755)
@@ -569,12 +565,7 @@ def test_launcher_reports_a_failing_exec_instead_of_crashing(tmp_path):
     assert result.returncode == 1
     assert "could not execute" in result.stderr
     assert "Traceback" not in result.stderr
-    # The device and the client are faked, so the launcher tries to
-    # start the service -- and that attempt must land on the guard in
-    # make_env, not on the machine's own user manager. This is the test
-    # that once started it for real.
-    guarded = (tmp_path / "systemctl-guard.log").read_text().splitlines()
-    assert "--user start --no-block oscmix.service" in guarded
+    assert not (tmp_path / 'systemctl-guard.log').exists()
 
 
 def test_the_stub_dies_with_the_session_that_started_it(tmp_path):

@@ -31,6 +31,7 @@ from .notices import log_desk_notices
 from .outcome import REFUSED, WRITTEN_IN_PART, Outcome
 from .paths import discover_config_path, profile_path
 from .pipewire import find_sink, generate_pipewire_conf, pw_dump_objects
+from .preview import transition_lines
 from .process import (
     RELOAD_DONE,
     RELOAD_NOT_RUNNING,
@@ -46,6 +47,7 @@ from .profiles import (
 )
 from .reads import _diff, _dump_config, _snapshot
 from .session import run_session
+from .status import print_status
 
 
 def build_arg_parser() -> ArgumentParser:
@@ -63,6 +65,10 @@ def build_arg_parser() -> ArgumentParser:
                         help="UDP port oscmix listens on (overrides config)")
     parser.add_argument("--dry-run", action="store_true",
                         help="show what would be started and sent, then exit")
+    parser.add_argument("--status", action="store_true",
+                        help="inspect installation, device and ports without OSC or writes")
+    parser.add_argument("--json", action="store_true",
+                        help="versioned JSON output for --status")
     parser.add_argument("--snapshot", action="store_true",
                         help="print every register the device reports, for "
                              "comparing two moments; unlike --dump-config "
@@ -170,12 +176,13 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
 
     config_path = args.config or discover_config_path()
     said = _command_line(args)
+    if args.status and said is not None:
+        return print_status(config_path, said, args.json)
+    if said is not None and args.dry_run and (args.profile is not None or args.no_profile):
+        return _dry_run_desk(args, config_path)
     config = None if said is None else _desk_in_effect(config_path, said)
     if config is None:
         return EXIT_CONFIG
-
-    if args.dry_run and (args.profile is not None or args.no_profile):
-        return _dry_run_desk(args, config_path)
 
     if args.list_profiles:
         for line in describe_profiles(config_path):
@@ -245,7 +252,7 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
 _ACTIONS = (("--profile", "profile"), ("--no-profile", "no_profile"),
             ("--diff", "diff"), ("--dump-config", "dump_config"),
             ("--snapshot", "snapshot"), ("--pipewire-sinks", "pipewire_sinks"),
-            ("--list-profiles", "list_profiles"))
+            ("--list-profiles", "list_profiles"), ("--status", "status"))
 
 
 def _refuse_conflicting_actions(parser: ArgumentParser,
@@ -268,6 +275,8 @@ def _refuse_conflicting_actions(parser: ArgumentParser,
         parser.error("%s cannot be combined" % " and ".join(asked))
     if args.dry_run and asked and asked[0] not in ("--profile", "--no-profile"):
         parser.error("--dry-run cannot be combined with %s" % asked[0])
+    if args.json and not args.status:
+        parser.error("--json requires --status")
     if args.device is not None and not args.device.strip():
         # '' was skipped without a word, and '  ' was searched for.
         parser.error("--device needs a name")
@@ -298,11 +307,18 @@ def _dry_run_desk(args: "argparse.Namespace",
     for the same reason: it is the desk that command would restore.
     """
     try:
+        previous, active = effective_config(config_path)
         desk = (load_profile(args.profile, config_path) if args.profile is not None
                 else load_config(config_path))
     except ConfigError as exc:
         log.error("configuration error: %s", exc)
         return EXIT_CONFIG
+    source = profile_path(active, config_path) if active else config_path
+    target = (profile_path(args.profile, config_path) if args.profile is not None
+              else config_path)
+    print("Profile preview: %s -> %s" % (source or "defaults", target or "defaults"))
+    for line in transition_lines(previous, desk):
+        print(line)
     # The desk exactly as the switch would load it, machine settings
     # included. Until 0.6.11 the ports and the device name of the desk
     # *in effect* were written over it, and the name is what a dry run

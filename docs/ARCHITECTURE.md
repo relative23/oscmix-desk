@@ -98,6 +98,10 @@ acyclic graph.
 | `dump` | the other direction: what the device reports, recovered as routes and settings and rendered as a `routing.conf` |
 | `backend` | the one place that opens a socket to the device; its `Traits` name the upstream behaviour the timing constants work around |
 | `streams` | observe the exact interface's active ALSA/USB playback mode and enforce measured playback limits before write phases; no PCM or clock changes |
+| `diagnostics` | read-only port, backend identity and service inspection, shared by status and launcher |
+| `desktop` | inspect the existing upstream GTK executable, schema and saved connection without changing settings |
+| `status` | versioned read-only runtime report for source and native installations; no OSC requests or service activation |
+| `preview` | compare two partial desk declarations for omitted matrix paths and changed link requirements |
 | `routing` | send a plan in two phases, with the link barrier between them |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
 | `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and say who holds a port and which interface that backend bridges |
@@ -108,7 +112,7 @@ acyclic graph.
 | `profiles` | switch to `profiles/<name>.conf` under that lock, in one fixed order -- validate, write, remember, check -- reporting an outcome rather than raising |
 | `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` -- kept for the machine the session runs on, or refused as a desk for somewhere else |
 | `session` | the service lifecycle: wait for the device, start the backend, apply, signal ready, verify, shut down |
-| `launcher` | the desktop entry's entry point; deliberately depends on almost nothing |
+| `launcher` | desktop entry point; checks GTK prerequisites and exact backend/desk identity before launch |
 | `reads` | the three actions that read the device and write nothing: `--snapshot`, `--diff`, `--dump-config` |
 | `cli` | argument parsing, one action per invocation, and the exit-code mapping -- a switch's outcome and the unit's reload included |
 | `__init__` | the supported surface -- read a config, apply and verify it, switch profiles, the errors and outcomes, the two entry points -- and the only module that re-exports; every other module is implementation |

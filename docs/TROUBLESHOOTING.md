@@ -63,9 +63,13 @@ Common findings in the journal:
   comes up by itself once the device is allowed.
 - `device 2a39:3fd9 not connected; nothing to do` -- normal when the unit
   is off; the udev rule starts the service again on plug-in.
-- `routing verified against device state` -- the read-back confirmed the
-  hardware mixer matches routing.conf; this is the "everything works"
-  line.
+- `routing verified against device state under PIN/REMEMBER policy` -- no
+  remaining repair problem was found within the observation window.
+  The summary separates matching values, deliberately retained REMEMBER
+  differences, differing PIN values, missing prompt reports, other values
+  not observed, and settings the backend cannot report. It does not assert
+  complete device/config equality. `READY=1` only signals service readiness;
+  the background read-back may still be running.
 - `routing cannot be verified: ... cannot bind the receive port UDP N:
   <reason>` with `Status: running; verifier failed` -- the receive port
   cannot be bound, and not because the mixer GUI has it. The routing *is*

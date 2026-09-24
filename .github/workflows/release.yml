@@ -60,7 +60,7 @@ jobs:
         run: |
           gh run download "$GITHUB_RUN_ID" --pattern 'native-*' --dir build/native-artifacts
           python - <<'PY'
-          import hashlib, shutil, subprocess
+          import hashlib, json, shutil, subprocess
           from pathlib import Path
           root = Path('build/native-artifacts')
           output = Path('build/release')
@@ -69,6 +69,12 @@ jobs:
               assert package.is_dir(), 'Missing qualified package: ' + target
               files = sorted(package.iterdir())
               assert len(files) >= 4, 'Incomplete package assets: ' + target
+              manifests = [json.loads(path.read_text()) for path in files
+                           if path.name.endswith(('.deb.json', '.rpm.json', '.zst.json'))]
+              assert {row['component'] for row in manifests} == {'core', 'gtk'}, target
+              assert len(manifests) == 2, 'Expected one core and one GTK manifest'
+              for row in manifests:
+                  assert (package / row['artifact']).is_file(), row['artifact']
               subprocess.run(['sha256sum', '--check', 'SHA256SUMS-' + target],
                              cwd=package, check=True)
               for source in files:

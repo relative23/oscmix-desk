@@ -321,6 +321,7 @@ def test_the_installed_launcher_resolves_its_package(tmp_path):
         "OSCMIX_PROC_ROOT": str(proc_root),
         "OSCMIX_SYSFS_USB": str(sysfs),
         "OSCMIX_NO_NOTIFY": "1",
+        "OSCMIX_BIN_GTK": str(tmp_path / 'missing-desktop'),
     })
     result = subprocess.run(
         [str(home / ".local" / "bin" / "oscmix-launch")],
@@ -328,7 +329,7 @@ def test_the_installed_launcher_resolves_its_package(tmp_path):
         cwd=str(tmp_path),
     )
     assert result.returncode == 1
-    assert "is not connected" in result.stderr
+    assert "oscmix-gtk is not installed" in result.stderr
     assert "Traceback" not in result.stderr
     assert "ImportError" not in result.stderr
 

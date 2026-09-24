@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased -- 0.7.3
+
+### Fixed
+
+- Classify each expected register by its latest decoded report in the open
+  observation window. A matching report followed by a differing report
+  previously left a stale confirmation. PIN repair, REMEMBER preservation
+  and strict profile outcomes now see the later value.
+- Check the GTK executable, schema and saved connection before starting
+  a service. Associate an existing backend with the exact desk/device and
+  reply destination, including oscmix's modified `/proc` command line.
+  Reuse matching manual sessions; refuse unrelated listeners, disabled or
+  custom service starts and incomplete package maintenance.
+- Remove the launcher's obsolete fallback to profile-specific machine
+  settings. Profiles inherit the main desk's interface and ports.
+- Explain partial profiles and policy-compliant verification precisely in
+  the README. The desk lock coordinates cooperating desk writers.
+
+### Added
+
+- `oscmix-session --status [--json]`: read-only configuration, process,
+  package, GTK, playback-mode and receive-port diagnosis. JSON schema 1
+  keeps service readiness separate from hardware verification and compares
+  the running backend executable with the resolved file.
+- Profile transition previews identify previously declared crosspoints
+  omitted by the requested desk and explain link/partner effects.
+- Verification summaries separate matching values, REMEMBER differences,
+  differing PIN values, missing prompt reports, other unobserved settings
+  and backend-unreportable settings. Outcome states and exit codes are unchanged.
+- Optional `oscmix-desk-gtk` native companion packages with exact core
+  dependencies, distinct file ownership and separate persistent maintenance
+  fences. `build-package.py --with-gtk` builds both core and companion.
+- Real GTK/fake-backend integration checks for both launch orders,
+  receiver contention and deliberate recovery preserving REMEMBER values.
+  Native qualification includes companion add/remove, paired upgrade and
+  downgrade, dependency refusal, repeat builds and actual 0.7.2 transitions.
+
+Release qualification is in progress; this working tree is not a published release.
+
 ## 0.7.2 -- 2026-09-24
 
 ### Fixed

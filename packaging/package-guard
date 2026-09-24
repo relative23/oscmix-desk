@@ -12,6 +12,7 @@ import tempfile
 from pathlib import Path
 
 FENCE = Path('/var/lib/oscmix-desk/package-update')
+GTK_FENCE = Path('/var/lib/oscmix-desk/gtk-package-update')
 BACKUPS = Path('/var/lib/oscmix-desk/legacy-system')
 CACHE = Path('/usr/lib/oscmix-desk/oscmix_desk/__pycache__')
 SYSTEM_FILES = (
@@ -70,17 +71,18 @@ def preserve_unowned():
     print('Unowned system files preserved in ' + str(backup), flush=True)
 
 
-def begin(backup=False):
-    already_fenced = FENCE.exists()
-    FENCE.parent.mkdir(parents=True, exist_ok=True)
-    FENCE.touch(mode=0o644, exist_ok=True)
+def begin(backup=False, fence=None):
+    fence = FENCE if fence is None else fence
+    already_fenced = fence.exists()
+    fence.parent.mkdir(parents=True, exist_ok=True)
+    fence.touch(mode=0o644, exist_ok=True)
     try:
         require_stopped()
         if backup:
             preserve_unowned()
     except (OSError, ValueError):
         if not already_fenced:
-            FENCE.unlink()
+            fence.unlink()
         raise
 
 
@@ -101,19 +103,22 @@ def clean_bytecode():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['check', 'install', 'remove', 'finish'])
+    parser.add_argument('--component', choices=['core', 'gtk'], default='core')
     args = parser.parse_args()
+    fence = GTK_FENCE if args.component == 'gtk' else FENCE
     if os.getuid() != 0:
         parser.error('package maintenance runs as root')
     try:
         if args.action == 'check':
             require_stopped()
         elif args.action == 'install':
-            begin(backup=True)
+            begin(backup=True, fence=fence)
         elif args.action == 'remove':
-            begin()
-            clean_bytecode()
+            begin(fence=fence)
+            if args.component == 'core':
+                clean_bytecode()
         else:
-            FENCE.unlink(missing_ok=True)
+            fence.unlink(missing_ok=True)
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
         print('oscmix-desk package: ' + str(exc), file=sys.stderr)
         return 1

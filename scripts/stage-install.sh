@@ -6,13 +6,15 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DESTDIR=""
 BACKEND=""
 WITH_GTK=no
+GTK_ONLY=no
 while [ $# -gt 0 ]; do
     case "$1" in
         --destdir) DESTDIR="${2:?--destdir needs a directory}"; shift ;;
         --backend) BACKEND="${2:?--backend needs a directory}"; shift ;;
         --with-gtk) WITH_GTK=yes ;;
+        --gtk-only) GTK_ONLY=yes; WITH_GTK=yes ;;
         -h|--help)
-            echo "usage: scripts/stage-install.sh --destdir ABSOLUTE_EMPTY_DIR --backend BUILT_SOURCE [--with-gtk]"
+            echo "usage: scripts/stage-install.sh --destdir ABSOLUTE_EMPTY_DIR --backend BUILT_SOURCE [--with-gtk|--gtk-only]"
             exit 0 ;;
         *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
@@ -39,6 +41,17 @@ fi
 install_file() { install -D -m "$1" "$2" "$3"; }
 # shellcheck source=scripts/install-payload.sh
 source "$PROJECT_DIR/scripts/install-payload.sh"
+if [ "$GTK_ONLY" = yes ]; then
+    payload_gtk "$BACKEND" "$DESTDIR/usr/bin" "$DESTDIR/usr/share"
+    payload_desktop "$PROJECT_DIR" /usr/bin "$DESTDIR/usr/share"
+    install_file 644 "$BACKEND/LICENSE" \
+        "$DESTDIR/usr/share/licenses/oscmix-desk-gtk/oscmix-LICENSE"
+    install_file 644 "$PROJECT_DIR/LICENSE" \
+        "$DESTDIR/usr/share/licenses/oscmix-desk-gtk/LICENSE"
+    mkdir -p "$DESTDIR/usr/share/oscmix-desk"
+    echo "staged GTK companion in $DESTDIR; core files and activation untouched"
+    exit 0
+fi
 payload_runtime "$PROJECT_DIR" "$DESTDIR/usr/lib/oscmix-desk/oscmix_desk"
 payload_entry_points "$PROJECT_DIR" "$DESTDIR/usr/bin"
 install_file 755 "$PROJECT_DIR/packaging/oscmix-setup" "$DESTDIR/usr/bin/oscmix-setup"
@@ -68,5 +81,6 @@ mkdir -p "$DESTDIR/usr/lib/systemd/user"
 sed -e 's|^ExecStart=.*|ExecStart=/usr/bin/oscmix-session|' \
     -e '/^Description=/a ConditionPathExists=%E/oscmix/service-allowed' \
     -e '/^Description=/a ConditionPathExists=!/var/lib/oscmix-desk/package-update' \
+    -e '/^Description=/a ConditionPathExists=!/var/lib/oscmix-desk/gtk-package-update' \
     "$PROJECT_DIR/systemd/oscmix.service" > "$DESTDIR/usr/lib/systemd/user/oscmix.service"
 echo "staged package payload in $DESTDIR; no host integration activated"

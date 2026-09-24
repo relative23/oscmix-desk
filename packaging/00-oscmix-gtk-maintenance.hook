@@ -1,0 +1,12 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = oscmix-desk-gtk
+
+[Action]
+Description = Refusing mixer companion changes while a mixer is running
+When = PreTransaction
+Exec = /usr/lib/oscmix-desk/package-guard remove --component gtk
+AbortOnFail

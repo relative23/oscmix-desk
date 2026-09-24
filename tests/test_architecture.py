@@ -93,8 +93,8 @@ ALLOWED_IMPORTS = {
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
     "cli": {"config", "constants", "errors", "log", "model", "notices",
-            "outcome", "paths", "pipewire", "process", "profiles", "reads",
-            "session"},
+            "outcome", "paths", "pipewire", "preview", "process", "profiles", "reads",
+            "session", "status"},
     # The three actions that read the device, split out of cli in 0.7.0.
     # `discovery` since 0.6.2: the snapshot header names the device's
     # serial and firmware, which are the leaf's to answer. `process` for
@@ -122,7 +122,13 @@ ALLOWED_IMPORTS = {
     "locking": {"constants", "log"},
     "marker": {"errors", "log", "paths"},
     "outcome": set(),
-    "launcher": {"constants", "discovery"},
+    "launcher": {"config", "constants", "desktop", "diagnostics", "discovery",
+                 "errors", "model", "paths"},
+    "diagnostics": {"constants", "discovery", "errors", "model", "paths", "process"},
+    "desktop": {"diagnostics", "discovery", "model"},
+    "status": {"constants", "desktop", "diagnostics", "discovery", "errors",
+               "marker", "model", "paths", "process", "profiles", "streams"},
+    "preview": {"model", "reconcile"},
     # What config.py was until 0.7.0, by what each part is. `model` is the
     # desk as data and what nearly everything reads -- the reconciler, the
     # router, the verifier and the sink generator stopped depending on

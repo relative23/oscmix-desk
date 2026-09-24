@@ -158,7 +158,8 @@ def enable(home, config, desk, overrides):
     if not desk.is_file():
         raise ValueError('create and review routing.conf first (oscmix-setup --init-config)')
     manager_for(home, config)
-    if Path('/var/lib/oscmix-desk/package-update').exists():
+    if any((Path('/var/lib/oscmix-desk') / name).exists()
+           for name in ('package-update', 'gtk-package-update')):
         raise ValueError('finish or recover the package transaction before enabling its service')
     if not os.access('/run/oscmix-desk', os.W_OK | os.X_OK):
         raise ValueError('provision /run/oscmix-desk as root:audio mode 3770, '

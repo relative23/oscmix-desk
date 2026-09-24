@@ -270,6 +270,24 @@ def session_mod():
     return oscmix_desk
 
 
+@pytest.fixture(autouse=True)
+def _no_real_diagnostic_queries(monkeypatch):
+    """Status/GTK tests cannot inspect the actual user's service or GSettings."""
+    from oscmix_desk import desktop, diagnostics
+
+    def unavailable(_command):
+        raise OSError("host query isolated by the test suite")
+
+    _REAL.setdefault("diagnostic_query", diagnostics.query)
+    monkeypatch.setattr(diagnostics, "query", unavailable)
+    monkeypatch.setattr(desktop, "query", unavailable)
+
+
+@pytest.fixture
+def diagnostic_query():
+    return _REAL["diagnostic_query"]
+
+
 @pytest.fixture(scope="session")
 def routing_mod():
     """Reach into routing for its own knobs.

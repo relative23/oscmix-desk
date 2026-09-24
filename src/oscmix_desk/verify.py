@@ -213,12 +213,13 @@ def _absorb(report: Message, registers: Registers,
     if on_observed is not None:
         on_observed(path, args)
     expected = registers.get(path)
-    if expected is None or path in confirmed:
+    if expected is None:
         return
     if _register_matches(expected[0], expected[1], args, register_at(device, path)):
         confirmed.add(path)
         mismatched.discard(path)
     else:
+        confirmed.discard(path)
         mismatched.add(path)
 
 
@@ -289,14 +290,14 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
     port is taken, normally by the mixer GUI; a port that cannot be bound
     for any other reason raises ``ReceivePortError``. Otherwise
     a :class:`VerifyResult` classifying every expected register as
-    confirmed (reported with a matching value), mismatched (reported
-    with a different value -- a later matching report overrides), or
-    unobserved (never reported within the window).
+    confirmed or mismatched according to the last decoded report received
+    for that path in this window, or unobserved when none arrived. Arrival
+    order is not an atomic hardware snapshot or a device timestamp.
 
     A short settle precedes the request; see ``DUMP_LISTEN_SETTLE``.
 
     ``on_observed`` is called with each register path and its reported
-    arguments the moment it is first reported. That is how the mix re-apply hooks into this dump
+    arguments on every report. That is how the mix re-apply hooks into this dump
     instead of requesting a second one: two overlapping dumps measurably
     starve each other and confirm fewer registers.
     """
@@ -412,11 +413,16 @@ def _report(result: VerifyResult, config: Config, device: Optional[Device],
         log.info("device value kept for %s (remembered, not pinned)",
                  ", ".join(kept))
     problems = _unconfirmed(result, device, config.policies)
-    if not problems:
-        log.info("routing verified against device state "
-                 "(%d confirmed; %d not reported by the device dump)%s",
-                 len(result.confirmed), len(result.unobserved),
-                 "" if attempt == 1 else " -- after retry")
+    absent = result.unobserved
+    prompt = sum(register_promptly_reported(path, device) for path in absent)
+    unavailable = sum(not register_ever_reported(path, device) for path in absent)
+    log.info("%s (%d confirmed; %d kept by REMEMBER; %d differing PIN; "
+             "%d missing prompt; %d not observed; %d backend-unreportable)%s",
+             "routing read-back needs repair" if problems else
+             "routing verified against device state under PIN/REMEMBER policy",
+             len(result.confirmed), len(kept), len(result.mismatched) - len(kept),
+             prompt, len(absent) - prompt - unavailable, unavailable,
+             "" if attempt == 1 else " -- after retry")
     return problems, kept
 
 

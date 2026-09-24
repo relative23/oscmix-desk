@@ -15,7 +15,7 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-from package_formats import arch, installed_metadata, rpm
+from package_formats import arch, guard, installed_metadata, rpm
 
 
 def run(args, cwd=None):
@@ -38,12 +38,6 @@ def workspace(path):
             yield path
         finally:
             shutil.rmtree(path)
-
-
-def maintenance(root, action):
-    script = (root / 'packaging/package-guard').read_text()
-    return script.replace('args = parser.parse_args()',
-                          'args = parser.parse_args([' + repr(action) + '])')
 
 
 def git_metadata(root):
@@ -112,7 +106,7 @@ def packaged_hashes(artifact, kind, stage):
 
 
 def deb(root, stage, work, output, record, gtk):
-    name = 'oscmix-desk'
+    name = 'oscmix-desk-gtk' if gtk else 'oscmix-desk'
     version = (record['version'] + ('~dev' if record['development'] else '')
                + '-' + str(record['package_revision']))
     architecture = run(['dpkg', '--print-architecture'])
@@ -121,8 +115,8 @@ def deb(root, stage, work, output, record, gtk):
     (debian / 'control').write_text(
         'Source: oscmix-desk\nMaintainer: oscmix-desk contributors '
         '<noreply@github.com>\nSection: sound\nPriority: optional\n\n'
-        'Package: oscmix-desk\nArchitecture: any\nDescription: Declarative UCX II mixer state\n')
-    binaries = ['oscmix', 'alsaseqio'] + (['oscmix-gtk'] if gtk else [])
+        'Package: ' + name + '\nArchitecture: any\nDescription: Declarative UCX II mixer state\n')
+    binaries = ['oscmix-gtk'] if gtk else ['oscmix', 'alsaseqio']
     dependencies = run(['dpkg-shlibdeps', '-O', *['-e' + str(stage / 'usr/bin' / binary)
                                                for binary in binaries]], cwd=work)
     dependencies = dependencies.removeprefix('shlibs:Depends=')
@@ -131,19 +125,17 @@ def deb(root, stage, work, output, record, gtk):
     (control / 'control').write_text(
         'Package: ' + name + '\nVersion: ' + version + '\nArchitecture: ' + architecture
         + '\nMaintainer: oscmix-desk contributors <noreply@github.com>\nSection: sound\n'
-        'Priority: optional\nPre-Depends: python3 (>= 3.9)\nDepends: adduser, ' + dependencies
-        + (', libglib2.0-bin' if gtk else '')
+        'Priority: optional\nPre-Depends: python3 (>= 3.9)\nDepends: ' + dependencies
+        + (', oscmix-desk (= ' + version + '), libglib2.0-bin' if gtk else ', adduser')
         + '\nRecommends: systemd, udev\nHomepage: https://github.com/relative23/oscmix-desk\n'
-        'Description: Declarative mixer state and lifecycle for the Fireface UCX II\n'
-        ' Includes the pinned oscmix backend. User configuration and service activation\n'
-        ' are explicit through oscmix-setup; installing this package starts no desk.\n')
-    for name, action in [('preinst', 'install'), ('prerm', 'remove')]:
-        script = maintenance(root, action)
-        if name == 'prerm':
-            script = script.replace('begin()\n', "begin()\n            subprocess.run("
-                                    "['py3clean', '-p', 'oscmix-desk'], check=True)\n")
-        (control / name).write_text(script)
-        (control / name).chmod(0o755)
+        + ('Description: Optional upstream GTK mixer for oscmix-desk\n'
+           ' Uses the matching core backend; installing starts no mixer.\n' if gtk else
+           'Description: Declarative mixer state and lifecycle for the Fireface UCX II\n'
+           ' Includes the pinned oscmix backend. Review the desk, then activate it\n'
+           ' explicitly with oscmix-setup; installing starts no desk.\n'))
+    for script_name, action in [('preinst', 'install'), ('prerm', 'remove')]:
+        (control / script_name).write_text(guard(root, action, gtk))
+        (control / script_name).chmod(0o755)
     (control / 'postinst').write_text('''#!/bin/sh
 set -eu
 case "$1" in
@@ -162,13 +154,28 @@ case "$1" in
     ;;
 esac
 ''')
+    if gtk:
+        (control / 'postinst').write_text('''#!/bin/sh
+set -eu
+if [ "$1" = configure ]; then
+    glib-compile-schemas /usr/share/glib-2.0/schemas
+    /usr/lib/oscmix-desk/package-guard finish --component gtk
+fi
+''')
     (control / 'postinst').chmod(0o755)
     # postrm runs after its installed helper has gone. Keep its tiny
     # completion operation self-contained, and preserve user config.
     (control / 'postrm').write_text('''#!/bin/sh
 set -eu
 case "$1" in
-  remove|purge) rm -f /var/lib/oscmix-desk/package-update ;;
+  remove|purge)
+    if command -v glib-compile-schemas >/dev/null 2>&1; then
+        glib-compile-schemas /usr/share/glib-2.0/schemas
+    fi
+    /usr/bin/python3 -I <<'PYTHON_GUARD'
+''' + guard(root, 'finish', gtk) + '''
+PYTHON_GUARD
+    ;;
 esac
 ''')
     (control / 'postrm').chmod(0o755)
@@ -178,7 +185,7 @@ esac
     target = release.get('ID', '').strip('"') + release.get('VERSION_ID', '').strip('"')
     if not re.fullmatch(r'[A-Za-z0-9.]+', target):
         raise ValueError('cannot name a distribution-specific artifact from os-release')
-    artifact = output / ('oscmix-desk_' + version + '_' + architecture + '_' + target + '.deb')
+    artifact = output / (name + '_' + version + '_' + architecture + '_' + target + '.deb')
     environment = dict(os.environ, SOURCE_DATE_EPOCH=str(record['source_date_epoch']))
     subprocess.run(['dpkg-deb', '--build', '--root-owner-group', '--uniform-compression',
                     str(stage), str(artifact)], check=True, env=environment)
@@ -192,7 +199,8 @@ def main():
                         help='local oscmix git checkout containing the pinned commit')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--development', action='store_true')
-    parser.add_argument('--with-gtk', action='store_true')
+    parser.add_argument('--with-gtk', action='store_true',
+                        help='build the core and a separate, exactly dependent GTK companion')
     parser.add_argument('--package-revision', type=int, default=1)
     parser.add_argument('--build-dir', type=Path,
                         help='unused absolute scratch path, removed afterward; '
@@ -215,23 +223,32 @@ def main():
             root = work / 'project'
         backend, transcript = build_backend(
             args.backend_source.resolve(), record['backend_commit'], work, args.with_gtk)
-        stage = work / 'stage'
-        run(['bash', root / 'scripts/stage-install.sh', '--destdir', stage,
-             '--backend', backend, *(['--with-gtk'] if args.with_gtk else [])], cwd=root)
         record['format'] = args.format
         record['build_flags'] = {key: os.environ.get(key) for key in
                                  ('CC', 'CFLAGS', 'CPPFLAGS', 'LDFLAGS')}
         record['compiler'] = run(['cc', '--version']).splitlines()[0]
         record['os_release'] = Path('/etc/os-release').read_text()
-        installed_metadata(stage, record)
-        record['staged_payload'] = {
-            str(path.relative_to(stage)): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted(stage.rglob('*')) if path.is_file()}
-        for path in stage.rglob('*'):
-            os.utime(path, (record['source_date_epoch'], record['source_date_epoch']))
-        build = {'deb': deb, 'rpm': rpm, 'arch': arch}[args.format]
-        artifact = build(root, stage, work, args.output.resolve(), record, args.with_gtk)
-        record['payload'] = packaged_hashes(artifact, args.format, stage)
+        for gtk in ([False, True] if args.with_gtk else [False]):
+            package(root, backend, work, args.output.resolve(), record, transcript, gtk)
+
+
+def package(root, backend, workspace_root, output, metadata_record, transcript, gtk):
+    record = dict(metadata_record, component='gtk' if gtk else 'core',
+                  package_name='oscmix-desk-gtk' if gtk else 'oscmix-desk')
+    work = workspace_root / record['component']
+    work.mkdir()
+    stage = work / 'stage'
+    run(['bash', root / 'scripts/stage-install.sh', '--destdir', stage,
+         '--backend', backend, *(['--gtk-only'] if gtk else [])], cwd=root)
+    installed_metadata(stage, record)
+    record['staged_payload'] = {
+        str(path.relative_to(stage)): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(stage.rglob('*')) if path.is_file()}
+    for path in stage.rglob('*'):
+        os.utime(path, (record['source_date_epoch'], record['source_date_epoch']))
+    build = {'deb': deb, 'rpm': rpm, 'arch': arch}[record['format']]
+    artifact = build(root, stage, work, output, record, gtk)
+    record['payload'] = packaged_hashes(artifact, record['format'], stage)
     artifact.with_suffix(artifact.suffix + '.build.log').write_text(transcript + '\n')
     record['artifact'] = artifact.name
     record['sha256'] = hashlib.sha256(artifact.read_bytes()).hexdigest()

@@ -145,11 +145,16 @@ for explicit per-user setup and migration. Use the
 [package installation guide](docs/INSTALLATION.md) for the matching target.
 `pip` alone does not install the required host integration.
 
+From 0.7.3, the optional `oscmix-desk-gtk` companion adds upstream's mixer,
+schema and desktop entry to the matching core package. The headless package
+keeps its own dependencies. [Runtime status and mixer use](docs/STATUS.md)
+explain connection checks and the close/read-back/reopen workflow.
+
 Prefer a [verified source release](docs/RELEASE-ARTIFACTS.md) or a package
 qualified for your distribution. Read the
 [upgrade notes](docs/UPGRADING.md) before moving an existing desk. The
-existing upstream GTK mixer remains optional; the separate desktop
-companion is deferred.
+existing upstream GTK mixer remains optional; the separate desk desktop
+application is deferred.
 
 ## Configure your routing
 
@@ -233,18 +238,23 @@ is the routing itself, the mix-matrix gain, and is always written.
 Shortly after startup,
 `oscmix-session` also reads the state back from the device in the
 background and re-sends once on mismatch -- the journal line `routing
-verified against device state` is your proof that everything the device
-reports back matches. The playback mix matrix is not in that: oscmix
-never reports it, so it is re-established rather than confirmed, and no
-read-back can prove it.
+verified against device state` means that the read-back found no remaining
+problem requiring repair under the PIN/REMEMBER and reportability rules.
+It does not mean that every declared value equals the hardware: a differing
+REMEMBER value is deliberately kept and logged separately. The summary
+counts matching reports and settings not observed in the dump. The playback
+mix matrix is never reported by oscmix, so it is re-established rather than
+confirmed; read-back cannot prove it.
 
 ## Profiles
 
-Several routings, and a command to switch between them -- TotalMix's
-snapshots, but as text files you can diff and keep in version control.
+Profiles are named configuration variants you can diff and keep in version
+control. Switching applies the settings declared in the selected profile;
+omitted settings and existing routes are not automatically reset or muted.
+They describe partial desired states, not complete device snapshots.
 
-A profile is a whole `routing.conf`, in a `profiles` directory beside
-your main one:
+A profile uses the same format as `routing.conf`, in a `profiles` directory
+beside your main one:
 
 ```
 ~/.config/oscmix/routing.conf
@@ -305,7 +315,9 @@ a lock named after the interface in `/run/oscmix-desk/`,
 the one path every writer on the machine computes the same way,
 and so does the service for
 its own apply, verifier and reconcile: one writer at a time, whichever
-it is ([ADR 0019](docs/decisions/0019-one-lock-for-every-writer.md)).
+desk operation it is
+([ADR 0019](docs/decisions/0019-one-lock-for-every-writer.md)).
+The upstream mixer GUI and direct OSC clients do not take this lock.
 That directory belongs to the group `audio`, so the user running the
 desk has to be in it; the installer warns when it is not. A switch
 writes only to the backend that drives this desk's interface, and with
@@ -424,6 +436,8 @@ is in [docs/ROADMAP.md](docs/ROADMAP.md).
 systemctl --user status oscmix.service      # is the backend running?
 journalctl --user -u oscmix.service -e      # backend logs
 oscmix-session --dry-run                    # what would be started/sent?
+oscmix-session --status                     # read-only device/backend/GTK diagnosis
+oscmix-session --status --json              # versioned report for scripts
 ```
 
 More in [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).

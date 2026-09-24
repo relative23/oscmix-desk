@@ -17,9 +17,32 @@ def guard(tmp_path, monkeypatch):
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
     monkeypatch.setattr(module, 'FENCE', tmp_path / 'maintenance')
+    monkeypatch.setattr(module, 'GTK_FENCE', tmp_path / 'gtk-maintenance')
     monkeypatch.setattr(module, 'BACKUPS', tmp_path / 'backups')
     monkeypatch.setattr(module, 'running', list)
     return module
+
+
+@pytest.mark.parametrize('component', ['core', 'gtk'])
+def test_finishing_one_component_does_not_clear_an_incomplete_other(
+        guard, monkeypatch, component):
+    guard.FENCE.touch()
+    guard.GTK_FENCE.touch()
+    monkeypatch.setattr(guard.os, 'getuid', lambda: 0)
+    monkeypatch.setattr(guard.sys, 'argv', ['guard', 'finish', '--component', component])
+    assert guard.main() == 0
+    assert guard.FENCE.exists() is (component == 'gtk')
+    assert guard.GTK_FENCE.exists() is (component == 'core')
+
+
+def test_gtk_maintenance_preserves_the_core_bytecode_and_prior_fence(guard, monkeypatch):
+    guard.FENCE.touch()
+    monkeypatch.setattr(guard.os, 'getuid', lambda: 0)
+    monkeypatch.setattr(guard.sys, 'argv', ['guard', 'remove', '--component', 'gtk'])
+    monkeypatch.setattr(guard, 'clean_bytecode', lambda: pytest.fail('GTK touched core files'))
+    assert guard.main() == 0
+    assert guard.FENCE.exists()
+    assert guard.GTK_FENCE.exists()
 
 
 @pytest.mark.parametrize('previous_failure', [False, True])

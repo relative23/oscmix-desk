@@ -1,6 +1,6 @@
 # Installation and package recovery
 
-These instructions describe 0.7.2. Use the instructions for the version
+These instructions describe 0.7.3. Use the instructions for the version
 you downloaded; 0.7.0/0.7.1 installers do not have the `--check`,
 `--manual`, `--enable` or `oscmix-setup` interface.
 
@@ -111,8 +111,18 @@ disabled-but-never-approved installation.
 The package includes its exact backend revision. Installed provenance is
 readable at `/usr/share/oscmix-desk/package.json`; the artifact manifest
 also hashes the actual packaged files after distribution build processing.
-Native packages currently qualify the headless path. Optional GTK package
-builds need separate desktop qualification before publication.
+
+The optional `oscmix-desk-gtk` package supplies the existing upstream GTK
+mixer, GSettings schema, icon and desktop entry. It depends on the exact
+core package version/revision and owns none of the core files. Install the
+two matching files with your distribution's package manager; GTK is not a
+dependency of the headless core. Removing the companion leaves the backend,
+configuration and activation state in place. Schema caches are refreshed
+on companion installation and removal. Nothing is enabled or started.
+
+Use `oscmix-session --status` to inspect installed resources and connection
+settings, then `oscmix-launch` to open the mixer against the reviewed desk.
+The [mixer workflow](STATUS.md) explains manual sessions and read-back.
 
 ## Migrating an existing source installation
 
@@ -163,10 +173,12 @@ package. Package hooks refuse replacement or removal while a mixer is
 running. Do not start manual sessions during the package transaction.
 This is coordinated maintenance, not exclusion of arbitrary local writers.
 
-The root-owned `/var/lib/oscmix-desk/package-update` marker prevents vendor
-unit startup while files are being changed. It persists across a reboot.
-A successful package configuration/removal clears it; an interrupted
+The root-owned `/var/lib/oscmix-desk/package-update` (core) and
+`/var/lib/oscmix-desk/gtk-package-update` (companion) markers prevent vendor
+unit startup while files are being changed. They persist across a reboot.
+A successful package configuration/removal clears its own marker; an interrupted
 transaction leaves automatic operation blocked until the package is repaired.
+Repairing GTK never clears an incomplete core transaction, or vice versa.
 Finish or reinstall the selected package using the package manager before
 enabling the service. Do not remove the marker merely to bypass a failure.
 
@@ -199,6 +211,10 @@ only that new scratch directory; an existing directory is refused. It records
 the truthful build location instead of rewriting package provenance afterward.
 `--package-revision` is the native packaging revision, separate from the
 application version. The common staging script never enables host services.
+Add `--with-gtk` to build both packages from the same pin and build metadata.
+It produces a separate companion, not an alternative core package with
+overlapping files. The installed companion manifest is
+`/usr/share/oscmix-desk/gtk-package.json`.
 
 ## Repeating distribution qualification
 
@@ -215,6 +231,9 @@ source/backend revisions and result. The Docker context contains a Git bundle,
 not the host home or local Git configuration. Containers have no sound devices,
 host service bus or runtime network access. Native checks build twice, verify
 identical artifacts and exercise the actual package manager's transitions.
+Native checks also launch the installed GTK executable against an isolated
+fake backend/display and exercise real previous-version upgrade/rollback.
+`--previous-tag` selects that baseline (0.7.2 for this release).
 They do not replace VM or hardware qualification.
 
 The [distribution workflow](../.github/workflows/distributions.yml) runs this

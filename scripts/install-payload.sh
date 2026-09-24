@@ -23,10 +23,15 @@ payload_backend() {
     install_file 755 "$backend/oscmix" "$bin_dir/oscmix"
     install_file 755 "$backend/alsaseqio" "$bin_dir/alsaseqio"
     if [ "$with_gtk" = yes ] && [ -x "$backend/gtk/oscmix-gtk" ]; then
-        install_file 755 "$backend/gtk/oscmix-gtk" "$bin_dir/oscmix-gtk"
-        install_file 644 "$backend/gtk/oscmix.gschema.xml" \
-            "$data_dir/glib-2.0/schemas/oscmix.gschema.xml"
+        payload_gtk "$backend" "$bin_dir" "$data_dir"
     fi
+}
+
+payload_gtk() {
+    local backend="$1" bin_dir="$2" data_dir="$3"
+    install_file 755 "$backend/gtk/oscmix-gtk" "$bin_dir/oscmix-gtk"
+    install_file 644 "$backend/gtk/oscmix.gschema.xml" \
+        "$data_dir/glib-2.0/schemas/oscmix.gschema.xml"
 }
 
 payload_desktop() {

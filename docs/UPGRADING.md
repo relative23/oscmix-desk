@@ -1,5 +1,27 @@
 # Upgrade and recovery
 
+## Upgrading to 0.7.3
+
+The configuration format, register policies and backend pin are unchanged.
+The verifier now revokes a confirmation when a later report in the same
+open window contradicts it. Its policy summary counts matching and
+deliberately retained values separately; explicit profile confirmation
+remains strict. Profile previews compare partial declarations and identify
+crosspoints the new profile leaves undeclared.
+
+The launcher now refuses a missing/misconfigured GTK installation or a
+backend it cannot associate with the exact interface and reply endpoint.
+It reuses a matching manual backend without invoking systemd. Enable the
+reviewed default service explicitly if you want the launcher to start it;
+start custom services manually. See [status and GUI workflow](STATUS.md).
+
+Native `oscmix-desk-gtk` is optional and depends on the exact core package
+version/revision. Upgrade or downgrade both together with the native package
+manager. To return to 0.7.2, remove the companion first, then install the
+0.7.2 core package. Removing the companion preserves desks and activation.
+Interrupted core and GTK maintenance have separate persistent fences;
+repair the affected package rather than deleting its marker.
+
 ## Upgrading to 0.7.2
 
 The config format and backend pin are unchanged. Installation now separates

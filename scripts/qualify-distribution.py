@@ -21,21 +21,29 @@ APT = ('apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y '
 TARGETS = {
     'debian13': ('debian:13', APT, None, ''),
     'ubuntu2404': ('ubuntu:24.04', APT, 'deb',
-                   'apt-get install -y dpkg-dev binutils adduser'),
+                   ('apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
+                    'libglib2.0-bin xvfb xauth dbus-x11 python3-gi '
+                    'gir1.2-atspi-2.0 at-spi2-core gnome-shell plasma-workspace '
+                    'xfce4-session xfwm4 xfce4-panel xfdesktop4 x11-utils mesa-utils')),
     'ubuntu2604': ('ubuntu:26.04', APT, None, ''),
     'fedora44': ('fedora:44',
                  ('dnf install -y python3 python3-pip git gcc make pkgconf-pkg-config '
                   'alsa-lib-devel util-linux diffutils ca-certificates bash '
                   'shadow-utils procps-ng'),
-                 'rpm', 'dnf install -y rpm-build systemd'),
+                 'rpm', ('dnf install -y rpm-build systemd gtk3-devel '
+                         'xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon '
+                         'python3-gobject at-spi2-core')),
     'opensuse16': ('opensuse/leap:16.0',
                    ('zypper --non-interactive install python3 python3-pip git gcc make pkg-config '
                     'alsa-devel util-linux diffutils ca-certificates bash shadow procps'),
-                   'rpm', 'zypper --non-interactive install rpm-build systemd'),
+                   'rpm', ('zypper --non-interactive install rpm-build systemd gtk3-devel '
+                           'xorg-x11-server-Xvfb xauth dbus-1-x11 python3-gobject '
+                           'typelib-1_0-Atspi-2_0')),
     'arch': ('archlinux:base',
              ('pacman -Syu --noconfirm python python-pip git gcc make pkgconf alsa-lib util-linux '
               'diffutils ca-certificates bash shadow procps-ng'),
-             'arch', 'pacman -S --noconfirm base-devel zstd'),
+             'arch', ('pacman -S --noconfirm base-devel zstd gtk3 '
+                      'xorg-server-xvfb xorg-xauth dbus python-gobject at-spi2-core')),
     'alpine322': ('alpine:3.22',
                   ('apk add python3 py3-pip bash git build-base pkgconf alsa-lib-dev util-linux '
                    'coreutils ca-certificates shadow procps'), None, ''),
@@ -46,7 +54,7 @@ def read(*args):
     return subprocess.run(args, capture_output=True, text=True, check=True).stdout.strip()
 
 
-def dockerfile(target, pin, commit, native, development):
+def dockerfile(target, pin, commit, native, development, previous):
     base, dependencies, kind, packaging = TARGETS[target]
     text = ('FROM ' + base + '\nRUN ' + dependencies + '\n'
             + ('RUN ' + packaging + '\n' if native else '')
@@ -68,8 +76,13 @@ def dockerfile(target, pin, commit, native, development):
             text += ('RUN python3 scripts/build-package.py --format ' + kind
                      + ' --backend-source build/oscmix --build-dir /tmp/oscmix-build'
                      + ' --output /work/build/qualification/' + directory
+                     + ' --with-gtk'
                      + ' --package-revision ' + str(revision)
                      + (' --development' if development else '') + '\n')
+        text += ('RUN git worktree add --detach /tmp/previous-source ' + previous + ' && '
+                 'python3 /tmp/previous-source/scripts/build-package.py --format ' + kind
+                 + ' --backend-source /work/build/oscmix --build-dir /tmp/previous-build'
+                 + ' --output /work/build/qualification/previous\n')
     return text
 
 
@@ -77,6 +90,8 @@ def qualify(args, root):
     if read('git', '-C', str(root), 'status', '--porcelain'):
         raise ValueError('qualification requires a clean committed tree; save work first')
     commit = read('git', '-C', str(root), 'rev-parse', 'HEAD')
+    previous = read('git', '-C', str(root), 'rev-parse', '--verify',
+                    args.previous_tag + '^{commit}')
     pin = re.search(r'^OSCMIX_REF="\$\{OSCMIX_REF:-([a-f0-9]{40})\}"$',
                     (root / 'install.sh').read_text(), re.MULTILINE)
     if pin is None:
@@ -90,6 +105,7 @@ def qualify(args, root):
     started = time.monotonic()
     record = dict(target=args.target, platform='linux/amd64', base=base,
                   source_commit=commit, backend_commit=pin[1], native=args.native,
+                  previous_tag=args.previous_tag, previous_source_commit=previous,
                   development=args.development, hardware=False, service_manager=False)
     with (args.output / 'qualification.log').open('w') as log:
         def run(*command, timeout=1200):
@@ -101,8 +117,9 @@ def qualify(args, root):
             with tempfile.TemporaryDirectory(prefix='oscmix-distribution-') as temporary:
                 context = Path(temporary)
                 run('git', '-C', str(root), 'bundle', 'create',
-                    str(context / 'source.bundle'), 'HEAD')
-                recipe = dockerfile(args.target, pin[1], commit, args.native, args.development)
+                    str(context / 'source.bundle'), 'HEAD', 'refs/tags/' + args.previous_tag)
+                recipe = dockerfile(args.target, pin[1], commit, args.native, args.development,
+                                    previous)
                 (context / 'Dockerfile').write_text(recipe)
                 (args.output / 'Dockerfile').write_text(recipe)
                 run('docker', 'pull', '--platform=linux/amd64', base)
@@ -142,11 +159,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target', required=True, choices=TARGETS)
     parser.add_argument('--native', action='store_true')
+    parser.add_argument('--previous-tag', default='v0.7.2',
+                        help='released core version for actual native upgrade/rollback')
     parser.add_argument('--development', action='store_true',
                         help='mark test packages as development versions')
     parser.add_argument('--output', required=True, type=Path,
                         help='new output directory; never overwrites earlier evidence')
     args = parser.parse_args()
+    if not re.fullmatch(r'v\d+\.\d+\.\d+', args.previous_tag):
+        parser.error('--previous-tag must be a version tag such as v0.7.2')
     args.output = args.output.resolve()
     try:
         result = qualify(args, Path(__file__).resolve().parent.parent)

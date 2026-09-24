@@ -45,3 +45,27 @@ def test_stage_refuses_to_merge_into_an_existing_installation(tmp_path):
     assert result.returncode != 0
     assert 'not empty' in result.stderr
     assert (tmp_path / 'existing').read_text() == 'keep\n'
+
+
+def test_companion_owns_no_core_file_and_no_activation_files(tmp_path):
+    backend = tmp_path / 'backend'
+    (backend / 'gtk').mkdir(parents=True)
+    for name in ('oscmix', 'alsaseqio', 'gtk/oscmix-gtk'):
+        (backend / name).write_text('#!/bin/sh\nexit 0\n')
+        (backend / name).chmod(0o755)
+    (backend / 'LICENSE').write_text('backend license\n')
+    (backend / 'gtk/oscmix.gschema.xml').write_text('<schemalist/>\n')
+    stages = [tmp_path / name for name in ('core', 'gtk')]
+    for stage, options in zip(stages, [[], ['--gtk-only']]):
+        subprocess.run(['bash', str(repo_file('scripts/stage-install.sh')),
+                        '--destdir', str(stage), '--backend', str(backend), *options],
+                       capture_output=True, text=True, check=True)
+    core, gtk = [{str(p.relative_to(stage)) for p in stage.rglob('*') if p.is_file()}
+                 for stage in stages]
+    assert not core & gtk
+    assert 'usr/bin/oscmix-gtk' in gtk
+    assert 'usr/share/glib-2.0/schemas/oscmix.gschema.xml' in gtk
+    assert not any('/lib/' in path for path in gtk)
+    assert {path for path in gtk if path.startswith('usr/bin/')} == {'usr/bin/oscmix-gtk'}
+    desktop = (stages[1] / 'usr/share/applications/oscmix-gtk.desktop').read_text()
+    assert 'Exec="/usr/bin/oscmix-launch"' in desktop

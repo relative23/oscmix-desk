@@ -199,8 +199,7 @@ def test_exiting_early_needs_every_prompt_register_not_merely_some(session_mod):
 
 def test_registers_outside_the_expectation_are_ignored(session_mod):
     # The dump carries thousands of registers we never asked about. The
-    # guard is `expected is None or path in confirmed`; with `and` an
-    # unexpected path would fall through into the comparison.
+    # Ignore unknown paths even when other expected reports are pending.
     registers = {"/output/5/volume": ("f", (0.0,))}
     state = [osc.encode_osc("/input/3/gain", "f", 12.0),
              osc.encode_osc("/hardware/ccmix", "i", 0),

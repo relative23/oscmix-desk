@@ -13,6 +13,7 @@ from oscmix_desk import __version__
 BASES = [
     ("0.6.11", "ddca339e808361f7114d3c2099a557a3859140c1"),
     ("0.7.0", "25eb57dff7a305b0e6452010ce15992c90ad144b"),
+    ("0.7.2", "2cf9b02a1c271582d042ce4ad064331fb09f3619"),
 ]
 pytestmark = pytest.mark.skipif(
     bool(os.environ.get("MUTANT_UNDER_TEST")),
@@ -41,7 +42,7 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless, previous_ver
                    input=archived.stdout, check=True)
     args = ["--no-build"] + (["--no-udev"] if rootless else [])
 
-    def install(tree):
+    def install(tree, expect_hotplug=True):
         result = run(str(tree / "install.sh"), args, env)
         assert result.returncode == 0, result.stderr + result.stdout
         package = home / ".local" / "lib" / "oscmix-desk" / "oscmix_desk"
@@ -56,10 +57,13 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless, previous_ver
                     ("OSCMIX_UDEV_RULE", "udev/90-rme-fireface.rules"),
                     ("OSCMIX_SLEEP_HOOK", "systemd/system-sleep/oscmix"),
                     ("OSCMIX_TMPFILES_CONF", "systemd/tmpfiles.d/oscmix-desk.conf")):
-                assert Path(env[variable]).read_bytes() == (tree / source).read_bytes()
+                if not expect_hotplug and variable != 'OSCMIX_TMPFILES_CONF':
+                    assert not Path(env[variable]).exists()
+                else:
+                    assert Path(env[variable]).read_bytes() == (tree / source).read_bytes()
         return package
 
-    install(previous)
+    install(previous, expect_hotplug=previous_version != '0.7.2')
     session_home_stub(tmp_path, str(home), enabled=True)
     config = home / ".config" / "oscmix"
     files = {config / "routing.conf": "# custom desk\n",

@@ -8,6 +8,8 @@ import shlex
 import shutil
 import subprocess
 
+from package_gtk import ARCH_INSTALL, ARCH_PREPARE, RPM_SPEC
+
 
 def run(args, cwd=None, env=None):
     return subprocess.run([str(arg) for arg in args], cwd=cwd, env=env, check=True,
@@ -19,10 +21,11 @@ def target_name(record):
     return values['ID'].strip('"') + values.get('VERSION_ID', '').strip('"')
 
 
-def guard(root, action):
+def guard(root, action, gtk=False):
     source = (root / 'packaging/package-guard').read_text()
+    arguments = [action, '--component', 'gtk' if gtk else 'core']
     return source.replace('args = parser.parse_args()',
-                          'args = parser.parse_args([' + repr(action) + '])')
+                          'args = parser.parse_args(' + repr(arguments) + ')')
 
 
 def archive(stage, destination, epoch):
@@ -99,10 +102,13 @@ if [ "$1" -eq 0 ]; then rm -f /var/lib/oscmix-desk/package-update; fi
 %license /usr/share/licenses/oscmix-desk
 @GTK_FILES@
 '''
+    if gtk:
+        spec = RPM_SPEC
     substitutions = {
         'VERSION': record['version'], 'RELEASE': release,
-        'INSTALL_GUARD': guard(root, 'install').replace('%', '%%'),
-        'REMOVE_GUARD': guard(root, 'remove').replace('%', '%%'),
+        'INSTALL_GUARD': guard(root, 'install', gtk).replace('%', '%%'),
+        'REMOVE_GUARD': guard(root, 'remove', gtk).replace('%', '%%'),
+        'FINISH_GUARD': guard(root, 'finish', gtk).replace('%', '%%'),
         'GTK_SCHEMA': ('glib-compile-schemas /usr/share/glib-2.0/schemas || exit 1'
                        if gtk else ''),
         'GTK_FILES': ('/usr/share/applications/oscmix-gtk.desktop\n'
@@ -132,20 +138,26 @@ if [ "$1" -eq 0 ]; then rm -f /var/lib/oscmix-desk/package-update; fi
 def arch(root, stage, work, output, record, gtk):
     if os.getuid() == 0:
         raise ValueError('makepkg must run as an ordinary build user')
-    hook = stage / 'usr/share/libalpm/hooks/00-oscmix-desk-maintenance.hook'
-    hook.parent.mkdir(parents=True)
-    shutil.copyfile(root / 'packaging' / hook.name, hook)
+    if not gtk:
+        for name in ('00-oscmix-desk-maintenance.hook', '00-oscmix-gtk-maintenance.hook'):
+            hook = stage / 'usr/share/libalpm/hooks' / name
+            hook.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(root / 'packaging' / name, hook)
     recipe = work / 'arch'
     recipe.mkdir()
     payload = recipe / 'payload.tar'
     archive(stage, payload, record['source_date_epoch'])
-    shutil.copyfile(root / 'packaging/oscmix-desk.install', recipe / 'oscmix-desk.install')
+    install = ARCH_INSTALL if gtk else (root / 'packaging/oscmix-desk.install').read_text()
+    install += ARCH_PREPARE
+    for action in ('install', 'remove', 'finish'):
+        install = install.replace('@' + action.upper() + '_GUARD@', guard(root, action, gtk))
+    (recipe / 'oscmix-desk.install').write_text(install)
     version = record['version'] + ('.dev' if record['development'] else '')
     architecture = platform.machine()
     dependencies = ['python>=3.9', 'alsa-lib', 'glibc', 'systemd', 'shadow']
     if gtk:
-        dependencies += ['gtk3']
-    pkgbuild = '''pkgname=oscmix-desk
+        dependencies = ['oscmix-desk=' + version + '-' + str(record['package_revision']), 'gtk3']
+    pkgbuild = '''pkgname=@NAME@
 pkgver=@VERSION@
 pkgrel=@REVISION@
 pkgdesc='Declarative mixer state and lifecycle for the RME Fireface UCX II'
@@ -162,6 +174,7 @@ package() {
 }
 '''
     for key, value in {
+        'NAME': 'oscmix-desk-gtk' if gtk else 'oscmix-desk',
         'VERSION': version, 'REVISION': str(record['package_revision']),
         'ARCH': shlex.quote(architecture),
         'DEPENDS': ' '.join(shlex.quote(item) for item in dependencies),
@@ -185,5 +198,6 @@ package() {
 
 def installed_metadata(stage, record):
     """Queryable provenance remains available after removing the build directory."""
-    path = stage / 'usr/share/oscmix-desk/package.json'
+    name = 'gtk-package.json' if record.get('component') == 'gtk' else 'package.json'
+    path = stage / 'usr/share/oscmix-desk' / name
     path.write_text(json.dumps(record, indent=2) + '\n')
