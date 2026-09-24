@@ -423,7 +423,8 @@ def _written(name: str, config: Config, device: Backend
     which is the repair (ADR 0027).
     """
     try:
-        _write(config, device)
+        apply_routing(config, config.osc_port, config.osc_recv_port,
+                      backend=device, intent=ApplyIntent.EXPLICIT)
     except WriteFailed as exc:
         cause = "cannot write to the backend on UDP %d (%s)" % (
             config.osc_port, exc.strerror)
@@ -438,26 +439,6 @@ def _written(name: str, config: Config, device: Backend
                        unwritten=list(exc.unwritten), persisted=False,
                        read_back=False)
     return None
-
-
-def _write(config: Config, device: Backend) -> None:
-    """Apply the profile, barrier and all.
-
-    Delegates to ``routing.apply_routing`` rather than sending the three
-    phases itself. The first version did send them itself -- links, mix,
-    channel state, one after the other with nothing in between -- and
-    dropped the link barrier in the process. On a live UCX II the whole
-    switch, apply and read-back, took 48 ms; the barrier alone is
-    measured in seconds. That is the stereo-link race the 0.2.0 release
-    was about, reintroduced on a new write path.
-
-    Three defects in 0.3.0 had the same shape: a second
-    implementation of something that already existed, correct in
-    everything it did and missing something the original had. This is
-    the third and last of them.
-    """
-    apply_routing(config, config.osc_port, config.osc_recv_port,
-                  backend=device, intent=ApplyIntent.EXPLICIT)
 
 
 def _check(name: str, config: Config, device: Backend) -> Outcome:

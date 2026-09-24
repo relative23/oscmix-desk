@@ -304,7 +304,7 @@ def application_plan(config: Config, intent: ApplyIntent,
     return plan([entry for entry in entries if entry.path not in skip])
 
 
-def retention_problem(config: Config, wanted: Plan, retained: Sequence[str],
+def retention_problem(config: Config, selected: Sequence[Write], retained: Sequence[str],
                       confirmed: Sequence[str]) -> Optional[str]:
     """Refuse indirect changes to retained settings and unknown retained links.
 
@@ -313,7 +313,7 @@ def retention_problem(config: Config, wanted: Plan, retained: Sequence[str],
     means declining the operation that could change it indirectly.
     """
     keep, known = set(retained), set(confirmed)
-    writes = {write.path for write in wanted.writes}
+    writes = {write.path for write in selected}
     for route in config.routes:
         matrix = {p for p, _t, _a in mix_messages(route) if p.startswith("/mix/")}
         if not writes.intersection(matrix):
@@ -322,7 +322,7 @@ def retention_problem(config: Config, wanted: Plan, retained: Sequence[str],
         if missing:
             return "retained link state is not confirmed for %s" % ", ".join(sorted(missing))
     declarations = {entry.path: entry.args for entry in desired(config)}
-    for write in wanted.writes:
+    for write in selected:
         parts = write.path.strip("/").split("/", 2)
         if len(parts) != 3 or parts[0] not in ("input", "output"):
             continue

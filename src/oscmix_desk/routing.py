@@ -214,7 +214,7 @@ def apply_routing(config: Config, port: int,
     if intent.preserves_remember:
         skip.update(remembered_paths(config))
     wanted = application_plan(config, intent, leave_alone, confirmed)
-    problem = retention_problem(config, wanted, sorted(skip), confirmed)
+    problem = retention_problem(config, wanted.writes, sorted(skip), confirmed)
     if problem:
         raise WriteFailed(OSError(problem), [], [write.path for write in wanted.writes])
     # A caller may supply the backend. The profile switch does, because
@@ -321,14 +321,13 @@ def send_mix(config: Config, *, confirmed: Sequence[str] = ()) -> None:
     describe the runtime as four overlapping paths long after the apply
     had moved over.
     """
-    wanted = application_plan(config, ApplyIntent.REPAIR)
-    mix = Plan(wanted.mix(), (), ())
+    mix = application_plan(config, ApplyIntent.REPAIR).mix()
     problem = retention_problem(config, mix, remembered_paths(config), confirmed)
     if problem:
-        raise WriteFailed(OSError(problem), [], [write.path for write in mix.writes])
+        raise WriteFailed(OSError(problem), [], [write.path for write in mix])
     PlaybackGuard(config).check()
     loopback(config.osc_port, config.osc_recv_port).send(
-        write.message() for write in mix.writes)
+        write.message() for write in mix)
     log.info("mix matrix re-applied against the synchronized link state")
 
 
