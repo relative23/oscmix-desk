@@ -1,28 +1,26 @@
 {
   "target": "0.7.2",
-  "status": "final-qualification-in-progress",
+  "status": "locally-qualified-awaiting-publication",
   "published": false,
   "development_code_qualified": true,
-  "qualified_code_commit": "b537416434db778fee89b1e787590a1094761a78",
+  "qualified_code_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
   "runtime_version_constant": "0.7.2",
   "completed": [
-    "combined runtime/installer software gates",
-    "seven source/manual and four native-package container targets",
-    "source archive reproducibility and extracted installer tests",
-    "0.7.1 source upgrade and rollback in both file layouts",
-    "13 direct-ALSA modes with 52 gain/mute cases and 12 zero-write refusals",
-    "13 PipeWire Pro Audio modes with 65 known-route checks",
-    "candidate transient service startup and SIGHUP",
-    "full check while UCX II physically off; installed 0.7.1 autostart and readable-state restoration"
+    "27 final-version software gates; exact tested/supporting file fingerprints",
+    "seven source/manual and four native-package targets with version 0.7.2",
+    "reproducible source archive; 51 extracted installer tests",
+    "actual 0.7.1 source upgrade and rollback in both file layouts",
+    "13 direct-ALSA modes; 52 gain/mute cases and 12 zero-write refusals",
+    "13 PipeWire Pro Audio modes; 65 known-route checks",
+    "final runtime sweep: 1888 confirmed, 14 protected skips; five passing routes",
+    "real per-user 0.7.1 to 0.7.2 installation; readiness and SIGHUP",
+    "1798 tests while UCX II physically off; installed 0.7.2 automatic return",
+    "2252 readable messages restored exactly after writes and after power-on"
   ],
   "remaining_release_work": [
-    "Qualify the exact 0.7.2 release files under the checklist; the earlier development record retains its original source identity.",
-    "Record the final installed candidate and matching hardware artifacts required by the current release workflow.",
-    "The workflow also requires a schema-2 write sweep with matching runtime hashes. No new all-register sweep is claimed here; the register model/backend pin have not changed.",
-    "Build final-version source/native assets. Local 0.7.1 development packages are not release assets.",
-    "Only after local scope/qualification is complete: push, verify remote CI, and publish checksummed/attested assets."
+    "Push qualified commits, verify main CI, publish the tag assets and verify authenticated checksums and source identity."
   ],
-  "publication_condition": "Complete the listed release qualification, then push, verify remote CI and publish.",
+  "publication_condition": "Local qualification is complete; publication follows successful main CI and tag workflow.",
   "excluded_by_maintainer": [
     "new GUI",
     "two physical UCX II devices"

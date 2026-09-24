@@ -1,243 +1,246 @@
 {
-  "schema": 1,
-  "candidate": "0.7.2-unreleased",
-  "status": "development-qualified",
-  "release_ready": false,
-  "tested_on": "2026-09-23",
-  "tested_code_commit": "b537416434db778fee89b1e787590a1094761a78",
-  "runtime_version_constant": "0.7.1",
-  "limits": [
-    "This qualifies the identified development code and installation sources, not a versioned 0.7.2 release.",
-    "No push, remote CI, release upload, release attestation or host package installation was performed."
-  ],
+  "schema": 2,
+  "candidate": "0.7.2",
+  "status": "qualified",
+  "recorded": "2026-09-24T00:10:56.868053+00:00",
+  "candidate_code_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
+  "source_state": "The 146 tested files and 12 supporting installation files match this commit. Later documentation/evidence edits do not change them.",
+  "host": {
+    "distribution": "Ubuntu 26.04.1 LTS",
+    "architecture": "x86_64",
+    "kernel": "7.0.0-31-generic",
+    "python": "3.14.4"
+  },
+  "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "scheduling": "Mutation overlaps the sequential ordinary gates. Short ext4 temporary paths isolate both runs.",
   "gates": [
     {
       "gate": "check",
       "exit": 0,
-      "seconds": 166.08,
-      "log_sha256": "3e9f0ddb48552061b244f74dd0c53bcff6e359171686183bf65c36b5ee886100",
+      "seconds": 154.93,
+      "log_sha256": "66103ffd5b7ec8bf7aaab54f793f0bebf995c95332280e63d2631b47a25f1ef5",
       "pytest_summaries": [
-        "1798 passed, 2 skipped in 163.03s (0:02:43)"
+        "1798 passed, 2 skipped in 152.98s (0:02:32)"
       ]
     },
     {
       "gate": "coverage",
       "exit": 0,
-      "seconds": 164.02,
-      "log_sha256": "db50df04aeccde86ac049cf4b575a65cfab420d7116c06c61141a2934b621596",
+      "seconds": 154.52,
+      "log_sha256": "484ebd51973b89f67a92e62ec1c10340a33e89b41abb70aa8e7ef7f51ab686e9",
       "pytest_summaries": [
-        "1798 passed, 2 skipped in 163.26s (0:02:43)"
+        "1798 passed, 2 skipped in 153.85s (0:02:33)"
       ]
     },
     {
       "gate": "flake",
       "exit": 0,
-      "seconds": 863.92,
-      "log_sha256": "1d52839f749dc6faa47e7104fbde4cbbb31dc83efa1decfa8806d127b1882028",
+      "seconds": 807.59,
+      "log_sha256": "28152ca2ddb03fe1a2404a7788f9c78fccb30947959f85cc848d79c0b4832f00",
       "pytest_summaries": [
-        "1798 passed, 2 skipped in 173.75s (0:02:53)",
-        "1798 passed, 2 skipped in 171.30s (0:02:51)",
-        "1798 passed, 2 skipped in 155.97s (0:02:35)",
-        "1798 passed, 2 skipped in 180.64s (0:03:00)",
-        "1798 passed, 2 skipped in 180.77s (0:03:00)"
+        "1798 passed, 2 skipped in 155.09s (0:02:35)",
+        "1798 passed, 2 skipped in 155.79s (0:02:35)",
+        "1798 passed, 2 skipped in 153.82s (0:02:33)",
+        "1798 passed, 2 skipped in 167.16s (0:02:47)",
+        "1798 passed, 2 skipped in 174.39s (0:02:54)"
       ]
     },
     {
       "gate": "python-3.9",
       "exit": 0,
-      "seconds": 179.07,
-      "log_sha256": "032aa411ef38d8c88728df72617b2246872ff984a4b45dcb6184e8b5e6507202",
+      "seconds": 167.84,
+      "log_sha256": "28415f2c2880cee4d13548193531de3309f8a67e7210d532a2d95c76610f7a72",
       "pytest_summaries": [
-        "1766 passed, 34 skipped in 178.33s (0:02:58)"
+        "1766 passed, 34 skipped in 167.25s (0:02:47)"
       ]
     },
     {
       "gate": "python-3.10",
       "exit": 0,
-      "seconds": 191.13,
-      "log_sha256": "691b7036e973ee049b99e386ddf767a18c26e950f2598aaa9a79a32233197836",
-      "pytest_summaries": [
-        "1798 passed, 2 skipped in 190.89s (0:03:10)"
-      ]
-    },
-    {
-      "gate": "python-3.11",
-      "exit": 0,
-      "seconds": 182.27,
-      "log_sha256": "125e046f54af7b4382791815b74d138109744fa779e9ddbd2122762373525e20",
-      "pytest_summaries": [
-        "1798 passed, 2 skipped in 181.95s (0:03:01)"
-      ]
-    },
-    {
-      "gate": "python-3.12",
-      "exit": 0,
-      "seconds": 179.85,
-      "log_sha256": "37bd596587442a4cfb641a544fec69876e58234c519b0ccb6783328d7e730187",
-      "pytest_summaries": [
-        "1798 passed, 2 skipped in 179.35s (0:02:59)"
-      ]
-    },
-    {
-      "gate": "python-3.13",
-      "exit": 0,
-      "seconds": 177.15,
+      "seconds": 177.05,
       "log_sha256": "dd01691a1dc026fba255b3e472f44450f9de1d08d2c5519ea1784e8e08127ee2",
       "pytest_summaries": [
         "1798 passed, 2 skipped in 176.80s (0:02:56)"
       ]
     },
     {
+      "gate": "python-3.11",
+      "exit": 0,
+      "seconds": 170.31,
+      "log_sha256": "62f882b9ad82a5c159c15fe734dc4cebf68b7f8a249841ac2de2de0ecd75258c",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 169.90s (0:02:49)"
+      ]
+    },
+    {
+      "gate": "python-3.12",
+      "exit": 0,
+      "seconds": 173.68,
+      "log_sha256": "419ee820c2c8dbebfbd6a87b4c3b6a2b1af453101ac4eaf01bc5f32e1bf5ef63",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 173.42s (0:02:53)"
+      ]
+    },
+    {
+      "gate": "python-3.13",
+      "exit": 0,
+      "seconds": 173.36,
+      "log_sha256": "0bcc7aa3b65ad20b7344cba4823b5fdb100a584dd14e2f501c0f0091310c7460",
+      "pytest_summaries": [
+        "1798 passed, 2 skipped in 172.96s (0:02:52)"
+      ]
+    },
+    {
       "gate": "python-3.14",
       "exit": 0,
-      "seconds": 169.11,
-      "log_sha256": "e287160a54a0edfd498259ac303bfccc82bd8961318e9511713c192c9ed520be",
+      "seconds": 153.55,
+      "log_sha256": "c705bc3b4a22ab0edf50255ab90410554a2fb2a023becce1f58cef420ff9c476",
       "pytest_summaries": [
-        "1798 passed, 2 skipped in 168.68s (0:02:48)"
+        "1798 passed, 2 skipped in 153.31s (0:02:33)"
       ]
     },
     {
       "gate": "soak-200",
       "exit": 0,
-      "seconds": 285.26,
-      "log_sha256": "f0ed4484e38993bdff9d7f861ff2c23f310e11bb971fe7946cf2bd8a9710480b",
+      "seconds": 265.04,
+      "log_sha256": "d13e3d6d7caf0c647e46746949cfcb6e9e5af03fd0512412418094b96d33c0f9",
       "pytest_summaries": [
-        "3 passed in 284.93s (0:04:44)"
+        "3 passed in 264.91s (0:04:24)"
       ]
     },
     {
       "gate": "fault-01",
       "exit": 0,
-      "seconds": 36.04,
-      "log_sha256": "245c544a8320554e3f3c5b12c8bbc4bb28b10b0ca2dc5cb3a7d721f96a49239a",
+      "seconds": 33.32,
+      "log_sha256": "cc83f23738e0e124b2b2ccb7a6ef7161ab6d6d87a74439992e92db49d8459ed5",
       "pytest_summaries": [
-        "70 passed in 35.84s"
+        "70 passed in 33.20s"
       ]
     },
     {
       "gate": "fault-02",
       "exit": 0,
-      "seconds": 36.52,
-      "log_sha256": "3c87e9ae252c8482cf1e216a2f638ccfd7a54f72f02f42b42f2132bd0193fa7f",
+      "seconds": 32.92,
+      "log_sha256": "31264cb12559d46fadd6a27bc8e72c0f7aa0f4cf826e2063b7f7681880ff6c7e",
       "pytest_summaries": [
-        "70 passed in 36.33s"
+        "70 passed in 32.81s"
       ]
     },
     {
       "gate": "fault-03",
       "exit": 0,
-      "seconds": 34.37,
-      "log_sha256": "ebc3b9083bc13dfc0f7b2689de2396479510b9ad254a9e66821fd89d41e460d1",
+      "seconds": 33.5,
+      "log_sha256": "92a64a51acd1b9f3afeb908c9f6d2cf16440be80b83786047a26164958c45a9d",
       "pytest_summaries": [
-        "70 passed in 34.13s"
+        "70 passed in 33.39s"
       ]
     },
     {
       "gate": "fault-04",
       "exit": 0,
-      "seconds": 35.86,
-      "log_sha256": "df6d733fd78a6ca36ff2c7e9f4f7e47ab0f0a375c8e79b535a736d2a1b18a092",
+      "seconds": 33.69,
+      "log_sha256": "f3633a2a0330e621089cb06b00c6c91fed3561d7ac87ba5167ff5cf25692001c",
       "pytest_summaries": [
-        "70 passed in 35.67s"
+        "70 passed in 33.52s"
       ]
     },
     {
       "gate": "fault-05",
       "exit": 0,
-      "seconds": 36.16,
-      "log_sha256": "3ab0ea6c839161cce7d4433965dd7025984dee138795b32727f867399109809e",
+      "seconds": 34.8,
+      "log_sha256": "da6faf2ee29ef536667c39191ec0275d7a3350275fa4b08b970257280aec23dd",
       "pytest_summaries": [
-        "70 passed in 35.93s"
+        "70 passed in 34.61s"
       ]
     },
     {
       "gate": "fault-06",
       "exit": 0,
-      "seconds": 33.77,
-      "log_sha256": "3a56f664cf9035fec723a784a6826c76dff815d7eb6f522c8d894dc090ec61b0",
+      "seconds": 34.92,
+      "log_sha256": "513dd04435fced61c7d181b5097456e3725330c8610056cceb7f9073e846265e",
       "pytest_summaries": [
-        "70 passed in 33.62s"
+        "70 passed in 34.80s"
       ]
     },
     {
       "gate": "fault-07",
       "exit": 0,
-      "seconds": 34.54,
-      "log_sha256": "3d728061684146fe80ca22a0c46b48580f4ff5e0075b48c908d756854770a94f",
+      "seconds": 35.05,
+      "log_sha256": "9ab7492c5ef7b69d5fd619d769d1350d712f21b6b291d8d3f8e0e418efd60004",
       "pytest_summaries": [
-        "70 passed in 34.38s"
+        "70 passed in 34.92s"
       ]
     },
     {
       "gate": "fault-08",
       "exit": 0,
-      "seconds": 36.07,
-      "log_sha256": "7294da2406c6049840db9147d192fe1f6f3409a12ba32bf7c02223d2f249840a",
+      "seconds": 35.64,
+      "log_sha256": "f15ee69f51a86720504758ceccf9887c6c1bf13fa31c49d54c9eb76253c159e6",
       "pytest_summaries": [
-        "70 passed in 35.82s"
+        "70 passed in 35.50s"
       ]
     },
     {
       "gate": "fault-09",
       "exit": 0,
-      "seconds": 35.8,
-      "log_sha256": "1bab1a7f299c7b68fa762f62d8a96de27f85b27fc82ab812f1e9001134f4b814",
+      "seconds": 35.19,
+      "log_sha256": "0ef146bf3f64ac14ad8732145893b7ad516d9728dbc15800dfd834f06b1d4823",
       "pytest_summaries": [
-        "70 passed in 35.57s"
+        "70 passed in 35.07s"
       ]
     },
     {
       "gate": "fault-10",
       "exit": 0,
-      "seconds": 35.95,
-      "log_sha256": "0ed930e5c45fc4f0613c973af10240f3f81d00692daaf8dedaf0fd9322af18e0",
+      "seconds": 36.06,
+      "log_sha256": "cf866504068dcfd325c347d89ba9e4e3990b18358c39f6a9e33c4d5bd7ec388a",
       "pytest_summaries": [
-        "70 passed in 35.80s"
+        "70 passed in 35.92s"
       ]
     },
     {
       "gate": "fault-11",
       "exit": 0,
-      "seconds": 34.56,
-      "log_sha256": "513f946cef53c136235441799cd0061e0503b9aa5d9da56b7084c45d5ee9ac70",
+      "seconds": 35.29,
+      "log_sha256": "acdbf70ae0bb1e5ebde4a2d5434036ad859b6e4ac90e0477e9f8341eb64d106f",
       "pytest_summaries": [
-        "70 passed in 34.24s"
+        "70 passed in 35.10s"
       ]
     },
     {
       "gate": "fault-12",
       "exit": 0,
-      "seconds": 36.03,
-      "log_sha256": "defcb000777ba052b14a5e5fcaad18cffac358712a9e206beb3e0eadb1125eca",
+      "seconds": 33.26,
+      "log_sha256": "84a181c9e50c8991861db260ad06a41561d48ec0616cd31af37d58e8151d90e1",
       "pytest_summaries": [
-        "70 passed in 35.83s"
+        "70 passed in 33.13s"
       ]
     },
     {
       "gate": "fault-13",
       "exit": 0,
-      "seconds": 35.3,
-      "log_sha256": "63fe1c9fdf812e530c6f8c424930e567ba11634ed817cc664399e965c75c9266",
+      "seconds": 32.83,
+      "log_sha256": "b7bb20627917cbb57bfd945c2f0b680b32249308caf6da501b842692d896156e",
       "pytest_summaries": [
-        "70 passed in 35.12s"
+        "70 passed in 32.72s"
       ]
     },
     {
       "gate": "fault-14",
       "exit": 0,
-      "seconds": 35.98,
-      "log_sha256": "245c544a8320554e3f3c5b12c8bbc4bb28b10b0ca2dc5cb3a7d721f96a49239a",
+      "seconds": 32.83,
+      "log_sha256": "b7bb20627917cbb57bfd945c2f0b680b32249308caf6da501b842692d896156e",
       "pytest_summaries": [
-        "70 passed in 35.84s"
+        "70 passed in 32.72s"
       ]
     },
     {
       "gate": "fault-15",
       "exit": 0,
-      "seconds": 33.14,
-      "log_sha256": "84ed54a4f14ec34d95c1d53fc02257a302e130cd60ed202f397cd98e7c03dd70",
+      "seconds": 33.64,
+      "log_sha256": "6836922d021ce74eeee8e2c2ffe54ab9281f1c5fc3cc2ed305683062bac162e2",
       "pytest_summaries": [
-        "70 passed in 33.01s"
+        "70 passed in 33.53s"
       ]
     },
     {
@@ -250,11 +253,56 @@
     {
       "gate": "mutation",
       "exit": 0,
-      "seconds": 10099.61,
-      "log_sha256": "fa9420e09a2de4088d620a9d17d06dcf7081ca334adfd411049163695203bb82",
+      "seconds": 9881.99,
+      "log_sha256": "3063a1c9c77aafdba09a6b61a3b5f54ce354b422badb008258c651a762dd382e",
       "pytest_summaries": []
     }
   ],
+  "coverage": {
+    "covered_lines": 3502,
+    "num_statements": 3567,
+    "percent_covered": 97.6096445645396,
+    "percent_covered_display": "98",
+    "missing_lines": 65,
+    "excluded_lines": 4,
+    "percent_statements_covered": 98.17774039809363,
+    "percent_statements_covered_display": "98",
+    "num_branches": 1244,
+    "num_partial_branches": 48,
+    "covered_branches": 1194,
+    "missing_branches": 50,
+    "percent_branches_covered": 95.9807073954984,
+    "percent_branches_covered_display": "96"
+  },
+  "mutation": {
+    "killed": 6985,
+    "survived": 1754,
+    "total": 8752,
+    "no_tests": 0,
+    "skipped": 0,
+    "suspicious": 0,
+    "timeout": 13,
+    "check_was_interrupted_by_user": 0,
+    "segfault": 0,
+    "score": 0.7992905366746768,
+    "score_formula": "killed / (killed + survived); timeouts remain separate",
+    "cache": "Fresh mutants directory; no reused verdicts or subsequent rejudgment."
+  },
+  "skips": {
+    "all_normal_suites": {
+      "count": 2,
+      "reason": "The two read-only sub-family parameter sets are empty; every currently declared sub-family has a config section.",
+      "tests": [
+        "tests/test_sub_families.py::test_a_read_only_family_offers_no_config_section[NOTSET]",
+        "tests/test_sub_families.py::test_a_read_only_family_is_still_declared_and_reported[NOTSET]"
+      ]
+    },
+    "python_3_9_additional": {
+      "count": 32,
+      "reason": "sys.stdlib_module_names exists only from Python 3.10; each runtime-module import check runs on all five later interpreters."
+    },
+    "property_tests": "OSCMIX_REQUIRE_CONTRACTS=1; missing hypothesis is an error, not an accepted skip."
+  },
   "tested_files_sha256": {
     "Makefile": "d37c086820790aa79fd3929a8a9888ee74a4bec592363d63288b97e69b811b2a",
     "bin/oscmix-launch": "67dcc05649c6e347d3c791aeb3aed63807730cd56c0952e7abdb5b57c9b4568e",
@@ -278,7 +326,7 @@
     "src/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
     "src/oscmix_desk/cli.py": "0b2809e7bc45909df2735b58e652f3e2b51ab859506c32528c36c3757899a9bf",
     "src/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
-    "src/oscmix_desk/constants.py": "cc7d0d1573939dcb67dab5360d8f3c0eb177f6e8e7c0187a5ff49b3176fa0aac",
+    "src/oscmix_desk/constants.py": "7441da1deb2c981e837eb24395285b36f8d68183c650f789d6a21b2138615d1e",
     "src/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
     "src/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
     "src/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
@@ -417,85 +465,15 @@
     "udev/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
     "uninstall.sh": "07edd0572840dfdfa07dfc58aefc5b0328548c6b36ec6b02cf6c7a2606cda5ee"
   },
-  "coverage": {
-    "covered_lines": 3502,
-    "num_statements": 3567,
-    "percent_covered": 97.6096445645396,
-    "percent_covered_display": "98",
-    "missing_lines": 65,
-    "excluded_lines": 4,
-    "percent_statements_covered": 98.17774039809363,
-    "percent_statements_covered_display": "98",
-    "num_branches": 1244,
-    "num_partial_branches": 48,
-    "covered_branches": 1194,
-    "missing_branches": 50,
-    "percent_branches_covered": 95.9807073954984,
-    "percent_branches_covered_display": "96"
-  },
-  "mutation": {
-    "killed": 6982,
-    "survived": 1756,
-    "total": 8752,
-    "no_tests": 0,
-    "skipped": 0,
-    "suspicious": 0,
-    "timeout": 14,
-    "check_was_interrupted_by_user": 0,
-    "segfault": 0,
-    "score": 0.7990386816205082,
-    "cache": "Fresh mutants directory; no previous verdicts reused.",
-    "score_formula": "killed / (killed + survived); timeouts are retained separately"
-  },
-  "skips": {
-    "all_normal_suites": {
-      "count": 2,
-      "reason": "The two read-only sub-family parameter sets are empty; every currently declared sub-family has a config section.",
-      "tests": [
-        "tests/test_sub_families.py::test_a_read_only_family_offers_no_config_section[NOTSET]",
-        "tests/test_sub_families.py::test_a_read_only_family_is_still_declared_and_reported[NOTSET]"
-      ]
-    },
-    "python_3_9_additional": {
-      "count": 32,
-      "reason": "sys.stdlib_module_names exists only from Python 3.10; each runtime-module import check runs on all five later interpreters."
-    },
-    "property_tests": "OSCMIX_REQUIRE_CONTRACTS=1; missing hypothesis is an error, not an accepted skip."
-  },
-  "environment": {
-    "mutation_tmpdir": "/home/relative/.oi/m",
-    "other_tmpdir": "/home/relative/.oi/o",
-    "note": "Short paths on ext4 avoid the earlier tmpfs user quota and Unix socket path-length failures. No verdicts from those attempts are reused."
-  },
-  "superseded_attempts": [
-    {
-      "qualified": false,
-      "reason": "Stopped after actual /tmp quota failure in concurrent coverage; suppressed mutation test output cannot exclude spurious kills. Incomplete outcomes were incorrectly accepted by the old policy, now fixed."
-    },
-    {
-      "qualified": false,
-      "reason": "First coverage attempt: /tmp user quota. Second: long AF_UNIX paths and discovered nested Git revision bug. Superseded after fixes."
-    },
-    {
-      "qualified": false,
-      "reason": "Clean completed core gates retained, but combined installation/runtime qualification on b537416 supersedes this parallel run. Stopped before complete mutation/Python matrix; no complete-run score claimed."
-    }
-  ],
   "no_interface": {
     "gate": "no-interface-check",
     "exit": 0,
-    "seconds": 174.68,
+    "seconds": 164.99,
     "usb_devices_before": [],
     "usb_devices_after": [],
-    "observations_every_half_second": 348,
+    "observations_every_half_second": 329,
     "observed_present": [],
     "ok": true,
-    "candidate": "b537416434db778fee89b1e787590a1094761a78"
-  },
-  "additional_workflow_check": {
-    "file_sha256": "8d9a2c2d24b27db486898c12216b80138af44a9c080cf7b4fbc982d491319ed4",
-    "actionlint": "1.7.12; release and distribution workflows passed",
-    "workflow_tests": "8 passed",
-    "fingerprint_probe": "Actual workflow support-hashing AST evaluated on both the source tree without caches and the multi-interpreter test tree with caches; all 12 source hashes identical."
+    "candidate": "e9ad292475c55c9bb965fc933191e13b30c4dcab"
   }
 }

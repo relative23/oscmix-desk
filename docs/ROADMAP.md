@@ -104,58 +104,44 @@ accepted invalid numbers and export omissions in the upgrade notes.
 
 ## 0.7.2: installation, playback-mode validation and hardware evidence
 
-**In progress, not released.** Translate the recorded USB playback limits
-into runtime checks and qualify higher-rate link/gain/mute behavior. The core
-still uses only the standard library; config format and backend pin remain
-unchanged.
-The maintainer's publication condition is completion of the required
-work: local commits do not imply permission to push an incomplete release.
+**Locally qualified; publication pending.** The final runtime is
+`e9ad292`. The standard-library core, config format and backend pin
+remain unchanged. Completed work:
 
 - [x] Validate the exact UCX II's active USB playback capacity before
-  writes, using recorded ALSA parameters and USB alternate settings.
-- [x] Define idle/unknown, inconsistent observation and mid-apply changes;
-  test refusals before the first write and exact partial-write outcomes.
-  Keep the planner pure and the profile marker unchanged on failure.
-- [x] Document offline-preview, register-diff and live-mode limits.
-- [x] Measure H1's direct-ALSA high-rate link/gain/mute cases and
-  unavailable-source refusal, with full restoration after each attempt.
-- [x] Check the same 13 modes through PipeWire Pro Audio: 65 known-route
-  checks, actual hardware rates and AUX mapping, with device and graph
-  state restored after every mode.
-- [x] Upgrade the actual installation from 0.7.1 to 0.7.2 and exercise
-  startup and SIGHUP on the UCX II. The final candidate passes all 1,798
-  tests with the interface physically off; after power-on the installed
-  0.7.2 service starts automatically and all 2,252 readable messages match
-  the original state. See the [lifecycle record](evidence/0.7.2/lifecycle.json).
-- [x] Repeat the register sweep and five declared routes on the final
-  runtime: 1,888 confirmed entries, 14 protected skips, five passing routes
-  and exact restoration of all readable messages.
-- [x] Integrate the source/manual installer and native packaging; repeat
-  all eleven distribution targets and the actual 0.7.1 upgrade/rollback
-  on the final versioned candidate.
-- [x] Complete fresh software qualification on that combined candidate:
-  1,798 tests, Python 3.9–3.14, five full repeats, the 200-cycle soak,
-  fifteen fault-suite repeats and all 8,752 mutants. Coverage is 97.61%;
-  the mutation score is 0.799039 with 14 timeouts counted separately.
-  [File hashes and results](evidence/0.7.2/software-qualification.json)
-  identify this development qualification; no partial run is reused.
-- [ ] Complete final versioned release qualification and publish the
-  source/native artifacts with matching provenance. Development-package
-  checks do not by themselves qualify a release.
+  writes, using ALSA hardware parameters and USB alternate settings.
+- [x] Handle idle/unknown modes, inconsistent observations and mid-apply
+  changes. Refuse invalid plans before writes and report exact partial
+  outcomes; preserve the profile marker on failure.
+- [x] Document offline previews, register read-back and live-mode behavior.
+- [x] Measure 13 direct-ALSA modes: 52 link/gain/mute cases and 12
+  unavailable-source refusals. The same modes pass 65 known-route checks
+  through PipeWire Pro Audio with recorded AUX mapping and restoration.
+- [x] Qualify the final register sweep and all five routes: 1,888 confirmed
+  entries, 14 protected skips and all 2,252 readable messages restored.
+- [x] Upgrade the actual installation to 0.7.2; verify readiness, SIGHUP,
+  the full suite with the interface physically off and automatic startup
+  after power-on. The returned readable state matches exactly.
+- [x] Repeat all eleven distribution targets on the final versioned
+  candidate, reproducible builds, extracted installer tests, and actual
+  source upgrade/rollback in both layouts.
+- [x] Complete 27 software gates: 1,798 tests, Python 3.9–3.14, five full
+  repeats, 200-cycle soak and fifteen fault-suite repeats. Coverage is
+  97.61%; all 8,752 mutants complete with score 0.799291
+  and 13 timeouts counted separately.
+- [ ] Publish the qualified source/native artifacts and verify their
+  checksums, tag identity and GitHub attestation after main CI passes.
 
-The hardware qualification records USB playback, device-meter responses,
-register read-back, service lifecycle and restoration on the identified UCX II.
-GUI and two-physical-device qualification remain excluded by the maintainer.
-The [release readiness record](evidence/0.7.2/release-readiness.json)
-tracks final qualification and publication.
+The [qualification records](evidence/0.7.2/) identify each source revision,
+method and result. [Release readiness](evidence/0.7.2/release-readiness.json)
+tracks the final publication step. GUI and physical dual-device work remain
+deferred by the maintainer.
 
 ## 0.7.2 integration: installation
 
-The installation changes are integrated locally with the 0.7.2 playback-mode
-patch. They have not been published; final versioned release gates remain
-required. Completed checks below describe development work, not
-features available in 0.7.0 or the 0.7.1 installer. The desktop companion
-remains deferred.
+The installation changes are integrated and qualified with the final
+0.7.2 playback-mode patch. Versioned publication remains the final step.
+These features first belong to 0.7.2; the desktop companion is deferred.
 
 The maintainer has requested execution of the installation and hardware
 work as well, following the correctness patch. GUI and physical
@@ -200,7 +186,7 @@ Design decisions: [installation across Linux distributions](plans/installation.m
   writing a new default desk to an attached interface.
 - [ ] Publish versioned native artifacts after final release qualification.
 
-**Qualification so far:** source build/install and simulated lifecycle on
+**Qualification:** source build/install and simulated lifecycle on
 Debian 13, Ubuntu 24.04/26.04, Fedora 44, openSUSE Leap 16, Arch and
 Alpine 3.22/musl, all x86_64. Native lifecycle and repeated-build checks
 pass on Ubuntu 24.04, Fedora 44, openSUSE Leap 16 and Arch. An Ubuntu
@@ -244,7 +230,7 @@ Detailed plan: [UCX II sample-rate qualification](plans/high-sample-rates.md).
   sources, channel links, refresh/read-back, state retention and the
   explicit PipeWire Pro Audio mappings. Exercise the return to the
   baseline; preserve and verify the original configuration and state.
-  **Progress:** the [0.7.2 development recordings](evidence/0.7.2/) cover
+  **Results:** the [0.7.2 recordings](evidence/0.7.2/) cover
   13 direct-ALSA modes, 52 linked/unlinked gain/mute cases and 12 refused
   unavailable playback sources. All restore the 2,252 readable values and
   known main route. The same 13 modes then pass 65 checks through the
@@ -262,12 +248,12 @@ attempt and a final five-route PipeWire check. The 20-channel mode has
 only 16 active playback channels at Double Speed; Quad Speed passes with
 8/14 channels and fails with 16/20. Register addresses remain present.
 0.7.1 does not automatically select or validate the live USB/rate mode.
-The 0.7.2 development code refuses known incompatible playback modes,
+The 0.7.2 runtime refuses known incompatible playback modes,
 checks again between write phases and explicitly reports an idle stream
 as unvalidated. It does not own or continuously enforce the hardware rate.
 The explicit support table identifies the combinations actually tested.
 The additional high-rate link/gain/mute and PipeWire results belong to
-the separately identified 0.7.2 development recordings.
+the separately identified 0.7.2 recordings.
 
 ## G1 -- Desktop companion proposal
 
@@ -310,9 +296,9 @@ this first scope; users can open the existing upstream mixer.
 
 ## Boundaries that still apply
 
-- The published 0.7.0 installer and the 0.7.1 patch installer require a
-  matching systemd user manager. The separately developed manual/native
-  installation paths are not part of that patch release.
+- 0.7.2 adds manual and native installation paths. The 0.7.0/0.7.1
+  source installers still require a matching systemd user manager; use
+  the instructions for the downloaded version.
 - An apply is not a hardware transaction. Validation can prevent invalid
   plans; interrupted sends can still leave partial state.
 - Playback mix and other write-only settings cannot be verified through

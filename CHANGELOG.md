@@ -33,32 +33,32 @@
   or unobservable PCM has no validated live mode. Offline previews make
   the same limit clear. The desk does not select a rate or open a PCM.
 
-### Development qualification
+### Qualification
 
-- Pass all 27 software gates on the combined runtime/installation
-  candidate: 1,798 tests, Python 3.9–3.14, five full repeats, the 200-cycle
-  soak and fifteen fault-suite repeats. Coverage is 97.61%. A fresh,
-  complete 8,752-mutant run scores 0.799039, with 14 timeouts separate
-  from the score and no uncovered mutants. Preserve exact source and
-  log hashes; incomplete earlier runs are not qualification evidence.
+- Pass all 27 software gates on the final versioned runtime: 1,798 tests,
+  Python 3.9–3.14, five full repeats, the 200-cycle soak and fifteen
+  fault-suite repeats. Coverage is 97.61%. A fresh, complete
+  8,752-mutant run scores 0.799291: 6,985 killed,
+  1,754 survived, 13 timeouts and 0 uncovered.
+  Preserve exact source and log hashes; timeouts remain separate from
+  the score, and incomplete earlier runs are not qualification evidence.
 - Measure 13 USB/rate combinations with direct ALSA: 52 linked/unlinked
   gain/mute cases and 12 unavailable-source refusals. Retain one startup
   xrun and its two successful unchanged repeats. A separate PipeWire
   Pro Audio run passes all 65 known-route checks across the same modes.
-- Restore all 2,252 readable messages and saved PipeWire parameters after
-  each completed mode. Exercise the candidate's real service startup and
-  SIGHUP, then restore the installed release and verify its physical
-  off/on autostart. The final combined candidate passes 1,798 tests with
-  the interface physically absent.
-- Repeat seven source/manual and four native-package container targets
-  on the combined candidate, including package recovery and reproducible
-  builds. Actual 0.7.1 upgrade/rollback passes in both file layouts;
-  51 installer tests also pass from the extracted source archive.
+- Repeat the register sweep and all five declared routes on the final
+  runtime: 1,888 confirmed entries and 14 protected skips. Restore all
+  2,252 readable messages exactly, including their type tags and arguments.
+- Upgrade the real installation from 0.7.1 to 0.7.2 and verify readiness
+  and SIGHUP. The full check passes with the UCX II physically off;
+  power-on starts the installed 0.7.2 service automatically and restores
+  the original readable state.
+- Pass seven source/manual and four native-package container targets,
+  including package recovery and reproducible builds. Actual 0.7.1
+  upgrade/rollback passes in both file layouts; 51 installer tests also
+  pass from the extracted source archive.
 
-Qualification and publication are tracked in the
-[roadmap](docs/ROADMAP.md). This section is development work, not a release.
-
-### Installation (not yet published)
+### Installation
 
 - Add a read-only installer preflight and manual foreground mode. Separate
   a fresh file installation from explicit service activation; preserve an
@@ -70,10 +70,11 @@ Qualification and publication are tracked in the
   desks and profiles, refuse changes while mixer processes run, and keep
   automatic startup blocked across an interrupted update and reboot.
 - Qualify seven source targets and four native targets in the reusable CI
-  workflow. Test real user-service behavior and migration in an Ubuntu VM.
-  Containers and simulated backends do not qualify hardware on those OSes.
-- Keep native activation opt-in. New GUI and physical multi-device support
-  remain deferred. These changes are planned for 0.7.2; 0.7.1 remains unchanged.
+  workflow. The recorded Ubuntu VM additionally exercises the real user
+  service, source/package migration and reboot recovery.
+- Keep native activation opt-in. The tag workflow builds and collects all
+  qualified packages with the source archive, authenticates their checksum
+  manifest and publishes the complete asset set together.
 
 ## 0.7.1 -- 2026-09-23
 
