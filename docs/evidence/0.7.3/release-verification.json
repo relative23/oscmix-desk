@@ -1,0 +1,629 @@
+{
+  "tag": "v0.7.3",
+  "release": "https://github.com/relative23/oscmix-desk/releases/tag/v0.7.3",
+  "desk_commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+  "published_at": "2026-09-24T21:29:24Z",
+  "verified_at": "2026-09-24T21:30:58.463450+00:00",
+  "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "downloaded_assets": {
+    "attestation-arch.jsonl": "sha256:de085f93cf068e3ba42f4882d25dc34c26df127c4603bfd83737899c3c6f62da",
+    "attestation-fedora44.jsonl": "sha256:7315a6a7f0aafc4f7628c03659ddb0592312cabf628456504af3df99acdb03f2",
+    "attestation-opensuse16.jsonl": "sha256:9624d9205b44746a286cdec37db073c8fe0d15f4946b55343479bf568f95010a",
+    "attestation-ubuntu2404.jsonl": "sha256:83fe238a9364e3709839a1ce278f2eaafd833afa69a00aa55194d53b6dae4a2b",
+    "attestation.jsonl": "sha256:572c03545400666546bbf90d09b75ec5c4c939d6d68a97808af5198f7458f077",
+    "desktop-integration.json": "sha256:7132c84832373e991fe9fdc5205161eb2359f960b09aa24117088d5d4f88e252",
+    "hardware-evidence.json": "sha256:348470e37d60a10c6fee62ff48cad5d627dc63fc8a6cd012bf32fa74869b7839",
+    "installation.json": "sha256:1a6f25f87a2cea96004d30033193980a14af298c8117be2f4da01a0941fdb595",
+    "lifecycle.json": "sha256:63cceedbaf236dfc7744be3812f18a5a9877496b559a2dab323eb09fa9890dcf",
+    "oscmix-desk-0.7.3-1-x86_64.pkg.tar.zst": "sha256:b71c6f6b54cf80b2cc6f71d75adcdbe5c36be91a58ab1a9ac6ec9019ebcba7f2",
+    "oscmix-desk-0.7.3-1-x86_64.pkg.tar.zst.build.log": "sha256:d252566961f2348fd46b640ded1cff37f4ed38f82200acd7b451081e66f0848f",
+    "oscmix-desk-0.7.3-1-x86_64.pkg.tar.zst.json": "sha256:bf5b5fbb7ffee27ececaeb874e4aa8bc2272512cf14cab2c51c45235d4444981",
+    "oscmix-desk-0.7.3-1-x86_64.pkg.tar.zst.PKGBUILD": "sha256:3f593498529ce9a971cebc83dfd15023fea7efd9ed648c8170b2ae4c925df252",
+    "oscmix-desk-0.7.3-1.x86_64_fedora44.rpm": "sha256:1a6d712e812dfd354b7b78e7016104b2871ea67fa328c7abd54dcc045a0da5b4",
+    "oscmix-desk-0.7.3-1.x86_64_fedora44.rpm.build.log": "sha256:d252566961f2348fd46b640ded1cff37f4ed38f82200acd7b451081e66f0848f",
+    "oscmix-desk-0.7.3-1.x86_64_fedora44.rpm.json": "sha256:64d92ee27e0869c2597d56298c472917d4b164deb1e13530aa0ef4bbe8d2fcc7",
+    "oscmix-desk-0.7.3-1.x86_64_fedora44.spec": "sha256:b9edba4342a48ce7b86f171d5b7771cddaec469316b783c760deaed03ba5dbf5",
+    "oscmix-desk-0.7.3-1.x86_64_opensuse-leap16.0.rpm": "sha256:82f25d879f84db2f4ab0fc6ebdcf6c5d97dea56ff7d790f71fc0aa7bf584d784",
+    "oscmix-desk-0.7.3-1.x86_64_opensuse-leap16.0.rpm.build.log": "sha256:d252566961f2348fd46b640ded1cff37f4ed38f82200acd7b451081e66f0848f",
+    "oscmix-desk-0.7.3-1.x86_64_opensuse-leap16.0.rpm.json": "sha256:8e797371cf0bf69a63b9065e4fd85c3d06da1da267a89ce2c5baf052615d3690",
+    "oscmix-desk-0.7.3-1.x86_64_opensuse-leap16.0.spec": "sha256:b9edba4342a48ce7b86f171d5b7771cddaec469316b783c760deaed03ba5dbf5",
+    "oscmix-desk-0.7.3.tar.gz": "sha256:76f7851379f308e84298002b633351003646abd05375b557816d7d91e35bb16a",
+    "oscmix-desk-gtk-0.7.3-1-x86_64.pkg.tar.zst": "sha256:de2bdc449f52f9da7fe8d575cb59cedb821547fc898b6296aa0b7b13dac7e635",
+    "oscmix-desk-gtk-0.7.3-1-x86_64.pkg.tar.zst.build.log": "sha256:d252566961f2348fd46b640ded1cff37f4ed38f82200acd7b451081e66f0848f",
+    "oscmix-desk-gtk-0.7.3-1-x86_64.pkg.tar.zst.json": "sha256:bf5422933cfb81958df49eaacfb2e2884813ab616ba5931e08c2a416eebe6bda",
+    "oscmix-desk-gtk-0.7.3-1-x86_64.pkg.tar.zst.PKGBUILD": "sha256:c408e888b3edbdcc074ba8d7cd6323fc3c83fee95594a25d5c9810322566a646",
+    "oscmix-desk-gtk-0.7.3-1.x86_64_fedora44.rpm": "sha256:b798b0006a383101600619979e3d86096ac4d340b89ef84ebb8a5dd00bda7b3f",
+    "oscmix-desk-gtk-0.7.3-1.x86_64_fedora44.rpm.build.log": "sha256:d252566961f2348fd46b640ded1cff37f4ed38f82200acd7b451081e66f0848f",
+    "oscmix-desk-gtk-0.7.3-1.x86_64_fedora44.rpm.json": "sha256:3b0540c16855784a5cefaf8ad5e309afff36496bec15cdc372362fb5b465251d",
+    "oscmix-desk-gtk-0.7.3-1.x86_64_fedora44.spec": "sha256:f6e94e14f14b5c51dd913e5844baceb301011bc8645b495329fb3d7566a0f3ff",
+    "oscmix-desk-gtk-0.7.3-1.x86_64_opensuse-leap16.0.rpm": "sha256:66e2e28c1e1193a0fef0fa62fffba027500fc810e6f7883c7ab9873f3a0cc640",
+    "oscmix-desk-gtk-0.7.3-1.x86_64_opensuse-leap16.0.rpm.build.log": "sha256:d252566961f2348fd46b640ded1cff37f4ed38f82200acd7b451081e66f0848f",
+    "oscmix-desk-gtk-0.7.3-1.x86_64_opensuse-leap16.0.rpm.json": "sha256:4a1cdea6531c7b22651d51d927af7cd93df26bd81a2bb8261ae225ae5945385d",
+    "oscmix-desk-gtk-0.7.3-1.x86_64_opensuse-leap16.0.spec": "sha256:f6e94e14f14b5c51dd913e5844baceb301011bc8645b495329fb3d7566a0f3ff",
+    "oscmix-desk-gtk_0.7.3-1_amd64_ubuntu24.04.deb": "sha256:dfa87b9305a562f1849015a5244da0777bbf0ac57e10e3d0f029c615fddadc5a",
+    "oscmix-desk-gtk_0.7.3-1_amd64_ubuntu24.04.deb.build.log": "sha256:d252566961f2348fd46b640ded1cff37f4ed38f82200acd7b451081e66f0848f",
+    "oscmix-desk-gtk_0.7.3-1_amd64_ubuntu24.04.deb.json": "sha256:0782ca9bae3958e9879dbb9d14c9490dace4080e99b1a648be23cebccd4edaf9",
+    "oscmix-desk_0.7.3-1_amd64_ubuntu24.04.deb": "sha256:8c831e374248c5ee53981551cc9ea7a0305962a723ebde55f212b8363b99d569",
+    "oscmix-desk_0.7.3-1_amd64_ubuntu24.04.deb.build.log": "sha256:d252566961f2348fd46b640ded1cff37f4ed38f82200acd7b451081e66f0848f",
+    "oscmix-desk_0.7.3-1_amd64_ubuntu24.04.deb.json": "sha256:6e91b7c73606e740ead67a94ff203947a012469cebf5f219148f776f7503102a",
+    "release-manifest.json": "sha256:9f1037c4a32bee8fbc0c48cafd1f5b0a78c234235425ecd5b73cf116db00ed99",
+    "release-notes.md": "sha256:64b6e2bce3adc092e8f3e42437ebbbef0ad40bb46c392ba07e05afb7b179eb01",
+    "SHA256SUMS": "sha256:10a9dca33badb0a8332513032b0b25f3e2bfb06e3474bd334bf90b084493e3f6",
+    "SHA256SUMS-arch": "sha256:fc8eb0888812fdaae36a37bd1df728c52485fc446246818ba9a4e8c5a1d62d11",
+    "SHA256SUMS-fedora44": "sha256:18b77c304b20902f205f875a192c21ec53d903ffd4b5bc5d3b976c42b2a5f5f1",
+    "SHA256SUMS-opensuse16": "sha256:f61f0743f5afc14c2b98e01a8d6e6733de00b41f906da39443c27ef9066286a0",
+    "SHA256SUMS-ubuntu2404": "sha256:e641c848ef5458f479663682b8ebaf8932fb628e1cacd444629aae03c4b17163",
+    "software-qualification.json": "sha256:c66727652d568a70c99606a67ea98bb44564945999f2a7bc65f692af1c56cf0b",
+    "write-sweep-ucx2.json": "sha256:5cd9a84f8086b5a84930b501193d45bb127b46445ad56700bb0bd6722b1ef48a"
+  },
+  "verification": {
+    "github_cli": "2.101.0",
+    "repository": "relative23/oscmix-desk",
+    "signer_workflow": "relative23/oscmix-desk/.github/workflows/release.yml",
+    "source_ref": "refs/tags/v0.7.3",
+    "source_digest": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+    "deny_self_hosted_runners": true,
+    "attestation_verified": true,
+    "sha256sum_check_passed": true,
+    "all_downloads_match_github_asset_digests": true,
+    "source_and_evidence_match_local_qualified_build": true,
+    "evidence_matches_source_archive": true,
+    "native_runtime_matches_qualified_source": true,
+    "native_packages": [
+      {
+        "artifact": "oscmix-desk-0.7.3-1-x86_64.pkg.tar.zst",
+        "component": "core",
+        "format": "arch",
+        "architecture": "x86_64",
+        "sha256": "b71c6f6b54cf80b2cc6f71d75adcdbe5c36be91a58ab1a9ac6ec9019ebcba7f2"
+      },
+      {
+        "artifact": "oscmix-desk-0.7.3-1.x86_64_fedora44.rpm",
+        "component": "core",
+        "format": "rpm",
+        "architecture": "x86_64",
+        "sha256": "1a6d712e812dfd354b7b78e7016104b2871ea67fa328c7abd54dcc045a0da5b4"
+      },
+      {
+        "artifact": "oscmix-desk-0.7.3-1.x86_64_opensuse-leap16.0.rpm",
+        "component": "core",
+        "format": "rpm",
+        "architecture": "x86_64",
+        "sha256": "82f25d879f84db2f4ab0fc6ebdcf6c5d97dea56ff7d790f71fc0aa7bf584d784"
+      },
+      {
+        "artifact": "oscmix-desk-gtk-0.7.3-1-x86_64.pkg.tar.zst",
+        "component": "gtk",
+        "format": "arch",
+        "architecture": "x86_64",
+        "sha256": "de2bdc449f52f9da7fe8d575cb59cedb821547fc898b6296aa0b7b13dac7e635"
+      },
+      {
+        "artifact": "oscmix-desk-gtk-0.7.3-1.x86_64_fedora44.rpm",
+        "component": "gtk",
+        "format": "rpm",
+        "architecture": "x86_64",
+        "sha256": "b798b0006a383101600619979e3d86096ac4d340b89ef84ebb8a5dd00bda7b3f"
+      },
+      {
+        "artifact": "oscmix-desk-gtk-0.7.3-1.x86_64_opensuse-leap16.0.rpm",
+        "component": "gtk",
+        "format": "rpm",
+        "architecture": "x86_64",
+        "sha256": "66e2e28c1e1193a0fef0fa62fffba027500fc810e6f7883c7ab9873f3a0cc640"
+      },
+      {
+        "artifact": "oscmix-desk-gtk_0.7.3-1_amd64_ubuntu24.04.deb",
+        "component": "gtk",
+        "format": "deb",
+        "architecture": "amd64",
+        "sha256": "dfa87b9305a562f1849015a5244da0777bbf0ac57e10e3d0f029c615fddadc5a"
+      },
+      {
+        "artifact": "oscmix-desk_0.7.3-1_amd64_ubuntu24.04.deb",
+        "component": "core",
+        "format": "deb",
+        "architecture": "amd64",
+        "sha256": "8c831e374248c5ee53981551cc9ea7a0305962a723ebde55f212b8363b99d569"
+      }
+    ],
+    "verification_controls": [
+      {
+        "case": "attestation-verify",
+        "exit": 0,
+        "expected": true
+      },
+      {
+        "case": "native-attestation-ubuntu2404",
+        "exit": 0,
+        "expected": true
+      },
+      {
+        "case": "native-attestation-fedora44",
+        "exit": 0,
+        "expected": true
+      },
+      {
+        "case": "native-attestation-opensuse16",
+        "exit": 0,
+        "expected": true
+      },
+      {
+        "case": "native-attestation-arch",
+        "exit": 0,
+        "expected": true
+      },
+      {
+        "case": "wrong-ref",
+        "exit": 1,
+        "expected": true
+      },
+      {
+        "case": "altered-manifest",
+        "exit": 1,
+        "expected": true
+      },
+      {
+        "case": "altered-archive",
+        "exit": 1,
+        "expected": true
+      }
+    ]
+  },
+  "local_release_tree": {
+    "commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+    "recorded": "2026-09-24T20:59:58.392988+00:00",
+    "clean_selected_tree": true,
+    "checks": {
+      "candidate": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "target": "0.7.3",
+      "manifest": {
+        "version": "0.7.3",
+        "desk_commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+        "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+        "archive": "oscmix-desk-0.7.3.tar.gz",
+        "archive_sha256": "76f7851379f308e84298002b633351003646abd05375b557816d7d91e35bb16a"
+      },
+      "identical_rebuild": true,
+      "private_material_absent": true,
+      "extracted_installer_tests": {
+        "exit": 0,
+        "pytest_summaries": [
+          "55 passed in 10.71s"
+        ],
+        "command": [
+          "/home/relative/dev/projects/oscmix-desk/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_install_sh.py",
+          "tests/test_install_modes.py",
+          "tests/test_package_stage.py",
+          "tests/test_package_setup.py",
+          "tests/test_package_guard.py"
+        ],
+        "log_sha256": "9ca19fe1487337f5385cfe7bdcf0c1a947d066089a91c0fb5cfe2a3cdafb6d04"
+      },
+      "upgrade_and_rollback": [
+        {
+          "previous": "0.7.2",
+          "rootless": true,
+          "ok": true
+        },
+        {
+          "previous": "0.7.2",
+          "rootless": false,
+          "ok": true
+        }
+      ],
+      "seconds": 13.68,
+      "adapter_sha256": "c5cb28f7c2baa78e71a370c1fc8b4ec52df7f786a688b8f3cbbcebb5bafdb25c",
+      "scope": "Isolated installer paths and simulated integration; actual released 0.7.2 source."
+    },
+    "repeated_archive_and_manifest_identical": true,
+    "actual_workflow_qualification_guard_passed": true,
+    "guard_log_sha256": "79f0040030de1db521e87a91ff1987c5a13bda9cebca24aa0286a0b93bf10881",
+    "private_reviews_and_gui_drafts_excluded": true,
+    "assets_sha256": {
+      "SHA256SUMS": "978e1d686d6afeeb2c523eeb0f04ddb9e8c9cecc35677965f9603e2f5516884a",
+      "desktop-integration.json": "7132c84832373e991fe9fdc5205161eb2359f960b09aa24117088d5d4f88e252",
+      "hardware-evidence.json": "348470e37d60a10c6fee62ff48cad5d627dc63fc8a6cd012bf32fa74869b7839",
+      "installation.json": "1a6f25f87a2cea96004d30033193980a14af298c8117be2f4da01a0941fdb595",
+      "lifecycle.json": "63cceedbaf236dfc7744be3812f18a5a9877496b559a2dab323eb09fa9890dcf",
+      "oscmix-desk-0.7.3.tar.gz": "76f7851379f308e84298002b633351003646abd05375b557816d7d91e35bb16a",
+      "release-manifest.json": "9f1037c4a32bee8fbc0c48cafd1f5b0a78c234235425ecd5b73cf116db00ed99",
+      "release-notes.md": "64b6e2bce3adc092e8f3e42437ebbbef0ad40bb46c392ba07e05afb7b179eb01",
+      "software-qualification.json": "c66727652d568a70c99606a67ea98bb44564945999f2a7bc65f692af1c56cf0b",
+      "write-sweep-ucx2.json": "5cd9a84f8086b5a84930b501193d45bb127b46445ad56700bb0bd6722b1ef48a"
+    },
+    "guard_adapter_environment": {
+      "interpreter": "/home/relative/dev/projects/oscmix-desk/.venv/bin/python",
+      "first_invocation": {
+        "exit": 127,
+        "reason": "The local non-login shell had no python executable on PATH. No qualification assertion executed."
+      },
+      "correction": "Expose the existing tested virtual-environment interpreter on PATH, matching the release job after setup-python. The unchanged literal workflow guard then passed."
+    },
+    "private_history_check": {
+      "base": "7d5b73f081c1803f68bac2cbda0b22bafa671a5d",
+      "through": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "changed_paths": 65,
+      "private_reviews_handoffs_and_gui_drafts_absent_from_every_new_commit": true
+    }
+  },
+  "tag_annotation_correction": {
+    "reason": "Git default tag cleanup removed Markdown headings. Recreate only the annotation with --cleanup=verbatim before any release was published; source commit unchanged.",
+    "previous_tag_object": "cc21c5fe662ed339cfff9cbc7ff4aaabc3f91306",
+    "commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+    "cancelled_run": {
+      "id": 36060491275,
+      "status": "completed",
+      "conclusion": "cancelled",
+      "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060491275",
+      "created_at": "2026-09-24T21:17:18Z",
+      "updated_at": "2026-09-24T21:20:19Z"
+    },
+    "release_existed": false
+  },
+  "runtime_evidence_commit": "af89b0352954515ac29cdbce33dbcf66adcdc160",
+  "software_candidate_commit": "384352acd984936761206e6b5712d0af173d62e2",
+  "installation_candidate_commit": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+  "github_runs": {
+    "36058544250": {
+      "id": 36058544250,
+      "name": "CI",
+      "event": "push",
+      "head_sha": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-09-24T20:59:35Z",
+      "updated_at": "2026-09-24T21:16:19Z",
+      "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250",
+      "jobs": [
+        {
+          "id": 107831541639,
+          "name": "Lint, Types & Dead Code",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T20:59:58Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831541639"
+        },
+        {
+          "id": 107831541655,
+          "name": "Flakiness Gate",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:16:18Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831541655"
+        },
+        {
+          "id": 107831541829,
+          "name": "Coverage",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:03:54Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831541829"
+        },
+        {
+          "id": 107831541851,
+          "name": "Build Upstream oscmix",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:00:15Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831541851"
+        },
+        {
+          "id": 107831541881,
+          "name": "Tests (Python 3.12)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:03:40Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831541881"
+        },
+        {
+          "id": 107831541892,
+          "name": "Tests (Python 3.10)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:03:40Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831541892"
+        },
+        {
+          "id": 107831541944,
+          "name": "Tests (Python 3.14)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:03:43Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831541944"
+        },
+        {
+          "id": 107831541957,
+          "name": "Tests (Python 3.9)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:39Z",
+          "completed_at": "2026-09-24T21:03:53Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831541957"
+        },
+        {
+          "id": 107831542132,
+          "name": "Tests (Python 3.11)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:03:23Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831542132"
+        },
+        {
+          "id": 107831542139,
+          "name": "Tests (Python 3.13)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:03:10Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831542139"
+        },
+        {
+          "id": 107831543097,
+          "name": "Mutation Score",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-09-24T20:59:36Z",
+          "completed_at": "2026-09-24T20:59:36Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544250/job/107831543097"
+        }
+      ]
+    },
+    "36058544329": {
+      "id": 36058544329,
+      "name": "Distribution and package qualification",
+      "event": "push",
+      "head_sha": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-09-24T20:59:35Z",
+      "updated_at": "2026-09-24T21:07:43Z",
+      "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329",
+      "jobs": [
+        {
+          "id": 107831542026,
+          "name": "source (debian13)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:00:42Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107831542026"
+        },
+        {
+          "id": 107831542161,
+          "name": "source (ubuntu2604)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:00:58Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107831542161"
+        },
+        {
+          "id": 107831542267,
+          "name": "source (ubuntu2404)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:01:18Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107831542267"
+        },
+        {
+          "id": 107831542293,
+          "name": "source (opensuse16)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:00:42Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107831542293"
+        },
+        {
+          "id": 107831542323,
+          "name": "source (fedora44)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:00:52Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107831542323"
+        },
+        {
+          "id": 107831542330,
+          "name": "source (alpine322)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:00:32Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107831542330"
+        },
+        {
+          "id": 107831542500,
+          "name": "source (arch)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T20:59:38Z",
+          "completed_at": "2026-09-24T21:00:49Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107831542500"
+        },
+        {
+          "id": 107832160909,
+          "name": "native (fedora44)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:01:21Z",
+          "completed_at": "2026-09-24T21:03:16Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107832160909"
+        },
+        {
+          "id": 107832160913,
+          "name": "native (opensuse16)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:01:52Z",
+          "completed_at": "2026-09-24T21:03:18Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107832160913"
+        },
+        {
+          "id": 107832160919,
+          "name": "native (arch)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:01:20Z",
+          "completed_at": "2026-09-24T21:03:04Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107832160919"
+        },
+        {
+          "id": 107832160958,
+          "name": "native (ubuntu2404)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:01:20Z",
+          "completed_at": "2026-09-24T21:07:42Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36058544329/job/107832160958"
+        }
+      ]
+    },
+    "36060906718": {
+      "id": 36060906718,
+      "name": "Release artifacts",
+      "event": "push",
+      "head_sha": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-09-24T21:21:04Z",
+      "updated_at": "2026-09-24T21:29:28Z",
+      "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718",
+      "jobs": [
+        {
+          "id": 107839325496,
+          "name": "packages / source (ubuntu2404)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:21:06Z",
+          "completed_at": "2026-09-24T21:22:12Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839325496"
+        },
+        {
+          "id": 107839325765,
+          "name": "packages / source (arch)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:21:06Z",
+          "completed_at": "2026-09-24T21:22:16Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839325765"
+        },
+        {
+          "id": 107839325861,
+          "name": "packages / source (alpine322)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:21:07Z",
+          "completed_at": "2026-09-24T21:22:05Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839325861"
+        },
+        {
+          "id": 107839325863,
+          "name": "packages / source (opensuse16)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:21:07Z",
+          "completed_at": "2026-09-24T21:22:28Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839325863"
+        },
+        {
+          "id": 107839325890,
+          "name": "packages / source (fedora44)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:21:07Z",
+          "completed_at": "2026-09-24T21:22:14Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839325890"
+        },
+        {
+          "id": 107839325930,
+          "name": "packages / source (ubuntu2604)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:21:07Z",
+          "completed_at": "2026-09-24T21:22:23Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839325930"
+        },
+        {
+          "id": 107839326026,
+          "name": "packages / source (debian13)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:21:07Z",
+          "completed_at": "2026-09-24T21:22:10Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839326026"
+        },
+        {
+          "id": 107839821418,
+          "name": "packages / native (fedora44)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:22:31Z",
+          "completed_at": "2026-09-24T21:24:41Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839821418"
+        },
+        {
+          "id": 107839821437,
+          "name": "packages / native (ubuntu2404)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:22:31Z",
+          "completed_at": "2026-09-24T21:28:32Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839821437"
+        },
+        {
+          "id": 107839821487,
+          "name": "packages / native (opensuse16)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:22:31Z",
+          "completed_at": "2026-09-24T21:23:58Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839821487"
+        },
+        {
+          "id": 107839821553,
+          "name": "packages / native (arch)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:22:30Z",
+          "completed_at": "2026-09-24T21:24:23Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107839821553"
+        },
+        {
+          "id": 107841947434,
+          "name": "source",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-09-24T21:28:34Z",
+          "completed_at": "2026-09-24T21:29:27Z",
+          "html_url": "https://github.com/relative23/oscmix-desk/actions/runs/36060906718/job/107841947434"
+        }
+      ]
+    }
+  },
+  "annotated_tag": {
+    "ref": "refs/tags/v0.7.3",
+    "tag_object": "63b7341162093698d84598c1618fbf5622d1d7c1",
+    "commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+    "message_matches_changelog": true,
+    "tagger": {
+      "name": "simon",
+      "email": "simon@logposting.com",
+      "date": "2026-09-24T21:20:08Z"
+    }
+  }
+}

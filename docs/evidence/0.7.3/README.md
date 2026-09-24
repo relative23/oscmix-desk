@@ -1,6 +1,6 @@
 # 0.7.3 qualification
 
-**Locally qualified.** The software candidate is
+**Published and verified.** The software candidate is
 `384352a`; installation and desktop checks use `6096d15`.
 Hardware was measured on `af89b03`; all 36 runtime files
 are byte-identical. Each record retains its actual source identity.
@@ -76,3 +76,11 @@ Higher-rate measurements remain linked to their original
 [0.7.1](../0.7.1/sample-rates.md) and [0.7.2](../0.7.2/) recordings. They are
 not relabelled as new 0.7.3 measurements. The new verifier changes no rate,
 route syntax, register domain or backend pin.
+
+## Publication
+
+[release-verification.json](release-verification.json) records the annotated
+tag, passing GitHub jobs and downloaded release assets. All eight native
+packages and the source archive match their authenticated manifests; the
+archive and attached evidence match the locally qualified bytes. Verification
+rejects a wrong source ref, an altered manifest and an altered archive.

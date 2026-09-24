@@ -1,12 +1,14 @@
 # Roadmap
 
-Status for **0.7.3**, updated 2026-09-24. Implementation and local release
-qualification are complete: corrected read-back classification, clearer
+Status for **0.7.3**, updated 2026-09-24. Implementation, qualification and publication
+are complete: corrected read-back classification, clearer
 results, runtime diagnosis, profile previews and optional upstream GTK
 packages. The [qualification records](evidence/0.7.3/) identify the source,
 software gates, desktop environments and measured UCX II state.
 Publication uses the [versioned release](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.3)
 and its authenticated source/package artifacts.
+The [publication record](evidence/0.7.3/release-verification.json) verifies
+the tag, GitHub jobs, downloaded packages and attestations.
 The separate desk desktop application is deferred by the maintainer.
 The product target is a
 **Fireface UCX II across Linux distributions**, with and without a desktop.
@@ -21,7 +23,7 @@ an optional desktop companion.
 
 ## 0.7.3: clearer results and existing-mixer integration
 
-**Implemented and qualified.** Keep
+**Closed and published.** Keep
 the UCX II target, config semantics and measured backend pin. This cycle
 improves daily use of the existing upstream GTK mixer and the CLI.
 The separate desk GUI remains deferred.
