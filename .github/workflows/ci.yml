@@ -216,10 +216,16 @@ jobs:
     # took 129 minutes locally on four children in 0.6.10; 180 is twice
     # the last run that finished here (80.9). Re-measured: the first
     # night after, 2026-09-18, finished in 112 minutes; 0.6.11 has 7485.
+    #
+    # 0.7.3: the scheduled runs on September 23 and 24 both reached the
+    # 180-minute limit. Run 35977029443 stopped at 8824/9022 mutants,
+    # leaving 198 unjudged. Give this job 240 minutes; individual mutant
+    # timeouts still bound stalled cases, and mutation-policy still
+    # requires a complete result and the existing score floor.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     continue-on-error: true
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6

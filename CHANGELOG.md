@@ -20,6 +20,9 @@
   including openSUSE Leap 16, without changing the backend pin.
 - Explain partial profiles and policy-compliant verification precisely in
   the README. The desk lock coordinates cooperating desk writers.
+- Increase the nightly mutation job's time budget from 180 to 240 minutes
+  after two scheduled runs exhausted the old limit. Keep the complete-run
+  requirement, score floor and the other jobs' timeout limits unchanged.
 
 ### Added
 
