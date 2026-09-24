@@ -31,8 +31,10 @@ for executable in oscmix alsaseqio; do
     [ -x "$BACKEND/$executable" ] || { echo "missing built $BACKEND/$executable" >&2; exit 2; }
 done
 if [ "$WITH_GTK" = yes ]; then
-    [ -x "$BACKEND/gtk/oscmix-gtk" ] && [ -f "$BACKEND/gtk/oscmix.gschema.xml" ] \
-        || { echo "--with-gtk needs the built GTK companion and its schema" >&2; exit 2; }
+    if [ ! -x "$BACKEND/gtk/oscmix-gtk" ] || [ ! -f "$BACKEND/gtk/oscmix.gschema.xml" ]; then
+        echo "--with-gtk needs the built GTK companion and its schema" >&2
+        exit 2
+    fi
 fi
 install_file() { install -D -m "$1" "$2" "$3"; }
 # shellcheck source=scripts/install-payload.sh
