@@ -24,7 +24,7 @@ TARGETS = {
                    ('apt-get update && DEBIAN_FRONTEND=noninteractive '
                     'apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
                     'libglib2.0-bin xvfb xauth dbus-x11 python3-gi '
-                    'gir1.2-atspi-2.0 at-spi2-core gnome-shell plasma-workspace '
+                    'gir1.2-atspi-2.0 at-spi2-core gnome-shell plasma-workspace kwin-wayland '
                     'xfce4-session xfwm4 xfce4-panel xfdesktop4 x11-utils mesa-utils')),
     'ubuntu2604': ('ubuntu:26.04', APT, None, ''),
     'fedora44': ('fedora:44',

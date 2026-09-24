@@ -127,11 +127,27 @@ if 'ID=ubuntu' in Path('/etc/os-release').read_text():
     # container has no systemd service manager or hardware devices.
     Path('/run/dbus').mkdir(exist_ok=True)
     run(['dbus-daemon', '--system', '--fork'])
-    for desktop in ('gnome', 'kde', 'xfce'):
-        run(['runuser', '-u', 'tester', '--', 'env', 'OSCMIX_QUALIFY_DESKTOP=1',
-             'xvfb-run', '-a', 'dbus-run-session', '--', '/usr/bin/python3',
-             'tests/desktop_session.py', '--desktop', desktop,
-             '--output', '/work/build/qualification/desktop-' + desktop])
+    with Path('/work/build/qualification/logind.log').open('w') as log:
+        logind = subprocess.Popen(['/usr/lib/systemd/systemd-logind'], stdout=log, stderr=log)
+        try:
+            for _attempt in range(50):
+                bus = subprocess.run(['busctl', '--system', 'list', '--no-pager'],
+                                     capture_output=True, text=True, check=True, timeout=5)
+                if any(line.startswith('org.freedesktop.login1 ') and
+                       line.split()[1] == str(logind.pid) for line in bus.stdout.splitlines()):
+                    break
+                assert logind.poll() is None, 'container logind exited'
+                time.sleep(0.1)
+            else:
+                raise AssertionError('container logind did not acquire its bus name')
+            for desktop in ('gnome', 'kde', 'xfce'):
+                run(['runuser', '-u', 'tester', '--', 'env', 'OSCMIX_QUALIFY_DESKTOP=1',
+                     'xvfb-run', '-a', 'dbus-run-session', '--', '/usr/bin/python3',
+                     'tests/desktop_session.py', '--desktop', desktop,
+                     '--output', '/work/build/qualification/desktop-' + desktop])
+        finally:
+            logind.terminate()
+            logind.wait(timeout=10)
 preserved[config / 'service-allowed'] = 'activation opt-in fixture\n'
 (config / 'service-allowed').write_text(preserved[config / 'service-allowed'])
 helper = Path(tempfile.mkdtemp(prefix='oscmix-lifecycle-')) / 'oscmix-gtk'
