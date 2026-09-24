@@ -102,7 +102,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--desktop', choices=['gnome', 'kde', 'xfce'], required=True)
     parser.add_argument('--output', type=Path, required=True)
-    session(parser.parse_args())
+    args = parser.parse_args()
+    try:
+        session(args)
+    except Exception:
+        for transcript in sorted(args.output.glob('*.log')):
+            print(str(transcript) + '\n' + transcript.read_text(), file=sys.stderr, flush=True)
+        raise
 
 
 if __name__ == '__main__':

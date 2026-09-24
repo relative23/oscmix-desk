@@ -231,6 +231,10 @@ def main():
     mixer = Mixer(free_udp_port())
     try:
         report = exercise(args, mixer)
+    except Exception:
+        for transcript in sorted(args.output.glob('*.log')):
+            print(str(transcript) + '\n' + transcript.read_text(), file=sys.stderr, flush=True)
+        raise
     finally:
         if mixer.ident is not None:
             mixer.close()
