@@ -1,8 +1,12 @@
 # Roadmap
 
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
-implementation instruction. Baseline inspection and N0/N1 regressions are
-in progress; the acceptance criteria below remain open. All proposed 0.7.4 corrections are included in 0.8.0; there
+implementation instruction. The N9 historical source assessment is recorded
+privately; N0/N1 corrections and production-path regressions are implemented.
+An interim `make check` passes 2017 tests (two empty parameter sets skipped),
+with 98% coverage.
+N2's backend-owner decision is documented; its implementation and the final
+acceptance criteria below remain open. All proposed 0.7.4 corrections are included in 0.8.0; there
 is no separate 0.7.4 milestone.
 
 Latest published release: **0.7.3**. Its implementation, qualification and
@@ -99,8 +103,10 @@ the concern about unnecessary complexity is an investigation under N9,
 not an established conclusion based on release size or subjective scores.
 
 Both correctness cases were reproduced against the unchanged 0.7.3
-runtime with simulated I/O. They are open 0.8.0 work, not a claim of a
-measured audible failure or a reason to rewrite historical release results.
+runtime with simulated I/O and now have production-path regressions and
+corrections. These are software results, not a claim of a measured audible
+failure or a reason to rewrite historical release results. Final validation
+must use the coordinated 0.8.0 backend too.
 No delivery date is set before the backend-capability and repository
 hosting/signing decisions are resolved. A prototype, unavailable external
 prerequisite or measured protocol limit must not be recorded as a shipped
