@@ -1,8 +1,10 @@
 # Roadmap
 
-Current plan for **0.7.2**, updated 2026-09-24. The 0.7.1 correctness patch has
-completed software and UCX II qualification, including corrected mono
-routing, numeric comparisons, export and measurement restoration.
+Status after **0.7.2**, updated 2026-09-24. Installation, native packages,
+active playback-mode checks and higher-rate routing qualification are
+[released](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.2).
+The [publication record](evidence/0.7.2/release-verification.json) verifies
+the tag, CI results, downloaded assets and authenticated checksums.
 The desktop companion is deferred by the maintainer.
 The product target is a
 **Fireface UCX II across Linux distributions**, with and without a desktop.
@@ -104,7 +106,7 @@ accepted invalid numbers and export omissions in the upgrade notes.
 
 ## 0.7.2: installation, playback-mode validation and hardware evidence
 
-**Locally qualified; publication pending.** The final runtime is
+**Closed and published.** The final runtime is
 `e9ad292`. The standard-library core, config format and backend pin
 remain unchanged. Completed work:
 
@@ -129,18 +131,19 @@ remain unchanged. Completed work:
   repeats, 200-cycle soak and fifteen fault-suite repeats. Coverage is
   97.61%; all 8,752 mutants complete with score 0.799291
   and 13 timeouts counted separately.
-- [ ] Publish the qualified source/native artifacts and verify their
-  checksums, tag identity and GitHub attestation after main CI passes.
+- [x] Publish the qualified source/native artifacts after main CI passes.
+  Verify downloaded checksums, the annotated tag and GitHub attestations;
+  wrong-ref and tampering controls fail as expected.
 
 The [qualification records](evidence/0.7.2/) identify each source revision,
 method and result. [Release readiness](evidence/0.7.2/release-readiness.json)
-tracks the final publication step. GUI and physical dual-device work remain
-deferred by the maintainer.
+is complete, with no remaining 0.7.2 release task. GUI and physical
+dual-device work remain deferred by the maintainer.
 
 ## 0.7.2 integration: installation
 
 The installation changes are integrated and qualified with the final
-0.7.2 playback-mode patch. Versioned publication remains the final step.
+0.7.2 playback-mode patch and published in the versioned release.
 These features first belong to 0.7.2; the desktop companion is deferred.
 
 The maintainer has requested execution of the installation and hardware
@@ -184,7 +187,8 @@ Design decisions: [installation across Linux distributions](plans/installation.m
   without losing config, profiles or the active marker. Detect shadowing
   binaries and user-unit overrides. Installation must not silently start
   writing a new default desk to an attached interface.
-- [ ] Publish versioned native artifacts after final release qualification.
+- [x] Publish versioned native artifacts and verify their downloaded
+  checksums, source identity and tag-workflow attestations.
 
 **Qualification:** source build/install and simulated lifecycle on
 Debian 13, Ubuntu 24.04/26.04, Fedora 44, openSUSE Leap 16, Arch and
@@ -195,12 +199,12 @@ migration and return, SIGHUP with an explicit PIN, and a maintenance fence
 that survives a reboot and clears after successful package repair. These
 are software tests with a simulated backend, not hardware qualification
 on seven distributions. The reusable CI path passes all eleven source/native
-targets. A successful GitHub rehearsal also builds and collects native
-assets. The prepared tag workflow waits for those jobs before publication;
-branch-run attestations are development evidence, not a released package.
+targets. The final tag workflow repeats them, builds and collects all
+native assets, and publishes the complete release. Downloaded packages and
+source have verified tag-workflow attestations and checksums.
 The actual 0.7.0 → native package → 0.7.0 file migration also passes on each
 native target with a simulated user bus; Ubuntu has the additional real
-user-manager VM check. Package publication remains before I2 closes.
+user-manager VM check. I2 is closed with the verified package publication.
 
 The original separately qualified implementation and its software matrix are on
 [`feature/portable-install`](https://github.com/relative23/oscmix-desk/tree/feature/portable-install).
@@ -209,8 +213,9 @@ It was not part of the 0.7.1 correctness release. Final candidate
 Its source archive builds identically twice, 51 installer checks pass
 from the extracted archive, and actual 0.7.1 upgrade/rollback passes in
 both file layouts. The earlier real-user-manager VM experiment retains
-its original source identity. The native artifacts carry version 0.7.2;
-tagged publication remains the final I2 step.
+its original source identity. The published native artifacts carry
+version 0.7.2 and final tag commit `2cf9b02`; their runtime matches the
+qualified source exactly.
 
 **Packaging direction:** native packages where tested, a common source
 installer elsewhere. `pip`/`pipx` alone do not install the complete host

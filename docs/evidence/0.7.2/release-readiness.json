@@ -1,7 +1,7 @@
 {
   "target": "0.7.2",
-  "status": "locally-qualified-awaiting-publication",
-  "published": false,
+  "status": "published-and-verified",
+  "published": true,
   "development_code_qualified": true,
   "qualified_code_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
   "runtime_version_constant": "0.7.2",
@@ -15,12 +15,15 @@
     "final runtime sweep: 1888 confirmed, 14 protected skips; five passing routes",
     "real per-user 0.7.1 to 0.7.2 installation; readiness and SIGHUP",
     "1798 tests while UCX II physically off; installed 0.7.2 automatic return",
-    "2252 readable messages restored exactly after writes and after power-on"
+    "2252 readable messages restored exactly after writes and after power-on",
+    "equivalent GTK staging guard: twelve before/after cases and a fresh full check",
+    "main CI and all eleven distribution targets on final tag commit",
+    "annotated v0.7.2 tag and published source/native assets",
+    "all downloaded asset digests, checksums, source identities and tag-workflow attestations",
+    "wrong-ref, modified-manifest and modified-archive controls rejected"
   ],
-  "remaining_release_work": [
-    "Push qualified commits, verify main CI, publish the tag assets and verify authenticated checksums and source identity."
-  ],
-  "publication_condition": "Local qualification is complete; publication follows successful main CI and tag workflow.",
+  "remaining_release_work": [],
+  "publication_condition": "Satisfied: main CI, all eleven distribution targets, the tag workflow and downloaded asset/attestation verification passed.",
   "excluded_by_maintainer": [
     "new GUI",
     "two physical UCX II devices"
@@ -30,5 +33,8 @@
     "Device-meter response for linked/unlinked gain, mute and five declared playback routes",
     "PipeWire Pro Audio AUX mapping at the recorded USB/rate combinations",
     "Register read-back, startup/reload, physical off/on lifecycle and restoration"
-  ]
+  ],
+  "release": "https://github.com/relative23/oscmix-desk/releases/tag/v0.7.2",
+  "tag_commit": "2cf9b02a1c271582d042ce4ad064331fb09f3619",
+  "publication_verification": "release-verification.json"
 }

@@ -1,17 +1,17 @@
 # Installation across Linux distributions
 
-**Status: installation qualification complete for 0.7.2, 2026-09-24;
-publication pending.**
+**Status: implemented, qualified and published in 0.7.2, 2026-09-24.**
 Target: UCX II across Linux distribution families. The common installer,
 manual mode, native packaging and migration helpers are implemented in
-the final versioned candidate. See the [roadmap](../ROADMAP.md) for
-publication status and the [installation instructions](../INSTALLATION.md)
+the versioned release. See the [publication record](../evidence/0.7.2/release-verification.json)
+for verified artifacts and the [installation instructions](../INSTALLATION.md)
 for the 0.7.2 interfaces.
 
 The [final installation record](../evidence/0.7.2/installation.json)
 repeats all eleven source/native container targets and source-archive
-upgrade/rollback checks with version 0.7.2. Tagged publication remains
-pending; the earlier real-user-manager VM experiment keeps its original
+upgrade/rollback checks with version 0.7.2. The tag workflow repeats all
+eleven targets and publishes verified source/native artifacts. The earlier
+real-user-manager VM experiment keeps its original
 provenance in the [installation record](../evidence/installation/).
 
 ## Recommendation

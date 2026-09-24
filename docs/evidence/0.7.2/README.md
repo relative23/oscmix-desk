@@ -1,8 +1,11 @@
 # 0.7.2 qualification
 
-**Local release qualification complete; publication pending.** The final runtime is `e9ad292`.
+**Released and verified.** Tag `v0.7.2` names `2cf9b02`; the final runtime is `e9ad292`.
 Each recording identifies its own source, firmware and measurement method.
-The [roadmap](../../ROADMAP.md) tracks final qualification and publication.
+The [publication record](release-verification.json) verifies the annotated
+tag, successful CI and release workflows, all downloaded assets, and their
+checksums and attestations. The [release](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.2)
+contains the source archive and four native packages.
 
 ## Final runtime, installation and hardware
 
@@ -199,8 +202,12 @@ These records identify measured USB playback, device-meter behavior,
 register read-back, installed lifecycle and restoration on the stated UCX II.
 The final 0.7.2 runtime is installed and qualified. The tag workflow verifies
 matching software, installation, hardware and sweep fingerprints before
-publishing. The [readiness record](release-readiness.json) tracks publication;
-it is completed only after CI, asset and attestation verification.
+publishing. The [readiness record](release-readiness.json) is complete:
+main CI and all eleven distribution targets passed, the release workflow
+succeeded, and downloaded source/native assets passed checksum, source
+identity and attestation verification. Wrong-ref and tampering controls
+were rejected as expected. The immutable artifacts retain their
+qualification-time records; release-verification.json records publication.
 
 The [RME manual](https://rme-audio.de/downloads/fface_ucx2_e.pdf), section
 33.2, distinguishes USB modes and the 8/14-channel choice for 192 kHz.
