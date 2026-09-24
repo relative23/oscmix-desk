@@ -40,10 +40,10 @@ class ReceivePortError(OSError):
     user, and the desk ran unverified for good under a message that named
     the wrong cause.
 
-    An OSError, so the handlers the verifier and the reconcile already
-    have for a socket they cannot use apply to it. It is never allowed to
-    end an apply half-way: the link barrier catches it and waits blind,
-    because the links are on the wire by then (ADR 0025).
+    An OSError, so existing receive handlers can name the failure. During
+    an apply it becomes WriteFailed with exact sent and pending paths;
+    a failed receiver must not erase a known link contradiction by falling
+    back to blind writes (ADR 0029 amends ADR 0025).
     """
 
 
@@ -69,4 +69,3 @@ class WriteFailed(OSError):
         super().__init__(cause.errno, cause.strerror or str(cause))
         self.written = tuple(written)
         self.unwritten = tuple(unwritten)
-

@@ -95,6 +95,7 @@ acyclic graph.
 | `discovery` | find the device and resolve which interface a desk is for: serial, sequencer client and lock key from one answer; USB presence; whether a UDP port is bound |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
 | `reconcile` | `desired` / `observed` / `plan`: what should be written, in what order, and why |
+| `observation` | latest decoded classification for a fixed expectation set and one observation window; matches are revocable, and no observation performs a write |
 | `dump` | the other direction: what the device reports, recovered as routes and settings and rendered as a `routing.conf` |
 | `backend` | the one place that opens a socket to the device; its `Traits` name the upstream behaviour the timing constants work around |
 | `streams` | observe the exact interface's active ALSA/USB playback mode and enforce measured playback limits before write phases; no PCM or clock changes |
@@ -161,6 +162,9 @@ against the stale flag ([ADR 0001](decisions/0001-two-phase-routing-apply.md)).
 
 The barrier waits for the echo, or for a fixed settle when the receive
 port is held by the mixer GUI and the echo cannot be observed.
+A contradicted link, cancellation or receive error stops dependent writes
+with exact sent/pending paths. Background link sync uses the completed verifier
+result; no internal observation callback writes inside an OSC delivery.
 
 ## The two seams
 

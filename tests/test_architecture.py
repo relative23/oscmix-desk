@@ -64,11 +64,12 @@ ALLOWED_IMPORTS = {
     # receive port that cannot be bound from one that is held (ADR 0025),
     # and the leaf is where that exception lives -- imported from there,
     # because `__init__` is the only module that re-exports.
-    "routing": {"backend", "constants", "errors", "log", "model", "numeric",
+    "routing": {"backend", "constants", "errors", "log", "model", "observation",
                 "reconcile", "streams"},
     "streams": {"constants", "log", "model"},
-    "verify": {"backend", "constants", "devices", "errors", "log", "model",
-               "numeric", "osc", "reconcile", "registers", "routing"},
+    "verify": {"backend", "constants", "devices", "log", "model",
+               "observation", "osc", "reconcile", "registers", "routing"},
+    "observation": {"osc", "reconcile", "registers"},
     "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "log"},
     # `locking` since 0.7.0: the unit takes the device lock itself around

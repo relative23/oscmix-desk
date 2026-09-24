@@ -4,6 +4,11 @@
 
 Accepted, 0.6.11.
 
+**Amended for 0.8.0 by [ADR 0029](0029-revocable-observations.md):** receive
+failures stop dependent writes with exact partial accounting. They no longer
+authorize a blind barrier/reapply that could discard a known contradiction.
+The measurements and previous behavior below remain historical.
+
 ## Context
 
 `Backend.listen` returned `None` for every `OSError` from `bind`, and
@@ -93,4 +98,3 @@ the port and the cause, which every caller already handles as this
 record decided: the barrier waits blind, the verifier re-establishes the
 mix and fails, a reconcile stands down, a switch is applied and not read
 back, a read exits 1. Found by a third outside review.
-

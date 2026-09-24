@@ -17,7 +17,7 @@ import struct
 import oracle
 import pytest
 
-from oscmix_desk import constants, osc, reconcile, verify
+from oscmix_desk import constants, osc, reconcile
 
 # A missing dev dependency should say so, not abort collection for the
 # whole suite: `make test` on a fresh checkout is a reasonable thing to
@@ -277,12 +277,14 @@ def test_bundles_with_hostile_sizes_terminate(session_mod, sizes, payload):
     '/output/5/stereo', '/output/7/stereo', '/playback/1/stereo', '/unknown']),
     st.integers(min_value=0, max_value=1)), max_size=80))
 def test_verification_agrees_with_the_last_received_value(reports):
+    from oscmix_desk.observation import Observation
+
     expected = dict.fromkeys(
         ['/output/5/stereo', '/output/7/stereo', '/playback/1/stereo'], ('i', (1,)))
-    confirmed, mismatched, last = set(), set(), {}
+    observed, last = Observation(expected), {}
     for path, value in reports:
-        verify._absorb((path, 'i', (value,)), expected, confirmed, mismatched, None)
+        observed.absorb((path, 'i', (value,)))
         last[path] = value
-        assert confirmed == {p for p in expected if last.get(p) == 1}
-        assert mismatched == {p for p in expected if last.get(p) == 0}
-        assert confirmed.isdisjoint(mismatched)
+        assert observed.confirmed == {p for p in expected if last.get(p) == 1}
+        assert observed.mismatched == {p for p in expected if last.get(p) == 0}
+        assert observed.confirmed.isdisjoint(observed.mismatched)

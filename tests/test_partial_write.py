@@ -33,9 +33,10 @@ class FailingBackend(RecordingBackend):
         self.dumps_fail = dumps_fail
 
     def send(self, messages):
+        messages = list(messages)
         burst = [message[0] for message in messages]
         room = max(self.allowed - len(self.sent), 0)
-        super().send((path, "", ()) for path in burst[:room])
+        super().send(messages[:room])
         if len(burst) > room:
             raise WriteFailed(GONE, burst[:room], burst[room:])
 

@@ -5,11 +5,9 @@ thing to every caller: the mixer GUI has the port. Measured: `[osc]
 recv-port = 80` fails with EACCES for an ordinary user, and the desk ran
 unverified for good under "in use -- close the mixer GUI".
 
-The obvious repair -- let the error out -- would have been worse than the
-defect. The link barrier binds the port *after* the links are on the
-wire, so an exception from there ends the apply between its phases:
-pairs linked, no mix. These tests hold both halves: the error is named
-everywhere, and it never tears an apply.
+Receive failure now ends dependent writes with exact partial accounting.
+A blind fallback must not discard a contradiction observed before failure.
+An occupied receiver remains distinct from an actual receive error.
 """
 
 import argparse
@@ -27,7 +25,7 @@ from oscmix_desk import reads as reads_mod
 from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.constants import EXIT_FAILURE
-from oscmix_desk.errors import ReceivePortError
+from oscmix_desk.errors import ReceivePortError, WriteFailed
 
 #: What the double raises, as `str()` and as `strerror`.
 DENIED = "cannot bind the receive port UDP 80: Permission denied"
@@ -137,20 +135,19 @@ def test_the_measured_case_a_privileged_receive_port():
 # The apply is never torn.
 # --------------------------------------------------------------------------
 
-def test_the_barrier_waits_blind_and_the_apply_finishes(
+def test_the_barrier_reports_partial_writes_when_the_receiver_fails(
         tmp_path, unbindable_backend, monkeypatch, caplog):
     monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
     slept = []
     monkeypatch.setattr(routing.time, "sleep", slept.append)
     config = profiles.load_config(write_config(tmp_path / "routing.conf", DESK))
-    with caplog.at_level("INFO"):
+    with pytest.raises(WriteFailed, match=DENIED) as caught:
         routing.apply_routing(config, 7222, 80, backend=unbindable_backend)
     paths = [path for path, _tags, _args in unbindable_backend.sent]
-    assert paths.index("/output/1/stereo") < paths.index("/mix/1/playback/1"), \
-        "the mix was never written: the apply ended between its phases"
-    assert "/output/1/volume" in paths
-    assert slept == [0.01], "the blind wait a held port gets"
-    assert "link echo unobservable: " + DENIED_STR in caplog.text
+    assert paths == ["/playback/1/stereo", "/output/1/stereo"]
+    assert caught.value.written == tuple(paths)
+    assert caught.value.unwritten == ("/mix/1/playback/1", "/output/1/volume")
+    assert slept == []
     assert "in use" not in caplog.text
 
 
@@ -166,7 +163,7 @@ def test_the_public_echo_wait_raises_rather_than_answering_none(
 # The verifier: the mix is made safe first, then the failure is reported.
 # --------------------------------------------------------------------------
 
-def test_the_verifier_re_establishes_the_mix_before_it_fails(
+def test_the_verifier_does_not_write_after_a_receive_failure(
         tmp_path, monkeypatch):
     config = profiles.load_config(write_config(tmp_path / "routing.conf", DESK))
     order = []
@@ -181,7 +178,7 @@ def test_the_verifier_re_establishes_the_mix_before_it_fails(
         lambda cfg, stop, why=None: order.append(("blind", cfg, why)))
     with pytest.raises(ReceivePortError):
         verify.verify_and_repair(config)
-    assert order == ["verify", ("blind", config, DENIED)]
+    assert order == ["verify"]
 
 
 def test_the_blind_re_apply_names_the_cause_it_is_given(tmp_path, monkeypatch,
@@ -260,7 +257,7 @@ def test_a_reconcile_stands_down_and_names_the_port(tmp_path, monkeypatch,
 # A switch and the three reads.
 # --------------------------------------------------------------------------
 
-def test_a_switch_is_applied_and_says_why_it_could_not_check(
+def test_a_switch_keeps_the_marker_when_its_link_receiver_fails(
         tmp_path, unbindable_backend, monkeypatch, caplog):
     monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
     write_config(tmp_path / "routing.conf", DESK)
@@ -269,17 +266,16 @@ def test_a_switch_is_applied_and_says_why_it_could_not_check(
         outcome = profiles.switch_profile(
             "tracking", config_path=tmp_path / "routing.conf",
             backend=unbindable_backend)
-    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
-    assert outcome.reason == DENIED
-    assert "/output/1/volume" in outcome.unverified
-    assert outcome.persisted is True
+    assert outcome.state == outcome_mod.WRITTEN_IN_PART
+    assert DENIED in outcome.reason
+    assert outcome.unwritten == ["/mix/1/playback/1", "/output/1/volume"]
+    assert outcome.persisted is False
     written = [path for path, _t, _a in unbindable_backend.sent]
-    assert "/mix/1/playback/1" in written
-    assert "it cannot be verified" in caplog.text
+    assert written == ["/playback/1/stereo", "/output/1/stereo"]
+    assert outcome.written == written
+    assert "written in part" in caplog.text
     assert outcome.read_back is False
-    assert outcome.describe() == (
-        "applied 'tracking'; not read back (%s), so none of its %d "
-        "register(s) is confirmed" % (DENIED, len(outcome.unverified)))
+    assert "the desk in effect has not changed" in outcome.describe()
 
 
 @pytest.mark.parametrize("flag", ["--diff", "--snapshot", "--dump-config"])
@@ -437,20 +433,20 @@ def test_a_socket_closed_under_the_listener_is_the_same_error():
         list(real.messages(0.05))
 
 
-def test_the_barrier_waits_blind_for_a_port_it_cannot_read(tmp_path,
+def test_the_barrier_stops_on_a_port_it_cannot_read(tmp_path,
                                                           monkeypatch, caplog):
     slept = []
     monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
     monkeypatch.setattr(routing.time, "sleep", slept.append)
     config = profiles.load_config(write_config(tmp_path / "routing.conf", DESK))
     device = _DeafBackend()
-    with caplog.at_level("INFO"):
+    with pytest.raises(WriteFailed, match=DOWN) as caught:
         routing.apply_routing(config, 7222, 8333, backend=device)
-    assert device.sent.index("/output/1/stereo") \
-        < device.sent.index("/mix/1/playback/1"), "the apply finished"
-    assert slept == [0.01]
+    assert device.sent == ["/playback/1/stereo", "/output/1/stereo"]
+    assert caught.value.written == tuple(device.sent)
+    assert caught.value.unwritten == ("/mix/1/playback/1", "/output/1/volume")
+    assert slept == []
     assert device.socket.reads == 1, "one read, not a loop of them"
-    assert "link echo unobservable: [Errno 100] " + DOWN in caplog.text
 
 
 @pytest.mark.parametrize("flag", ["--diff", "--snapshot", "--dump-config"])
@@ -476,8 +472,9 @@ def test_a_switch_that_cannot_read_back_says_why(tmp_path, monkeypatch):
     write_config(tmp_path / "profiles" / "p.conf", DESK)
     outcome = profiles.switch_profile("p", config_path=path,
                                       backend=_DeafBackend())
-    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
-    assert (outcome.read_back, outcome.reason) == (False, DOWN)
+    assert outcome.state == outcome_mod.WRITTEN_IN_PART
+    assert (outcome.read_back, outcome.persisted) == (False, False)
+    assert DOWN in outcome.reason
 
 
 def test_the_read_back_raises_instead_of_spinning_out_its_window(monkeypatch):

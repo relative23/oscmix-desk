@@ -240,7 +240,8 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
 
     sd_notify("STATUS=applying routing")
     try:
-        apply_routing(config, config.osc_port, config.osc_recv_port)
+        apply_routing(config, config.osc_port, config.osc_recv_port,
+                      should_stop=lambda: stop_requested["stop"] or child.poll() is not None)
     except Exception:
         # The lock is this process's promise that nobody else writes
         # while it does. A write that raised must not keep it: the next

@@ -22,22 +22,19 @@ from .backend import (
 )
 from .constants import DUMP_LISTEN_SETTLE, VERIFY_SETTLE, VERIFY_TIMEOUT
 from .devices import device_for_name
-from .errors import ReceivePortError
 from .log import log
 from .model import Config
-from .numeric import integer
+from .observation import Observation
 from .osc import (
     Args,
-    Message,
     Value,
 )
-from .reconcile import desired, matches, policy_for
+from .reconcile import desired, policy_for
 from .registers import (
     PIN,
     VERIFIABLE,
     Device,
     Policy,
-    Register,
     cold_plug_complete,
     register_at,
     verify_class,
@@ -79,18 +76,6 @@ def expected_registers(config: Config) -> Registers:
     """
     return {entry.path: (entry.tags, entry.args) for entry in desired(config)}
 
-
-def _register_matches(want_types: str, want_args: Sequence[Value],
-                      got_args: Sequence[Value],
-                      register: Optional[Register] = None) -> bool:
-    """Compare a reported register against the expected value.
-
-    Delegates to ``reconcile.matches`` so the read-back and the plan
-    cannot disagree about what "equal" means -- which they would have,
-    the moment one of them learned that a muted gain reads back as -inf
-    and the other did not.
-    """
-    return matches(want_types, tuple(want_args), tuple(got_args), register=register)
 
 def register_ever_reported(path: str,
                            device: Optional[Device] = None) -> bool:
@@ -199,35 +184,9 @@ class VerifyResult:
     unobserved: List[str]
 
 
-def _absorb(report: Message, registers: Registers,
-            confirmed: Set[str], mismatched: Set[str],
-            on_observed: Optional[Callable[[str, Sequence[Value]],
-                                           None]], device: Optional[Device] = None) -> None:
-    """Classify one reported register against what was expected.
-
-    Decoding and the "skip a malformed message rather than end the dump"
-    rule moved into the backend seam, which is where reading off a
-    socket belongs. What is left here is the judgement.
-    """
-    path, _tags, args = report
-    if on_observed is not None:
-        on_observed(path, args)
-    expected = registers.get(path)
-    if expected is None:
-        return
-    if _register_matches(expected[0], expected[1], args, register_at(device, path)):
-        confirmed.add(path)
-        mismatched.discard(path)
-    else:
-        confirmed.discard(path)
-        mismatched.add(path)
-
-
-def _observe(listener: Listener, registers: Registers, prompt: Set[str],
-             confirmed: Set[str], mismatched: Set[str],
+def _observe(listener: Listener, observed: Observation, prompt: Set[str],
              on_observed: Optional[Callable[[str, Sequence[Value]], None]],
-             should_stop: StopCheck, timeout: float,
-             device: Optional[Device] = None) -> None:
+             should_stop: StopCheck, timeout: float) -> None:
     """Read reports until the window closes, a stop is asked, or time runs out.
 
     A stop request ends the window at the top of the loop, so the longest
@@ -239,10 +198,13 @@ def _observe(listener: Listener, registers: Registers, prompt: Set[str],
     while time.monotonic() < deadline:
         if should_stop():
             return
-        if _window_may_close(registers, prompt, confirmed, mismatched):
+        if _window_may_close(observed.expected, prompt,
+                             observed.confirmed, observed.mismatched):
             return
         for report in listener.messages(0.25):
-            _absorb(report, registers, confirmed, mismatched, on_observed, device)
+            observed.absorb(report)
+            if on_observed is not None:
+                on_observed(report[0], report[2])
 
 
 def _window_may_close(registers: Registers, reportable: Set[str],
@@ -296,13 +258,12 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
 
     A short settle precedes the request; see ``DUMP_LISTEN_SETTLE``.
 
-    ``on_observed`` is called with each register path and its reported
-    arguments on every report. That is how the mix re-apply hooks into this dump
-    instead of requesting a second one: two overlapping dumps measurably
-    starve each other and confirm fewer registers.
+    ``on_observed`` is called for each decoded report. It is an observation
+    hook, not a safe write boundary: the remainder of the delivery may
+    contradict that report. The internal mix reapply uses the completed
+    result and shares this request rather than starting a second dump.
     """
-    confirmed: Set[str] = set()
-    mismatched: Set[str] = set()
+    observed = Observation(registers, device_model)
     # The early exit turns on what the backend reports *ever*, not on
     # what it reports promptly: closing the window on the prompt set
     # meant channel state was structurally unconfirmable, because the
@@ -325,70 +286,14 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
         return None
     try:
         time.sleep(DUMP_LISTEN_SETTLE)   # see the constant: ICMP backlog
+        if should_stop():
+            return VerifyResult([], [], sorted(registers))
         device.request_dump()
-        _observe(listener, registers, prompt, confirmed, mismatched,
-                 on_observed, should_stop, timeout, device_model)
-        unobserved = [path for path in registers
-                      if path not in confirmed and path not in mismatched]
-        return VerifyResult(sorted(confirmed), sorted(mismatched),
-                            sorted(unobserved))
+        _observe(listener, observed, prompt, on_observed, should_stop, timeout)
+        return VerifyResult(sorted(observed.confirmed), sorted(observed.mismatched),
+                            sorted(observed.unobserved))
     finally:
         listener.close()
-
-
-def _link_sync_observer(config: Config, pending_links: Dict[str, int],
-                        reapplied: Dict[str, bool], should_stop: StopCheck
-                        ) -> Callable[[str, Sequence[Value]], None]:
-    """Watch the dump for the link state, and re-apply the mix once it lands.
-
-    This is the point of sharing one ``/refresh`` between verification
-    and the re-apply (ADR 0002): the moment the dump has reported every
-    ``/output/<n>/stereo`` at its expected value, oscmix's own link state
-    is correct and the mix matrix can be written from a known-good state.
-    Requesting a second dump for it measurably starves both.
-
-    ``pending_links`` and ``reapplied`` are mutated in place; they are
-    the caller's, because the caller still needs to know afterwards
-    whether the re-apply happened.
-    """
-    def on_observed(path: str, args: Sequence[Value]) -> None:
-        # Only a report of the *expected* link value means oscmix's state
-        # is right; a stale opposite value must not release the re-apply.
-        if path in pending_links and args:
-            try:
-                reported = integer(args[0])
-            except (TypeError, ValueError):
-                return
-            if reported != pending_links[path]:
-                return
-            del pending_links[path]
-        if not pending_links and not reapplied["done"]:
-            # Write 1 of 3 (ADR 0009). Reached from inside the dump
-            # observation, so the verify loop's own stop check has not
-            # run since this datagram arrived.
-            if should_stop():
-                return
-            reapplied["done"] = True
-            send_mix(config)
-
-    return on_observed
-
-
-def _reapply_without_confirmation(config: Config,
-                                  pending_links: Dict[str, int],
-                                  reapplied: Dict[str, bool]) -> None:
-    """Write 2 of 3: the dump ended without ever reporting the links.
-
-    The device reports a register only when it *changes*, so a pair that
-    was already linked produces no report however long the window is.
-    Writing the mix anyway is correct in that case and harmless in the
-    other; leaving it unwritten would strand the routing on whatever the
-    foreground apply managed before the barrier.
-    """
-    reapplied["done"] = True
-    log.warning("dump never reported %s; re-applying mix anyway",
-                ", ".join(sorted(pending_links)))
-    send_mix(config)
 
 
 def _report(result: VerifyResult, config: Config, device: Optional[Device],
@@ -511,28 +416,6 @@ def reconcile_now(config: Config, reason: str,
     return True
 
 
-def _read_back(registers: Registers, config: Config,
-               on_observed: Callable[[str, Sequence[Value]], None],
-               should_stop: StopCheck,
-               device: Optional[Device]) -> Optional[VerifyResult]:
-    """``verify_routing`` for the verifier, with the desk left whole.
-
-    For the desk a port that cannot be bound is the held port over again:
-    the dump that syncs oscmix's link state cannot be watched, so the mix
-    is re-established blind. For the caller it is not -- a port that can
-    never be read is not a verification "skipped" -- so the error goes on
-    once the mix is safe (0.6.11).
-    """
-    try:
-        return verify_routing(registers, config.osc_port,
-                              config.osc_recv_port, VERIFY_TIMEOUT,
-                              on_observed=on_observed,
-                              should_stop=should_stop, device_model=device)
-    except ReceivePortError as exc:
-        blind_reapply_mix(config, should_stop, why=exc.strerror)
-        raise
-
-
 def verify_and_repair(config: Config,
                       should_stop: StopCheck = never_stop) -> None:
     """Read the applied routing back and re-send once on problems.
@@ -548,32 +431,22 @@ def verify_and_repair(config: Config,
     a failed read-back is logged (and retried once) but never brings the
     service down -- a restart loop would not improve anything.
 
-    The dump this requests doubles as the link-state sync -- see
-    ``_link_sync_observer``. The mix matrix itself is unverifiable (a
-    ``/mix`` write draws no reply and the dump omits the playback
-    matrix), so it is re-established rather than checked.
-
-    ``should_stop`` is asked between every phase and before each of the
-    three writes below, and the session waits for this thread before
-    exiting: docs/decisions/0009-verifier-stop-contract.md.
-
-    Raises ``ReceivePortError`` when the receive port cannot be bound for
-    a reason other than a holder -- after the mix has been re-established
-    blind, so the desk is whole when it does (ADR 0025).
+    The completed read-back also supplies the link-sync decision. No
+    callback writes inside a partially decoded delivery. Wrong or invalid
+    links block the mix; a repair requires fresh confirmation before its
+    dependent writes. Receive failures propagate without a blind reapply.
     """
     device = device_for_name(config.device_name)
     registers = expected_registers(config)
-    pending_links = output_link_state(config.routes)
-    reapplied = {"done": not pending_links}
-    on_observed = _link_sync_observer(config, pending_links, reapplied,
-                                      should_stop)
+    links = set(output_link_state(config.routes))
 
     problems: List[str] = []
     for attempt in (1, 2):
         if should_stop():
             return
-        result = _read_back(registers, config, on_observed, should_stop,
-                            device)
+        result = verify_routing(registers, config.osc_port, config.osc_recv_port,
+                                VERIFY_TIMEOUT, should_stop=should_stop,
+                                device_model=device)
         if should_stop():
             return
         if result is None:
@@ -581,8 +454,16 @@ def verify_and_repair(config: Config,
                      "(mixer GUI running?)", config.osc_recv_port)
             blind_reapply_mix(config, should_stop)
             return
-        if not reapplied["done"]:
-            _reapply_without_confirmation(config, pending_links, reapplied)
+        wrong_links = links.intersection(result.mismatched)
+        if wrong_links:
+            log.warning("link state contradicted (%s); mix reapply withheld",
+                        ", ".join(sorted(wrong_links)))
+        elif links:
+            missing = links.intersection(result.unobserved)
+            if missing:
+                log.warning("dump never reported %s; re-applying mix without confirmation",
+                            ", ".join(sorted(missing)))
+            send_mix(config)
         problems, kept = _report(result, config, device, attempt)
         if not problems:
             return
@@ -599,7 +480,9 @@ def verify_and_repair(config: Config,
             # config value -- the policy would be real in the log and
             # absent at the device.
             apply_routing(config, config.osc_port, config.osc_recv_port,
-                          leave_alone=kept)
+                          leave_alone=kept,
+                          require_link_confirmation=sorted(wrong_links),
+                          should_stop=should_stop)
             if wait_unless_stopped(VERIFY_SETTLE, should_stop):
                 return
     log.warning("unconfirmed after retry: %s", ", ".join(problems))

@@ -151,14 +151,11 @@ def test_the_highest_q_report_exports_as_the_highest_q(tmp_path):
 def test_invalid_link_reports_do_not_release_either_barrier(monkeypatch, value):
     path = "/output/5/stereo"
     backend = RecordingBackend(reports=lambda _sent: [(path, "i", (value,))])
-    assert routing.await_link_echo({path: 1}, 0, .01, backend=backend) is routing.LinkEcho.SILENT
-    pending, reapplied, sent = {path: 1}, {"done": False}, []
-    monkeypatch.setattr(verify, "send_mix", lambda config: sent.append(config))
-    callback = verify._link_sync_observer(Config(), pending, reapplied, lambda: False)
-    callback(path, (value,))
-    assert pending == {path: 1}
-    assert reapplied == {"done": False}
-    assert sent == []
+    assert (routing.await_link_echo({path: 1}, 0, .01, backend=backend)
+            is routing.LinkEcho.CONTRADICTED)
+    result = verify.verify_routing({path: ("i", (1,))}, 0, 0, .01, backend=backend)
+    assert result.confirmed == []
+    assert result.mismatched == [path]
 
 
 @pytest.mark.parametrize(("path", "args"), [

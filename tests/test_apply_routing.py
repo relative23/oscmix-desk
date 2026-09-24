@@ -355,7 +355,7 @@ def test_await_link_echo_rejects_the_opposite_value(session_mod):
         try:
             assert routing.await_link_echo({"/output/5/stereo": want},
                                                recv_port,
-                                               timeout=0.4) is LinkEcho.SILENT
+                                               timeout=0.4) is LinkEcho.CONTRADICTED
         finally:
             timer.cancel()
 
@@ -467,7 +467,8 @@ def test_each_answer_of_the_echo_wait_has_its_own_consequence(
     monkeypatch.setattr(routing_mod, "await_link_echo", lambda *a, **k: echo)
     monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.01)
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 1.5)
-    monkeypatch.setattr(routing_mod.time, "sleep", waited.append)
+    monkeypatch.setattr(routing_mod, "wait_unless_stopped",
+                        lambda seconds, _stop: waited.append(seconds) or False)
     config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
     with caplog.at_level("INFO"):
         routing_mod._cross_the_barrier(config, 9123, silent_backend)
@@ -488,5 +489,4 @@ def test_the_barrier_waits_for_the_echo_on_the_port_it_was_given(
     routing_mod._cross_the_barrier(config, 9123, silent_backend)
     assert asked == [((routing_mod.output_link_state(config.routes), 9123,
                        routing_mod.LINK_ECHO_TIMEOUT),
-                      {"backend": silent_backend})]
-
+                      {"backend": silent_backend, "should_stop": routing_mod.never_stop})]

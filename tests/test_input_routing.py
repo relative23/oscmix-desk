@@ -291,11 +291,13 @@ def test_the_verifier_and_the_plan_share_one_definition_of_equal(session_mod):
     # read-back had its own comparison, which did not know about the
     # mute floor.
     from oscmix_desk import reconcile as r
-    from oscmix_desk import verify as v
+    from oscmix_desk.observation import Observation
 
     for want, got in ((( -65.0, 0), (float("-inf"), 0)),
                       ((-6.0, 0), (-6.2, 0)),
                       ((-6.0, 0), (-30.0, 0))):
         register = registers.register_at(devices.UCX2, "/mix/5/input/1")
-        assert v._register_matches("fi", want, got, register) == r.matches(
+        observed = Observation({"/mix/5/input/1": ("fi", want)}, devices.UCX2)
+        observed.absorb(("/mix/5/input/1", "fi", got))
+        assert observed.complete == r.matches(
             "fi", want, got, register=register)
