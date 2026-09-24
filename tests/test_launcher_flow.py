@@ -70,7 +70,8 @@ def test_launch_uses_the_selected_desk_through_discovery_and_service_start(
                       'oscmix send-port uint32 9444\noscmix recv-port uint32 9555\n')
         elif command[:4] == ['systemctl', '--user', 'show', '--no-pager']:
             assert scenario not in ('manual', 'reply-busy')
-            assert len(command) == 6 and command[-1] == 'oscmix.service'
+            assert len(command) == 6
+            assert command[-1] == 'oscmix.service'
             assert command[4].startswith('--property=')
             enabled = 'enabled-runtime' if scenario == 'runtime-enabled' else 'enabled'
             if scenario == 'disabled':
