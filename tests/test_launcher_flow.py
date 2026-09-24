@@ -70,15 +70,21 @@ def test_launch_uses_the_selected_desk_through_discovery_and_service_start(
                       'oscmix send-port uint32 9444\noscmix recv-port uint32 9555\n')
         elif command[:4] == ['systemctl', '--user', 'show', '--no-pager']:
             assert scenario not in ('manual', 'reply-busy')
+            assert len(command) == 6 and command[-1] == 'oscmix.service'
+            assert command[4].startswith('--property=')
             enabled = 'enabled-runtime' if scenario == 'runtime-enabled' else 'enabled'
             if scenario == 'disabled':
                 enabled = 'disabled'
             environment = ('OSCMIX_CONFIG=' + str(home / 'other.conf')
                            if scenario == 'wrong-desk' else '')
-            output = ('LoadState=loaded\nActiveState=inactive\nUnitFileState=%s\n'
-                      'ExecStart={ path=/usr/bin/oscmix-session ; '
-                      'argv[]=/usr/bin/oscmix-session ; ignore_errors=no ; }\n'
-                      'Environment=%s\n' % (enabled, environment))
+            properties = {'LoadState': 'loaded', 'ActiveState': 'inactive',
+                          'UnitFileState': enabled, 'Environment': environment,
+                          'ExecStart': '{ path=/usr/bin/oscmix-session ; '
+                          'argv[]=/usr/bin/oscmix-session ; ignore_errors=no ; }'}
+            # Like systemctl, only return properties actually requested.
+            requested = command[4].partition('=')[2].split(',')
+            output = '\n'.join(key + '=' + properties[key] for key in requested
+                               if key in properties)
         elif command == ['systemctl', '--user', 'show-environment']:
             output = 'HOME=%s\nOSCMIX_CONFIG=%s\n' % (home, path)
         elif command in (['systemctl', '--user', 'reset-failed', 'oscmix.service'],

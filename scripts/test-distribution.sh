@@ -20,7 +20,7 @@ export OSCMIX_SYSFS_USB="$empty_hardware/usb" OSCMIX_PROC_ROOT="$empty_hardware/
 python3 -m pytest -q tests/test_install_sh.py tests/test_install_modes.py \
     tests/test_numeric.py tests/test_dump_limits.py tests/test_session_integration.py \
     tests/test_two_processes.py tests/test_status.py tests/test_diagnostics.py \
-    tests/test_launcher.py tests/test_preview.py
+    tests/test_launcher.py tests/test_launcher_flow.py tests/test_preview.py
 stage="$(mktemp -d)"
 bash scripts/stage-install.sh --destdir "$stage" --backend build/oscmix
 "$stage/usr/bin/oscmix-session" --version

@@ -133,7 +133,8 @@ def test_service_environment_is_not_leaked_in_status(world, monkeypatch):
 
 
 @pytest.mark.parametrize('metadata', [
-    {'version': '0.7.3', 'backend_commit': 'a' * 40}, [], {'version': float('nan')},
+    {'version': '0.7.3', 'source_commit': 'b' * 40, 'backend_commit': 'a' * 40},
+    [], {'version': float('nan')},
 ])
 def test_native_provenance_comes_from_the_resolved_file(world, monkeypatch, metadata):
     path, _ = world
@@ -147,6 +148,14 @@ def test_native_provenance_comes_from_the_resolved_file(world, monkeypatch, meta
     info = status.collect_status(path, CommandLine())['sections']['installation']
     assert info['resolved_backend'] == str(binary)
     assert len(info['backend_sha256']) == 64
+    if isinstance(metadata, dict):
+        expected = metadata if isinstance(metadata['version'], str) else {
+            'version': None, 'source_commit': None, 'backend_commit': None}
+        assert info['package_metadata'] == expected
+        assert info['metadata_file'] == str(manifest)
+    else:
+        assert info['package_metadata'] is None
+        assert 'must be an object' in info['detail']
     json.dumps(info, allow_nan=False)
 
 
