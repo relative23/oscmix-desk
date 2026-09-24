@@ -1,4 +1,12 @@
-# Patches offered upstream
+# Upstream patches and the coordinated 0.8.0 development series
+
+`backend-series.json` is the reproducible 0.8.0 candidate: full base commit,
+protocol and SHA-256 for each patch applied by `scripts/prepare-backend.py`.
+Patch 0003 extends the existing backend, ALSA bridge and GTK mixer together.
+It is carried locally; no upstream acceptance is claimed. Its software
+contract is [documented here](../docs/BACKEND-CONTROL.md). Desk runtime,
+hardware, packaging and release qualification are still pending; the existing
+installer has not yet switched to this candidate.
 
 Changes to [michaelforney/oscmix][oscmix] that this project would like to
 see, kept here so the reasoning survives whether or not they are
@@ -15,10 +23,12 @@ code came from.
 
 [isc]: https://github.com/michaelforney/oscmix/blob/master/LICENSE
 
-The pin is now `55802a6ab865e551540ee9ad5081b8ae3276f8ca`. Patch 0001 is
-against it and still needed -- PR #31 is open. **Patch 0002 was merged
-upstream as `55802a6` and is kept only as a record**; applying it now
-would conflict with the fix it asked for.
+The base pin is `f2fdd5ec78338848754aad32cc07f3440de63395`.
+The earlier pin `55802a6ab865e551540ee9ad5081b8ae3276f8ca` is the base of
+the historical patches below. Patch 0001 is not in the applied series;
+the output-link barrier is retained. **Patch 0002 was merged upstream as
+`55802a6` and is kept only as a record**; applying it now would conflict
+with the fix it asked for.
 
 ---
 

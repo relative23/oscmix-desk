@@ -111,6 +111,12 @@ classified as received during that window, not as hardware-tagged replies to
 that particular request: the current MIDI protocol supplies no such tag.
 Quiet, partial, invalid and contradicted results retain N0/N1 semantics.
 End-of-window is a timeout boundary, never proof that every register arrived.
+Start/end events identify this receive window separately from the write-lease
+generation. GTK waits for a complete window containing device-origin reports
+before re-enabling controls after a desk operation. This is a UI freshness
+rule, not a claim of complete hardware read-back. Backend-derived playback
+flags and meter traffic alone cannot satisfy it. An already queued GUI refresh
+is not submitted again merely because a lease was released.
 
 ### Bounds and failure
 
@@ -131,6 +137,10 @@ is disconnected on overflow; it cannot delay another client's verifier or
 silently receive a supposedly complete dump. EOF, malformed/oversized input,
 MIDI/bridge failure and backend shutdown invalidate the connection. Clients
 report the failure; they do not infer silence or fall back to a direct write.
+Each blocked MIDI-pipe write has a two-second deadline. A decoded delivery
+that cannot fit the backend's OSC buffer terminates the backend instead of
+publishing a truncated bundle or writing past that buffer. Both failures can
+leave earlier submitted paths applied and require the same partial outcome.
 
 Write acknowledgements describe processing by this backend, not a hardware
 read-back. Partial outcomes continue to distinguish paths submitted before a

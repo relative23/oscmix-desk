@@ -5,9 +5,11 @@ implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
 An interim `make check` passes 2017 tests (two empty parameter sets skipped),
 with 98% coverage.
-N2's backend-owner decision is documented; its implementation and the final
-acceptance criteria below remain open. All proposed 0.7.4 corrections are included in 0.8.0; there
-is no separate 0.7.4 milestone.
+N2 now has a versioned backend/GTK patch series and simulated-MIDI software
+qualification: 43 preparation/protocol tests and actual GTK fader, lease,
+start-order, disconnect and peer-identity checks pass on a fresh series build.
+Desk-client integration and the final acceptance criteria remain open.
+All proposed 0.7.4 corrections are included; there is no separate 0.7.4 milestone.
 
 Latest published release: **0.7.3**. Its implementation, qualification and
 publication are complete: corrected read-back classification, clearer

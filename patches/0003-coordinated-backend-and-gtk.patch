@@ -1,0 +1,1662 @@
+diff --git a/Makefile b/Makefile
+index 3b8fd75ce41c293c19e64714001c18c15ae70053..afd96957d7fa612bfe4603e381e91a76e89f23e9 100644
+--- a/Makefile
++++ b/Makefile
+@@ -39,6 +39,7 @@ DEVICES=\
+ 
+ OSCMIX_OBJ=\
+ 	main.o\
++	control.o\
+ 	osc.o\
+ 	oscmix.o\
+ 	socket.o\
+@@ -55,6 +56,7 @@ WSDGRAM_OBJ=\
+ 	util.o
+ 
+ oscmix.o $(DEVICES): device.h
++main.o oscmix.o control.o: control.h
+ 
+ oscmix: $(OSCMIX_OBJ)
+ 	$(CC) $(LDFLAGS) -o $@ $(OSCMIX_OBJ) -l m
+diff --git a/alsaseqio.c b/alsaseqio.c
+index f3fff0a40abe1e2332c9642a32c3d0621657c025..c1e67e4bb31b8700f2b0c60999d78753c3a2321f 100644
+--- a/alsaseqio.c
++++ b/alsaseqio.c
+@@ -11,11 +11,12 @@
+ 
+ static snd_seq_t *seq;
+ static snd_midi_event_t *dev;
++static int exclusive;
+ 
+ static void
+ usage(void)
+ {
+-	fprintf(stderr, "usage: alsaseq client:port cmd [arg...]\n");
++	fprintf(stderr, "usage: alsaseqio [-x] client:port cmd [arg...]\n");
+ 	exit(1);
+ }
+ 
+@@ -74,6 +75,9 @@ main(int argc, char *argv[])
+ 	unsigned char *pos, buf[1024];
+ 
+ 	ARGBEGIN {
++	case 'x':
++		exclusive = 1;
++		break;
+ 	default:
+ 		usage();
+ 	} ARGEND
+@@ -126,6 +130,7 @@ main(int argc, char *argv[])
+ 	self.port = 0;
+ 	snd_seq_port_subscribe_set_sender(sub, &self);
+ 	snd_seq_port_subscribe_set_dest(sub, &dest);
++	snd_seq_port_subscribe_set_exclusive(sub, exclusive);
+ 	err = snd_seq_subscribe_port(seq, sub);
+ 	if (err) {
+ 		fprintf(stderr, "snd_seq_subscribe_port: %s\n", snd_strerror(err));
+@@ -133,6 +138,7 @@ main(int argc, char *argv[])
+ 	}
+ 	snd_seq_port_subscribe_set_sender(sub, &dest);
+ 	snd_seq_port_subscribe_set_dest(sub, &self);
++	snd_seq_port_subscribe_set_exclusive(sub, 0);
+ 	err = snd_seq_subscribe_port(seq, sub);
+ 	if (err) {
+ 		fprintf(stderr, "snd_seq_subscribe_port: %s\n", snd_strerror(err));
+diff --git a/control.c b/control.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..c376752106b0a495ebf254898b7f03315bcf3976
+--- /dev/null
++++ b/control.c
+@@ -0,0 +1,568 @@
++#define _GNU_SOURCE
++#include <errno.h>
++#include <fcntl.h>
++#include <math.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/file.h>
++#include <sys/socket.h>
++#include <sys/stat.h>
++#include <sys/un.h>
++#include <time.h>
++#include <unistd.h>
++#include "control.h"
++#include "osc.h"
++
++#define QUEUE_PACKETS 32
++#define QUEUE_BYTES (256 * 1024)
++#define LEASE_IDLE 5.0
++#define LEASE_TOTAL 90.0
++#define REFRESH_WINDOW 10.0
++#define HELLO_TIMEOUT 3.0
++
++struct packet {
++	size_t len;
++	unsigned char data[CONTROL_PACKET];
++};
++
++struct client {
++	int fd;
++	unsigned role, sources;
++	uint32_t request;
++	double accepted;
++	bool refresh;
++	struct packet queue[QUEUE_PACKETS];
++	unsigned head, count;
++	size_t bytes;
++};
++
++static struct client clients[CONTROL_CLIENTS];
++static int server = -1, ownerlock = -1, owner = -1;
++static char socketpath[sizeof ((struct sockaddr_un *)0)->sun_path];
++static dev_t socketdev;
++static ino_t socketino;
++static unsigned char epoch[16];
++static char device_name[256];
++static uint64_t generation = 1, observation, window;
++static double idle_until, hard_until, refresh_until;
++static bool refreshing;
++
++static double
++now(void)
++{
++	struct timespec ts;
++	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0)
++		abort();
++	return ts.tv_sec + ts.tv_nsec / 1e9;
++}
++
++static uint32_t
++get32(const unsigned char *p)
++{
++	return (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3];
++}
++
++static uint64_t
++get64(const unsigned char *p)
++{
++	return (uint64_t)get32(p) << 32 | get32(p + 4);
++}
++
++static void
++put32(unsigned char *p, uint32_t n)
++{
++	p[0] = n >> 24;
++	p[1] = n >> 16;
++	p[2] = n >> 8;
++	p[3] = n;
++}
++
++static void
++put64(unsigned char *p, uint64_t n)
++{
++	put32(p, n >> 32);
++	put32(p + 4, n);
++}
++
++static void disconnect(int index);
++static void state_changed(void);
++
++static void
++release_owner(void)
++{
++	owner = -1;
++	++generation;
++	state_changed();
++}
++
++static void
++disconnect(int index)
++{
++	struct client *c = &clients[index];
++	if (c->fd < 0)
++		return;
++	close(c->fd);
++	c->fd = -1;
++	c->count = 0;
++	c->bytes = 0;
++	c->refresh = false;
++	if (owner == index)
++		release_owner();
++}
++
++static void
++flush(int index)
++{
++	struct client *c = &clients[index];
++	ssize_t sent;
++	while (c->fd >= 0 && c->count) {
++		struct packet *p = &c->queue[c->head];
++		sent = send(c->fd, p->data, p->len, MSG_DONTWAIT | MSG_NOSIGNAL);
++		if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
++			return;
++		if (sent < 0 && errno == EINTR)
++			continue;
++		if (sent != (ssize_t)p->len) {
++			disconnect(index);
++			return;
++		}
++		c->bytes -= p->len;
++		c->head = (c->head + 1) % QUEUE_PACKETS;
++		--c->count;
++	}
++}
++
++static void
++enqueue(int index, uint32_t kind, uint32_t request, uint32_t code,
++        uint64_t sequence, const void *data, size_t len)
++{
++	struct client *c = &clients[index];
++	struct packet *p;
++	if (c->fd < 0)
++		return;
++	if (len > CONTROL_PAYLOAD || c->count == QUEUE_PACKETS ||
++	    c->bytes + CONTROL_HEADER + len > QUEUE_BYTES) {
++		fprintf(stderr, "control: disconnecting slow consumer\n");
++		disconnect(index);
++		return;
++	}
++	p = &c->queue[(c->head + c->count) % QUEUE_PACKETS];
++	memcpy(p->data, "ODK1", 4);
++	put32(p->data + 4, kind);
++	put32(p->data + 8, request);
++	put32(p->data + 12, code);
++	put64(p->data + 16, sequence);
++	if (len)
++		memcpy(p->data + CONTROL_HEADER, data, len);
++	p->len = CONTROL_HEADER + len;
++	c->bytes += p->len;
++	++c->count;
++	flush(index);
++}
++
++static void
++reply(int index, uint32_t kind, uint32_t request, uint32_t code)
++{
++	enqueue(index, kind | CONTROL_REPLY, request, code, generation, NULL, 0);
++}
++
++static void
++state_changed(void)
++{
++	int i;
++	for (i = 0; i < CONTROL_CLIENTS; ++i)
++		if (clients[i].fd >= 0 && clients[i].role)
++			enqueue(i, CONTROL_EVENT, 0, owner < 0 ? CONTROL_OK : CONTROL_BUSY,
++			        generation, NULL, 0);
++}
++
++void
++control_broadcast(const void *buf, size_t len, unsigned source)
++{
++	int i;
++	++observation;
++	for (i = 0; i < CONTROL_CLIENTS; ++i)
++		if (clients[i].fd >= 0 && (clients[i].sources & source))
++			enqueue(i, CONTROL_OBSERVATION, 0, source, observation, buf, len);
++}
++
++static void
++window_changed(unsigned code)
++{
++	int i;
++	for (i = 0; i < CONTROL_CLIENTS; ++i)
++		if (clients[i].fd >= 0 && clients[i].role)
++			enqueue(i, CONTROL_WINDOW, 0, code, window, NULL, 0);
++}
++
++static void
++refresh(void)
++{
++	static const unsigned char message[] = "/refresh\0\0\0\0,\0\0\0";
++	int i;
++	for (i = 0; i < CONTROL_CLIENTS; ++i)
++		clients[i].refresh = false;
++	refresh_until = now() + REFRESH_WINDOW;
++	refreshing = true;
++	++window;
++	window_changed(CONTROL_BUSY);
++	control_command(message, sizeof message - 1);
++}
++
++void
++control_tick(void)
++{
++	double current = now();
++	int i;
++	if (owner >= 0 && (current >= idle_until || current >= hard_until)) {
++		fprintf(stderr, "control: operation lease expired\n");
++		disconnect(owner);
++	}
++	if (refreshing && current >= refresh_until) {
++		refreshing = false;
++		window_changed(CONTROL_OK);
++	}
++	for (i = 0; i < CONTROL_CLIENTS; ++i) {
++		struct client *c = &clients[i];
++		if (c->fd < 0)
++			continue;
++		if (!c->role && current - c->accepted >= HELLO_TIMEOUT)
++			disconnect(i);
++		else if (c->refresh && owner < 0 && current >= refresh_until) {
++			refresh();
++			break;
++		}
++	}
++}
++
++static bool
++valid_command(const unsigned char *data, size_t len)
++{
++	const unsigned char *end, *p;
++	struct oscmsg msg = {.buf = (unsigned char *)data, .end = (unsigned char *)data + len};
++	const char *tags;
++	if (!len || len % 4 || data[0] != '/')
++		return false;
++	end = memchr(data, 0, len);
++	if (!end || end == data + 1)
++		return false;
++	/* Refresh cannot bypass the window arbiter via OSC patterns/raw registers. */
++	for (p = data; p != end; ++p)
++		if (*p < 33 || *p > 126 || strchr("*?[]{}", *p))
++			return false;
++	if (!strncmp((const char *)data, "/refresh", 8) ||
++	    !strncmp((const char *)data, "/register", 9))
++		return false;
++	oscgetstr(&msg);
++	tags = oscgetstr(&msg);
++	if (msg.err || !tags || *tags != ',')
++		return false;
++	msg.type = tags + 1;
++	while (!msg.err && *msg.type) {
++		switch (*msg.type) {
++		case 'i': oscgetint(&msg); break;
++		case 'f': if (!isfinite(oscgetfloat(&msg))) return false; break;
++		case 's': oscgetstr(&msg); break;
++		default: return false;
++		}
++	}
++	return oscend(&msg) == 0;
++}
++
++static bool
++has_lease(int index, uint64_t token)
++{
++	return owner == index && token == generation;
++}
++
++static void
++hello(int index, uint32_t request, uint32_t role, const unsigned char *data, size_t len)
++{
++	unsigned char payload[24 + sizeof device_name];
++	struct client *c = &clients[index];
++	unsigned sources;
++	if (c->role || len != 4 || role < CONTROL_DESK || role > CONTROL_READER) {
++		disconnect(index);
++		return;
++	}
++	sources = get32(data);
++	if (!sources || sources & ~(CONTROL_DEVICE | CONTROL_DERIVED | CONTROL_METERS)) {
++		disconnect(index);
++		return;
++	}
++	c->role = role;
++	c->sources = sources;
++	memcpy(payload, epoch, 16);
++	put32(payload + 16, getpid());
++	put32(payload + 20, 1); /* protocol implementation version, not hardware capability */
++	memcpy(payload + 24, device_name, strlen(device_name) + 1);
++	enqueue(index, CONTROL_HELLO | CONTROL_REPLY, request, CONTROL_OK,
++	        generation, payload, 25 + strlen(device_name));
++	enqueue(index, CONTROL_EVENT, 0, owner < 0 ? CONTROL_OK : CONTROL_BUSY,
++	        generation, NULL, 0);
++}
++
++static void
++dispatch(int index, const unsigned char *packet, size_t len)
++{
++	struct client *c = &clients[index];
++	uint32_t kind, request, code;
++	uint64_t token;
++	const unsigned char *data = packet + CONTROL_HEADER;
++	control_tick();
++	if (c->fd < 0)
++		return;
++	if (len < CONTROL_HEADER || memcmp(packet, "ODK1", 4)) {
++		disconnect(index);
++		return;
++	}
++	kind = get32(packet + 4);
++	request = get32(packet + 8);
++	code = get32(packet + 12);
++	token = get64(packet + 16);
++	len -= CONTROL_HEADER;
++	if (!request || c->request == UINT32_MAX || request != c->request + 1) {
++		disconnect(index);
++		return;
++	}
++	c->request = request;
++	if (kind == CONTROL_HELLO) {
++		hello(index, request, code, data, len);
++		return;
++	}
++	if (!c->role || code || (kind != CONTROL_WRITE && len)) {
++		disconnect(index);
++		return;
++	}
++	switch (kind) {
++	case CONTROL_BEGIN:
++		if (c->role != CONTROL_DESK) {
++			reply(index, kind, request, CONTROL_NOT_OWNER);
++		} else if (owner >= 0) {
++			reply(index, kind, request, CONTROL_BUSY);
++		} else {
++			owner = index;
++			++generation;
++			hard_until = now() + LEASE_TOTAL;
++			idle_until = now() + LEASE_IDLE;
++			reply(index, kind, request, CONTROL_OK);
++			state_changed();
++		}
++		break;
++	case CONTROL_END:
++	case CONTROL_KEEPALIVE:
++		if (!has_lease(index, token)) {
++			reply(index, kind, request, CONTROL_NOT_OWNER);
++		} else {
++			if (kind == CONTROL_END)
++				release_owner();
++			else
++				idle_until = now() + LEASE_IDLE;
++			reply(index, kind, request, CONTROL_OK);
++		}
++		break;
++	case CONTROL_WRITE:
++		if (!(has_lease(index, token) ||
++		      (c->role == CONTROL_GUI && owner < 0 && token == generation))) {
++			reply(index, kind, request, CONTROL_BUSY);
++		} else if (!valid_command(data, len)) {
++			reply(index, kind, request, CONTROL_INVALID);
++		} else {
++			int result = control_command(data, len);
++			reply(index, kind, request, result < 0 ? CONTROL_INVALID : CONTROL_OK);
++		}
++		break;
++	case CONTROL_REFRESH:
++		if ((owner >= 0 && !has_lease(index, token)) || now() < refresh_until) {
++			if (c->role == CONTROL_GUI)
++				c->refresh = true;
++			reply(index, kind, request, CONTROL_BUSY);
++		} else {
++			/* The receipt boundary precedes every reply to this request. */
++			reply(index, kind, request, CONTROL_OK);
++			if (c->fd >= 0)
++				refresh();
++		}
++		break;
++	default:
++		disconnect(index);
++		break;
++	}
++}
++
++static void
++accept_client(void)
++{
++	struct ucred credentials;
++	socklen_t size = sizeof credentials;
++	int fd, i, buffer = 32768;
++	fd = accept4(server, NULL, NULL, SOCK_CLOEXEC | SOCK_NONBLOCK);
++	if (fd < 0)
++		return;
++	if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &credentials, &size) < 0 ||
++	    size != sizeof credentials || credentials.pid <= 0) {
++		close(fd);
++		return;
++	}
++	for (i = 0; i < CONTROL_CLIENTS && clients[i].fd >= 0; ++i)
++		;
++	if (i == CONTROL_CLIENTS) {
++		close(fd);
++		return;
++	}
++	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &buffer, sizeof buffer) < 0 ||
++	    setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &buffer, sizeof buffer) < 0) {
++		close(fd);
++		return;
++	}
++	memset(&clients[i], 0, sizeof clients[i]);
++	clients[i].fd = fd;
++	clients[i].accepted = now();
++}
++
++void
++control_pollfds(struct pollfd *fds)
++{
++	int i;
++	fds[0] = (struct pollfd){.fd = server, .events = POLLIN};
++	for (i = 0; i < CONTROL_CLIENTS; ++i)
++		fds[i + 1] = (struct pollfd){.fd = clients[i].fd,
++		    .events = POLLIN | (clients[i].count ? POLLOUT : 0)};
++}
++
++void
++control_dispatch(struct pollfd *fds)
++{
++	int i;
++	unsigned char buffer[CONTROL_PACKET];
++	struct iovec iov = {.iov_base = buffer, .iov_len = sizeof buffer};
++	ssize_t n;
++	control_tick();
++	if (fds[0].revents & POLLIN)
++		accept_client();
++	for (i = 0; i < CONTROL_CLIENTS; ++i) {
++		struct client *c = &clients[i];
++		struct pollfd *fd = &fds[i + 1];
++		struct msghdr msg = {.msg_iov = &iov, .msg_iovlen = 1};
++		if (c->fd < 0 || c->fd != fd->fd)
++			continue;
++		if (fd->revents & (POLLHUP | POLLERR | POLLNVAL)) {
++			disconnect(i);
++			continue;
++		}
++		if (fd->revents & POLLOUT)
++			flush(i);
++		if (c->fd < 0 || !(fd->revents & POLLIN))
++			continue;
++		n = recvmsg(c->fd, &msg, MSG_DONTWAIT);
++		if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
++			continue;
++		if (n <= 0 || msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))
++			disconnect(i);
++		else
++			dispatch(i, buffer, n);
++	}
++}
++
++void
++control_close(void)
++{
++	struct stat st;
++	int i;
++	/* Closing the owner cannot publish a new usable generation on shutdown. */
++	owner = -1;
++	for (i = 0; i < CONTROL_CLIENTS; ++i)
++		disconnect(i);
++	if (server >= 0) {
++		close(server);
++		server = -1;
++	}
++	if (socketino && lstat(socketpath, &st) == 0 &&
++	    st.st_dev == socketdev && st.st_ino == socketino)
++		unlink(socketpath);
++	socketino = 0;
++	if (ownerlock >= 0) {
++		close(ownerlock);
++		ownerlock = -1;
++	}
++}
++
++int
++control_open(const char *path, const char *device)
++{
++	struct sockaddr_un address = {.sun_family = AF_UNIX};
++	struct stat st;
++	char lockpath[sizeof address.sun_path + 7];
++	int i, randomfd, probe, saved;
++	ssize_t received;
++	for (i = 0; i < CONTROL_CLIENTS; ++i)
++		clients[i].fd = -1;
++	if (strlen(path) >= sizeof address.sun_path || strlen(device) >= sizeof device_name) {
++		errno = ENAMETOOLONG;
++		return -1;
++	}
++	strcpy(address.sun_path, path);
++	strcpy(socketpath, path);
++	strcpy(device_name, device);
++	snprintf(lockpath, sizeof lockpath, "%s.owner", path);
++	ownerlock = open(lockpath, O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK, 0660);
++	if (ownerlock < 0)
++		return -1;
++	if (fstat(ownerlock, &st) < 0 || !S_ISREG(st.st_mode) || st.st_nlink != 1) {
++		errno = EINVAL;
++		goto fail;
++	}
++	if (st.st_uid == geteuid() && fchmod(ownerlock, 0660) < 0)
++		goto fail;
++	if (flock(ownerlock, LOCK_EX | LOCK_NB) < 0)
++		goto fail;
++	if (lstat(path, &st) == 0) {
++		if (!S_ISSOCK(st.st_mode) || st.st_uid != geteuid()) {
++			errno = EEXIST;
++			goto fail;
++		}
++		probe = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
++		if (probe < 0)
++			goto fail;
++		i = connect(probe, (struct sockaddr *)&address, sizeof address);
++		saved = errno;
++		close(probe);
++		if (i == 0 || saved != ECONNREFUSED) {
++			errno = EADDRINUSE;
++			goto fail;
++		}
++		if (unlink(path) < 0)
++			goto fail;
++	} else if (errno != ENOENT) {
++		goto fail;
++	}
++	randomfd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
++	if (randomfd < 0)
++		goto fail;
++	received = read(randomfd, epoch, sizeof epoch);
++	saved = errno;
++	close(randomfd);
++	if (received != sizeof epoch) {
++		errno = received < 0 ? saved : EIO;
++		goto fail;
++	}
++	server = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
++	if (server < 0 || bind(server, (struct sockaddr *)&address, sizeof address) < 0)
++		goto fail;
++	if (lstat(path, &st) < 0)
++		goto fail;
++	socketdev = st.st_dev;
++	socketino = st.st_ino;
++	if (chmod(path, 0660) < 0 || listen(server, CONTROL_CLIENTS) < 0)
++		goto fail;
++	atexit(control_close);
++	return 0;
++fail:
++	saved = errno;
++	control_close();
++	errno = saved;
++	return -1;
++}
+diff --git a/control.h b/control.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..02322462be87aad10a346a029ff75dad7d0ce28e
+--- /dev/null
++++ b/control.h
+@@ -0,0 +1,39 @@
++#ifndef CONTROL_H
++#define CONTROL_H
++
++#include <stddef.h>
++#include <stdint.h>
++#include <poll.h>
++
++#define CONTROL_CLIENTS 16
++#define CONTROL_POLLFDS (CONTROL_CLIENTS + 1)
++#define CONTROL_PAYLOAD 8192
++#define CONTROL_HEADER 24
++#define CONTROL_PACKET (CONTROL_HEADER + CONTROL_PAYLOAD)
++
++enum control_kind {
++	CONTROL_HELLO = 1, CONTROL_BEGIN, CONTROL_END, CONTROL_KEEPALIVE,
++	CONTROL_WRITE, CONTROL_REFRESH,
++	CONTROL_EVENT = 16, CONTROL_OBSERVATION = 17, CONTROL_WINDOW = 18,
++};
++#define CONTROL_REPLY UINT32_C(0x80000000)
++
++enum control_role { CONTROL_DESK = 1, CONTROL_GUI = 2, CONTROL_READER = 3 };
++enum control_status {
++	CONTROL_OK = 0, CONTROL_BUSY, CONTROL_INVALID, CONTROL_EXPIRED,
++	CONTROL_SHUTDOWN, CONTROL_OVERFLOW, CONTROL_NOT_OWNER,
++};
++enum control_source { CONTROL_DEVICE = 1, CONTROL_DERIVED = 2, CONTROL_METERS = 4 };
++
++int control_open(const char *path, const char *device);
++void control_close(void);
++void control_pollfds(struct pollfd *fds);
++void control_dispatch(struct pollfd *fds);
++void control_tick(void);
++void control_broadcast(const void *buf, size_t len, unsigned source);
++
++/* Existing OSC processing, with output explicitly marked as backend-derived. */
++int control_command(const unsigned char *buf, size_t len);
++void oscsource(unsigned source);
++
++#endif
+diff --git a/gtk/Makefile b/gtk/Makefile
+index 3df6eed9c2615726083031937a51ca1d272b871a..0bc53099a13944837ebb8ddeea5ba647eba2e5a5 100644
+--- a/gtk/Makefile
++++ b/gtk/Makefile
+@@ -35,6 +35,7 @@ RES=\
+ all: oscmix-gtk gschemas.compiled
+ 
+ $(OBJ): channel.h scaleentry.h mixer.h eqplot.h
++mixer.o: ../control.h
+ 
+ resources.c: resources.xml $(RES)
+ 	$(GLIB_COMPILE_RESOURCES) --generate-source resources.xml
+diff --git a/gtk/main.c b/gtk/main.c
+index 40e799a98b9c3c6ad1ea083dd2e123175808285e..aeca76da8689b6a625929ae7dadff1608a6ec663 100644
+--- a/gtk/main.c
++++ b/gtk/main.c
+@@ -1,4 +1,6 @@
+ #include <stdbool.h>
++#include <stdlib.h>
++#include <limits.h>
+ #include <gtk/gtk.h>
+ #include "channel.h"
+ #include "mixer.h"
+@@ -53,10 +55,6 @@ static const char *const output_names[] = {
+ struct _OSCMixWindow {
+ 	GtkApplicationWindow base;
+ 	Mixer *osc;
+-	gpointer send_host;
+-	gpointer send_port;
+-	gpointer recv_host;
+-	gpointer recv_port;
+ 
+ 	gpointer reverb_enabled;
+ 	gpointer reverb_type;
+@@ -140,48 +138,9 @@ format_durec_position(GtkScale *scale, double value, gpointer ptr)
+ }
+ 
+ static void
+-address_resolved(GObject *obj, GAsyncResult *res, gpointer ptr)
++on_refresh(GtkButton *button, gpointer ptr)
+ {
+-	OSCMixWindow *self;
+-	GSocketAddress *addr;
+-	GError *err;
+-
+-	self = OSCMIX_WINDOW(ptr);
+-	err = NULL;
+-	addr = g_socket_address_enumerator_next_finish(G_SOCKET_ADDRESS_ENUMERATOR(obj), res, &err);
+-	if (!addr) {
+-		g_warning("failed to enumerate address: %s", err->message);
+-		return;
+-	}
+-	g_object_set(self->osc, "send-address", addr, NULL);
+-	g_object_unref(obj);
+-
+-	mixer_send(self->osc, "/refresh", NULL);
+-}
+-
+-static void
+-on_send_addr_changed(GtkEntry *entry, gpointer ptr)
+-{
+-	OSCMixWindow *self;
+-	GSocketConnectable *addr;
+-	GSocketAddressEnumerator *addrenum;
+-
+-	self = OSCMIX_WINDOW(ptr);
+-	addr = g_network_address_new(gtk_entry_get_text(self->send_host), gtk_adjustment_get_value(self->send_port));
+-	addrenum = g_socket_connectable_enumerate(addr);
+-	g_socket_address_enumerator_next_async(addrenum, NULL, address_resolved, self);
+-	g_object_unref(addr);
+-}
+-
+-static void
+-on_recv_addr_changed(GtkEntry *entry, gpointer ptr)
+-{
+-	OSCMixWindow *self;
+-	GSocketAddress *addr;
+-
+-	self = OSCMIX_WINDOW(ptr);
+-	addr = g_inet_socket_address_new_from_string(gtk_entry_get_text(self->recv_host), gtk_adjustment_get_value(self->recv_port));
+-	g_object_set(self->osc, "recv-address", addr, (char *)0);
++	mixer_send(OSCMIX_WINDOW(ptr)->osc, "/refresh", NULL);
+ }
+ 
+ static void
+@@ -418,10 +377,6 @@ oscmix_window_class_init(OSCMixWindowClass *class)
+ {
+ 	g_type_ensure(scale_entry_get_type());
+ 	gtk_widget_class_set_template_from_resource(GTK_WIDGET_CLASS(class), "/oscmix/oscmix.ui");
+-	gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), OSCMixWindow, send_host);
+-	gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), OSCMixWindow, send_port);
+-	gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), OSCMixWindow, recv_host);
+-	gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), OSCMixWindow, recv_port);
+ 	gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), OSCMixWindow, reverb_enabled);
+ 	gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), OSCMixWindow, reverb_type);
+ 	gtk_widget_class_bind_template_child(GTK_WIDGET_CLASS(class), OSCMixWindow, reverb_predelay);
+@@ -475,8 +430,6 @@ oscmix_window_class_init(OSCMixWindowClass *class)
+ 
+ 	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), format_durec_position);
+ 	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), on_reverb_type_changed);
+-	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), on_send_addr_changed);
+-	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), on_recv_addr_changed);
+ 	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), on_mainout_changed);
+ 	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), on_durec_stop);
+ 	gtk_widget_class_bind_template_callback(GTK_WIDGET_CLASS(class), on_durec_play);
+@@ -570,16 +523,14 @@ output_modify(GtkTreeModel *model, GtkTreeIter *iter, GValue *val, int col, gpoi
+ static void
+ oscmix_window_init(OSCMixWindow *self)
+ {
+-	GSettings *settings;
++	const char *socket_path, *pid_text;
++	char *end;
++	long pid = 0;
++	GtkWidget *header, *refresh;
+ 
+ 	gtk_widget_init_template(GTK_WIDGET(self));
+ 	self->osc = mixer_new();
+ 
+-	settings = g_settings_new("oscmix");
+-	g_settings_bind(settings, "send-host", self->send_host, "text", G_SETTINGS_BIND_DEFAULT);
+-	g_settings_bind(settings, "send-port", self->send_port, "value", G_SETTINGS_BIND_DEFAULT);
+-	g_settings_bind(settings, "recv-host", self->recv_host, "text", G_SETTINGS_BIND_DEFAULT);
+-	g_settings_bind(settings, "recv-port", self->recv_port, "value", G_SETTINGS_BIND_DEFAULT);
+ 
+ 	mixer_bind(self->osc, "/reverb", G_TYPE_INT, self->reverb_enabled, "active");
+ 	mixer_bind(self->osc, "/reverb/type", G_TYPE_INT, self->reverb_type, "active");
+@@ -639,8 +590,21 @@ oscmix_window_init(OSCMixWindow *self)
+ 	setup_channels(self, CHANNEL_TYPE_INPUT, self->inputs);
+ 	setup_channels(self, CHANNEL_TYPE_PLAYBACK, self->playbacks);
+ 
+-	g_signal_emit_by_name(self->send_host, "activate");
+-	g_signal_emit_by_name(self->recv_host, "activate");
++	header = gtk_window_get_titlebar(GTK_WINDOW(self));
++	g_object_bind_property(self->osc, "status", header, "subtitle", G_BINDING_SYNC_CREATE);
++	g_object_bind_property(self->osc, "writable", gtk_bin_get_child(GTK_BIN(self)), "sensitive", G_BINDING_SYNC_CREATE);
++	refresh = gtk_button_new_with_label("Refresh");
++	g_signal_connect(refresh, "clicked", G_CALLBACK(on_refresh), self);
++	gtk_header_bar_pack_end(GTK_HEADER_BAR(header), refresh);
++	gtk_widget_show(refresh);
++	socket_path = g_getenv("OSCMIX_CONTROL_SOCKET");
++	pid_text = g_getenv("OSCMIX_BACKEND_PID");
++	if (pid_text) {
++		pid = strtol(pid_text, &end, 10);
++		if (*end || pid <= 0 || pid > INT_MAX)
++			pid = 0;
++	}
++	mixer_start(self->osc, socket_path, pid);
+ }
+ 
+ static void
+diff --git a/gtk/mixer.c b/gtk/mixer.c
+index e2a9ef50521fff2edfec6d42775a4ddb9a45ebe2..d8dba8c639626497fc3fa6352aaabad2699311de 100644
+--- a/gtk/mixer.c
++++ b/gtk/mixer.c
+@@ -1,15 +1,25 @@
++#define _GNU_SOURCE
+ #include <stdbool.h>
++#include <sys/socket.h>
++#include <stdint.h>
++#include <stdlib.h>
++#include <unistd.h>
+ #include <stdio.h>
+ #include <gtk/gtk.h> // XXX
+ #include <gio/gio.h>
+ #include "mixer.h"
+ #include "../osc.h"
++#include "../control.h"
++#include "../intpack.h"
+ 
+ struct _Mixer {
+ 	GObject obj;
+ 	GSocket *socket;
+-	GSocketAddress *send_address;
+-	GSocketAddress *recv_address;
++	uint32_t sent, acknowledged, pending[32];
++	uint64_t generation, window;
++	pid_t backend_pid;
++	guint hello_timeout;
++	bool connected, busy, refreshing, fresh, window_data, receiving, refresh_queued;
+ 	GHashTable *handlers;
+ 	GSource *source;
+ } _Mixer;
+@@ -26,8 +36,8 @@ typedef struct {
+ G_DEFINE_TYPE(Mixer, mixer, G_TYPE_OBJECT)
+ 
+ enum {
+-	PROP_SEND_ADDRESS = 1,
+-	PROP_RECV_ADDRESS,
++	PROP_WRITABLE = 1,
++	PROP_STATUS,
+ };
+ 
+ static void
+@@ -102,8 +112,10 @@ handle_packet(Mixer *self, struct oscmsg *msg)
+ 				case 'f':
+ 					g_value_init(&val, G_TYPE_FLOAT);
+ 					g_value_set_float(&val, oscgetfloat(msg));
+-				default:
+ 					break;
++				default:
++					msg->err = "unsupported OSC type";
++					return;
+ 				}
+ 				g_array_append_val(vals, val);
+ 			}
+@@ -116,92 +128,279 @@ handle_packet(Mixer *self, struct oscmsg *msg)
+ 	}
+ }
+ 
+-static gboolean
+-on_osc_data(GDatagramBased *socket, GIOCondition condition, gpointer ptr)
++static bool
++writable(Mixer *self)
+ {
+-	Mixer *self;
+-	unsigned char buf[8192];
+-	struct oscmsg msg;
+-	gssize ret;
++	return self->connected && !self->busy && !self->refreshing && self->fresh;
++}
+ 
+-	self = OSCMIX_MIXER(ptr);
+-	ret = g_socket_receive(G_SOCKET(socket), (gchar *)buf, sizeof buf, NULL, NULL);
+-	msg.err = NULL;
+-	msg.buf = buf;
+-	msg.end = buf + ret;
+-	msg.type = NULL;
+-	handle_packet(self, &msg);
+-	return true;
++static void
++changed(Mixer *self)
++{
++	g_object_notify(G_OBJECT(self), "writable");
++	g_object_notify(G_OBJECT(self), "status");
+ }
+ 
+ static void
+-setup_connection(Mixer *self)
++disconnect_backend(Mixer *self)
+ {
+-	if (self->source)
++	self->connected = false;
++	self->fresh = false;
++	if (self->hello_timeout) {
++		g_source_remove(self->hello_timeout);
++		self->hello_timeout = 0;
++	}
++	if (self->source) {
++		g_source_destroy(self->source);
+ 		g_source_unref(self->source);
+-	if (self->socket)
+-		g_object_unref(self->socket);
+-	self->socket = g_socket_new(g_socket_address_get_family(self->recv_address), G_SOCKET_TYPE_DATAGRAM, G_SOCKET_PROTOCOL_UDP, NULL);
+-	g_socket_bind(self->socket, self->recv_address, false, NULL);
+-	self->source = g_socket_create_source(self->socket, G_IO_IN, NULL);
+-	g_source_set_callback(self->source, (GSourceFunc)on_osc_data, self, NULL);
+-	g_source_attach(self->source, NULL);
++		self->source = NULL;
++	}
++	if (self->socket) {
++		g_socket_close(self->socket, NULL);
++		g_clear_object(&self->socket);
++	}
++	changed(self);
++}
++
++static bool
++send_control(Mixer *self, uint32_t kind, uint32_t code, const void *data, size_t len)
++{
++	unsigned char packet[CONTROL_PACKET];
++	gssize written;
++	GError *error = NULL;
++	if (!self->socket)
++		return false;
++	/* No edit queue or reconnect replay. A stalled connection loses authority. */
++	if (len > CONTROL_PAYLOAD || self->sent == UINT32_MAX ||
++	    self->sent - self->acknowledged >= G_N_ELEMENTS(self->pending)) {
++		disconnect_backend(self);
++		return false;
++	}
++	memcpy(packet, "ODK1", 4);
++	putbe32(packet + 4, kind);
++	putbe32(packet + 8, ++self->sent);
++	putbe32(packet + 12, code);
++	putbe32(packet + 16, self->generation >> 32);
++	putbe32(packet + 20, self->generation);
++	if (len)
++		memcpy(packet + CONTROL_HEADER, data, len);
++	self->pending[self->sent % G_N_ELEMENTS(self->pending)] = kind;
++	written = g_socket_send(self->socket, (char *)packet, CONTROL_HEADER + len, NULL, &error);
++	if (written != (gssize)(CONTROL_HEADER + len)) {
++		g_warning("control connection failed: %s", error ? error->message : "short packet");
++		g_clear_error(&error);
++		disconnect_backend(self);
++		return false;
++	}
++	return true;
+ }
+ 
+ static void
+-mixer_set_property(GObject *obj, guint id, const GValue *val, GParamSpec *spec)
++request_refresh(Mixer *self)
+ {
+-	Mixer *self;
++	if (!self->refresh_queued && self->connected) {
++		self->refresh_queued = true;
++		send_control(self, CONTROL_REFRESH, 0, NULL, 0);
++	}
++}
+ 
+-	self = OSCMIX_MIXER(obj);
+-	switch (id) {
+-	case PROP_SEND_ADDRESS:
+-		if (self->send_address)
+-			g_object_unref(self->send_address);
+-		self->send_address = G_SOCKET_ADDRESS(g_value_get_object(val));
+-		break;
+-	case PROP_RECV_ADDRESS:
+-		if (self->recv_address)
+-			g_object_unref(self->recv_address);
+-		self->recv_address = G_SOCKET_ADDRESS(g_value_get_object(val));
+-		setup_connection(self);
+-		break;
+-	default:
+-		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
+-		break;
++static gboolean
++on_control_data(GSocket *socket, GIOCondition condition, gpointer ptr)
++{
++	Mixer *self = OSCMIX_MIXER(ptr);
++	unsigned char buf[CONTROL_PACKET + 1];
++	GInputVector vector = {.buffer = buf, .size = sizeof buf};
++	GError *error = NULL;
++	gssize n;
++	int flags = 0;
++	uint32_t kind, request, code;
++	uint64_t sequence;
++	struct oscmsg msg;
++	if (condition & (G_IO_HUP | G_IO_ERR))
++		goto failed;
++	n = g_socket_receive_message(socket, NULL, &vector, 1, NULL, NULL, &flags, NULL, &error);
++	if (n < 0 && g_error_matches(error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK)) {
++		g_clear_error(&error);
++		return G_SOURCE_CONTINUE;
+ 	}
++	g_clear_error(&error);
++	if (n < CONTROL_HEADER || n > CONTROL_PACKET || (flags & (MSG_TRUNC | MSG_CTRUNC)) ||
++	    memcmp(buf, "ODK1", 4))
++		goto failed;
++	kind = getbe32(buf + 4);
++	request = getbe32(buf + 8);
++	code = getbe32(buf + 12);
++	sequence = (uint64_t)getbe32(buf + 16) << 32 | getbe32(buf + 20);
++	n -= CONTROL_HEADER;
++	if (kind & CONTROL_REPLY) {
++		kind &= ~CONTROL_REPLY;
++		if (request != self->acknowledged + 1 || request > self->sent ||
++		    self->pending[request % G_N_ELEMENTS(self->pending)] != kind)
++			goto failed;
++		self->acknowledged = request;
++		if (kind == CONTROL_HELLO) {
++			if (self->connected || code != CONTROL_OK || n < 25 ||
++			    getbe32(buf + CONTROL_HEADER + 16) != (uint32_t)self->backend_pid ||
++			    getbe32(buf + CONTROL_HEADER + 20) != 1 ||
++			    buf[CONTROL_HEADER + n - 1] != 0)
++				goto failed;
++			self->connected = true;
++			self->generation = sequence;
++			g_source_remove(self->hello_timeout);
++			self->hello_timeout = 0;
++			request_refresh(self);
++		} else if (!self->connected || n ||
++		           (kind != CONTROL_REFRESH && kind != CONTROL_WRITE)) {
++			goto failed;
++		} else if (code != CONTROL_OK && code != CONTROL_BUSY && code != CONTROL_INVALID) {
++			goto failed;
++		} else if (kind == CONTROL_WRITE && code != CONTROL_OK) {
++			/* A rejected optimistic widget value must be refreshed, never replayed. */
++			self->fresh = false;
++			request_refresh(self);
++		}
++	} else if (!self->connected || request) {
++		goto failed;
++	} else if (kind == CONTROL_EVENT) {
++		bool was_busy = self->busy;
++		if (n || (code != CONTROL_OK && code != CONTROL_BUSY) || sequence < self->generation)
++			goto failed;
++		self->generation = sequence;
++		self->busy = code == CONTROL_BUSY;
++		if (self->busy)
++			self->fresh = false;
++		else if (was_busy) {
++			self->fresh = false;
++			request_refresh(self);
++		}
++	} else if (kind == CONTROL_WINDOW) {
++		if (n || (code != CONTROL_OK && code != CONTROL_BUSY))
++			goto failed;
++		if (code == CONTROL_BUSY) {
++			self->refresh_queued = false;
++			self->window = sequence;
++			self->window_data = false;
++			self->refreshing = true;
++			self->fresh = false;
++		} else if (self->window == sequence) {
++			self->refreshing = false;
++			self->fresh = self->window_data;
++		}
++	} else if (kind == CONTROL_OBSERVATION) {
++		if (code != CONTROL_DEVICE && code != CONTROL_DERIVED && code != CONTROL_METERS)
++			goto failed;
++		if (!n || n % 4)
++			goto failed;
++		msg = (struct oscmsg){.buf = buf + CONTROL_HEADER, .end = buf + CONTROL_HEADER + n};
++		self->receiving = true;
++		handle_packet(self, &msg);
++		self->receiving = false;
++		if (msg.err)
++			goto failed;
++		if (code == CONTROL_DEVICE && self->refreshing)
++			self->window_data = true;
++	} else {
++		goto failed;
++	}
++	changed(self);
++	return self->socket ? G_SOURCE_CONTINUE : G_SOURCE_REMOVE;
++failed:
++	disconnect_backend(self);
++	return G_SOURCE_REMOVE;
++}
++
++static gboolean
++hello_expired(gpointer ptr)
++{
++	Mixer *self = OSCMIX_MIXER(ptr);
++	self->hello_timeout = 0;
++	disconnect_backend(self);
++	return G_SOURCE_REMOVE;
++}
++
++void
++mixer_start(Mixer *self, const char *path, pid_t expected_pid)
++{
++	GSocketAddress *address;
++	GError *error = NULL;
++	struct ucred peer;
++	socklen_t length = sizeof peer;
++	if (!path || !*path || expected_pid <= 0) {
++		changed(self);
++		return;
++	}
++	self->socket = g_socket_new(G_SOCKET_FAMILY_UNIX, G_SOCKET_TYPE_SEQPACKET,
++	                           G_SOCKET_PROTOCOL_DEFAULT, &error);
++	if (!self->socket)
++		goto failed;
++	g_socket_set_timeout(self->socket, 2);
++	address = g_unix_socket_address_new(path);
++	bool connected = g_socket_connect(self->socket, address, NULL, &error);
++	g_object_unref(address);
++	if (!connected)
++		goto failed;
++	if (getsockopt(g_socket_get_fd(self->socket), SOL_SOCKET, SO_PEERCRED, &peer, &length) < 0 ||
++	    length != sizeof peer || peer.pid != expected_pid)
++		goto failed;
++	self->backend_pid = peer.pid;
++	/* The connect deadline must not become an idle receive timeout. */
++	g_socket_set_timeout(self->socket, 0);
++	g_socket_set_blocking(self->socket, false);
++	self->source = g_socket_create_source(self->socket, G_IO_IN | G_IO_HUP | G_IO_ERR, NULL);
++	g_source_set_callback(self->source, (GSourceFunc)on_control_data, self, NULL);
++	g_source_attach(self->source, NULL);
++	self->hello_timeout = g_timeout_add(3000, hello_expired, self);
++	unsigned char sources[4];
++	putbe32(sources, CONTROL_DEVICE | CONTROL_DERIVED | CONTROL_METERS);
++	send_control(self, CONTROL_HELLO, CONTROL_GUI, sources, sizeof sources);
++	return;
++failed:
++	g_warning("cannot connect to checked backend: %s", error ? error->message : "identity mismatch");
++	g_clear_error(&error);
++	disconnect_backend(self);
+ }
+ 
+ static void
+ mixer_get_property(GObject *obj, guint id, GValue *val, GParamSpec *spec)
+ {
+-	Mixer *self;
+-
+-	self = OSCMIX_MIXER(obj);
++	Mixer *self = OSCMIX_MIXER(obj);
+ 	switch (id) {
+-	case PROP_SEND_ADDRESS:
+-		g_value_set_object(val, G_OBJECT(self->send_address));
++	case PROP_WRITABLE:
++		g_value_set_boolean(val, writable(self));
+ 		break;
+-	case PROP_RECV_ADDRESS:
+-		g_value_set_object(val, G_OBJECT(self->recv_address));
++	case PROP_STATUS:
++		g_value_set_string(val, !self->connected ? "Disconnected; reopen mixer to connect" :
++		    self->busy ? "Desk is applying settings; controls are read-only" :
++		    self->refreshing ? "Refreshing device settings; controls are read-only" :
++		    !self->fresh ? "No device reply; refresh to try again" : "Connected");
+ 		break;
+ 	default:
+ 		G_OBJECT_WARN_INVALID_PROPERTY_ID(obj, id, spec);
+-		break;
+ 	}
+ }
+ 
++static void
++mixer_finalize(GObject *obj)
++{
++	Mixer *self = OSCMIX_MIXER(obj);
++	disconnect_backend(self);
++	g_hash_table_unref(self->handlers);
++	G_OBJECT_CLASS(mixer_parent_class)->finalize(obj);
++}
++
+ static void
+ mixer_class_init(MixerClass *class)
+ {
+-	G_OBJECT_CLASS(class)->set_property = mixer_set_property;
+-	G_OBJECT_CLASS(class)->get_property = mixer_get_property;
+-	g_object_class_install_property(G_OBJECT_CLASS(class), PROP_SEND_ADDRESS,
+-		g_param_spec_object("send-address", NULL, NULL, G_TYPE_SOCKET_ADDRESS, G_PARAM_READWRITE));
+-	g_object_class_install_property(G_OBJECT_CLASS(class), PROP_RECV_ADDRESS,
+-		g_param_spec_object("recv-address", NULL, NULL, G_TYPE_SOCKET_ADDRESS, G_PARAM_READWRITE));
++	GObjectClass *object = G_OBJECT_CLASS(class);
++	object->get_property = mixer_get_property;
++	object->finalize = mixer_finalize;
++	g_object_class_install_property(object, PROP_WRITABLE,
++		g_param_spec_boolean("writable", NULL, NULL, false, G_PARAM_READABLE));
++	g_object_class_install_property(object, PROP_STATUS,
++		g_param_spec_string("status", NULL, NULL, NULL, G_PARAM_READABLE));
+ }
+ 
++
+ static void
+ mixer_init(Mixer *self)
+ {
+@@ -219,10 +418,13 @@ mixer_send(Mixer *self, const char *addr, GValue *val)
+ {
+ 	struct oscmsg msg;
+ 	unsigned char buf[512];
+-	gssize ret;
+-	GError *err;
+-
+-	if (!self->socket)
++	if (!self->connected || self->receiving)
++		return;
++	if (!strcmp(addr, "/refresh")) {
++		request_refresh(self);
++		return;
++	}
++	if (!writable(self))
+ 		return;
+ 	msg.type = NULL;
+ 	msg.buf = buf;
+@@ -254,10 +456,11 @@ mixer_send(Mixer *self, const char *addr, GValue *val)
+ 	} else {
+ 		oscputstr(&msg, ",");
+ 	}
+-	err = NULL;
+-	ret = g_socket_send_to(self->socket, self->send_address, (char *)buf, msg.buf - buf, NULL, &err);
+-	if (ret < 0)
+-		g_warning("%s", err->message);
++	if (msg.err) {
++		g_warning("cannot encode edit: %s", msg.err);
++		return;
++	}
++	send_control(self, CONTROL_WRITE, 0, buf, msg.buf - buf);
+ }
+ 
+ static bool in_osc_to_prop;
+diff --git a/gtk/mixer.h b/gtk/mixer.h
+index 28992d81a18a3e5dee84881669d530ca80c9bdc9..9bf1ed2967abc78a966f7c16e0b11a3c9a72e6e0 100644
+--- a/gtk/mixer.h
++++ b/gtk/mixer.h
+@@ -1,3 +1,4 @@
++#include <sys/types.h>
+ #ifndef MIXER_H
+ #define MIXER_H
+ 
+@@ -8,6 +9,7 @@ G_DECLARE_FINAL_TYPE(Mixer, mixer, OSCMIX, MIXER, GObject)
+ typedef void (*MixerCallback)(GValue *arg, guint len, gpointer data);
+ 
+ Mixer *mixer_new(void);
++void mixer_start(Mixer *, const char *path, pid_t expected_pid);
+ void mixer_bind(Mixer *, char *addr, GType type, gpointer ptr, const char *prop);
+ void mixer_send(Mixer *, const char *addr, GValue *val);
+ void mixer_connect(Mixer *, char *addr, MixerCallback func, gpointer ptr);
+diff --git a/gtk/oscmix.ui b/gtk/oscmix.ui
+index 124ad612b495fb9ae15b9708d89f47c1f46b2f87..e946529d7de5d114bef3e9ed002869d2963bc02f 100644
+--- a/gtk/oscmix.ui
++++ b/gtk/oscmix.ui
+@@ -97,105 +97,6 @@
+ 								<property name="orientation">vertical</property>
+ 								<property name="spacing">10</property>
+ 								<property name="border-width">8</property>
+-								<child>
+-									<object class="GtkExpander">
+-										<property name="visible">true</property>
+-										<property name="expanded">true</property>
+-										<child type="label">
+-											<object class="GtkLabel">
+-												<property name="visible">true</property>
+-												<property name="label">OSC</property>
+-											</object>
+-										</child>
+-										<child>
+-											<object class="GtkBox">
+-												<property name="visible">true</property>
+-												<property name="orientation">vertical</property>
+-												<child>
+-													<object class="GtkLabel">
+-														<property name="visible">true</property>
+-														<property name="label">Send</property>
+-														<property name="halign">start</property>
+-													</object>
+-												</child>
+-												<child>
+-													<object class="GtkBox">
+-														<property name="visible">true</property>
+-														<style>
+-															<class name="linked"/>
+-														</style>
+-														<child>
+-															<object class="GtkEntry" id="send_host">
+-																<property name="visible">true</property>
+-																<property name="width-chars">10</property>
+-																<property name="hexpand">true</property>
+-																<property name="placeholder-text">Host</property>
+-																<signal name="activate" handler="on_send_addr_changed"/>
+-															</object>
+-														</child>
+-														<child>
+-															<object class="GtkAdjustment" id="send_port">
+-																<property name="lower">1</property>
+-																<property name="upper">65535</property>
+-																<property name="step-increment">1</property>
+-															</object>
+-															<object class="GtkSpinButton">
+-																<property name="visible">true</property>
+-																<property name="placeholder-text">Port</property>
+-																<property name="adjustment">send_port</property>
+-																<property name="width-chars">4</property>
+-																<signal name="activate" handler="on_send_addr_changed"/>
+-															</object>
+-														</child>
+-													</object>
+-												</child>
+-												<child>
+-													<object class="GtkLabel">
+-														<property name="visible">true</property>
+-														<property name="label">Receive</property>
+-														<property name="halign">start</property>
+-													</object>
+-												</child>
+-												<child>
+-													<object class="GtkBox">
+-														<property name="visible">true</property>
+-														<style>
+-															<class name="linked"/>
+-														</style>
+-														<child>
+-															<object class="GtkEntry" id="recv_host">
+-																<property name="visible">true</property>
+-																<property name="width-chars">10</property>
+-																<property name="hexpand">true</property>
+-																<property name="placeholder-text">Host</property>
+-																<signal name="activate" handler="on_recv_addr_changed"/>
+-															</object>
+-														</child>
+-														<child>
+-															<object class="GtkAdjustment" id="recv_port">
+-																<property name="lower">1</property>
+-																<property name="upper">65535</property>
+-																<property name="step-increment">1</property>
+-															</object>
+-															<object class="GtkSpinButton">
+-																<property name="visible">true</property>
+-																<property name="placeholder-text">Port</property>
+-																<property name="adjustment">recv_port</property>
+-																<property name="width-chars">4</property>
+-																<signal name="activate" handler="on_recv_addr_changed"/>
+-															</object>
+-														</child>
+-													</object>
+-												</child>
+-											</object>
+-										</child>
+-									</object>
+-								</child>
+-								<child>
+-									<object class="GtkSeparator">
+-										<property name="visible">true</property>
+-									</object>
+-								</child>
+ 								<child>
+ 									<object class="GtkExpander">
+ 										<property name="visible">true</property>
+diff --git a/main.c b/main.c
+index 708408fe1d50cb6d3cb14b23d0105e794a5d3dc4..3b4ca76457f03d4b8d7f86c68699a8fae2cf5ac3 100644
+--- a/main.c
++++ b/main.c
+@@ -10,21 +10,25 @@
+ #include <fcntl.h>
+ #include <poll.h>
+ #include <sys/time.h>
++#include <time.h>
+ #include <unistd.h>
+ #include "oscmix.h"
+ #include "arg.h"
+ #include "socket.h"
+ #include "util.h"
++#include "control.h"
+ 
+ extern int dflag;
+ static int lflag;
+ static int rfd, wfd;
+-static volatile sig_atomic_t timeout;
++static int coordinated;
++static unsigned source = CONTROL_DEVICE;
++static volatile sig_atomic_t timeout, stopping;
+ 
+ static void
+ usage(void)
+ {
+-	fprintf(stderr, "usage: oscmix [-dlm] [-r addr] [-s addr]\n");
++	fprintf(stderr, "usage: oscmix [-dlm] [-r addr] [-s addr] [-c control-socket]\n");
+ 	exit(1);
+ }
+ 
+@@ -39,6 +43,8 @@ midiread(int fd)
+ 	ret = read(fd, dataend, (data + sizeof data) - dataend);
+ 	if (ret < 0)
+ 		fatal("read %d:", fd);
++	if (ret == 0)
++		fatal("MIDI bridge disconnected");
+ 	dataend += ret;
+ 	datapos = data;
+ 	for (;;) {
+@@ -84,12 +90,32 @@ writemidi(const void *buf, size_t len)
+ {
+ 	const unsigned char *pos;
+ 	ssize_t ret;
++	struct timespec start, current;
++	struct pollfd fd = {.fd = 7, .events = POLLOUT};
++	int remaining;
+ 
++	clock_gettime(CLOCK_MONOTONIC, &start);
+ 	pos = buf;
+ 	while (len > 0) {
++		if (stopping)
++			fatal("MIDI write cancelled");
+ 		ret = write(7, pos, len);
++		if (ret < 0 && errno == EINTR)
++			continue;
++		if (ret < 0 && coordinated && (errno == EAGAIN || errno == EWOULDBLOCK)) {
++			clock_gettime(CLOCK_MONOTONIC, &current);
++			remaining = 2000 - (current.tv_sec - start.tv_sec) * 1000 -
++			    (current.tv_nsec - start.tv_nsec) / 1000000;
++			if (remaining <= 0)
++				fatal("MIDI bridge write timed out");
++			if (poll(&fd, 1, remaining) < 0 && errno != EINTR)
++				fatal("poll MIDI bridge:");
++			continue;
++		}
+ 		if (ret < 0)
+ 			fatal("write 7:");
++		if (!ret)
++			fatal("MIDI bridge write made no progress");
+ 		pos += ret;
+ 		len -= ret;
+ 	}
+@@ -99,6 +125,10 @@ void
+ writeosc(const void *buf, size_t len)
+ {
+ 	ssize_t ret;
++	if (coordinated) {
++		control_broadcast(buf, len, source);
++		return;
++	}
+ 
+ 	ret = write(wfd, buf, len);
+ 	if (ret < 0) {
+@@ -109,10 +139,31 @@ writeosc(const void *buf, size_t len)
+ 	}
+ }
+ 
++void
++oscsource(unsigned value)
++{
++	source = value;
++}
++
++int
++control_command(const unsigned char *buf, size_t len)
++{
++	int result;
++	oscflush();
++	oscsource(CONTROL_DERIVED);
++	result = handleosc(buf, len);
++	oscflush();
++	oscsource(CONTROL_DEVICE);
++	return result;
++}
++
+ static void
+ sighandler(int sig)
+ {
+-	timeout = 1;
++	if (sig == SIGALRM)
++		timeout = 1;
++	else
++		stopping = 1;
+ }
+ 
+ int
+@@ -122,10 +173,11 @@ main(int argc, char *argv[])
+ 	static char defsendaddr[] = "udp!127.0.0.1!8222";
+ 	static char mcastaddr[] = "udp!224.0.0.1!8222";
+ 	static const unsigned char refreshosc[] = "/refresh\0\0\0\0,\0\0\0";
+-	char *recvaddr, *sendaddr;
++	char *recvaddr, *sendaddr, *controlpath = NULL;
+ 	struct itimerval it;
+ 	struct sigaction sa;
+-	struct pollfd pfd[2];
++	struct pollfd pfd[1 + CONTROL_POLLFDS];
++	nfds_t nfds;
+ 	const char *port;
+ 
+ 	if (fcntl(6, F_GETFD) < 0)
+@@ -156,14 +208,15 @@ main(int argc, char *argv[])
+ 	case 'p':
+ 		port = EARGF(usage());
+ 		break;
++	case 'c':
++		controlpath = EARGF(usage());
++		coordinated = 1;
++		break;
+ 	default:
+ 		usage();
+ 		break;
+ 	} ARGEND
+ 
+-	rfd = sockopen(recvaddr, 1);
+-	wfd = sockopen(sendaddr, 0);
+-
+ 	if (!port) {
+ 		port = getenv("MIDIPORT");
+ 		if (!port)
+@@ -171,12 +224,27 @@ main(int argc, char *argv[])
+ 	}
+ 	if (init(port) != 0)
+ 		return 1;
++	if (coordinated) {
++		int flags = fcntl(7, F_GETFL);
++		if (flags < 0 || fcntl(7, F_SETFL, flags | O_NONBLOCK) < 0)
++			fatal("fcntl MIDI bridge:");
++		if (control_open(controlpath, port) < 0)
++			fatal("cannot open coordinated control socket %s:", controlpath);
++	} else {
++		rfd = sockopen(recvaddr, 1);
++		wfd = sockopen(sendaddr, 0);
++	}
+ 
+ 	memset(&sa, 0, sizeof sa);
+ 	sa.sa_handler = sighandler;
+ 	sa.sa_flags = SA_RESTART;
+ 	if (sigaction(SIGALRM, &sa, NULL) != 0)
+ 		fatal("sigaction:");
++	if (sigaction(SIGTERM, &sa, NULL) != 0 || sigaction(SIGINT, &sa, NULL) != 0)
++		fatal("sigaction:");
++	sa.sa_handler = SIG_IGN;
++	if (sigaction(SIGPIPE, &sa, NULL) != 0)
++		fatal("sigaction SIGPIPE:");
+ 	it.it_interval.tv_sec = 0;
+ 	it.it_interval.tv_usec = 100000;
+ 	it.it_value = it.it_interval;
+@@ -187,17 +255,30 @@ main(int argc, char *argv[])
+ 	pfd[0].events = POLLIN;
+ 	pfd[1].fd = rfd;
+ 	pfd[1].events = POLLIN;
+-	handleosc(refreshosc, sizeof refreshosc - 1);
+-	for (;;) {
+-		if (poll(pfd, 2, -1) < 0 && errno != EINTR)
++	if (!coordinated)
++		handleosc(refreshosc, sizeof refreshosc - 1);
++	while (!stopping) {
++		if (coordinated) {
++			control_tick();
++			control_pollfds(pfd + 1);
++		}
++		nfds = coordinated ? 1 + CONTROL_POLLFDS : 2;
++		if (poll(pfd, nfds, 100) < 0 && errno != EINTR)
+ 			fatal("poll:");
++		if (stopping)
++			break;
+ 		if (pfd[0].revents & POLLIN)
+ 			midiread(6);
+-		if (pfd[1].revents & POLLIN)
++		else if (pfd[0].revents & (POLLHUP | POLLERR | POLLNVAL))
++			fatal("MIDI bridge disconnected");
++		if (coordinated)
++			control_dispatch(pfd + 1);
++		else if (pfd[1].revents & POLLIN)
+ 			oscread(rfd);
+ 		if (timeout) {
+ 			timeout = 0;
+ 			handletimer(lflag == 0);
+ 		}
+ 	}
++	return 0;
+ }
+diff --git a/oscmix.c b/oscmix.c
+index 9d3ece6c3e238c0a66e029cbcaaef0d71c58c080..22e47ba5536d682cfef4fcc9c9bf66a199dee399 100644
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -15,6 +15,7 @@
+ #include "osc.h"
+ #include "sysex.h"
+ #include "util.h"
++#include "control.h"
+ 
+ #define LEN(a) (sizeof (a) / sizeof *(a))
+ #define PI 3.14159265358979323846
+@@ -92,7 +93,6 @@ static struct {
+ } dsp;
+ 
+ static void oscsend(const char *addr, const char *type, ...);
+-static void oscflush(void);
+ static void oscsendenum(const char *addr, int val, const char *const names[], const int *vals, size_t len);
+ 
+ static void
+@@ -1441,6 +1441,8 @@ oscsend(const char *addr, const char *type, ...)
+ 		}
+ 	}
+ 	va_end(ap);
++	if (oscmsg.err)
++		fatal("cannot encode complete OSC delivery: %s", oscmsg.err);
+ 	putbe32(len, oscmsg.buf - len - 4);
+ }
+ 
+@@ -1469,7 +1471,7 @@ oscsendenum(const char *addr, int val, const char *const names[], const int *val
+ 	}
+ }
+ 
+-static void
++void
+ oscflush(void)
+ {
+ 	if (oscmsg.buf) {
+@@ -1597,11 +1599,13 @@ handlesysex(const unsigned char *buf, size_t len, uint_least32_t *payload)
+ 		*pos++ = getle32_7bit(sysex.data + i);
+ 	switch (sysex.subid) {
+ 	case 0:
++		oscsource(CONTROL_DEVICE);
+ 		handleregs(payload, pos - payload);
+ 		fflush(stdout);
+ 		fflush(stderr);
+ 		break;
+ 	case 1: case 2: case 3: case 4: case 5:
++		oscsource(CONTROL_METERS);
+ 		handlelevels(sysex.subid, payload, pos - payload);
+ 		break;
+ 	default:
+diff --git a/oscmix.h b/oscmix.h
+index 9541f586718a4d2dde4dc7a3d8e0a5c47cfe5824..aaadaa0a54021d2dbe436818711dfc81ec99442b 100644
+--- a/oscmix.h
++++ b/oscmix.h
+@@ -6,6 +6,7 @@ int init(const char *port);
+ void handlesysex(const unsigned char *buf, size_t len, uint32_t *payload);
+ int handleosc(const unsigned char *buf, size_t len);
+ void handletimer(bool levels);
++void oscflush(void);
+ 
+ extern void writemidi(const void *buf, size_t len);
+ extern void writeosc(const void *buf, size_t len);
