@@ -257,7 +257,9 @@ if [ "$DO_BUILD" = 1 ]; then
     # kernel development headers on musl distributions.
     BUILD_TARGETS=(oscmix alsaseqio)
     [ "$GTK_FLAG" != GTK=y ] || BUILD_TARGETS+=(gtk)
-    make -C "$BUILD_DIR" "$GTK_FLAG" "${BUILD_TARGETS[@]}" >/dev/null
+    # Command-line CC propagates into GTK's recursive POSIX make too.
+    # Otherwise that make defaults to c99, absent on e.g. openSUSE Leap 16.
+    make -C "$BUILD_DIR" "CC=${CC:-cc -std=c11}" "$GTK_FLAG" "${BUILD_TARGETS[@]}" >/dev/null
 
 else
     info "skipping build (--no-build); checking for existing binaries"

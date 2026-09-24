@@ -15,6 +15,9 @@
   custom service starts and incomplete package maintenance.
 - Remove the launcher's obsolete fallback to profile-specific machine
   settings. Profiles inherit the main desk's interface and ports.
+- Pass the chosen C compiler into the upstream GTK sub-build as well as
+  the backend. This fixes builds on systems without a `c99` executable,
+  including openSUSE Leap 16, without changing the backend pin.
 - Explain partial profiles and policy-compliant verification precisely in
   the README. The desk lock coordinates cooperating desk writers.
 

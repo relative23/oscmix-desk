@@ -8,6 +8,7 @@ import io
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -72,7 +73,8 @@ def build_backend(source, pin, work, gtk):
          '--output=' + str(archive), pin])
     run(['tar', '-xf', archive, '-C', work])
     backend = work / 'oscmix'
-    command = ['make', '-C', backend, 'GTK=' + ('y' if gtk else 'n'),
+    command = ['make', '-C', backend, 'CC=' + os.environ.get('CC', 'cc -std=c11'),
+               'GTK=' + ('y' if gtk else 'n'),
                'oscmix', 'alsaseqio', *(['gtk'] if gtk else [])]
     transcript = run(command)
     return backend, transcript
@@ -226,7 +228,9 @@ def main():
         record['format'] = args.format
         record['build_flags'] = {key: os.environ.get(key) for key in
                                  ('CC', 'CFLAGS', 'CPPFLAGS', 'LDFLAGS')}
-        record['compiler'] = run(['cc', '--version']).splitlines()[0]
+        record['build_flags']['CC'] = os.environ.get('CC', 'cc -std=c11')
+        record['compiler'] = run([*shlex.split(record['build_flags']['CC']),
+                                  '--version']).splitlines()[0]
         record['os_release'] = Path('/etc/os-release').read_text()
         for gtk in ([False, True] if args.with_gtk else [False]):
             package(root, backend, work, args.output.resolve(), record, transcript, gtk)

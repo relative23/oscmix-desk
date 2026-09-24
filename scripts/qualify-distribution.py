@@ -21,7 +21,8 @@ APT = ('apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y '
 TARGETS = {
     'debian13': ('debian:13', APT, None, ''),
     'ubuntu2404': ('ubuntu:24.04', APT, 'deb',
-                   ('apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
+                   ('apt-get update && DEBIAN_FRONTEND=noninteractive '
+                    'apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
                     'libglib2.0-bin xvfb xauth dbus-x11 python3-gi '
                     'gir1.2-atspi-2.0 at-spi2-core gnome-shell plasma-workspace '
                     'xfce4-session xfwm4 xfce4-panel xfdesktop4 x11-utils mesa-utils')),
@@ -42,7 +43,7 @@ TARGETS = {
     'arch': ('archlinux:base',
              ('pacman -Syu --noconfirm python python-pip git gcc make pkgconf alsa-lib util-linux '
               'diffutils ca-certificates bash shadow procps-ng'),
-             'arch', ('pacman -S --noconfirm base-devel zstd gtk3 '
+             'arch', ('pacman -Syu --noconfirm base-devel zstd gtk3 '
                       'xorg-server-xvfb xorg-xauth dbus python-gobject at-spi2-core')),
     'alpine322': ('alpine:3.22',
                   ('apk add python3 py3-pip bash git build-base pkgconf alsa-lib-dev util-linux '
