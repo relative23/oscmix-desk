@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Spell the optional GTK staging prerequisite as an explicit conditional
+  accepted by both local and CI ShellCheck versions. Missing companion or
+  schema still refuses the operation before staging files.
 - Exclude generated Python bytecode from release qualification's supporting
   file fingerprints. Testing the package helpers under several Python
   versions must not make unchanged installation sources appear different.

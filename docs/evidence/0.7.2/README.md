@@ -166,8 +166,13 @@ source identity, checksums and the 0.7.1 upgrade/rollback in both layouts.
 
 [software-qualification.json](software-qualification.json) records all
 **27 passing gates** on final candidate `e9ad292`, with log hashes,
-durations and fingerprints of all 146 tested files and 12 installation
-support files. Documentation and evidence commits do not change those files.
+durations and fingerprints of 146 tested files and 12 installation
+support files. A later GTK staging precondition rewrite (`2763f33`) is
+recorded separately: all twelve original/patched prerequisite combinations
+produce identical exits and payload bytes/modes, and a fresh full check
+passes. Its before/after hashes are retained; all runtime modules, Python
+tests and mutation inputs are unchanged. Documentation and evidence commits
+do not change those files.
 
 - `make check`: **1,798 passed, two skipped**. Coverage is **97.6096%**
   across statements and branches, above the unchanged 97% gate.

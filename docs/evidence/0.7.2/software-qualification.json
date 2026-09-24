@@ -4,7 +4,7 @@
   "status": "qualified",
   "recorded": "2026-09-24T00:10:56.868053+00:00",
   "candidate_code_commit": "e9ad292475c55c9bb965fc933191e13b30c4dcab",
-  "source_state": "The 146 tested files and 12 supporting installation files match this commit. Later documentation/evidence edits do not change them.",
+  "source_state": "The 27 gates were run on candidate_code_commit. The current tested_files_sha256 additionally includes the equivalent GTK staging guard qualified in qualification_followups, with its original/replacement hashes and fresh checks. All other tested and supporting files, including the entire runtime, are unchanged.",
   "host": {
     "distribution": "Ubuntu 26.04.1 LTS",
     "architecture": "x86_64",
@@ -317,7 +317,7 @@
     "scripts/package_formats.py": "879ddfb5b10638feeb3037b06d650b7701212ca765c4fcb453989774a88bcb71",
     "scripts/qualify-distribution.py": "cc4246970ecea53ff26be82b6df2d514483c29d0be45692aec11b92533661f02",
     "scripts/record-dump.py": "9764ff34f088caaa8b9552ae322862269adc99097de2e81cf80e317042e40da7",
-    "scripts/stage-install.sh": "116bf5c663a42b5a673d3b0eb7ea90c55c93ee0ba9344e4032b71d43f8fe2ba0",
+    "scripts/stage-install.sh": "09e5c36ca9614ca5d5545d7435c05da5bda00e6a28cca73cbccbebb638d601e5",
     "scripts/sweep-writes.py": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd",
     "scripts/test-distribution.sh": "5aeedab3448e420d96e320fa12e1c4c7e545bd3e99c55d2f9bee3d94ea30b2c3",
     "scripts/verify-hardware.py": "9fa3001f5c4bcc35f1201118aba6776c9d06d950ba504065377d5eb03ae1f3fc",
@@ -475,5 +475,110 @@
     "observed_present": [],
     "ok": true,
     "candidate": "e9ad292475c55c9bb965fc933191e13b30c4dcab"
-  }
+  },
+  "qualification_followups": [
+    {
+      "commit": "2763f3398e3acf71272a843fd23fdaf3bb2506ce",
+      "check": {
+        "exit": 0,
+        "seconds": 168.48,
+        "log_sha256": "fca5797cc365537d9c4e41c686a7a83b6944dc90a82bf020155cdd86c401dd9f",
+        "pytest_summaries": [
+          "1798 passed, 2 skipped in 167.19s (0:02:47)"
+        ]
+      },
+      "staging_equivalence": [
+        {
+          "with_gtk": false,
+          "companion": "absent",
+          "schema": false,
+          "exit": 0,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": false,
+          "companion": "absent",
+          "schema": true,
+          "exit": 0,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": false,
+          "companion": "nonexecutable",
+          "schema": false,
+          "exit": 0,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": false,
+          "companion": "nonexecutable",
+          "schema": true,
+          "exit": 0,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": false,
+          "companion": "executable",
+          "schema": false,
+          "exit": 0,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": false,
+          "companion": "executable",
+          "schema": true,
+          "exit": 0,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": true,
+          "companion": "absent",
+          "schema": false,
+          "exit": 2,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": true,
+          "companion": "absent",
+          "schema": true,
+          "exit": 2,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": true,
+          "companion": "nonexecutable",
+          "schema": false,
+          "exit": 2,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": true,
+          "companion": "nonexecutable",
+          "schema": true,
+          "exit": 2,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": true,
+          "companion": "executable",
+          "schema": false,
+          "exit": 2,
+          "same_result_and_payload": true
+        },
+        {
+          "with_gtk": true,
+          "companion": "executable",
+          "schema": true,
+          "exit": 0,
+          "same_result_and_payload": true
+        }
+      ],
+      "changed_file": "scripts/stage-install.sh",
+      "before_sha256": "116bf5c663a42b5a673d3b0eb7ea90c55c93ee0ba9344e4032b71d43f8fe2ba0",
+      "after_sha256": "09e5c36ca9614ca5d5545d7435c05da5bda00e6a28cca73cbccbebb638d601e5",
+      "reason": "The GitHub runner ShellCheck reported SC2015 for the GTK companion/schema precondition; an explicit if-block has identical success and refusal behavior.",
+      "scope": "Only scripts/stage-install.sh differs from the original 146 tested files. All runtime modules, Python tests, the mutation inputs and 12 supporting installation files are unchanged. The original 27 gate results retain candidate_code_commit; this fresh full check and twelve original/patched staging comparisons qualify the shell delta.",
+      "initial_ci": "https://github.com/relative23/oscmix-desk/actions/runs/35939207647"
+    }
+  ]
 }

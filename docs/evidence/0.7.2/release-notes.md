@@ -53,10 +53,14 @@ remains deferred.
 
 ## Qualification
 
-The final runtime, tests, tools and installation files are from
-**`e9ad292475c55c9bb965fc933191e13b30c4dcab`**. Attached qualification fingerprints cover 146 tested
-files and 12 installation support files; later documentation and evidence
-commits preserve those bytes.
+The final runtime and Python tests are from
+**`e9ad292475c55c9bb965fc933191e13b30c4dcab`**. The attached record fingerprints 146 tested
+files and 12 installation support files. A later shell-only clarification
+(`2763f33`) makes the GTK staging precondition explicit for both ShellCheck
+versions. All twelve prerequisite combinations preserve the original
+exit status and payload bytes/modes; a fresh full check also passes. The
+record retains both script hashes and the original gate revisions. Runtime
+and mutation inputs are unchanged.
 
 - **1,798 tests pass**, with two empty-parameter skips. Python 3.9–3.14,
   five full repetitions, the 200-cycle soak and fifteen fault repetitions
