@@ -45,9 +45,10 @@ this automatically by opening `/dev/snd/seq`).
 ## 3. Is the backend running?
 
 ```sh
+oscmix-session --status
 systemctl --user status oscmix.service
 journalctl --user -u oscmix.service -e --no-pager
-oscmix-session --dry-run        # config parse + device discovery only
+oscmix-session --dry-run        # inspect config/device and preview planned writes
 ```
 
 Common findings in the journal:

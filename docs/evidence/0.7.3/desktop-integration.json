@@ -1,0 +1,444 @@
+{
+  "schema": 1,
+  "version": "0.7.3",
+  "ok": true,
+  "tested_on": "2026-09-24",
+  "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "method": "Actual packaged GTK, private D-Bus and Xvfb; nested desktop compositors use software rendering. AT-SPI checks fresh received labels before and after closing/reopening. Shutdown uses SIGTERM.",
+  "sessions": [
+    {
+      "target": "ubuntu2404",
+      "source_commit": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+      "result": {
+        "ok": true,
+        "backend": "isolated UDP fake",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "gui_first": "read-back busy; reconcile wrote nothing; profile applied unverified",
+        "recovery": "REMEMBER fader preserved",
+        "desk_first": "launcher refused busy receiver",
+        "gui_reopened": true,
+        "accessible_received_label": "96000 Hz",
+        "reopened_received_label": "88200 Hz",
+        "shutdown": "SIGTERM",
+        "messages": [
+          [
+            "/refresh",
+            "",
+            []
+          ],
+          [
+            "/output/5/volume",
+            "f",
+            [
+              -6.0
+            ]
+          ],
+          [
+            "/output/7/volume",
+            "f",
+            [
+              -9.0
+            ]
+          ],
+          [
+            "/refresh",
+            "",
+            []
+          ],
+          [
+            "/output/7/volume",
+            "f",
+            [
+              -9.0
+            ]
+          ],
+          [
+            "/refresh",
+            "",
+            []
+          ]
+        ],
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "log_sha256": "fd471c4b20dd8c4b759b4bc2884b681d437d452d8cdf3a346c535908847e5b5e"
+    },
+    {
+      "target": "ubuntu2404",
+      "source_commit": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+      "result": {
+        "desktop": "GNOME",
+        "version": "GNOME Shell 46.0",
+        "command": [
+          "gnome-shell",
+          "--wayland",
+          "--wayland-display=wayland-test",
+          "--no-x11",
+          "--nested"
+        ],
+        "ok": true,
+        "rendering": "software, nested in Xvfb; GTK uses wayland",
+        "gtk": {
+          "ok": true,
+          "backend": "isolated UDP fake",
+          "gtk": "/usr/bin/oscmix-gtk",
+          "gui_first": "read-back busy; reconcile wrote nothing; profile applied unverified",
+          "recovery": "REMEMBER fader preserved",
+          "desk_first": "launcher refused busy receiver",
+          "gui_reopened": true,
+          "accessible_received_label": "96000 Hz",
+          "reopened_received_label": "88200 Hz",
+          "shutdown": "SIGTERM",
+          "messages": [
+            [
+              "/refresh",
+              "",
+              []
+            ],
+            [
+              "/output/5/volume",
+              "f",
+              [
+                -6.0
+              ]
+            ],
+            [
+              "/output/7/volume",
+              "f",
+              [
+                -9.0
+              ]
+            ],
+            [
+              "/refresh",
+              "",
+              []
+            ],
+            [
+              "/output/7/volume",
+              "f",
+              [
+                -9.0
+              ]
+            ],
+            [
+              "/refresh",
+              "",
+              []
+            ]
+          ],
+          "display_backend": "wayland",
+          "desktop": "GNOME"
+        }
+      },
+      "log_sha256": "fd471c4b20dd8c4b759b4bc2884b681d437d452d8cdf3a346c535908847e5b5e"
+    },
+    {
+      "target": "ubuntu2404",
+      "source_commit": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+      "result": {
+        "desktop": "KDE",
+        "version": "kwin 5.27.11",
+        "command": [
+          "kwin_wayland",
+          "--x11-display=:99",
+          "--socket=wayland-test",
+          "--no-lockscreen",
+          "--no-global-shortcuts"
+        ],
+        "ok": true,
+        "rendering": "software, nested in Xvfb; GTK uses wayland",
+        "gtk": {
+          "ok": true,
+          "backend": "isolated UDP fake",
+          "gtk": "/usr/bin/oscmix-gtk",
+          "gui_first": "read-back busy; reconcile wrote nothing; profile applied unverified",
+          "recovery": "REMEMBER fader preserved",
+          "desk_first": "launcher refused busy receiver",
+          "gui_reopened": true,
+          "accessible_received_label": "96000 Hz",
+          "reopened_received_label": "88200 Hz",
+          "shutdown": "SIGTERM",
+          "messages": [
+            [
+              "/refresh",
+              "",
+              []
+            ],
+            [
+              "/output/5/volume",
+              "f",
+              [
+                -6.0
+              ]
+            ],
+            [
+              "/output/7/volume",
+              "f",
+              [
+                -9.0
+              ]
+            ],
+            [
+              "/refresh",
+              "",
+              []
+            ],
+            [
+              "/output/7/volume",
+              "f",
+              [
+                -9.0
+              ]
+            ],
+            [
+              "/refresh",
+              "",
+              []
+            ]
+          ],
+          "display_backend": "wayland",
+          "desktop": "KDE"
+        }
+      },
+      "log_sha256": "fd471c4b20dd8c4b759b4bc2884b681d437d452d8cdf3a346c535908847e5b5e"
+    },
+    {
+      "target": "ubuntu2404",
+      "source_commit": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+      "result": {
+        "desktop": "XFCE",
+        "version": "xfce4-session 4.18.3 (Xfce 4.18)\n\nCopyright (c) 2003-2023\n\tThe Xfce development team. All rights reserved.\n\nPlease report bugs to <https://gitlab.xfce.org/xfce/xfce4-session>.",
+        "command": [
+          "xfce4-session"
+        ],
+        "ok": true,
+        "rendering": "software, nested in Xvfb; GTK uses x11",
+        "gtk": {
+          "ok": true,
+          "backend": "isolated UDP fake",
+          "gtk": "/usr/bin/oscmix-gtk",
+          "gui_first": "read-back busy; reconcile wrote nothing; profile applied unverified",
+          "recovery": "REMEMBER fader preserved",
+          "desk_first": "launcher refused busy receiver",
+          "gui_reopened": true,
+          "accessible_received_label": "96000 Hz",
+          "reopened_received_label": "88200 Hz",
+          "shutdown": "SIGTERM",
+          "messages": [
+            [
+              "/refresh",
+              "",
+              []
+            ],
+            [
+              "/output/5/volume",
+              "f",
+              [
+                -6.0
+              ]
+            ],
+            [
+              "/output/7/volume",
+              "f",
+              [
+                -9.0
+              ]
+            ],
+            [
+              "/refresh",
+              "",
+              []
+            ],
+            [
+              "/output/7/volume",
+              "f",
+              [
+                -9.0
+              ]
+            ],
+            [
+              "/refresh",
+              "",
+              []
+            ]
+          ],
+          "display_backend": "x11",
+          "desktop": "XFCE"
+        }
+      },
+      "log_sha256": "fd471c4b20dd8c4b759b4bc2884b681d437d452d8cdf3a346c535908847e5b5e"
+    },
+    {
+      "target": "fedora44",
+      "source_commit": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+      "result": {
+        "ok": true,
+        "backend": "isolated UDP fake",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "gui_first": "read-back busy; reconcile wrote nothing; profile applied unverified",
+        "recovery": "REMEMBER fader preserved",
+        "desk_first": "launcher refused busy receiver",
+        "gui_reopened": true,
+        "accessible_received_label": "96000 Hz",
+        "reopened_received_label": "88200 Hz",
+        "shutdown": "SIGTERM",
+        "messages": [
+          [
+            "/refresh",
+            "",
+            []
+          ],
+          [
+            "/output/5/volume",
+            "f",
+            [
+              -6.0
+            ]
+          ],
+          [
+            "/output/7/volume",
+            "f",
+            [
+              -9.0
+            ]
+          ],
+          [
+            "/refresh",
+            "",
+            []
+          ],
+          [
+            "/output/7/volume",
+            "f",
+            [
+              -9.0
+            ]
+          ],
+          [
+            "/refresh",
+            "",
+            []
+          ]
+        ],
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "log_sha256": "010d904da96ef722dc1306b86bf78a51d0f3b460e9051f171c2b6e1d0ae5c711"
+    },
+    {
+      "target": "opensuse16",
+      "source_commit": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+      "result": {
+        "ok": true,
+        "backend": "isolated UDP fake",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "gui_first": "read-back busy; reconcile wrote nothing; profile applied unverified",
+        "recovery": "REMEMBER fader preserved",
+        "desk_first": "launcher refused busy receiver",
+        "gui_reopened": true,
+        "accessible_received_label": "96000 Hz",
+        "reopened_received_label": "88200 Hz",
+        "shutdown": "SIGTERM",
+        "messages": [
+          [
+            "/refresh",
+            "",
+            []
+          ],
+          [
+            "/output/5/volume",
+            "f",
+            [
+              -6.0
+            ]
+          ],
+          [
+            "/output/7/volume",
+            "f",
+            [
+              -9.0
+            ]
+          ],
+          [
+            "/refresh",
+            "",
+            []
+          ],
+          [
+            "/output/7/volume",
+            "f",
+            [
+              -9.0
+            ]
+          ],
+          [
+            "/refresh",
+            "",
+            []
+          ]
+        ],
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "log_sha256": "81cbaa2ee65a2e527d9bc878c4e49990cf1bbcd78b2b087dcbbb8dbb6d61fe24"
+    },
+    {
+      "target": "arch",
+      "source_commit": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+      "result": {
+        "ok": true,
+        "backend": "isolated UDP fake",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "gui_first": "read-back busy; reconcile wrote nothing; profile applied unverified",
+        "recovery": "REMEMBER fader preserved",
+        "desk_first": "launcher refused busy receiver",
+        "gui_reopened": true,
+        "accessible_received_label": "96000 Hz",
+        "reopened_received_label": "88200 Hz",
+        "shutdown": "SIGTERM",
+        "messages": [
+          [
+            "/refresh",
+            "",
+            []
+          ],
+          [
+            "/output/5/volume",
+            "f",
+            [
+              -6.0
+            ]
+          ],
+          [
+            "/output/7/volume",
+            "f",
+            [
+              -9.0
+            ]
+          ],
+          [
+            "/refresh",
+            "",
+            []
+          ],
+          [
+            "/output/7/volume",
+            "f",
+            [
+              -9.0
+            ]
+          ],
+          [
+            "/refresh",
+            "",
+            []
+          ]
+        ],
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "log_sha256": "2c89693bdbd45abfcd037bd63f77347952b3ab5a5f3f517d03cf7fe5613d1720"
+    }
+  ]
+}

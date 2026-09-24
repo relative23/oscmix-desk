@@ -1,6 +1,6 @@
 # Release artifacts
 
-The 0.7.2 release workflow builds `oscmix-desk-0.7.2.tar.gz` from its Git
+The 0.7.3 release workflow builds `oscmix-desk-0.7.3.tar.gz` from its Git
 commit. It contains `install.sh`, the Python runtime, system integration,
 tests and documentation. It also produces `release-manifest.json` with
 the desk commit, pinned oscmix SHA and archive digest, plus `SHA256SUMS`.
@@ -29,9 +29,10 @@ browser login or additional personal token is needed. A release published
 with that token does not trigger another release-event workflow; any
 additional package workflow must also handle the tag explicitly.
 
-The 0.7.2 release workflow calls the distribution
+The 0.7.3 release workflow calls the distribution
 workflow directly and waits for all seven source targets and four native
-targets. It collects their packages, recipes, logs and checksums into the
+targets. Each native target supplies both core and optional GTK packages.
+It collects their packages, build metadata, logs and checksums into the
 same asset set before publishing. There is no dependency on a second
 release event. Pushes to the installation branch exercise this complete
 build/collection path with development packages and retain CI artifacts;
@@ -48,17 +49,17 @@ versions may not provide it). Verify the expected repository, workflow
 and release tag, then the checksums:
 
 ```sh
-mkdir oscmix-desk-0.7.2-release
-cd oscmix-desk-0.7.2-release
-gh release download v0.7.2 --repo relative23/oscmix-desk
+mkdir oscmix-desk-0.7.3-release
+cd oscmix-desk-0.7.3-release
+gh release download v0.7.3 --repo relative23/oscmix-desk
 gh attestation verify SHA256SUMS \
   --repo relative23/oscmix-desk \
   --signer-workflow relative23/oscmix-desk/.github/workflows/release.yml \
-  --source-ref refs/tags/v0.7.2 \
+  --source-ref refs/tags/v0.7.3 \
   --deny-self-hosted-runners --bundle attestation.jsonl
 sha256sum --check SHA256SUMS
-tar -xzf oscmix-desk-0.7.2.tar.gz
-cd oscmix-desk-0.7.2
+tar -xzf oscmix-desk-0.7.3.tar.gz
+cd oscmix-desk-0.7.3
 ./install.sh
 ```
 
@@ -79,8 +80,8 @@ attestation**. The qualification record must distinguish these states.
 From a checkout containing the selected commit:
 
 ```sh
-python3 scripts/build-release.py --ref v0.7.2 --output build/first
-python3 scripts/build-release.py --ref v0.7.2 --output build/second
+python3 scripts/build-release.py --ref v0.7.3 --output build/first
+python3 scripts/build-release.py --ref v0.7.3 --output build/second
 diff -r build/first build/second
 ```
 

@@ -1,0 +1,327 @@
+{
+  "measured": "2026-09-24T12:16:17",
+  "device": "Fireface UCX II",
+  "sinks": {
+    "1/2": "oscmix.krk-monitors",
+    "5/6": "oscmix.main",
+    "7/8": "oscmix.phones"
+  },
+  "sink_channels": {
+    "oscmix.krk-monitors": [
+      "FL",
+      "FR"
+    ],
+    "oscmix.main": [
+      "FL",
+      "FR"
+    ],
+    "oscmix.phones": [
+      "FL",
+      "FR"
+    ]
+  },
+  "serial": "24216011",
+  "oscmix_revision": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "firmware": {
+    "usb_revision": "3.01",
+    "dsp_version": 36
+  },
+  "min_response_db": 12.0,
+  "min_above_background_db": 12.0,
+  "tone": {
+    "hz": 1000.0,
+    "seconds": 5.0,
+    "amplitude": 0.01
+  },
+  "routes": [
+    {
+      "route": "krk-monitors",
+      "outputs": [
+        1,
+        2
+      ],
+      "output_state": {
+        "output_1": {
+          "volume": 0.0,
+          "mute": 0
+        },
+        "output_2": {
+          "volume": 0.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_1": {
+          "left_tone": -66.08775329589844,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_2": {
+          "left_tone": -144.0,
+          "right_tone": -66.08775329589844,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 77.9,
+      "response_right_db": 77.9,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        1,
+        2
+      ],
+      "sink": "oscmix.krk-monitors",
+      "stereo": true
+    },
+    {
+      "route": "main",
+      "outputs": [
+        5,
+        6
+      ],
+      "output_state": {
+        "output_5": {
+          "volume": -42.0,
+          "mute": 0
+        },
+        "output_6": {
+          "volume": -42.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_5": {
+          "left_tone": -106.21812438964844,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_6": {
+          "left_tone": -144.0,
+          "right_tone": -106.21812438964844,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 37.8,
+      "response_right_db": 37.8,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        5,
+        6
+      ],
+      "sink": "oscmix.main",
+      "stereo": true
+    },
+    {
+      "route": "main-to-krk",
+      "outputs": [
+        1,
+        2
+      ],
+      "output_state": {
+        "output_1": {
+          "volume": 0.0,
+          "mute": 0
+        },
+        "output_2": {
+          "volume": 0.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_1": {
+          "left_tone": -64.10708618164062,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_2": {
+          "left_tone": -144.0,
+          "right_tone": -64.10708618164062,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 79.9,
+      "response_right_db": 79.9,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        5,
+        6
+      ],
+      "sink": "oscmix.main",
+      "stereo": true
+    },
+    {
+      "route": "main-to-phones",
+      "outputs": [
+        7,
+        8
+      ],
+      "output_state": {
+        "output_7": {
+          "volume": 0.0,
+          "mute": 0
+        },
+        "output_8": {
+          "volume": 0.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_7": {
+          "left_tone": -64.10708618164062,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_8": {
+          "left_tone": -144.0,
+          "right_tone": -64.10708618164062,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 79.9,
+      "response_right_db": 79.9,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        5,
+        6
+      ],
+      "sink": "oscmix.main",
+      "stereo": true
+    },
+    {
+      "route": "phones",
+      "outputs": [
+        7,
+        8
+      ],
+      "output_state": {
+        "output_7": {
+          "volume": 0.0,
+          "mute": 0
+        },
+        "output_8": {
+          "volume": 0.0,
+          "mute": 0
+        }
+      },
+      "peaks_db": {
+        "output_7": {
+          "left_tone": -64.10708618164062,
+          "right_tone": -144.0,
+          "silence": -144.0
+        },
+        "output_8": {
+          "left_tone": -144.0,
+          "right_tone": -64.10708618164062,
+          "silence": -144.0
+        }
+      },
+      "response_left_db": 79.9,
+      "response_right_db": 79.9,
+      "problems": [],
+      "ok": true,
+      "playback": [
+        7,
+        8
+      ],
+      "sink": "oscmix.phones",
+      "stereo": true
+    }
+  ],
+  "unmeasured": [],
+  "ok": true,
+  "complete": true,
+  "desk_source": {
+    "version": "0.7.3",
+    "commit": "af89b0352954515ac29cdbce33dbcf66adcdc160",
+    "dirty": false,
+    "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+    "runtime_sha256": {
+      "__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+      "backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+      "cli.py": "a854353ea45a081f892f29cc93a17048093a48c18d2f10b21a2df827af8c212b",
+      "config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+      "constants.py": "9b8b34f94eb35b42241480b1aba6dbf4e3b7421bc8ded15231717541789e8697",
+      "desktop.py": "30c7c49fbb838a166c38aec34da63385b7718b2f90f4e1d3ed484eace81e7b40",
+      "devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+      "diagnostics.py": "f4262d6cadcd058c4647feb7057e54269d854fa192b1439de8d28e43a3b74b68",
+      "discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+      "dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+      "errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+      "launcher.py": "57ef64b09ab330c4bc27a5e21a750fa604c9762f6b9872cef2cb1d74cad8465a",
+      "locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+      "log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+      "marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+      "model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+      "notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+      "notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+      "numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+      "osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+      "outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+      "paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+      "pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+      "preview.py": "14a1d5b84403847384b8321ee8fbeef0cd13afefe48b917b01e40163bfa549a2",
+      "process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+      "profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+      "reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+      "reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+      "registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+      "reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+      "routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+      "sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+      "session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+      "status.py": "7d47e3f446659246fc5c295e0dcabfeccd35523429b0bd862d4056de196dc0d5",
+      "streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+      "verify.py": "2580bb211e84f2e1e264b69d096d8e3108a216a3450988e319d97d713f779fef"
+    },
+    "tool_sha256": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd"
+  },
+  "backend": {
+    "pid": 2391380,
+    "sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+    "matches_local_build": true
+  },
+  "adapter_sha256": "9cd3d992f80551bdcd0a509e57fc56ca5e2dd9e8705cb5171c9c1a0446119bba",
+  "adapter": "amplitude 0.01; pw-play checked and bounded to tone length + 10 seconds",
+  "physical_setup": "KRK powered off; headphones unplugged; BETA 58A input 1; 48V off",
+  "playback_commands": [
+    [
+      "pw-play",
+      "--target",
+      "oscmix.krk-monitors",
+      "/tmp/tmpgqil00_i/l.wav"
+    ],
+    [
+      "pw-play",
+      "--target",
+      "oscmix.krk-monitors",
+      "/tmp/tmpgqil00_i/r.wav"
+    ],
+    [
+      "pw-play",
+      "--target",
+      "oscmix.main",
+      "/tmp/tmpgqil00_i/l.wav"
+    ],
+    [
+      "pw-play",
+      "--target",
+      "oscmix.main",
+      "/tmp/tmpgqil00_i/r.wav"
+    ],
+    [
+      "pw-play",
+      "--target",
+      "oscmix.phones",
+      "/tmp/tmpgqil00_i/l.wav"
+    ],
+    [
+      "pw-play",
+      "--target",
+      "oscmix.phones",
+      "/tmp/tmpgqil00_i/r.wav"
+    ]
+  ]
+}

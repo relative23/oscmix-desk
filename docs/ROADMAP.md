@@ -1,10 +1,12 @@
 # Roadmap
 
-Status after **0.7.2**, updated 2026-09-24. Installation, native packages,
-active playback-mode checks and higher-rate routing qualification are
-[released](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.2).
-The [publication record](evidence/0.7.2/release-verification.json) verifies
-the tag, CI results, downloaded assets and authenticated checksums.
+Status for **0.7.3**, updated 2026-09-24. Implementation and local release
+qualification are complete: corrected read-back classification, clearer
+results, runtime diagnosis, profile previews and optional upstream GTK
+packages. The [qualification records](evidence/0.7.3/) identify the source,
+software gates, desktop environments and measured UCX II state.
+Publication uses the [versioned release](https://github.com/relative23/oscmix-desk/releases/tag/v0.7.3)
+and its authenticated source/package artifacts.
 The separate desk desktop application is deferred by the maintainer.
 The product target is a
 **Fireface UCX II across Linux distributions**, with and without a desktop.
@@ -19,7 +21,7 @@ an optional desktop companion.
 
 ## 0.7.3: clearer results and existing-mixer integration
 
-**Implementation in progress; release qualification is pending.** Keep
+**Implemented and qualified.** Keep
 the UCX II target, config semantics and measured backend pin. This cycle
 improves daily use of the existing upstream GTK mixer and the CLI.
 The separate desk GUI remains deferred.
@@ -29,45 +31,43 @@ Detailed scope, dependencies and acceptance:
 
 - [x] Correct the README's profile/snapshot analogy, policy-aware
   verification explanation and scope of the cooperating-writer lock.
-  These are working-tree documentation corrections, not a 0.7.3 release.
-- [ ] **R0: invalidate a contradicted confirmation.** A later differing
+  The README also names the status command and profile-transition preview.
+- [x] **R0: invalidate a contradicted confirmation.** A later differing
   report must replace an earlier matching classification while the
   observation window is open. Reproduced through the public verifier with
   a fake backend; fix this correctness defect before convenience work.
-- [ ] **R1: clear verification results.** Distinguish matching values,
+- [x] **R1: clear verification results.** Distinguish matching values,
   deliberately retained REMEMBER values, unobserved settings and
   backend-unreportable settings in the summary. Keep strict profile
   outcomes, policy semantics and existing exit codes.
-- [ ] **R2: reliable upstream-mixer launch.** Check the installed GTK
+- [x] **R2: reliable upstream-mixer launch.** Check the installed GTK
   executable and schema before starting a backend; handle manual sessions,
   exact device/backend identity and differing desk/GTK connection settings.
   Remove obsolete profile-port assumptions from the launcher.
-- [ ] **R3: read-only runtime diagnosis.** Add a common source/native
+- [x] **R3: read-only runtime diagnosis.** Add a common source/native
   status command for installation, effective config/profile, device,
   backend, playback mode and read-back availability, with actionable
   causes and structured output. Inspection must not start or write a desk.
-- [ ] **R4: optional native GTK companion.** Package the existing upstream
+- [x] **R4: optional native GTK companion.** Package the existing upstream
   mixer for the qualified native targets; verify schema/desktop resources,
   package ownership, upgrades and actual desktop startup. Preserve the
   headless installation and explicit activation contract.
-- [ ] **R5: a tested GUI/desk workflow.** Cover both launch orders, occupied
+- [x] **R5: a tested GUI/desk workflow.** Cover both launch orders, occupied
   receive ports and recovery after closing the GUI. Investigate a shared
   read-back design separately from writer coordination before promising
   simultaneous operation.
-- [ ] **R6: profile-transition preview.** Extend the existing dry-run to
+- [x] **R6: profile-transition preview.** Extend the existing dry-run to
   identify previously declared routes that the target profile neither
   overwrites nor explicitly mutes. Explain partial-state and partner-link
   effects without claiming to know the complete playback matrix.
-- [ ] **R7: release qualification.** Add regressions for the changed
+- [x] **R7: release qualification.** Add regressions for the changed
   behavior, retain the established software/release gates, qualify native
   GTK packages and verify the actual 0.7.2 upgrade/rollback path.
 
-R0 is the first release blocker. R1/R2 inform the status output and GUI
-recovery messages; R6 reuses the existing dry-run and pure desired-state
-logic. R4 depends on the launcher and the existing shared package layout.
-R5 produces a reproducible integration result and a design decision; a
-new reply broker or backend subscription protocol is not assumed to fit
-this patch.
+R0–R7 are complete. The release evidence includes all software gates,
+installation/desktop checks and the physical UCX II off/on lifecycle. R5 records
+the measured workflow and ADR 0028; a shared reply distributor or upstream
+subscription protocol remains a separate implementation.
 
 ## Release readiness for 0.7.0
 

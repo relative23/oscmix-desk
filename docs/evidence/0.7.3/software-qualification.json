@@ -1,0 +1,1352 @@
+{
+  "schema": 2,
+  "candidate": "0.7.3",
+  "status": "qualified",
+  "recorded": "2026-09-24T20:58:03.823801+00:00",
+  "candidate_code_commit": "384352acd984936761206e6b5712d0af173d62e2",
+  "source_state": "158 tested files and 13 supporting installation files match this commit. Later documentation/evidence edits do not change them.",
+  "host": {
+    "distribution": "Ubuntu 26.04.1 LTS",
+    "architecture": "x86_64",
+    "kernel": "7.0.0-31-generic",
+    "python": "3.14.4"
+  },
+  "tooling": {
+    "pytest": "9.1.1",
+    "coverage": "7.15.4",
+    "ruff": "0.16.3",
+    "mypy": "2.3.1",
+    "vulture": "2.16",
+    "hypothesis": "6.165.9",
+    "mutmut": "3.7.0"
+  },
+  "backend_commit": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "scheduling": "Fresh mutation and its named follow-up overlap sequential ordinary gates. Separate short temporary paths isolate their fixtures.",
+  "gates": [
+    {
+      "gate": "check",
+      "exit": 0,
+      "seconds": 160.79,
+      "log_sha256": "fa10a287ad581a0318abc21e8866f6ddc7f2f224d983b0d3369aff3b62c7826d",
+      "pytest_summaries": [
+        "1933 passed, 2 skipped in 159.14s (0:02:39)"
+      ]
+    },
+    {
+      "gate": "coverage",
+      "exit": 0,
+      "seconds": 161.51,
+      "log_sha256": "a6a8d036dec9de979ae0e7f50872a904c6eef1a9067f4c9d7f27201626ed8aee",
+      "pytest_summaries": [
+        "1933 passed, 2 skipped in 161.00s (0:02:41)"
+      ]
+    },
+    {
+      "gate": "flake",
+      "exit": 0,
+      "seconds": 793.69,
+      "log_sha256": "f80f054804d91ed98f80639639f794121cdca0d084c0a75102ffea56709f6910",
+      "pytest_summaries": [
+        "1933 passed, 2 skipped in 165.15s (0:02:45)",
+        "1933 passed, 2 skipped in 161.45s (0:02:41)",
+        "1933 passed, 2 skipped in 156.16s (0:02:36)",
+        "1933 passed, 2 skipped in 155.22s (0:02:35)",
+        "1933 passed, 2 skipped in 154.74s (0:02:34)"
+      ]
+    },
+    {
+      "gate": "python-3.9",
+      "exit": 0,
+      "seconds": 157.67,
+      "log_sha256": "7f66c5fc5d63f7a0b52e740a438c6158c60f84c7b95734fddce521c7c37ca3af",
+      "pytest_summaries": [
+        "1897 passed, 38 skipped in 157.21s (0:02:37)"
+      ]
+    },
+    {
+      "gate": "python-3.10",
+      "exit": 0,
+      "seconds": 157.96,
+      "log_sha256": "9619a5382d764757b963393a0b3554b477ef6d63087ff84932c703d0ea72ddff",
+      "pytest_summaries": [
+        "1933 passed, 2 skipped in 157.83s (0:02:37)"
+      ]
+    },
+    {
+      "gate": "python-3.11",
+      "exit": 0,
+      "seconds": 156.2,
+      "log_sha256": "d9029a0f276f896072120bf294e0911cdb437e9b106ce65b35b077edfa114f17",
+      "pytest_summaries": [
+        "1933 passed, 2 skipped in 156.06s (0:02:36)"
+      ]
+    },
+    {
+      "gate": "python-3.12",
+      "exit": 0,
+      "seconds": 156.79,
+      "log_sha256": "10f4b0ca0c8a4bc73b57941fd2e5653be3dfb664b7a493dda01c7f8d71679de8",
+      "pytest_summaries": [
+        "1933 passed, 2 skipped in 156.65s (0:02:36)"
+      ]
+    },
+    {
+      "gate": "python-3.13",
+      "exit": 0,
+      "seconds": 155.15,
+      "log_sha256": "ac9f2fc4780b52ca1981130e5ff1ea601d4105c58658ae5e36f6ab883b7dfed6",
+      "pytest_summaries": [
+        "1933 passed, 2 skipped in 155.02s (0:02:35)"
+      ]
+    },
+    {
+      "gate": "python-3.14",
+      "exit": 0,
+      "seconds": 155.16,
+      "log_sha256": "455bd7c8573a212d1de810b48a9439b9f6b06a700a31c8c8fe794b39c6f3b724",
+      "pytest_summaries": [
+        "1933 passed, 2 skipped in 155.00s (0:02:34)"
+      ]
+    },
+    {
+      "gate": "soak-200",
+      "exit": 0,
+      "seconds": 263.63,
+      "log_sha256": "daa1b70c22cfc9b44199c8bd1c8a5b41f353f55b227c11bca09af7ccd5b975af",
+      "pytest_summaries": [
+        "3 passed in 263.52s (0:04:23)"
+      ]
+    },
+    {
+      "gate": "fault-01",
+      "exit": 0,
+      "seconds": 32.97,
+      "log_sha256": "5ed08e8f98b2a07523aa9d4fd7f8963b747c23d63d2c3ad24e24dee815a5d3da",
+      "pytest_summaries": [
+        "70 passed in 32.85s"
+      ]
+    },
+    {
+      "gate": "fault-02",
+      "exit": 0,
+      "seconds": 33.72,
+      "log_sha256": "235b89281c0773a03dddd6816ed5df97b966c0050d874d4cff565a7cbde1b0d1",
+      "pytest_summaries": [
+        "70 passed in 33.60s"
+      ]
+    },
+    {
+      "gate": "fault-03",
+      "exit": 0,
+      "seconds": 33.86,
+      "log_sha256": "9263b34113d1a0d63a449c257fd76b851be765a91fd1852ea0455a1c0b2904bf",
+      "pytest_summaries": [
+        "70 passed in 33.76s"
+      ]
+    },
+    {
+      "gate": "fault-04",
+      "exit": 0,
+      "seconds": 33.62,
+      "log_sha256": "f3633a2a0330e621089cb06b00c6c91fed3561d7ac87ba5167ff5cf25692001c",
+      "pytest_summaries": [
+        "70 passed in 33.52s"
+      ]
+    },
+    {
+      "gate": "fault-05",
+      "exit": 0,
+      "seconds": 33.63,
+      "log_sha256": "f3633a2a0330e621089cb06b00c6c91fed3561d7ac87ba5167ff5cf25692001c",
+      "pytest_summaries": [
+        "70 passed in 33.52s"
+      ]
+    },
+    {
+      "gate": "fault-06",
+      "exit": 0,
+      "seconds": 33.25,
+      "log_sha256": "1ac042a600914ee97962937a5c183c75bf75c3b6367ca28d46f902e8b5242b27",
+      "pytest_summaries": [
+        "70 passed in 33.14s"
+      ]
+    },
+    {
+      "gate": "fault-07",
+      "exit": 0,
+      "seconds": 33.06,
+      "log_sha256": "786b9fae5f428df3b3950a9854c14f9ce5628db2327886a0fdf7a8a814f63cbf",
+      "pytest_summaries": [
+        "70 passed in 32.94s"
+      ]
+    },
+    {
+      "gate": "fault-08",
+      "exit": 0,
+      "seconds": 32.89,
+      "log_sha256": "e112178b087185508ab73f7a73c413135f68a47b75a145868006ce69241b28f2",
+      "pytest_summaries": [
+        "70 passed in 32.77s"
+      ]
+    },
+    {
+      "gate": "fault-09",
+      "exit": 0,
+      "seconds": 33.7,
+      "log_sha256": "fe26e32fe4df106c07d9606d2897f72bf67805dc7dbeb795751e3d3474ac6f6e",
+      "pytest_summaries": [
+        "70 passed in 33.58s"
+      ]
+    },
+    {
+      "gate": "fault-10",
+      "exit": 0,
+      "seconds": 33.12,
+      "log_sha256": "966ef17e635d06fd9bfc922609b7bcc00f4d47c993aa80950978993d69a29980",
+      "pytest_summaries": [
+        "70 passed in 33.00s"
+      ]
+    },
+    {
+      "gate": "fault-11",
+      "exit": 0,
+      "seconds": 32.94,
+      "log_sha256": "e112178b087185508ab73f7a73c413135f68a47b75a145868006ce69241b28f2",
+      "pytest_summaries": [
+        "70 passed in 32.77s"
+      ]
+    },
+    {
+      "gate": "fault-12",
+      "exit": 0,
+      "seconds": 33.34,
+      "log_sha256": "026ee46e831b4e07dcd22f70d1254c18a63497ad7d722d13b87a8d556bb74b3d",
+      "pytest_summaries": [
+        "70 passed in 33.17s"
+      ]
+    },
+    {
+      "gate": "fault-13",
+      "exit": 0,
+      "seconds": 33.04,
+      "log_sha256": "7db61c7442e0053da9cd0e796210a0d76e6cf9aea7038d0228b6765584463ea3",
+      "pytest_summaries": [
+        "70 passed in 32.93s"
+      ]
+    },
+    {
+      "gate": "fault-14",
+      "exit": 0,
+      "seconds": 33.24,
+      "log_sha256": "84a181c9e50c8991861db260ad06a41561d48ec0616cd31af37d58e8151d90e1",
+      "pytest_summaries": [
+        "70 passed in 33.13s"
+      ]
+    },
+    {
+      "gate": "fault-15",
+      "exit": 0,
+      "seconds": 32.65,
+      "log_sha256": "55378315da7cb3a0f90a238b47dea69a1a9f150d5fd8cb9f90039d03c6a628a5",
+      "pytest_summaries": [
+        "70 passed in 32.54s"
+      ]
+    },
+    {
+      "gate": "unit",
+      "exit": 0,
+      "seconds": 0.05,
+      "log_sha256": "e83a665bf70fc1de761f8de74e46d109c95b4035359097a5966931c9ba0fa73f",
+      "pytest_summaries": []
+    },
+    {
+      "gate": "mutation",
+      "exit": 0,
+      "seconds": 12246.29,
+      "fresh_full_run": {
+        "gate": "mutation",
+        "exit": 0,
+        "seconds": 10126.83,
+        "log_sha256": "828102c0d3563ad61e5ddd010d47daba5db6171fc94eb3016a166adb7a3da224"
+      },
+      "followup": {
+        "exit": 0,
+        "seconds": 2119.46,
+        "steps": [
+          {
+            "name": "launcher-refreshed-stats",
+            "command": [
+              "/home/relative/dev/projects/oscmix-desk/.venv/bin/python",
+              "-m",
+              "mutmut",
+              "run",
+              "--max-children",
+              "4",
+              "oscmix_desk.launcher.*"
+            ],
+            "exit": 0,
+            "seconds": 168.77,
+            "log_sha256": "044575da17456a6fa934b6021b9403d8924794e6c6acecef4d6cf23359f1d107"
+          },
+          {
+            "name": "affected-functions",
+            "command": [
+              "/home/relative/dev/projects/oscmix-desk/.venv/bin/python",
+              "-m",
+              "mutmut",
+              "run",
+              "--max-children",
+              "4",
+              "oscmix_desk.config.x__check_device_channels__mutmut_*",
+              "oscmix_desk.config.x__check_link_agreement__mutmut_*",
+              "oscmix_desk.config.x__check_options__mutmut_*",
+              "oscmix_desk.config.x__dispatch__mutmut_*",
+              "oscmix_desk.config.x__parse_channels__mutmut_*",
+              "oscmix_desk.config.x__parse_osc__mutmut_*",
+              "oscmix_desk.config.x__parse_route__mutmut_*",
+              "oscmix_desk.config.x_load_config__mutmut_*",
+              "oscmix_desk.desktop.x__connection__mutmut_*",
+              "oscmix_desk.desktop.x_inspect_desktop__mutmut_*",
+              "oscmix_desk.devices.x_device_for_name__mutmut_*",
+              "oscmix_desk.diagnostics.x__reply_destination__mutmut_*",
+              "oscmix_desk.diagnostics.x__socket_arguments__mutmut_*",
+              "oscmix_desk.diagnostics.x_backend_status__mutmut_*",
+              "oscmix_desk.diagnostics.x_port_state__mutmut_*",
+              "oscmix_desk.diagnostics.x_query__mutmut_*",
+              "oscmix_desk.diagnostics.x_service_start_problem__mutmut_*",
+              "oscmix_desk.diagnostics.x_service_status__mutmut_*",
+              "oscmix_desk.discovery.x__kernel_clients__mutmut_*",
+              "oscmix_desk.discovery.x__model__mutmut_*",
+              "oscmix_desk.discovery.x__named__mutmut_*",
+              "oscmix_desk.discovery.x_card_products__mutmut_*",
+              "oscmix_desk.discovery.x_device_serials__mutmut_*",
+              "oscmix_desk.discovery.x_parse_seq_clients__mutmut_*",
+              "oscmix_desk.discovery.x_resolve_binary__mutmut_*",
+              "oscmix_desk.discovery.x_resolve_device__mutmut_*",
+              "oscmix_desk.discovery.x_select_seq_client__mutmut_*",
+              "oscmix_desk.discovery.x_serial_in__mutmut_*",
+              "oscmix_desk.discovery.x_udp_port_listening__mutmut_*",
+              "oscmix_desk.discovery.x_udp_socket_inodes__mutmut_*",
+              "oscmix_desk.marker.x_active_profile__mutmut_*",
+              "oscmix_desk.marker.x_active_profile_path__mutmut_*",
+              "oscmix_desk.model.x\u01c1Machine\u01c1under__mutmut_*",
+              "oscmix_desk.paths.x_discover_config_path__mutmut_*",
+              "oscmix_desk.process.x__bridged_client__mutmut_*",
+              "oscmix_desk.process.x__children_of__mutmut_*",
+              "oscmix_desk.process.x__client_serial__mutmut_*",
+              "oscmix_desk.process.x__is_oscmix_of_this_user__mutmut_*",
+              "oscmix_desk.process.x__parent_of__mutmut_*",
+              "oscmix_desk.process.x__ppid__mutmut_*",
+              "oscmix_desk.process.x_port_holder__mutmut_*",
+              "oscmix_desk.process.x_socket_owner__mutmut_*",
+              "oscmix_desk.profiles.x_effective_config__mutmut_*",
+              "oscmix_desk.reconcile.x_policy_for__mutmut_*",
+              "oscmix_desk.registers.x__channel_in__mutmut_*",
+              "oscmix_desk.registers.x__matches__mutmut_*",
+              "oscmix_desk.registers.x_cold_plug_complete__mutmut_*",
+              "oscmix_desk.registers.x_register_at__mutmut_*",
+              "oscmix_desk.registers.x_register_policy__mutmut_*",
+              "oscmix_desk.registers.x_verify_class__mutmut_*",
+              "oscmix_desk.status.x__configuration__mutmut_*",
+              "oscmix_desk.status.x__installation__mutmut_*",
+              "oscmix_desk.status.x__maintenance__mutmut_*",
+              "oscmix_desk.status.x__playback__mutmut_*",
+              "oscmix_desk.status.x__receiver__mutmut_*",
+              "oscmix_desk.status.x__running_backend__mutmut_*",
+              "oscmix_desk.status.x_collect_status__mutmut_*",
+              "oscmix_desk.streams.x_read_playback__mutmut_*",
+              "oscmix_desk.verify.x__is_channel_state__mutmut_*",
+              "oscmix_desk.verify.x__kept_by_the_device__mutmut_*",
+              "oscmix_desk.verify.x__report__mutmut_*",
+              "oscmix_desk.verify.x__unconfirmed__mutmut_*",
+              "oscmix_desk.verify.x_register_ever_reported__mutmut_*",
+              "oscmix_desk.verify.x_register_promptly_reported__mutmut_*"
+            ],
+            "exit": 0,
+            "seconds": 1950.41,
+            "log_sha256": "29c2deb6c994f10775726899f13c565941ba636c3c10fd858f2617586e1c95cd"
+          },
+          {
+            "name": "policy",
+            "command": [
+              "/home/relative/dev/projects/oscmix-desk/.venv/bin/python",
+              "scripts/mutation-policy.py"
+            ],
+            "exit": 0,
+            "seconds": 0.24,
+            "log_sha256": "88cf0958487e54a34adfc99fb3fd5a9f1ff0b5b084ebf41833824d3e461e8aee"
+          }
+        ],
+        "affected_tests": [
+          "tests/test_launcher_flow.py::",
+          "tests/test_verify_order.py::test_summary_keeps_equality_policy_and_missing_reports_distinct",
+          "tests/test_verify_order.py::test_summary_does_not_call_a_missing_prompt_or_pin_difference_verified",
+          "tests/test_diagnostics.py::test_query_captures_real_process_output_and_replaces_unusable_text",
+          "tests/test_diagnostics.py::test_missing_service_command_cannot_be_treated_as_the_default_session",
+          "tests/test_status.py::test_native_provenance_comes_from_the_resolved_file"
+        ],
+        "selected_functions": [
+          "oscmix_desk.config.x__check_device_channels",
+          "oscmix_desk.config.x__check_link_agreement",
+          "oscmix_desk.config.x__check_options",
+          "oscmix_desk.config.x__dispatch",
+          "oscmix_desk.config.x__parse_channels",
+          "oscmix_desk.config.x__parse_osc",
+          "oscmix_desk.config.x__parse_route",
+          "oscmix_desk.config.x_load_config",
+          "oscmix_desk.desktop.x__connection",
+          "oscmix_desk.desktop.x_inspect_desktop",
+          "oscmix_desk.devices.x_device_for_name",
+          "oscmix_desk.diagnostics.x__reply_destination",
+          "oscmix_desk.diagnostics.x__socket_arguments",
+          "oscmix_desk.diagnostics.x_backend_status",
+          "oscmix_desk.diagnostics.x_port_state",
+          "oscmix_desk.diagnostics.x_query",
+          "oscmix_desk.diagnostics.x_service_start_problem",
+          "oscmix_desk.diagnostics.x_service_status",
+          "oscmix_desk.discovery.x__kernel_clients",
+          "oscmix_desk.discovery.x__model",
+          "oscmix_desk.discovery.x__named",
+          "oscmix_desk.discovery.x_card_products",
+          "oscmix_desk.discovery.x_device_serials",
+          "oscmix_desk.discovery.x_parse_seq_clients",
+          "oscmix_desk.discovery.x_resolve_binary",
+          "oscmix_desk.discovery.x_resolve_device",
+          "oscmix_desk.discovery.x_select_seq_client",
+          "oscmix_desk.discovery.x_serial_in",
+          "oscmix_desk.discovery.x_udp_port_listening",
+          "oscmix_desk.discovery.x_udp_socket_inodes",
+          "oscmix_desk.launcher.x__launch",
+          "oscmix_desk.launcher.x_config_file",
+          "oscmix_desk.launcher.x_ensure_backend",
+          "oscmix_desk.launcher.x_main",
+          "oscmix_desk.launcher.x_resolve_gtk_binary",
+          "oscmix_desk.launcher.x_systemctl_user",
+          "oscmix_desk.marker.x_active_profile",
+          "oscmix_desk.marker.x_active_profile_path",
+          "oscmix_desk.model.x\u01c1Machine\u01c1under",
+          "oscmix_desk.paths.x_discover_config_path",
+          "oscmix_desk.process.x__bridged_client",
+          "oscmix_desk.process.x__children_of",
+          "oscmix_desk.process.x__client_serial",
+          "oscmix_desk.process.x__is_oscmix_of_this_user",
+          "oscmix_desk.process.x__parent_of",
+          "oscmix_desk.process.x__ppid",
+          "oscmix_desk.process.x_port_holder",
+          "oscmix_desk.process.x_socket_owner",
+          "oscmix_desk.profiles.x_effective_config",
+          "oscmix_desk.reconcile.x_policy_for",
+          "oscmix_desk.registers.x__channel_in",
+          "oscmix_desk.registers.x__matches",
+          "oscmix_desk.registers.x_cold_plug_complete",
+          "oscmix_desk.registers.x_register_at",
+          "oscmix_desk.registers.x_register_policy",
+          "oscmix_desk.registers.x_verify_class",
+          "oscmix_desk.status.x__configuration",
+          "oscmix_desk.status.x__installation",
+          "oscmix_desk.status.x__maintenance",
+          "oscmix_desk.status.x__playback",
+          "oscmix_desk.status.x__receiver",
+          "oscmix_desk.status.x__running_backend",
+          "oscmix_desk.status.x_collect_status",
+          "oscmix_desk.streams.x_read_playback",
+          "oscmix_desk.verify.x__is_channel_state",
+          "oscmix_desk.verify.x__kept_by_the_device",
+          "oscmix_desk.verify.x__report",
+          "oscmix_desk.verify.x__unconfirmed",
+          "oscmix_desk.verify.x_register_ever_reported",
+          "oscmix_desk.verify.x_register_promptly_reported"
+        ],
+        "method": "Full fresh run retained; stats cleared and refreshed tests copied; all mutants of affected functions rejudged by explicit name."
+      },
+      "log_sha256": "88cf0958487e54a34adfc99fb3fd5a9f1ff0b5b084ebf41833824d3e461e8aee"
+    }
+  ],
+  "coverage": {
+    "covered_lines": 3821,
+    "num_statements": 3884,
+    "percent_covered": 97.80618084700497,
+    "percent_covered_display": "98",
+    "missing_lines": 63,
+    "excluded_lines": 4,
+    "percent_statements_covered": 98.37796086508754,
+    "percent_statements_covered_display": "98",
+    "num_branches": 1358,
+    "num_partial_branches": 50,
+    "covered_branches": 1306,
+    "missing_branches": 52,
+    "percent_branches_covered": 96.17083946980854,
+    "percent_branches_covered_display": "96"
+  },
+  "coverage_scope": "src/oscmix_desk and bin; packaging/installer helpers have separate behavioral and container lifecycle checks.",
+  "mutation": {
+    "killed": 7803,
+    "survived": 2048,
+    "total": 9867,
+    "no_tests": 0,
+    "skipped": 0,
+    "suspicious": 0,
+    "timeout": 16,
+    "check_was_interrupted_by_user": 0,
+    "segfault": 0,
+    "score": 0.7921023246370927,
+    "score_formula": "killed / (killed + survived); timeouts remain separate",
+    "cache": "Full fresh run retained; stats cleared and refreshed tests copied; all mutants of affected functions rejudged by explicit name.",
+    "fresh_run_counts": {
+      "killed": 7689,
+      "survived": 2162,
+      "total": 9867,
+      "no_tests": 0,
+      "skipped": 0,
+      "suspicious": 0,
+      "timeout": 16,
+      "check_was_interrupted_by_user": 0,
+      "segfault": 0
+    },
+    "selected_followup_functions": [
+      "oscmix_desk.config.x__check_device_channels",
+      "oscmix_desk.config.x__check_link_agreement",
+      "oscmix_desk.config.x__check_options",
+      "oscmix_desk.config.x__dispatch",
+      "oscmix_desk.config.x__parse_channels",
+      "oscmix_desk.config.x__parse_osc",
+      "oscmix_desk.config.x__parse_route",
+      "oscmix_desk.config.x_load_config",
+      "oscmix_desk.desktop.x__connection",
+      "oscmix_desk.desktop.x_inspect_desktop",
+      "oscmix_desk.devices.x_device_for_name",
+      "oscmix_desk.diagnostics.x__reply_destination",
+      "oscmix_desk.diagnostics.x__socket_arguments",
+      "oscmix_desk.diagnostics.x_backend_status",
+      "oscmix_desk.diagnostics.x_port_state",
+      "oscmix_desk.diagnostics.x_query",
+      "oscmix_desk.diagnostics.x_service_start_problem",
+      "oscmix_desk.diagnostics.x_service_status",
+      "oscmix_desk.discovery.x__kernel_clients",
+      "oscmix_desk.discovery.x__model",
+      "oscmix_desk.discovery.x__named",
+      "oscmix_desk.discovery.x_card_products",
+      "oscmix_desk.discovery.x_device_serials",
+      "oscmix_desk.discovery.x_parse_seq_clients",
+      "oscmix_desk.discovery.x_resolve_binary",
+      "oscmix_desk.discovery.x_resolve_device",
+      "oscmix_desk.discovery.x_select_seq_client",
+      "oscmix_desk.discovery.x_serial_in",
+      "oscmix_desk.discovery.x_udp_port_listening",
+      "oscmix_desk.discovery.x_udp_socket_inodes",
+      "oscmix_desk.launcher.x__launch",
+      "oscmix_desk.launcher.x_config_file",
+      "oscmix_desk.launcher.x_ensure_backend",
+      "oscmix_desk.launcher.x_main",
+      "oscmix_desk.launcher.x_resolve_gtk_binary",
+      "oscmix_desk.launcher.x_systemctl_user",
+      "oscmix_desk.marker.x_active_profile",
+      "oscmix_desk.marker.x_active_profile_path",
+      "oscmix_desk.model.x\u01c1Machine\u01c1under",
+      "oscmix_desk.paths.x_discover_config_path",
+      "oscmix_desk.process.x__bridged_client",
+      "oscmix_desk.process.x__children_of",
+      "oscmix_desk.process.x__client_serial",
+      "oscmix_desk.process.x__is_oscmix_of_this_user",
+      "oscmix_desk.process.x__parent_of",
+      "oscmix_desk.process.x__ppid",
+      "oscmix_desk.process.x_port_holder",
+      "oscmix_desk.process.x_socket_owner",
+      "oscmix_desk.profiles.x_effective_config",
+      "oscmix_desk.reconcile.x_policy_for",
+      "oscmix_desk.registers.x__channel_in",
+      "oscmix_desk.registers.x__matches",
+      "oscmix_desk.registers.x_cold_plug_complete",
+      "oscmix_desk.registers.x_register_at",
+      "oscmix_desk.registers.x_register_policy",
+      "oscmix_desk.registers.x_verify_class",
+      "oscmix_desk.status.x__configuration",
+      "oscmix_desk.status.x__installation",
+      "oscmix_desk.status.x__maintenance",
+      "oscmix_desk.status.x__playback",
+      "oscmix_desk.status.x__receiver",
+      "oscmix_desk.status.x__running_backend",
+      "oscmix_desk.status.x_collect_status",
+      "oscmix_desk.streams.x_read_playback",
+      "oscmix_desk.verify.x__is_channel_state",
+      "oscmix_desk.verify.x__kept_by_the_device",
+      "oscmix_desk.verify.x__report",
+      "oscmix_desk.verify.x__unconfirmed",
+      "oscmix_desk.verify.x_register_ever_reported",
+      "oscmix_desk.verify.x_register_promptly_reported"
+    ]
+  },
+  "nightly_mutation_time_budget": {
+    "previous_minutes": 180,
+    "current_minutes": 240,
+    "observed_runs": [
+      {
+        "run": 35839319277,
+        "url": "https://github.com/relative23/oscmix-desk/actions/runs/35839319277",
+        "completed_at": "2026-09-23T11:49:48Z",
+        "conclusion": "cancelled",
+        "id": 107110322241,
+        "name": "Mutation Score",
+        "started_at": "2026-09-23T08:49:31Z",
+        "status": "completed"
+      },
+      {
+        "run": 35977029443,
+        "url": "https://github.com/relative23/oscmix-desk/actions/runs/35977029443",
+        "completed_at": "2026-09-24T11:44:55Z",
+        "conclusion": "cancelled",
+        "id": 107559829097,
+        "name": "Mutation Score",
+        "started_at": "2026-09-24T08:44:40Z",
+        "status": "completed"
+      }
+    ],
+    "last_observed_progress": {
+      "completed": 8824,
+      "total": 9022,
+      "mutmut": "3.8.0",
+      "source_commit": "7d5b73f081c1803f68bac2cbda0b22bafa671a5d",
+      "log_sha256": "016ddb75089cba5872149a5e43500b83fca5b95c650bdabba2d46ab937c785ae"
+    },
+    "scope": "Only the mutation job receives a longer deadline. Complete-run and score requirements remain unchanged; its new ceiling is checked by the workflow hygiene test."
+  },
+  "full_mutation_copied_test_files_sha256": {
+    "tests/test_cli_args.py": "e653c62e76cd67bde2df8decd0626442eb8c8a8493385ca66fd4c606381a73a6",
+    "tests/test_preview.py": "4f4e47b6a84549b294d06c8a6da8ce6797851c17c816469c839784cd2a576649",
+    "tests/test_install_modes.py": "39bec7782590b171376f500f2e302a0f93e3143ccb09f9918e43d07f04429429",
+    "tests/test_osc.py": "168405d3ae074b8084e4bc0c2ab4d92da34d65ed89519c5a6a4ab751905f0024",
+    "tests/test_mono_routes.py": "3035f67f9c9fd30ce5f54f022566349969f0ceaccb02bd16602c37a50b777344",
+    "tests/test_architecture.py": "cd928217522606b195322b70508ed5114d557ba845937a7d84b20215940a9bcf",
+    "tests/test_pipewire.py": "68285f8bf62156eda5e24fb61abec2e2710bee4049c304e167a0078c72ef89ac",
+    "tests/test_profiles.py": "9fb60059e0cc792b70eb2fd46ef51006ada05551e6623f68882f0583be11496c",
+    "tests/desktop_session.py": "cc94c8eed00281b027b8509c2a518f9351aab50d3833ab04cf5ea32422957226",
+    "tests/profile_desk.py": "916168cb03797a36146edd706417cce1ea5892493c450f1b2c56cfdda1c81cdf",
+    "tests/test_unit_file.py": "0d4e1a658f1dee5cd10ca329a181f974c3a217dde1655f918cfe9ab7ca6efaeb",
+    "tests/test_nested_sections.py": "d0f6f3542bde1d51ca2de1bb443d9dc11aaba89b825cfa764fcbeeb4b11892d7",
+    "tests/test_marker.py": "d9e9df02a43140b1bd7a4a6c49efb46aaaf51fd72214c644788dece0ce6b162d",
+    "tests/test_faults.py": "d991d2cfbd77af0fb552c59fffe426de38cb0c9ea33f0d21f15cfba19d374506",
+    "tests/test_write_sweep.py": "b2d2da084a511abc251fc82ef8aa4eb2135f7baa428ea904e36d983c9048154e",
+    "tests/test_package_stage.py": "46a4c3c26026f449a75948041fba514225027aa887cb670281bd0dea35e47c4e",
+    "tests/test_interface_resolution.py": "038375c4b878a5fe02032a17ed0fbfdb090ba3f62a2e1a9c4d7e7b424234e867",
+    "tests/test_profile_machine.py": "6ec399cb222d25e62999e70b9ffd76055ef534a2d9f783ee0abba65e6b10c9c5",
+    "tests/test_config_device.py": "b0159a6f6bf59d615b034a53038aad7c4cbd21d2a91bedd895162d01f128032c",
+    "tests/backend_doubles.py": "51edd716d5d3c3cef82b976bbcb16c6cc764a3bcad47e489e4f4f698cb5d8b9b",
+    "tests/test_notify.py": "db64875d3c27547d7a5404102d19ca8182d6e3c2c037c0e6b44ac38f3608e1fa",
+    "tests/test_register_addresses.py": "f9fb627b3d12a13f9f161eae3810e6103a805ac06b65bf350c0bf1ca3aca7741",
+    "tests/test_registers.py": "3c6c335c7348eff2eade53e468151b7f0d81d798ef38d232226585c6c4559610",
+    "tests/test_soak.py": "0d41cbb6aa3658c901c0d39bd84053fac2e8130d3cdc460a55952edac6d3ce8a",
+    "tests/test_hardware_verdicts.py": "2fb623f31e5aba1c1ab18341fd766f3132eaef21f876189e7a062e2e449ae600",
+    "tests/test_process.py": "710813b8a14bbca3e44379a9f2b147ab74a55ee50c81aa322d29a7a4cd35d7fd",
+    "tests/test_package_guard.py": "bd78bf62867ec0f2bb33d42738b11d4e1b435c41d719a7753eaf5da0fe6a150a",
+    "tests/test_partial_write.py": "72df95e28366b9220761c14d21dd55489bc98ec8aae460a04cab2ddd2a62b89b",
+    "tests/test_verify.py": "af9fb59c8fd157d53a2548f9f5cf636827cd9297d2739612cf0e21cdbb48d6ea",
+    "tests/test_input_routing.py": "506a372554ad47c33de213a6e7f05d6c9e1096ce6bec4269215ce7131ffe8121",
+    "tests/test_reconcile_writes.py": "71e541ef20df9dab961f95df0a6b65a620dee529eda0ea7f6afc2c501e6c56e4",
+    "tests/test_whose_backend.py": "f7b62d5afc75a53eabe9cb22d99eacec3bd8819bb68ceed58fd78842754ed8d1",
+    "tests/test_install_sh.py": "2f387c10d166f3c99bc7c67f6a8082be2e8203f6d46b18a542a11c42f9e194ee",
+    "tests/test_diff_cli.py": "6a155136697c7c0aa42558e9cff5f52516fd0a88ebb0dc0760a439ce83183e79",
+    "tests/test_dump_config.py": "71ea73743de97a8c688ac524758a8ccf703182a01a547fb68befc729e90f0c3e",
+    "tests/test_dump_limits.py": "a7131cb96875c29685cc0818f3403d80a56cc7e035fc2ab5615f9be3f741eed5",
+    "tests/test_startup_transaction.py": "dd3548526611f2a405915be28088315c6c183ca6f662c5b739134d623ad3ffbc",
+    "tests/test_mix_reapply.py": "288dcb9fd4507a514cb8ea4ef269248bbac366da4ac3ca0162267ebec29a486d",
+    "tests/oscmix_fakes.py": "b1fa8fa586395f66e223bf49dcd3343ef1e4a4b0f511966d24325b37110d798e",
+    "tests/test_two_processes.py": "dc1f89fa5a9ff88df4604f8b95ebdf161240b57b7a22d1dadeaa9fdabc232012",
+    "tests/test_desk_in_effect.py": "80f2d76fa2d1b1a4a917eb9193f5d686701757fbf06e00779209dc799cf8aa8d",
+    "tests/test_reconcile_triggers.py": "dc6fb423a76e895dd9e288cdce427770e216081bc2b3791a6d5e025122fd8a83",
+    "tests/test_seq_clients.py": "cb35bc6c6973d99bb56ff952177c0d9ee5c0f9657dc0476a84070976d99778b9",
+    "tests/test_config_compatibility.py": "3c7a473e33f8030474f0a0f7c67f8bd0dc80d865678d62d4a8e9409f42d9134e",
+    "tests/test_reconcile.py": "bb37314e20a2d184a56f45e7c71a273d710fe4efb1f93e210f635ef69b30f045",
+    "tests/test_lock_file.py": "4d2d7c453217d432c52c1bbc1e2ec69ab7f22264f79990e38dbaa3cbec922689",
+    "tests/test_global_sections.py": "b11e2ddff255150cec20b44ad2fe4a0f2e5a4a1a599e407b6e864823a7d851f0",
+    "tests/test_profiles_cli.py": "4bfd0ce0002e43e8643da2c092e6efd222ab1e348c1c2d37873cabb63614943a",
+    "tests/conftest.py": "ebd5202ba74cb124228a3e68255d9f2b6be931bfabe9aea1c2c2cea2277dff66",
+    "tests/test_launcher.py": "a48fe8b6fca139e203d42a0b0673bb6ec47c8bbbdf3139a5d390ec9b9e05bfa4",
+    "tests/test_pin_remember.py": "121ff9d85d71f1cf7fde086a39965068dc2ce98df1fe80510bd029bf66eb1bb2",
+    "tests/test_startup_helpers.py": "8fa20dc7accf6510c52bf54a47fa855aaa24d0d3a2a79cb9f822e915daa6dbdd",
+    "tests/test_upgrade.py": "a3564f29659a2218117119f55689c5b4dc2296f624f60c14d9a56c0cdec2a9cb",
+    "tests/test_unit_lock.py": "a729f51b59329853fd20b1a71cb6b98a4285cc018b4d8d593573f47a64eba3f7",
+    "tests/test_lowcut.py": "a034b1d652d5a988719bf7758c98fa90d5eda6d589293afd76eacb068f05cc87",
+    "tests/test_autolevel.py": "b365c3bbd82b0e3e66bd19085f59fe464161640bb661e49ffe8aa185ca140f91",
+    "tests/test_reload.py": "a97e8fc3405e47588310d146e21d1a9ed70fbde3dc26486650a329ace9d99921",
+    "tests/package_migration.py": "81c6d223507c956042504bceb4e801df4c48961d15ad0484b365ffa8e29abd25",
+    "tests/test_backend.py": "49169c36ad1134b6d5124f8bfba62e62266052fb9b6cf25f2e85b2454c0280bc",
+    "tests/package_lifecycle.py": "edb3aef6860bb2d567a2585fcce51f37ec1d02accdf24dc9d68615c5a7416c2f",
+    "tests/two_boxes.py": "eac8042ecd2f78406524bd4dbaa7201f13a7c5bc4e20ec412c70b1e35b72d978",
+    "tests/test_dump_sections.py": "47fcb8c429eb0c8dd2414c7cee0207085619fc72f2a334a2122aea6e9ce952f1",
+    "tests/test_streams.py": "88daeae61abc26f93d9325be434369a80cfee9571c8823684fa601bcf17887c0",
+    "tests/test_package_setup.py": "6645469dd6db2c5340110f959c401e763fd5f7948ec417dcae521fd84e289efb",
+    "tests/reconcile_desk.py": "efe5b9eba358ed05d117c69ef45919d124ad08c22844a508aac4394915479b6a",
+    "tests/test_golden_messages.py": "a24f3d4e7c49c349b88d2e3e3b2fbeb3049511643f2e9269de24fbc260d16ee7",
+    "tests/test_config.py": "b050549be2cb671d6bff0bd960a4139c10e3de45954adbebd6ac86f3b1012da1",
+    "tests/test_verify_order.py": "720647af21ab899ba61ac6beec999bf8ac7c517042455bf6179a7d4e93851fa7",
+    "tests/gtk_lifecycle.py": "945271e4a251df745ee08ab40ecb262738be55b17be71d4275bb3edf83474523",
+    "tests/support.py": "7da3efbfac65a5cd83f57ccec6d8f2f74c0f4cf3c622ed22538a78b8a2534892",
+    "tests/test_contracts.py": "c8451c6b12755e5a4f3868342b3311f514678219fac6a13e90e13a23810a682a",
+    "tests/test_status.py": "7fa81b497dd5f7352247435d044f522bc5de2569f5b07a985dd3805dbcd6ed2f",
+    "tests/test_mutation_policy.py": "69ca7a1f9172943b5ac27de2ed22424350a2f627ebb420f97c35ea071b011a82",
+    "tests/test_release_archive.py": "3a28d507801b013467f99c8c640dc0fd1843623d1ed6437f17830743ac205104",
+    "tests/test_whole_config_on_the_wire.py": "cc84bbaf1b7fb93733407c818875af1b71b5ed02843915e6b338202745c22dd5",
+    "tests/test_diagnostics.py": "6d9b08aa18012a88c6f3bc064a386189deadb33b762c7fb7c96cf212cf10bf99",
+    "tests/test_session_integration.py": "5e960bd13a38059c6b650f2d2d01ab38e92d47066a3a2d4bdc5971b5f4b0ec9a",
+    "tests/test_dynamics.py": "3dd6487b44800f9e714b1dd4a94af818a7a2b0d53947bb7ab4f526ae12feb170",
+    "tests/test_ci_workflow.py": "b49b4e9bbf2d55ec8c3d4175f001e958903fcb1449eea6f406f1203750ea4a7a",
+    "tests/test_performance.py": "e41410c8f3356e58cfe82d80bd9db0a0d2a95747ee67541c8e13341bd2edd71a",
+    "tests/test_recorded_dump.py": "faccc86046d24eec9e4f077a1cb981e16b75fcb0d8b7f8e91536322b2fb36dd4",
+    "tests/test_numeric.py": "7acd059fbe106276cc9b0180daf06b5783a0129081bc07ea597a45c1b8868b44",
+    "tests/test_lifecycle.py": "8bd09ebb5f8e87aeacd5b3f96355e7c51746da6b72565d833fa6247e8ae9526c",
+    "tests/test_crossfeed.py": "8ecb13d4c0f0b186e77b30c8d49f25db84bd851f824728e4e69e3f4a3da9a1fc",
+    "tests/test_apply_routing.py": "6410f3ec403df3383e55c9a89c70ac3bc83dac24c76380778646eb3b36fd550e",
+    "tests/test_sub_families.py": "8dbf0dbdbde629be7f72bfe9555019d3623a59431be9ab7c5115ae0647c2b900",
+    "tests/test_locking.py": "22b9450f8e12e7e728cfb43502794c4bce470e16a5c981c0b6b8c60e5584d73b",
+    "tests/oracle.py": "a02843b2673ce52d9b95d64bd873a4a758d8c2b8732dc6fcd03f52ba6d4a82de",
+    "tests/test_receive_port.py": "a01f0b7d63311e0be22a2cc5e010b5365e932db157cb218c2f06c6b6e80a37eb",
+    "tests/test_readiness.py": "c4feefadec10f2713bc580ca417dfe6a3e094512e6b88c439747c88aad695976",
+    "tests/test_usb.py": "2a0626fbefa98b605f7acf01f8076908183cc8a9f6f70ebb0d007a1d03925328",
+    "tests/test_sighup.py": "cad312d5a625258d8d8b6dab8074186a2a4a457cc2547429c2db2bb13a8192eb",
+    "tests/test_device_identity.py": "147344eae1ee13efd684d1880ef508a7532218c445b062f615b42b7cc354d285",
+    "tests/session_doubles.py": "4ad6f3dd7a882d402df87124416ef7b08d326c6c2a1fa24cca3034ddfa3311ee",
+    "tests/test_roomeq.py": "daea626bead062570ae539cd9e888c41ca79abe4fe11cb82df297bf224815591",
+    "tests/test_dump_config_cli.py": "c771a5b2c6cf85c5cce16fcafe4be6fdc9dd00c52b5e48f9f5c8f4627e4dcbc9",
+    "tests/test_channel_sections.py": "7401791395908c3c40ecd512af76577333d123309b5e890d9166eb74e171f205",
+    "tests/data/two-routes.conf": "66a5bf6754ed80394d66b49b2955c47fb2b781b096aaa82ff9efb3958be330aa",
+    "tests/data/refresh-dump.json": "37f4c1a032a85810134206200a9a69494380285187469b2109792a6897a35cf4",
+    "tests/data/ucx2-playback-modes.json": "a386ae396cb5c8a28455e2a670c79dbf38dbef890fc3068eb2400580ea9bccc6",
+    "tests/data/cold-plug-timeline.json": "e4636bf14545c707e5d1297a36feb85e795e5e10ac5bdba6cf1c61034375e3c8",
+    "tests/subprocess_coverage/sitecustomize.py": "c800eca1c3f28b427430ece3ea9d661afa56048c362b461532c6cdb434351e49"
+  },
+  "superseded_qualifications": [
+    {
+      "source": null,
+      "reason": "Preliminary ordinary runs overlapped test improvements; the flake fixture error was corrected. Its fresh full mutation result is retained separately with named rejudgments.",
+      "counted_as_final": false,
+      "completed_gates": [
+        {
+          "gate": "check",
+          "exit": 0,
+          "seconds": 164.46,
+          "log_sha256": "85e4608a52b569e0366a8a78886351f619447f043c2709b0b676c0307ce4781e"
+        },
+        {
+          "gate": "coverage",
+          "exit": 0,
+          "seconds": 192.75,
+          "log_sha256": "20a11b6800783eedbfe88e5ce571e2b69b4009b88b52441d4bf347f1b3e8c1f4"
+        },
+        {
+          "gate": "fault-01",
+          "exit": 0,
+          "seconds": 33.18,
+          "log_sha256": "10f2f43d1ec8ebca701d2ad23a7c71f5482ff32f6e5a190d035bb1111d5dcece"
+        },
+        {
+          "gate": "fault-02",
+          "exit": 0,
+          "seconds": 33.14,
+          "log_sha256": "b85b29baf94dc8c4cb6a7caf2e626db616d88cd9430e1485d76d32acf2555464"
+        },
+        {
+          "gate": "fault-03",
+          "exit": 0,
+          "seconds": 32.67,
+          "log_sha256": "e3579e395c1a813c745c0e2b46be27fecef0791043d0e0cf15e324c18b45b951"
+        },
+        {
+          "gate": "fault-04",
+          "exit": 0,
+          "seconds": 33.46,
+          "log_sha256": "8a9556d96a8fd82e49c30f298417c4265368c021a28365c6317f7f39ce3d7943"
+        },
+        {
+          "gate": "fault-05",
+          "exit": 0,
+          "seconds": 33.45,
+          "log_sha256": "8a9556d96a8fd82e49c30f298417c4265368c021a28365c6317f7f39ce3d7943"
+        },
+        {
+          "gate": "fault-06",
+          "exit": 0,
+          "seconds": 33.44,
+          "log_sha256": "8a9556d96a8fd82e49c30f298417c4265368c021a28365c6317f7f39ce3d7943"
+        },
+        {
+          "gate": "fault-07",
+          "exit": 0,
+          "seconds": 33.25,
+          "log_sha256": "1ac042a600914ee97962937a5c183c75bf75c3b6367ca28d46f902e8b5242b27"
+        },
+        {
+          "gate": "fault-08",
+          "exit": 0,
+          "seconds": 33.36,
+          "log_sha256": "9c82df6511193eb8415974dd0accbe2539ce6c7c7abf356bab7e319e79122f3c"
+        },
+        {
+          "gate": "fault-09",
+          "exit": 0,
+          "seconds": 34.01,
+          "log_sha256": "5e20af717ee3487513ef6b81871bfcc67b9c68ece061baf0b2c410efe305d1c0"
+        },
+        {
+          "gate": "fault-10",
+          "exit": 0,
+          "seconds": 33.42,
+          "log_sha256": "5f92076a1420fba3d817d7ed554b333e9ffbb701104cef16c0134b3530d1fea9"
+        },
+        {
+          "gate": "fault-11",
+          "exit": 0,
+          "seconds": 33.9,
+          "log_sha256": "633f42a020717ed299309c0e49db9c758b3627f5b83caa596ade828a35c31b00"
+        },
+        {
+          "gate": "fault-12",
+          "exit": 0,
+          "seconds": 34.12,
+          "log_sha256": "81f37e909dc88f24b4ab28953a24d77f1f7224eedf620ed0285372aae85fc561"
+        },
+        {
+          "gate": "fault-13",
+          "exit": 0,
+          "seconds": 33.58,
+          "log_sha256": "e335e68eae203713c83326d209c7dd7791d5263af7d49a58734a6fb600db2a3e"
+        },
+        {
+          "gate": "fault-14",
+          "exit": 0,
+          "seconds": 33.26,
+          "log_sha256": "94ca6fb811f0eb305d560173741368da8d2be807f0deeabd761b2bbe94a770e8"
+        },
+        {
+          "gate": "fault-15",
+          "exit": 0,
+          "seconds": 33.54,
+          "log_sha256": "0458dc82a40b9b5484dad325a72dbd85b9a0cd2c6f4b4c92ac32d595f1368592"
+        },
+        {
+          "gate": "flake",
+          "exit": 2,
+          "seconds": 559.36,
+          "log_sha256": "d02ac6b3bedd5a190e4b10bec42e529cf6f18bdfecf6a45880b6dc1b03f6cfae"
+        },
+        {
+          "gate": "python-3.10",
+          "exit": 0,
+          "seconds": 166.69,
+          "log_sha256": "bc16f3cf79988b60983c2d88d2e2c59e8f0c83efd69d4071a06202a3fa2e46c6"
+        },
+        {
+          "gate": "python-3.11",
+          "exit": 0,
+          "seconds": 185.84,
+          "log_sha256": "3a3cdfaaa8a5aef94dfef70e418a7f3bb7b0f27f3cee4fad560321b3c2750a85"
+        },
+        {
+          "gate": "python-3.12",
+          "exit": 0,
+          "seconds": 160.84,
+          "log_sha256": "7791eb76f356c2e7a89125a908bbd5519c7815458fac3e092dec13b2ecaffcd6"
+        },
+        {
+          "gate": "python-3.13",
+          "exit": 0,
+          "seconds": 156.82,
+          "log_sha256": "057bc49a668118848e9f7e36014ff6124cad0717c20800678d259a5348efdf9e"
+        },
+        {
+          "gate": "python-3.14",
+          "exit": 0,
+          "seconds": 155.28,
+          "log_sha256": "bd1189be0070bfe2183b785a53f34b26d1dc84c247cf8852decb329601c2f18b"
+        },
+        {
+          "gate": "python-3.9",
+          "exit": 0,
+          "seconds": 161.9,
+          "log_sha256": "7a5f769745e0a7a5198a5acf6ff18d3a2135c41837d2e3c103288db51c94e3c8"
+        },
+        {
+          "gate": "soak-200",
+          "exit": 0,
+          "seconds": 264.12,
+          "log_sha256": "41248e54911a8cf0831d135a427f2e2c9ae754aca17b8257c073069263159349"
+        },
+        {
+          "gate": "unit",
+          "exit": 0,
+          "seconds": 0.03,
+          "log_sha256": "e83a665bf70fc1de761f8de74e46d109c95b4035359097a5966931c9ba0fa73f"
+        }
+      ]
+    },
+    {
+      "source": "6096d158fe3cf976c0831af1d50f288bf72d8f29",
+      "reason": "All 26 gates passed. Two verifier-summary assertions were subsequently strengthened after survivor inspection.",
+      "counted_as_final": false,
+      "completed_gates": [
+        {
+          "gate": "check",
+          "exit": 0,
+          "seconds": 163.62,
+          "log_sha256": "0e5318d830e2f19d19c2eefa6cee348ce6cf719594ccef03bc284922ce7d6402"
+        },
+        {
+          "gate": "coverage",
+          "exit": 0,
+          "seconds": 156.45,
+          "log_sha256": "9cbaf1b6aa0b5d6f37f2db8f32e75d735764ee2e0d178ab5dec412ea338e70ce"
+        },
+        {
+          "gate": "fault-01",
+          "exit": 0,
+          "seconds": 33.53,
+          "log_sha256": "9895670b56b00887287644df739d938174dc16dca80542fedc93a24edd0e6636"
+        },
+        {
+          "gate": "fault-02",
+          "exit": 0,
+          "seconds": 33.32,
+          "log_sha256": "92ffd68170eceb59a4dbc68eeea2fd62e69dd9c44a94a5ee8edfe8c28f533127"
+        },
+        {
+          "gate": "fault-03",
+          "exit": 0,
+          "seconds": 33.27,
+          "log_sha256": "a9b38b742c468abbe6c07133bf5357610f9c4869c8da41ffe49942ccf1f295e3"
+        },
+        {
+          "gate": "fault-04",
+          "exit": 0,
+          "seconds": 33.06,
+          "log_sha256": "786b9fae5f428df3b3950a9854c14f9ce5628db2327886a0fdf7a8a814f63cbf"
+        },
+        {
+          "gate": "fault-05",
+          "exit": 0,
+          "seconds": 33.25,
+          "log_sha256": "1ac042a600914ee97962937a5c183c75bf75c3b6367ca28d46f902e8b5242b27"
+        },
+        {
+          "gate": "fault-06",
+          "exit": 0,
+          "seconds": 32.63,
+          "log_sha256": "fc5c68b08e767d7547680313415af97e71a6bbf31d7b3d8b497958cac27dbce6"
+        },
+        {
+          "gate": "fault-07",
+          "exit": 0,
+          "seconds": 33.23,
+          "log_sha256": "878e0c684e8b55dbd3c31bb9444fee845302132861135250785afc10b73cb7c3"
+        },
+        {
+          "gate": "fault-08",
+          "exit": 0,
+          "seconds": 33.23,
+          "log_sha256": "878e0c684e8b55dbd3c31bb9444fee845302132861135250785afc10b73cb7c3"
+        },
+        {
+          "gate": "fault-09",
+          "exit": 0,
+          "seconds": 32.63,
+          "log_sha256": "fc5c68b08e767d7547680313415af97e71a6bbf31d7b3d8b497958cac27dbce6"
+        },
+        {
+          "gate": "fault-10",
+          "exit": 0,
+          "seconds": 33.43,
+          "log_sha256": "6950df44054f9dfa6a7b3be4913e1b7f5b6edaf00edce5af9f8c41d1d1a4927b"
+        },
+        {
+          "gate": "fault-11",
+          "exit": 0,
+          "seconds": 32.42,
+          "log_sha256": "cbaeb146e3da44ebbcf4acacd8ec5e7729b74f7b7671898f2fa4f5e4c01fd045"
+        },
+        {
+          "gate": "fault-12",
+          "exit": 0,
+          "seconds": 33.23,
+          "log_sha256": "84a181c9e50c8991861db260ad06a41561d48ec0616cd31af37d58e8151d90e1"
+        },
+        {
+          "gate": "fault-13",
+          "exit": 0,
+          "seconds": 33.03,
+          "log_sha256": "21c54156662adb85e6f31dd2d4d559427c751ba9b159f892e4a2ebfe7c04184a"
+        },
+        {
+          "gate": "fault-14",
+          "exit": 0,
+          "seconds": 33.03,
+          "log_sha256": "21c54156662adb85e6f31dd2d4d559427c751ba9b159f892e4a2ebfe7c04184a"
+        },
+        {
+          "gate": "fault-15",
+          "exit": 0,
+          "seconds": 33.43,
+          "log_sha256": "6950df44054f9dfa6a7b3be4913e1b7f5b6edaf00edce5af9f8c41d1d1a4927b"
+        },
+        {
+          "gate": "flake",
+          "exit": 0,
+          "seconds": 778.78,
+          "log_sha256": "af96e684c574680c9bd3155d33c4df534ebf0e6ebbb1efbbbfc93a6b82cab4aa"
+        },
+        {
+          "gate": "python-3.10",
+          "exit": 0,
+          "seconds": 159.85,
+          "log_sha256": "b4b9303f96d2b0cb4fbbf4816820929267d2993514262af7b4f887c3ba5398cb"
+        },
+        {
+          "gate": "python-3.11",
+          "exit": 0,
+          "seconds": 155.76,
+          "log_sha256": "85a853021ec289c98512171e496b7449aeb8fcf239262cc8de532dd92fac167e"
+        },
+        {
+          "gate": "python-3.12",
+          "exit": 0,
+          "seconds": 157.02,
+          "log_sha256": "05c4fb6244dac5da1cb88c218f69497050444f13dcbc43d4dfeb7dc73c8a9538"
+        },
+        {
+          "gate": "python-3.13",
+          "exit": 0,
+          "seconds": 155.87,
+          "log_sha256": "d93f95d09dece1f0f02ef353dc5387dffc6611aa4dd2301108419bed2209fac9"
+        },
+        {
+          "gate": "python-3.14",
+          "exit": 0,
+          "seconds": 155.05,
+          "log_sha256": "79d5fdaa284f2ec6a955556f87b907849b5d794f2a18c86ce331e023bf8b2630"
+        },
+        {
+          "gate": "python-3.9",
+          "exit": 0,
+          "seconds": 158.98,
+          "log_sha256": "70c4d771d43bb2f9c3465bb9bb0eedf6cde2c61747633a1f78b4d881f58a5bed"
+        },
+        {
+          "gate": "soak-200",
+          "exit": 0,
+          "seconds": 263.75,
+          "log_sha256": "27a2f9fa1b56d10039d387d593ce1e077fb561c21dad8e60dbe45a12dcec1ab5"
+        },
+        {
+          "gate": "unit",
+          "exit": 0,
+          "seconds": 0.03,
+          "log_sha256": "e83a665bf70fc1de761f8de74e46d109c95b4035359097a5966931c9ba0fa73f"
+        }
+      ]
+    },
+    {
+      "source": "bfbf436829e597559d109f42aae16518fa1514d8",
+      "reason": "Check, coverage, five repeats and all six Python versions passed. The runner was deliberately interrupted during soak to qualify the subsequently corrected CI job deadline on the final revision.",
+      "counted_as_final": false,
+      "completed_gates": [
+        {
+          "gate": "check",
+          "exit": 0,
+          "seconds": 159.27,
+          "log_sha256": "39e66ff35076a61df0f185057c93d13926bd18abb55151ccba10b130c043f18e"
+        },
+        {
+          "gate": "coverage",
+          "exit": 0,
+          "seconds": 156.51,
+          "log_sha256": "6c351ae82fc872f69e674024e1d621e57c8d5e8a8acc86f42964586c4c8aa6a9"
+        },
+        {
+          "gate": "flake",
+          "exit": 0,
+          "seconds": 780.88,
+          "log_sha256": "a8f08e02156a54474f4ed802aec3b5e6f2136a120c40ea4818c83ef9dff1eaf2"
+        },
+        {
+          "gate": "python-3.10",
+          "exit": 0,
+          "seconds": 160.32,
+          "log_sha256": "56a5602d90758d6336f19790697cfd0f417e8aa0912693de0dbd5444f73c6255"
+        },
+        {
+          "gate": "python-3.11",
+          "exit": 0,
+          "seconds": 160.58,
+          "log_sha256": "8e68acaa014c55ee2597220abeeb7898e7f8871c706026dd9f426040baf80215"
+        },
+        {
+          "gate": "python-3.12",
+          "exit": 0,
+          "seconds": 160.33,
+          "log_sha256": "ed9ba356e8a956d76a917500d611442946f6fd15c0cc565e21fe2b0c0f43fc4b"
+        },
+        {
+          "gate": "python-3.13",
+          "exit": 0,
+          "seconds": 161.59,
+          "log_sha256": "982b76d9fc5d57d1b025136c960145486846ea6b079458c0b8b8c18ab69996d4"
+        },
+        {
+          "gate": "python-3.14",
+          "exit": 0,
+          "seconds": 158.3,
+          "log_sha256": "2b18ce860900d5821af70f3a50c40ce36385b714a6b3a5b15500152e2bccc508"
+        },
+        {
+          "gate": "python-3.9",
+          "exit": 0,
+          "seconds": 157.51,
+          "log_sha256": "859f0a86050013c1b04ff07f4343f9e9958476c95f20d6dcd0614ef136975539"
+        }
+      ]
+    }
+  ],
+  "skips": {
+    "all_normal_suites": {
+      "count": 2,
+      "reason": "The two read-only sub-family parameter sets are empty; every currently declared sub-family has a config section.",
+      "tests": [
+        "tests/test_sub_families.py::test_a_read_only_family_offers_no_config_section[NOTSET]",
+        "tests/test_sub_families.py::test_a_read_only_family_is_still_declared_and_reported[NOTSET]"
+      ]
+    },
+    "python_3_9_additional": {
+      "count": 36,
+      "reason": "sys.stdlib_module_names exists only from Python 3.10; each runtime-module import check runs on all five later interpreters."
+    },
+    "property_tests": "OSCMIX_REQUIRE_CONTRACTS=1; missing hypothesis is an error, not an accepted skip."
+  },
+  "tested_files_sha256": {
+    "Makefile": "d37c086820790aa79fd3929a8a9888ee74a4bec592363d63288b97e69b811b2a",
+    "bin/oscmix-launch": "d60fd70d7e612c86859d7a0fec2408e569c504221f4767241ad7329c18590dc4",
+    "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+    "pyproject.toml": "9ff637629bff73564592c8eeb9f7114604667c05c214789486a6637904f71cdf",
+    "requirements-dev.txt": "5dc851cd475b05fd0f1042c9f9e2cfe0bfce290946a04cdd1a233f95a657e63b",
+    "scripts/build-package.py": "8e51bfc3e5091402bb96fb1c37bd43f1792b3b99b20c01a3c019c7198dfef93b",
+    "scripts/build-release.py": "25064e838864df9eb1c68e0a600f58136a55ad20dccae11bfde370faee0bb929",
+    "scripts/install-payload.sh": "b188b88c5304f33a3a0647c93b19828de0899f53878b569ce0f2d7a2882dd7f6",
+    "scripts/install-preflight.py": "96e836cc9a50fa6ee4ffb9a1c6e7f55044211f223fe46317f32ca781c7674308",
+    "scripts/mutation-policy.py": "e4d9dbd7be8ef09939a6ac018d5ea2d8bc653526369e2b6c585716325d3842c6",
+    "scripts/package_formats.py": "3eb235abd51fa61689799f3b6bae6e1640cbfed87360776e8b81faff0f3fc731",
+    "scripts/package_gtk.py": "8a0980f142af17f7232b450e8f70092772e09c33a6c598a7a2e5c9ffac97e02c",
+    "scripts/qualify-distribution.py": "b7fe3fbcc84156fb4f93526c054c504d840381a08e1f7bcbb891411c60c62c0c",
+    "scripts/record-dump.py": "9764ff34f088caaa8b9552ae322862269adc99097de2e81cf80e317042e40da7",
+    "scripts/stage-install.sh": "3c6b7133c77de0b2a9e3b7f21852af136572b8e7ce6dde844f4ac2030371641f",
+    "scripts/sweep-writes.py": "4625a3c3bb5070aa50671b65b144b2858af82bdd7eb15582dbff68eb8f0720dd",
+    "scripts/test-distribution.sh": "faa99c5a54ff936afc404393a714996192b9639b86778a463c3f8ab9eee28b7a",
+    "scripts/verify-hardware.py": "9fa3001f5c4bcc35f1201118aba6776c9d06d950ba504065377d5eb03ae1f3fc",
+    "scripts/verify-unit.sh": "dac71153da4a71487e335df5ef71dbdcdd326393440bd31cbe99cb5676727ef1",
+    "src/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+    "src/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+    "src/oscmix_desk/cli.py": "a854353ea45a081f892f29cc93a17048093a48c18d2f10b21a2df827af8c212b",
+    "src/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+    "src/oscmix_desk/constants.py": "9b8b34f94eb35b42241480b1aba6dbf4e3b7421bc8ded15231717541789e8697",
+    "src/oscmix_desk/desktop.py": "30c7c49fbb838a166c38aec34da63385b7718b2f90f4e1d3ed484eace81e7b40",
+    "src/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+    "src/oscmix_desk/diagnostics.py": "f4262d6cadcd058c4647feb7057e54269d854fa192b1439de8d28e43a3b74b68",
+    "src/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+    "src/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+    "src/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+    "src/oscmix_desk/launcher.py": "57ef64b09ab330c4bc27a5e21a750fa604c9762f6b9872cef2cb1d74cad8465a",
+    "src/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+    "src/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+    "src/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+    "src/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+    "src/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+    "src/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+    "src/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+    "src/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+    "src/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+    "src/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+    "src/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+    "src/oscmix_desk/preview.py": "14a1d5b84403847384b8321ee8fbeef0cd13afefe48b917b01e40163bfa549a2",
+    "src/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+    "src/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+    "src/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+    "src/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+    "src/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+    "src/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+    "src/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+    "src/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+    "src/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+    "src/oscmix_desk/status.py": "7d47e3f446659246fc5c295e0dcabfeccd35523429b0bd862d4056de196dc0d5",
+    "src/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+    "src/oscmix_desk/verify.py": "2580bb211e84f2e1e264b69d096d8e3108a216a3450988e319d97d713f779fef",
+    "tests/backend_doubles.py": "51edd716d5d3c3cef82b976bbcb16c6cc764a3bcad47e489e4f4f698cb5d8b9b",
+    "tests/conftest.py": "ebd5202ba74cb124228a3e68255d9f2b6be931bfabe9aea1c2c2cea2277dff66",
+    "tests/data/cold-plug-timeline.json": "e4636bf14545c707e5d1297a36feb85e795e5e10ac5bdba6cf1c61034375e3c8",
+    "tests/data/refresh-dump.json": "37f4c1a032a85810134206200a9a69494380285187469b2109792a6897a35cf4",
+    "tests/data/two-routes.conf": "66a5bf6754ed80394d66b49b2955c47fb2b781b096aaa82ff9efb3958be330aa",
+    "tests/data/ucx2-playback-modes.json": "a386ae396cb5c8a28455e2a670c79dbf38dbef890fc3068eb2400580ea9bccc6",
+    "tests/desktop_session.py": "423df54c7379ea50eb16f8be04e00e599628c0057057c8677cb1c8c465c9e4c8",
+    "tests/gtk_lifecycle.py": "28497059c8f64fc20393a9123f95813b5d89f3838f9b635622e0f35c76644dbe",
+    "tests/oracle.py": "a02843b2673ce52d9b95d64bd873a4a758d8c2b8732dc6fcd03f52ba6d4a82de",
+    "tests/oscmix_fakes.py": "b1fa8fa586395f66e223bf49dcd3343ef1e4a4b0f511966d24325b37110d798e",
+    "tests/package_lifecycle.py": "6c7313bc2f94898621cebc329ade51e884213030b11c54717abdc77ae1074bb9",
+    "tests/package_migration.py": "81c6d223507c956042504bceb4e801df4c48961d15ad0484b365ffa8e29abd25",
+    "tests/profile_desk.py": "916168cb03797a36146edd706417cce1ea5892493c450f1b2c56cfdda1c81cdf",
+    "tests/reconcile_desk.py": "efe5b9eba358ed05d117c69ef45919d124ad08c22844a508aac4394915479b6a",
+    "tests/session_doubles.py": "4ad6f3dd7a882d402df87124416ef7b08d326c6c2a1fa24cca3034ddfa3311ee",
+    "tests/subprocess_coverage/sitecustomize.py": "c800eca1c3f28b427430ece3ea9d661afa56048c362b461532c6cdb434351e49",
+    "tests/support.py": "7da3efbfac65a5cd83f57ccec6d8f2f74c0f4cf3c622ed22538a78b8a2534892",
+    "tests/test_apply_routing.py": "6410f3ec403df3383e55c9a89c70ac3bc83dac24c76380778646eb3b36fd550e",
+    "tests/test_architecture.py": "cd928217522606b195322b70508ed5114d557ba845937a7d84b20215940a9bcf",
+    "tests/test_autolevel.py": "b365c3bbd82b0e3e66bd19085f59fe464161640bb661e49ffe8aa185ca140f91",
+    "tests/test_backend.py": "49169c36ad1134b6d5124f8bfba62e62266052fb9b6cf25f2e85b2454c0280bc",
+    "tests/test_channel_sections.py": "7401791395908c3c40ecd512af76577333d123309b5e890d9166eb74e171f205",
+    "tests/test_ci_workflow.py": "c3eb2a71cc38a48df08eba4a302244351f768895434f1df60ccfda13bf56e299",
+    "tests/test_cli_args.py": "e653c62e76cd67bde2df8decd0626442eb8c8a8493385ca66fd4c606381a73a6",
+    "tests/test_config.py": "b050549be2cb671d6bff0bd960a4139c10e3de45954adbebd6ac86f3b1012da1",
+    "tests/test_config_compatibility.py": "3c7a473e33f8030474f0a0f7c67f8bd0dc80d865678d62d4a8e9409f42d9134e",
+    "tests/test_config_device.py": "b0159a6f6bf59d615b034a53038aad7c4cbd21d2a91bedd895162d01f128032c",
+    "tests/test_contracts.py": "c8451c6b12755e5a4f3868342b3311f514678219fac6a13e90e13a23810a682a",
+    "tests/test_crossfeed.py": "8ecb13d4c0f0b186e77b30c8d49f25db84bd851f824728e4e69e3f4a3da9a1fc",
+    "tests/test_desk_in_effect.py": "80f2d76fa2d1b1a4a917eb9193f5d686701757fbf06e00779209dc799cf8aa8d",
+    "tests/test_device_identity.py": "147344eae1ee13efd684d1880ef508a7532218c445b062f615b42b7cc354d285",
+    "tests/test_diagnostics.py": "e69a42da86ca2b2fd9f49bb493ac11ae9f33823b4b6a19af4f0b122d1acfc1c3",
+    "tests/test_diff_cli.py": "6a155136697c7c0aa42558e9cff5f52516fd0a88ebb0dc0760a439ce83183e79",
+    "tests/test_dump_config.py": "71ea73743de97a8c688ac524758a8ccf703182a01a547fb68befc729e90f0c3e",
+    "tests/test_dump_config_cli.py": "c771a5b2c6cf85c5cce16fcafe4be6fdc9dd00c52b5e48f9f5c8f4627e4dcbc9",
+    "tests/test_dump_limits.py": "a7131cb96875c29685cc0818f3403d80a56cc7e035fc2ab5615f9be3f741eed5",
+    "tests/test_dump_sections.py": "47fcb8c429eb0c8dd2414c7cee0207085619fc72f2a334a2122aea6e9ce952f1",
+    "tests/test_dynamics.py": "3dd6487b44800f9e714b1dd4a94af818a7a2b0d53947bb7ab4f526ae12feb170",
+    "tests/test_faults.py": "d991d2cfbd77af0fb552c59fffe426de38cb0c9ea33f0d21f15cfba19d374506",
+    "tests/test_global_sections.py": "b11e2ddff255150cec20b44ad2fe4a0f2e5a4a1a599e407b6e864823a7d851f0",
+    "tests/test_golden_messages.py": "a24f3d4e7c49c349b88d2e3e3b2fbeb3049511643f2e9269de24fbc260d16ee7",
+    "tests/test_hardware_verdicts.py": "2fb623f31e5aba1c1ab18341fd766f3132eaef21f876189e7a062e2e449ae600",
+    "tests/test_input_routing.py": "506a372554ad47c33de213a6e7f05d6c9e1096ce6bec4269215ce7131ffe8121",
+    "tests/test_install_modes.py": "39bec7782590b171376f500f2e302a0f93e3143ccb09f9918e43d07f04429429",
+    "tests/test_install_sh.py": "2f387c10d166f3c99bc7c67f6a8082be2e8203f6d46b18a542a11c42f9e194ee",
+    "tests/test_interface_resolution.py": "038375c4b878a5fe02032a17ed0fbfdb090ba3f62a2e1a9c4d7e7b424234e867",
+    "tests/test_launcher.py": "a48fe8b6fca139e203d42a0b0673bb6ec47c8bbbdf3139a5d390ec9b9e05bfa4",
+    "tests/test_launcher_flow.py": "e61d3fd63005ad2946cfbbeb88c162af51bb030c81c5df37463dcb829658a480",
+    "tests/test_lifecycle.py": "8bd09ebb5f8e87aeacd5b3f96355e7c51746da6b72565d833fa6247e8ae9526c",
+    "tests/test_lock_file.py": "4d2d7c453217d432c52c1bbc1e2ec69ab7f22264f79990e38dbaa3cbec922689",
+    "tests/test_locking.py": "22b9450f8e12e7e728cfb43502794c4bce470e16a5c981c0b6b8c60e5584d73b",
+    "tests/test_lowcut.py": "a034b1d652d5a988719bf7758c98fa90d5eda6d589293afd76eacb068f05cc87",
+    "tests/test_marker.py": "d9e9df02a43140b1bd7a4a6c49efb46aaaf51fd72214c644788dece0ce6b162d",
+    "tests/test_mix_reapply.py": "288dcb9fd4507a514cb8ea4ef269248bbac366da4ac3ca0162267ebec29a486d",
+    "tests/test_mono_routes.py": "3035f67f9c9fd30ce5f54f022566349969f0ceaccb02bd16602c37a50b777344",
+    "tests/test_mutation_policy.py": "69ca7a1f9172943b5ac27de2ed22424350a2f627ebb420f97c35ea071b011a82",
+    "tests/test_nested_sections.py": "d0f6f3542bde1d51ca2de1bb443d9dc11aaba89b825cfa764fcbeeb4b11892d7",
+    "tests/test_notify.py": "db64875d3c27547d7a5404102d19ca8182d6e3c2c037c0e6b44ac38f3608e1fa",
+    "tests/test_numeric.py": "7acd059fbe106276cc9b0180daf06b5783a0129081bc07ea597a45c1b8868b44",
+    "tests/test_osc.py": "168405d3ae074b8084e4bc0c2ab4d92da34d65ed89519c5a6a4ab751905f0024",
+    "tests/test_package_guard.py": "bd78bf62867ec0f2bb33d42738b11d4e1b435c41d719a7753eaf5da0fe6a150a",
+    "tests/test_package_setup.py": "6645469dd6db2c5340110f959c401e763fd5f7948ec417dcae521fd84e289efb",
+    "tests/test_package_stage.py": "46a4c3c26026f449a75948041fba514225027aa887cb670281bd0dea35e47c4e",
+    "tests/test_partial_write.py": "72df95e28366b9220761c14d21dd55489bc98ec8aae460a04cab2ddd2a62b89b",
+    "tests/test_performance.py": "e41410c8f3356e58cfe82d80bd9db0a0d2a95747ee67541c8e13341bd2edd71a",
+    "tests/test_pin_remember.py": "121ff9d85d71f1cf7fde086a39965068dc2ce98df1fe80510bd029bf66eb1bb2",
+    "tests/test_pipewire.py": "68285f8bf62156eda5e24fb61abec2e2710bee4049c304e167a0078c72ef89ac",
+    "tests/test_preview.py": "4f4e47b6a84549b294d06c8a6da8ce6797851c17c816469c839784cd2a576649",
+    "tests/test_process.py": "710813b8a14bbca3e44379a9f2b147ab74a55ee50c81aa322d29a7a4cd35d7fd",
+    "tests/test_profile_machine.py": "6ec399cb222d25e62999e70b9ffd76055ef534a2d9f783ee0abba65e6b10c9c5",
+    "tests/test_profiles.py": "9fb60059e0cc792b70eb2fd46ef51006ada05551e6623f68882f0583be11496c",
+    "tests/test_profiles_cli.py": "4bfd0ce0002e43e8643da2c092e6efd222ab1e348c1c2d37873cabb63614943a",
+    "tests/test_readiness.py": "c4feefadec10f2713bc580ca417dfe6a3e094512e6b88c439747c88aad695976",
+    "tests/test_receive_port.py": "a01f0b7d63311e0be22a2cc5e010b5365e932db157cb218c2f06c6b6e80a37eb",
+    "tests/test_reconcile.py": "bb37314e20a2d184a56f45e7c71a273d710fe4efb1f93e210f635ef69b30f045",
+    "tests/test_reconcile_triggers.py": "dc6fb423a76e895dd9e288cdce427770e216081bc2b3791a6d5e025122fd8a83",
+    "tests/test_reconcile_writes.py": "71e541ef20df9dab961f95df0a6b65a620dee529eda0ea7f6afc2c501e6c56e4",
+    "tests/test_recorded_dump.py": "faccc86046d24eec9e4f077a1cb981e16b75fcb0d8b7f8e91536322b2fb36dd4",
+    "tests/test_register_addresses.py": "f9fb627b3d12a13f9f161eae3810e6103a805ac06b65bf350c0bf1ca3aca7741",
+    "tests/test_registers.py": "3c6c335c7348eff2eade53e468151b7f0d81d798ef38d232226585c6c4559610",
+    "tests/test_release_archive.py": "3a28d507801b013467f99c8c640dc0fd1843623d1ed6437f17830743ac205104",
+    "tests/test_reload.py": "a97e8fc3405e47588310d146e21d1a9ed70fbde3dc26486650a329ace9d99921",
+    "tests/test_roomeq.py": "daea626bead062570ae539cd9e888c41ca79abe4fe11cb82df297bf224815591",
+    "tests/test_seq_clients.py": "cb35bc6c6973d99bb56ff952177c0d9ee5c0f9657dc0476a84070976d99778b9",
+    "tests/test_session_integration.py": "5e960bd13a38059c6b650f2d2d01ab38e92d47066a3a2d4bdc5971b5f4b0ec9a",
+    "tests/test_sighup.py": "cad312d5a625258d8d8b6dab8074186a2a4a457cc2547429c2db2bb13a8192eb",
+    "tests/test_soak.py": "0d41cbb6aa3658c901c0d39bd84053fac2e8130d3cdc460a55952edac6d3ce8a",
+    "tests/test_startup_helpers.py": "8fa20dc7accf6510c52bf54a47fa855aaa24d0d3a2a79cb9f822e915daa6dbdd",
+    "tests/test_startup_transaction.py": "dd3548526611f2a405915be28088315c6c183ca6f662c5b739134d623ad3ffbc",
+    "tests/test_status.py": "7c78eababdd925574daf2c3996140a6b34664501dbdc2dcfbdc040dc1ac41264",
+    "tests/test_streams.py": "88daeae61abc26f93d9325be434369a80cfee9571c8823684fa601bcf17887c0",
+    "tests/test_sub_families.py": "8dbf0dbdbde629be7f72bfe9555019d3623a59431be9ab7c5115ae0647c2b900",
+    "tests/test_two_processes.py": "dc1f89fa5a9ff88df4604f8b95ebdf161240b57b7a22d1dadeaa9fdabc232012",
+    "tests/test_unit_file.py": "0d4e1a658f1dee5cd10ca329a181f974c3a217dde1655f918cfe9ab7ca6efaeb",
+    "tests/test_unit_lock.py": "a729f51b59329853fd20b1a71cb6b98a4285cc018b4d8d593573f47a64eba3f7",
+    "tests/test_upgrade.py": "a3564f29659a2218117119f55689c5b4dc2296f624f60c14d9a56c0cdec2a9cb",
+    "tests/test_usb.py": "2a0626fbefa98b605f7acf01f8076908183cc8a9f6f70ebb0d007a1d03925328",
+    "tests/test_verify.py": "af9fb59c8fd157d53a2548f9f5cf636827cd9297d2739612cf0e21cdbb48d6ea",
+    "tests/test_verify_order.py": "cd751007808a7c5c81f06f9027c88acd9de75dbf0a5fe65d22fcb63b9aeefe34",
+    "tests/test_whole_config_on_the_wire.py": "cc84bbaf1b7fb93733407c818875af1b71b5ed02843915e6b338202745c22dd5",
+    "tests/test_whose_backend.py": "f7b62d5afc75a53eabe9cb22d99eacec3bd8819bb68ceed58fd78842754ed8d1",
+    "tests/test_write_sweep.py": "b2d2da084a511abc251fc82ef8aa4eb2135f7baa428ea904e36d983c9048154e",
+    "tests/two_boxes.py": "eac8042ecd2f78406524bd4dbaa7201f13a7c5bc4e20ec412c70b1e35b72d978"
+  },
+  "supporting_files_sha256": {
+    "config/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+    "install.sh": "b60aee94671e15034491b7ce7e2f5a4f64df1330c307c326c4a3154840d018ab",
+    "packaging/00-oscmix-desk-maintenance.hook": "532043192bd145149a46b96bea58069940f01c717bdb8b9f0ef34ed190773b45",
+    "packaging/00-oscmix-gtk-maintenance.hook": "7ec6eb8d980db6c1eadee6b94f9ae37eb44d5e6644b489a8d8cf4d590b0bf09b",
+    "packaging/oscmix-desk.install": "892ebeff88787e6f7f310675c7d12355635a31809d2e75436cd1495f85b1c39e",
+    "packaging/oscmix-setup": "893e0da176fb6dcab65d41ea64473f8f804ede4c1b87deedddc6b7347fc33fae",
+    "packaging/package-guard": "16ac826446090410cdaed0ed3ad1d9363c59a923a14994e6807f4f8e2dd9c94a",
+    "quality/vulture-allowlist.py": "5c37f4dc275491dc46c6f70040c4c50b43777c95388ad9c4ed6eef7d92b2f6df",
+    "systemd/oscmix.service": "e82f8149ff121cccc4dbe2ca1128c1fc9a6e0c39a3ffe6482ad78413c191d938",
+    "systemd/system-sleep/oscmix": "c1cd506dd190d000e81b36912f7a757c6c421938c76563059eac3988cbb2db92",
+    "systemd/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+    "udev/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+    "uninstall.sh": "07edd0572840dfdfa07dfc58aefc5b0328548c6b36ec6b02cf6c7a2606cda5ee"
+  },
+  "no_interface": {
+    "gate": "no-interface-check",
+    "exit": 0,
+    "seconds": 160.79,
+    "recorded": "2026-09-24T12:01:26.857277+00:00",
+    "usb_devices_before": [],
+    "usb_devices_after": [],
+    "continuous_absence": true,
+    "observation_count": 323,
+    "candidate": "384352acd984936761206e6b5712d0af173d62e2",
+    "tested_files_unchanged": true,
+    "runtime_sha256": {
+      "src/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+      "src/oscmix_desk/backend.py": "2f6618a31bba1cbc6df0a3fc17646651c1f2e144988202c9d5a964abd097b489",
+      "src/oscmix_desk/cli.py": "a854353ea45a081f892f29cc93a17048093a48c18d2f10b21a2df827af8c212b",
+      "src/oscmix_desk/config.py": "9dd20f09c362ef1c718b5d2e61c43d8914b655377c9c2d0c2c7cd85fd937e64d",
+      "src/oscmix_desk/constants.py": "9b8b34f94eb35b42241480b1aba6dbf4e3b7421bc8ded15231717541789e8697",
+      "src/oscmix_desk/desktop.py": "30c7c49fbb838a166c38aec34da63385b7718b2f90f4e1d3ed484eace81e7b40",
+      "src/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+      "src/oscmix_desk/diagnostics.py": "f4262d6cadcd058c4647feb7057e54269d854fa192b1439de8d28e43a3b74b68",
+      "src/oscmix_desk/discovery.py": "9dce39627dcd1346b7e03b94fdb3abbb0edd3931cfa0c9f2eea45a274d54ee20",
+      "src/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+      "src/oscmix_desk/errors.py": "a0b87c9ad549bbdee87c1cf8e8a134b80cde7dc0fd545bd4ff3e1bcf8535d65e",
+      "src/oscmix_desk/launcher.py": "57ef64b09ab330c4bc27a5e21a750fa604c9762f6b9872cef2cb1d74cad8465a",
+      "src/oscmix_desk/locking.py": "95f9cc00a7bfce216368bb101117721980884fa7ab2730e6725ca6d50a80e03d",
+      "src/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+      "src/oscmix_desk/marker.py": "ea08ee2c7bea56a6d19ac7a4a237aa6188039349a00e1bf6429c85df53170e4f",
+      "src/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+      "src/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+      "src/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+      "src/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+      "src/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+      "src/oscmix_desk/outcome.py": "798932a3fbcec0ef0f836315d1f0465662cacac37d0ca6f24c419c5dd0ae808e",
+      "src/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+      "src/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+      "src/oscmix_desk/preview.py": "14a1d5b84403847384b8321ee8fbeef0cd13afefe48b917b01e40163bfa549a2",
+      "src/oscmix_desk/process.py": "791b522bac91dee389bbac2b39f2fabf0d98a4f095fef426c3ee7a104ddf6cbe",
+      "src/oscmix_desk/profiles.py": "60a73fb0870eabf8692ad40c5b9a31f5fee639649aa06ef593e857a76be74b41",
+      "src/oscmix_desk/reads.py": "08726806332cdc94acbe4e5b39ce8053c1b9fb3848a3162b1b38d2115d9f695f",
+      "src/oscmix_desk/reconcile.py": "8823b0565e58ada1ce318808162c3f9271e2728e1f5b4bae295635f4e838d949",
+      "src/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+      "src/oscmix_desk/reload.py": "f4f22eaac93c2d6b49e9afd656ff8c3032265b9a7be757c69729d4f41496fbf6",
+      "src/oscmix_desk/routing.py": "eee28db1e7846f5f17f6ab1ee6cd7999d9f05fccf6c4c9fb321ef67172c56d5b",
+      "src/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+      "src/oscmix_desk/session.py": "6b442ad6d1c6e60493f543ed4f0b84ccfe29109187d969f10980347adbb85aa8",
+      "src/oscmix_desk/status.py": "7d47e3f446659246fc5c295e0dcabfeccd35523429b0bd862d4056de196dc0d5",
+      "src/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+      "src/oscmix_desk/verify.py": "2580bb211e84f2e1e264b69d096d8e3108a216a3450988e319d97d713f779fef"
+    },
+    "ok": true
+  },
+  "qualification_followups": [
+    "The scheduled CI mutation runs on September 23 and 24 exhausted their 180-minute job limit. The final candidate gives only that job 240 minutes; complete-result and score requirements remain unchanged. The final software gates include the updated workflow-bound test.",
+    "Tests added after the initial mutation snapshot exercise complete launcher decisions, process query handling, native provenance and asymmetric verification-summary counts. Stats were cleared; all affected functions were rejudged by explicit name.",
+    "A preliminary flake run encountered an incorrectly escaped byte string in a newly added fake-process fixture. It was corrected before the final five complete runs recorded here."
+  ]
+}

@@ -233,6 +233,10 @@ host service bus or runtime network access. Native checks build twice, verify
 identical artifacts and exercise the actual package manager's transitions.
 Native checks also launch the installed GTK executable against an isolated
 fake backend/display and exercise real previous-version upgrade/rollback.
+For 0.7.3, nested GNOME and KDE Wayland sessions and Xfce/X11 also pass
+the receive-port contention and close/read-back/reopen checks;
+[desktop evidence](evidence/0.7.3/desktop-integration.json) records the actual
+compositor versions, software rendering and fresh received labels.
 `--previous-tag` selects that baseline (0.7.2 for this release).
 They do not replace VM or hardware qualification.
 

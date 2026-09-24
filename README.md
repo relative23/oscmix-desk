@@ -5,7 +5,8 @@
 
 **Your RME Fireface UCX II, described in a text file.** Write down what the desk
 should look like -- routing, faders, EQ, dynamics, reverb, the clock -- and
-it is applied every time the interface is plugged in or the machine boots.
+enable automatic operation to apply it whenever the interface is plugged
+in or the machine boots.
 Use profiles for different setups and `--diff` to compare the config with
 the state the device reports. Settings that cannot be read back are shown
 as unverifiable.
@@ -27,7 +28,9 @@ makes the desktop integration disappear.
 | `--diff` | what an apply would change, without changing it |
 | `--dump-config` | reported settings exported as config, with unrepresentable or unknown state identified |
 | `--snapshot` | every register the device reports, for comparing two moments |
+| `--status [--json]` | read-only installation, device, backend, playback-mode and mixer diagnosis |
 | profiles | named alternatives, switched under one lock with a stated outcome |
+| `--dry-run --profile NAME` | planned writes and previously declared routes the target leaves undeclared |
 | `[pin]` | ownership overrides for flat input/output settings; other families use their register defaults |
 | udev rule | starts the backend on hotplug, disables Fireface USB autosuspend, and keeps affected ASM4242 host controllers awake |
 | systemd user service | supervises the backend; reports initial apply and subsequent verification separately |
@@ -41,8 +44,8 @@ The [feature inventory](docs/FEATURE-SURFACE.md) distinguishes desk config,
 the pinned backend and its existing GTK controls, including their limits.
 
 ![oscmix-gtk showing the Fireface UCX II hardware mixer](docs/img/oscmix-gtk.png)
-*The upstream oscmix-gtk mixer on a UCX II. This project keeps that desk in
-a file, and keeps the file and the desk agreeing.*
+*The upstream oscmix-gtk mixer on a UCX II. oscmix-desk applies declared
+settings and checks reported state under the PIN/REMEMBER rules.*
 
 ## Measured, not asserted
 
@@ -55,7 +58,7 @@ since.
 - **1888 sweep entries confirmed; 14 deliberately skipped.** The sweep
   covers 1902 settable entries, skips reference-level changes (ADR 0016),
   and records per-register verdicts in
-  [the final 0.7.2 sweep](docs/evidence/0.7.2/write-sweep-ucx2.json).
+  [the 0.7.3 sweep](docs/evidence/0.7.3/write-sweep-ucx2.json).
   It preserves requested and reported values and restores all 2252
   readable messages exactly, including type tags and additional arguments.
   Playback matrix writes cannot be verified by this backend. The recorded
@@ -77,7 +80,7 @@ since.
   gain/mute cases and 65 route checks through PipeWire Pro Audio.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
-- Twenty-seven [decision records](docs/decisions/) carry the reasoning and the
+- Twenty-eight [decision records](docs/decisions/) carry the reasoning and the
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work
@@ -117,7 +120,7 @@ independently of the host audio server.
 
 ## Install
 
-**0.7.2 adds installer preflight, manual operation and native packages.**
+**Source installation and native packages support explicit activation.**
 Obtain a [verified source release](docs/RELEASE-ARTIFACTS.md), unpack it,
 and run:
 
@@ -229,11 +232,13 @@ Initial applies write declared settings. Later selective reconciliation
 enforces PIN values and leaves REMEMBER values with the device. `[pin]`
 overrides apply only to flat input/output options; uncommenting a dump
 comment does not turn a setting into a pin. There is no continuous
-polling or automatic saving of GUI changes. Adding `volume = <dB>` to a route pins that output's fader, and
-every backend start forces it back to that value. That is what you want for a fixed installation, and
-what you do not want if you set your monitor level by hand -- in which
-case just leave the line out. Note that `level` is a different thing: it
-is the routing itself, the mix-matrix gain, and is always written.
+polling or automatic saving of GUI changes. Adding `volume = <dB>` to a
+route sets that output's fader on each initial apply, including backend
+starts and explicit profile switches. Its default policy is REMEMBER;
+`output.volume = pin` in `[pin]` also enforces it during later selective
+reconciliation. Leave the fader undeclared when the initial apply should
+not set its value. The route's `level` controls its mix-matrix gain and
+is always written.
 
 Shortly after startup,
 `oscmix-session` also reads the state back from the device in the
@@ -242,7 +247,8 @@ verified against device state` means that the read-back found no remaining
 problem requiring repair under the PIN/REMEMBER and reportability rules.
 It does not mean that every declared value equals the hardware: a differing
 REMEMBER value is deliberately kept and logged separately. The summary
-counts matching reports and settings not observed in the dump. The playback
+separates matching reports, retained REMEMBER values, PIN differences,
+missing reports and backend-unreportable settings. The playback
 mix matrix is never reported by oscmix, so it is re-established rather than
 confirmed; read-back cannot prove it.
 

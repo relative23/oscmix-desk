@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased -- 0.7.3
+## 0.7.3 -- 2026-09-24
 
 ### Fixed
 
@@ -43,7 +43,29 @@
   Native qualification includes companion add/remove, paired upgrade and
   downgrade, dependency refusal, repeat builds and actual 0.7.2 transitions.
 
-Release qualification is in progress; this working tree is not a published release.
+### Qualification
+
+- Pass all 27 release software gates on the final source: 1,933 tests with
+  two regular skips on Python 3.10–3.14; Python 3.9 passes 1,897 tests with
+  36 additional standard-library introspection skips. Five complete repeats,
+  the 200-cycle soak and fifteen fault-suite repeats pass.
+- Measure 97.81% combined statement/branch coverage of the runtime and
+  entry points. Complete 9,867 mutants: 7,803 killed,
+  2,048 survived, 16 timeouts, 0 uncovered;
+  score 0.792102. The fresh full run is followed by explicitly named
+  rejudgments with refreshed stats for tests added during qualification.
+- Pass seven source/manual distribution targets and four native targets,
+  including paired core/GTK package upgrades, dependency refusal and actual
+  0.7.2 rollback. Repeated native/source builds are byte-identical in each
+  recorded environment; 55 installer tests pass from the extracted archive.
+- Exercise real upstream GTK with a simulated backend on GNOME/KDE Wayland
+  and Xfce/X11, plus isolated X11 on all four native targets. Fresh accessible
+  sample-rate labels prove receipt before and after reopening; recovery
+  preserves REMEMBER values.
+- Repeat the UCX II sweep and all five routes: 1,888 entries confirmed,
+  14 protected skips and all 2,252 readable states restored exactly. The real
+  0.7.2 → 0.7.3 installation preserves the desk; startup, SIGHUP, a complete
+  test run with the interface off and automatic power-on startup all pass.
 
 ## 0.7.2 -- 2026-09-24
 

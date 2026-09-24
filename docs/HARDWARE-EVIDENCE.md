@@ -5,7 +5,20 @@ Its measured backend pin is
 `f2fdd5ec78338848754aad32cc07f3440de63395`. Evidence describes that
 combination and the firmware it records, not every Fireface or firmware.
 
-## Current measurements for 0.7.2
+## Current measurements for 0.7.3
+
+The [0.7.3 sweep](evidence/0.7.3/write-sweep-ucx2.json) and
+[five-route check](evidence/0.7.3/hardware-evidence.json) use candidate
+`af89b03`, USB 3.01 / DSP 36 and the unchanged backend pin. The sweep
+confirms 1,888 entries, skips 14 protected entries and restores all 2,252
+readable messages exactly. All five routes pass with a -40 dBFS stimulus
+through their named stereo PipeWire sinks at the original 48 kHz.
+Two complete refreshes after the routing test again match the original
+state. The real per-user upgrade from 0.7.2 preserves the desk and passes
+startup and SIGHUP. Each artifact retains the source actually measured;
+subsequent packaging/test changes leave those runtime files unchanged.
+
+## 0.7.2 measurements
 
 The [0.7.2 records](evidence/0.7.2/) identify the final runtime `e9ad292`
 and its USB 3.01 / DSP 36 device. A fresh schema-2 sweep confirms 1,888
