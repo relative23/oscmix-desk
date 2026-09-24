@@ -1,6 +1,7 @@
 """Host diagnosis uses identity evidence and does not control the host."""
 
 import subprocess
+import sys
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -105,6 +106,16 @@ def test_query_is_an_argument_array_and_checks_exit_status(monkeypatch, diagnost
         diagnostic_query(['systemctl'])
 
 
+def test_query_captures_real_process_output_and_replaces_unusable_text(diagnostic_query):
+    """Exercise subprocess semantics, without querying any host service or setting."""
+    command = [sys.executable, '-c',
+               ("import os,sys; os.write(1,b'  observed\\xff\\n'); "
+                "os.write(2,b'problem \\xff'); sys.exit(int(sys.argv[1]))")]
+    assert diagnostic_query([*command, '0']) == 'observed\ufffd'
+    with pytest.raises(OSError, match='problem \ufffd'):
+        diagnostic_query([*command, '7'])
+
+
 def test_service_query_does_not_infer_verification(monkeypatch):
     monkeypatch.setattr(diagnostics, 'query', lambda _: 'LoadState=loaded\nActiveState=active\n')
     assert diagnostics.service_status()['ActiveState'] == 'active'
@@ -149,6 +160,12 @@ def test_service_and_launcher_must_resolve_the_same_desk(tmp_path, monkeypatch):
 
 def test_unreadable_service_environment_is_not_permission_to_start():
     assert 'cannot establish' in diagnostics.service_start_problem(None, enabled())
+
+
+def test_missing_service_command_cannot_be_treated_as_the_default_session():
+    service = enabled()
+    service.pop('ExecStart')
+    assert 'unknown service command' in diagnostics.service_start_problem(None, service)
 
 
 SETTINGS = ("oscmix send-host '127.0.0.1'\noscmix send-port uint32 7222\n"

@@ -118,7 +118,7 @@ assert not Path('/usr/share/glib-2.0/schemas/oscmix.gschema.xml').exists()
 verify_files(first)
 install(gtk)
 run(['runuser', '-u', 'tester', '--', 'env', 'OSCMIX_QUALIFY_DESKTOP=1', 'GDK_BACKEND=x11',
-     'XDG_CURRENT_DESKTOP=Xvfb', 'dbus-run-session', '--', 'xvfb-run', '-a',
+     'XDG_CURRENT_DESKTOP=Xvfb', 'xvfb-run', '-a', 'dbus-run-session', '--',
      '/usr/bin/python3', 'tests/gtk_lifecycle.py', '--gtk', '/usr/bin/oscmix-gtk',
      '--schema', '/usr/share/glib-2.0/schemas/oscmix.gschema.xml',
      '--output', '/work/build/qualification/desktop'])

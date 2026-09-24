@@ -203,9 +203,12 @@ def exercise(args, mixer):
         assert 'occupied' in refused.stderr
     finally:
         listener.close()
+    # A distinct value proves the reopened window received a fresh reply;
+    # a briefly stale accessibility object from the first window cannot pass.
+    mixer.values['/clock/samplerate'] = ('i', (88200,))
     child, log = open_gui(work, env, mixer, 'gui-after-readback')
     try:
-        wait_for(lambda: received_label('96000 Hz'), 'GTK receives after desk releases replies')
+        wait_for(lambda: received_label('88200 Hz'), 'GTK receives after desk releases replies')
         assert child.poll() is None
     finally:
         close_gui(child, log)
@@ -215,7 +218,8 @@ def exercise(args, mixer):
     return dict(ok=True, backend='isolated UDP fake', gtk=str(args.gtk.resolve()),
                 gui_first='read-back busy; reconcile wrote nothing; profile applied unverified',
                 recovery='REMEMBER fader preserved', desk_first='launcher refused busy receiver',
-                gui_reopened=True, accessible_received_label='96000 Hz', shutdown='SIGTERM',
+                gui_reopened=True, accessible_received_label='96000 Hz',
+                reopened_received_label='88200 Hz', shutdown='SIGTERM',
                 messages=mixer.messages, display_backend=env.get('GDK_BACKEND'),
                 desktop=env.get('XDG_CURRENT_DESKTOP'))
 
