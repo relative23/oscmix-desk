@@ -83,7 +83,8 @@ cannot confirm them. Closing GTK does not replay that switch automatically.
 Use `--diff` to inspect the result; explicitly switching again reapplies the
 profile's initial values, including declared REMEMBER settings. In contrast,
 a selective reconcile with no receiver writes nothing, because it cannot
-know which REMEMBER adjustments to retain.
+check routing dependencies; all declared REMEMBER settings are retained
+regardless of whether their current value was reported.
 
 The [reply-distribution decision](decisions/0028-mixer-replies-and-writer-coordination.md)
 separates a future shared read-back path from write coordination.

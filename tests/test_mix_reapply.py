@@ -44,8 +44,7 @@ def test_mix_is_reapplied_once_the_dump_reports_the_link_state(session_mod):
     routes = [make_route(session_mod, volume=0.0)]
     device = run_verify_and_repair(session_mod, routes,
                                    full_dump(session_mod, routes))
-    assert device.order == ["/refresh", "/mix/5/playback/1",
-                            "/output/5/volume", "/output/6/volume"]
+    assert device.order == ["/refresh", "/mix/5/playback/1"]
 
 def test_reapply_repeats_no_link_message(session_mod):
     """Only the matrix is rewritten; re-linking could restart the race.
@@ -93,8 +92,7 @@ def test_blind_reapply_when_the_receive_port_is_taken(routing_mod, session_mod,
     monkeypatch.setattr(routing_mod, "LINK_SYNC_BLIND_DELAY", 0.05)
     routes = [make_route(session_mod, volume=0.0)]
     device = run_verify_and_repair(session_mod, routes, [], blocked=True)
-    assert device.order == ["/refresh", "/mix/5/playback/1",
-                            "/output/5/volume", "/output/6/volume"]
+    assert device.order == ["/refresh", "/mix/5/playback/1"]
 
 def test_routes_without_pairs_still_verify(session_mod):
     # A mono-only routing has no links to wait for; the re-apply must not
@@ -119,8 +117,7 @@ def test_send_mix_writes_the_matrix_without_the_links(session_mod):
         device.stop()
         device.join(timeout=3)
         device.sock.close()
-    assert device.order == ["/mix/5/playback/1", "/output/5/volume",
-                            "/output/6/volume"]
+    assert device.order == ["/mix/5/playback/1"]
 
 def test_send_mix_writes_a_register_two_routes_share_once(session_mod):
     """The re-apply goes through the planner now, so it deduplicates.
@@ -143,8 +140,7 @@ def test_send_mix_writes_a_register_two_routes_share_once(session_mod):
         device.stop()
         device.join(timeout=3)
         device.sock.close()
-    assert device.order == ["/mix/5/playback/1", "/output/5/volume",
-                            "/output/6/volume", "/mix/5/playback/3"]
+    assert device.order == ["/mix/5/playback/1", "/mix/5/playback/3"]
     assert not any(path.endswith("/stereo") for path in device.order)
 
 def test_blind_reapply_asks_for_a_dump_then_writes(session_mod, routing_mod,

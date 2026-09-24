@@ -134,7 +134,8 @@ def test_a_switch_that_cannot_remember_says_so_in_the_outcome(
     assert outcome.persisted is False, \
         "the caller decides about the reload, and needs the fact to do it"
     assert "not remembered" in outcome.describe()
-    assert "next reload or start" in outcome.describe()
+    assert "a reload restores the previous PIN values" in outcome.describe()
+    assert "a new session restores the previous starting values" in outcome.describe()
 
 def test_a_restore_that_cannot_forget_says_so_in_the_outcome(
         tmp_path, confirming_backend):

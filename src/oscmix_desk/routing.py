@@ -20,7 +20,14 @@ from .errors import WriteFailed
 from .log import log
 from .model import Config, Route
 from .observation import Observation
-from .reconcile import Plan, desired, link_messages, plan
+from .reconcile import (
+    ApplyIntent,
+    Plan,
+    application_plan,
+    link_messages,
+    remembered_paths,
+    retention_problem,
+)
 from .streams import PlaybackGuard
 
 # Asked before every write and between every phase of the background
@@ -136,6 +143,7 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
 
 def _cross_the_barrier(config: Config, recv_port: int,
                        device: Backend, *,
+                       expected: Optional[Mapping[str, int]] = None,
                        require_confirmation: Sequence[str] = (),
                        should_stop: StopCheck = never_stop) -> None:
     """Confirm, settle for silence, or refuse dependent writes with cause."""
@@ -149,7 +157,8 @@ def _cross_the_barrier(config: Config, recv_port: int,
         log.info("this backend updates its link state on write; no barrier")
         return
     timeout = LINK_ECHO_TIMEOUT
-    echoed = await_link_echo(output_link_state(config.routes), recv_port,
+    echoed = await_link_echo(output_link_state(config.routes) if expected is None else expected,
+                             recv_port,
                              timeout, backend=device, should_stop=should_stop)
     if echoed is LinkEcho.CANCELLED:
         raise OSError("stop requested during link observation; remaining writes refused")
@@ -176,6 +185,8 @@ def apply_routing(config: Config, port: int,
                   backend: Optional[Backend] = None,
                   leave_alone: Sequence[str] = (),
                   require_link_confirmation: Sequence[str] = (),
+                  intent: ApplyIntent = ApplyIntent.INITIAL,
+                  confirmed: Sequence[str] = (),
                   should_stop: StopCheck = never_stop) -> None:
     """Send the routing in two phases: link the pairs, then fill the mix.
 
@@ -188,10 +199,10 @@ def apply_routing(config: Config, port: int,
     function's whole job and the only part that needs a socket and a
     clock.
 
-    ``leave_alone`` names registers this apply must not touch -- the
-    remembered ones somebody has turned. A re-apply writes the whole
-    routing, so without it one unconfirmed link register drags every
-    remembered fader back to the config value (ADR 0012).
+    ``intent`` determines write ownership. Only initial application and
+    explicit desk selection write REMEMBER starting values. Later repair
+    and reconcile preserve them regardless of feedback. ``leave_alone``
+    can retain additional paths; dependency checks include indirect effects.
 
     It takes the **whole config**, not a list of routes. Rebuilding one
     from routes alone silently dropped `config.channels`, so channel
@@ -200,7 +211,12 @@ def apply_routing(config: Config, port: int,
     that rebuilds a Config from a subset of its fields.
     """
     skip = set(leave_alone)
-    wanted = plan([e for e in desired(config) if e.path not in skip])
+    if intent.preserves_remember:
+        skip.update(remembered_paths(config))
+    wanted = application_plan(config, intent, leave_alone, confirmed)
+    problem = retention_problem(config, wanted, sorted(skip), confirmed)
+    if problem:
+        raise WriteFailed(OSError(problem), [], [write.path for write in wanted.writes])
     # A caller may supply the backend. The profile switch does, because
     # the alternative -- its own send/barrier/send -- is what it had
     # first, and it dropped the barrier: applying and verifying a
@@ -249,6 +265,8 @@ def _send_in_order(wanted: Plan, config: Config, recv_port: int,
     far the *apply* came is that plus the bursts on either side.
     """
     bursts = (wanted.links(), wanted.mix(), wanted.channel())
+    echoes = {write.path: int(write.args[0]) for write in wanted.links()
+              if write.path.startswith("/output/") or write.path in require_confirmation}
     guard = PlaybackGuard(config)
     for index, burst in enumerate(bursts):
         before = [w.path for done in bursts[:index] for w in done]
@@ -257,13 +275,14 @@ def _send_in_order(wanted: Plan, config: Config, recv_port: int,
             raise WriteFailed(OSError("stop requested; remaining writes refused"),
                               before, [w.path for w in burst] + after)
         try:
-            if index == 1 and burst:
+            if index == 1 and burst and (echoes or require_confirmation):
                 _cross_the_barrier(config, recv_port, device,
+                                   expected=echoes,
                                    require_confirmation=require_confirmation,
                                    should_stop=should_stop)
             if burst:
                 guard.check()
-            device.send(w.message() for w in burst)
+                device.send(w.message() for w in burst)
         except OSError as exc:
             if isinstance(exc, WriteFailed):
                 before.extend(exc.written)
@@ -291,8 +310,8 @@ def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
     return state
 
 
-def send_mix(config: Config) -> None:
-    """Write the mix matrix (and output volumes) of every route.
+def send_mix(config: Config, *, confirmed: Sequence[str] = ()) -> None:
+    """Repair the mix matrix without reasserting REMEMBER starting values.
 
     Through the planner, like the apply: a register two routes share
     goes out once, and which writes belong to the mix phase is the
@@ -302,9 +321,14 @@ def send_mix(config: Config) -> None:
     describe the runtime as four overlapping paths long after the apply
     had moved over.
     """
+    wanted = application_plan(config, ApplyIntent.REPAIR)
+    mix = Plan(wanted.mix(), (), ())
+    problem = retention_problem(config, mix, remembered_paths(config), confirmed)
+    if problem:
+        raise WriteFailed(OSError(problem), [], [write.path for write in mix.writes])
     PlaybackGuard(config).check()
     loopback(config.osc_port, config.osc_recv_port).send(
-        write.message() for write in plan(desired(config)).mix())
+        write.message() for write in mix.writes)
     log.info("mix matrix re-applied against the synchronized link state")
 
 

@@ -81,8 +81,9 @@ class Outcome:
     unverifiable: List[str] = field(default_factory=list)
     #: Whether the marker now says what the device does. False when the
     #: switch landed but the marker could not be written, or the restore
-    #: could not remove it: the desk holds only until the next reload or
-    #: start, and the caller must not send that reload itself (ADR 0019).
+    #: could not remove it: a later reconcile uses the previous PIN values
+    #: and a new session uses its starting values. Do not send a reload
+    #: from the failed persistence operation (ADR 0019).
     persisted: bool = True
     #: False when the marker change is in effect but its directory could
     #: not be synced, so a power cut may bring the previous state back.
@@ -117,11 +118,11 @@ class Outcome:
         """One line, for a person."""
         line = self._describe_state()
         if self.state == WRITTEN_IN_PART:
-            return line + ("; the desk in effect has not changed, and a "
-                           "reload or start writes it back")
+            return line + ("; the declared desk in effect has not changed; "
+                           "apply it explicitly or restart to restore its starting values")
         if not self.persisted:
-            return line + ("; not remembered, so the next reload or start "
-                           "undoes it")
+            return line + ("; not remembered; a reload restores the previous PIN values, "
+                           "and a new session restores the previous starting values")
         if not self.durable:
             return line + "; remembered, but it may not survive a power cut"
         return line

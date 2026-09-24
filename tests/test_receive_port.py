@@ -275,7 +275,7 @@ def test_a_switch_keeps_the_marker_when_its_link_receiver_fails(
     assert outcome.written == written
     assert "written in part" in caplog.text
     assert outcome.read_back is False
-    assert "the desk in effect has not changed" in outcome.describe()
+    assert "the declared desk in effect has not changed" in outcome.describe()
 
 
 @pytest.mark.parametrize("flag", ["--diff", "--snapshot", "--dump-config"])

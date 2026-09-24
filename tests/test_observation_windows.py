@@ -141,6 +141,16 @@ def test_a_retry_cannot_replace_known_wrong_links_with_silence(clocked, monkeypa
     assert all(p.endswith("/stereo") for p, _t, _a in backend.sent)
 
 
+def test_reconcile_cannot_replace_known_wrong_links_with_silence(clocked):
+    backend = Deliveries([[[report(A, 0), report(B, 1),
+                            report("/playback/1/stereo", 1)]], []])
+    with pytest.raises(WriteFailed, match="fresh link confirmation required") as failure:
+        verify.reconcile_now(desk(), "contradicted then silent", backend=backend)
+    assert failure.value.written == (A,)
+    assert failure.value.unwritten == ("/mix/5/playback/1", "/mix/7/playback/1")
+    assert backend.sent == [report(A, 1)]
+
+
 def test_stop_during_a_link_delivery_abandons_dependent_writes(clocked):
     backend = Deliveries([[[report(A, 1), report(B, 1)]]])
     # Stop after the link phase, while the barrier owns its listener.

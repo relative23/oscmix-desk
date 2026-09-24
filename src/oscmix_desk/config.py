@@ -31,7 +31,7 @@ from .model import (
     Machine,
     Route,
 )
-from .registers import POLICIES, Policy, global_families, settable_options
+from .registers import POLICIES, Policy, global_families, register_at, settable_options
 from .sections import (
     _is_nested_section,
     _parse_bool,
@@ -127,7 +127,11 @@ def _parse_pin(parser: "configparser.ConfigParser", section: str,
         if family not in ("input", "output"):
             raise ConfigError(
                 "[pin] %s: unknown family %r (input or output)" % (key, family))
-        known = settable_options(device, family)
+        known = set(settable_options(device, family))
+        # Routes own the declared stereo value; this only changes who may
+        # restore it later, without making stereo a channel-section option.
+        if register_at(device, "/%s/1/stereo" % family) is not None:
+            known.add("stereo")
         if option not in known:
             raise ConfigError(
                 "[pin] %s: %s has no settable option %r (valid: %s)"

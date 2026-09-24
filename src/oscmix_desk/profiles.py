@@ -65,6 +65,7 @@ from .outcome import (
 )
 from .paths import list_profiles, profile_path
 from .process import port_holder
+from .reconcile import ApplyIntent
 from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
 
@@ -456,7 +457,7 @@ def _write(config: Config, device: Backend) -> None:
     the third and last of them.
     """
     apply_routing(config, config.osc_port, config.osc_recv_port,
-                  backend=device)
+                  backend=device, intent=ApplyIntent.EXPLICIT)
 
 
 def _check(name: str, config: Config, device: Backend) -> Outcome:

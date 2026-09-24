@@ -119,7 +119,7 @@ EXIT_CONFIG = 2
 EXIT_DIFFERS = 3
 
 # A switch that reached the device but could not be recorded: the desk
-# holds until the next reload or start, which will apply something else.
+# next reload uses the previous PIN state; a new session uses its starting values.
 # Exit 0 would tell a provisioning script that the change is permanent,
 # which is the one thing it is not.
 EXIT_NOT_PERSISTED = 4

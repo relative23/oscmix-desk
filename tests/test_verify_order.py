@@ -83,9 +83,9 @@ def test_summary_keeps_equality_policy_and_missing_reports_distinct(caplog):
         confirmed=["/output/5/stereo"], mismatched=["/output/5/volume"],
         unobserved=["/input/3/gain", "/mix/5/playback/1", "/mix/5/playback/2"])
     with caplog.at_level("INFO", logger="oscmix-session"):
-        problems, kept = verify._report(result, Config(), UCX2, 1)
+        problems = verify._report(result, Config(), UCX2, 1)
     assert problems == []
-    assert kept == ["/output/5/volume"]
+    assert verify._kept_by_the_device(result, UCX2) == ["/output/5/volume"]
     assert "device value kept for /output/5/volume (remembered, not pinned)" in caplog.text
     assert "1 confirmed; 1 kept by REMEMBER" in caplog.text
     assert ("0 differing PIN; 0 missing prompt; 1 not observed; "
@@ -98,9 +98,9 @@ def test_summary_does_not_call_a_missing_prompt_or_pin_difference_verified(caplo
         confirmed=[], mismatched=["/input/3/gain"],
         unobserved=["/output/5/stereo"])
     with caplog.at_level("INFO", logger="oscmix-session"):
-        problems, kept = verify._report(result, Config(), UCX2, 2)
+        problems = verify._report(result, Config(), UCX2, 2)
     assert problems == ["/input/3/gain", "/output/5/stereo"]
-    assert kept == []
+    assert verify._kept_by_the_device(result, UCX2) == []
     assert "routing verified" not in caplog.text
     assert ("1 differing PIN; 1 missing prompt; 0 not observed; "
             "0 backend-unreportable") in caplog.text
@@ -149,4 +149,4 @@ def test_startup_uses_latest_report_for_repair_and_remember(
 def test_reconcile_does_not_overwrite_a_value_that_drifted_after_confirmation(contradiction):
     config = Config(channels=[ChannelSetting('output', n, 'volume', 0.) for n in (5, 7)])
     assert verify.reconcile_now(config, 'latest-report regression', backend=contradiction)
-    assert contradiction.sent == [('/output/7/volume', 'f', (0.,))]
+    assert contradiction.sent == []

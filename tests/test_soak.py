@@ -98,7 +98,7 @@ def one_startup(tmp_path, session_mod, cycle):
         datagram_log = stub_dir / "datagrams.hex"
         assert wait_for(
             lambda: datagram_log.exists()
-            and len(datagram_log.read_text().splitlines()) >= 9,
+            and len(datagram_log.read_text().splitlines()) >= 7,
             timeout=20.0,
         ), "cycle %d: routing + verification traffic did not arrive" % cycle
 
@@ -113,10 +113,10 @@ def one_startup(tmp_path, session_mod, cycle):
         expected = [
             osc.encode_osc("/playback/1/stereo", "i", 1),
             osc.encode_osc("/output/5/stereo", "i", 1),
-        ] + mix + [osc.encode_osc("/refresh")] + mix
+        ] + mix + [osc.encode_osc("/refresh"), mix[0]]
         received = [bytes.fromhex(line)
                     for line in datagram_log.read_text().splitlines()]
-        assert received[:9] == expected, "cycle %d: routing diverged" % cycle
+        assert received == expected, "cycle %d: routing diverged" % cycle
 
         assert read_until_ready(notify) == b"READY=1", \
             "cycle %d: readiness was not signalled" % cycle

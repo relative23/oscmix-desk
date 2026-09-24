@@ -72,6 +72,7 @@ from .osc import (
 from .registers import (
     ENUM,
     NUMBER,
+    PIN,
     REESTABLISHED,
     VERIFIABLE,
     Device,
@@ -180,6 +181,19 @@ class Phase(IntEnum):
 PHASE_LINK, PHASE_MIX, PHASE_CHANNEL = Phase.LINK, Phase.MIX, Phase.CHANNEL
 
 
+class ApplyIntent(Enum):
+    """Only a new session or an explicit desk selection owns starting values."""
+
+    INITIAL = "initial-session"
+    EXPLICIT = "explicit-desk"
+    REPAIR = "repair-after-apply"
+    RECONCILE = "selective-reconcile"
+
+    @property
+    def preserves_remember(self) -> bool:
+        return self in (ApplyIntent.REPAIR, ApplyIntent.RECONCILE)
+
+
 class WriteReason(str, Enum):
     """Why a write is in the plan. Printed by its ``.value``: what
     ``str()`` and ``format()`` make of a string enum differs between the
@@ -263,6 +277,70 @@ def desired(config: Config) -> Tuple[Entry, ...]:
                 entries[path] = Entry(path, tags, tuple(args), phase)
     ordered = sorted(entries.values(), key=_send_order(config))
     return tuple(ordered) + channel_entries(config) + global_entries(config)
+
+
+def remembered_paths(config: Config) -> Tuple[str, ...]:
+    """Write ownership is a declaration, independent of missing/differing reports."""
+    device = device_for_name(config.device_name)
+    return tuple(sorted({entry.path for entry in desired(config)
+                         if policy_for(entry.path, device, config.policies) != PIN}))
+
+
+def application_plan(config: Config, intent: ApplyIntent,
+                     leave_alone: Sequence[str] = (),
+                     confirmed: Sequence[str] = ()) -> Plan:
+    """Select writes without turning preserved state into confirmed state.
+
+    Later operations preserve every REMEMBER path, even when it matched or
+    never reported. Do not repeat already confirmed links: re-linking could
+    change remembered partner settings. PIN matrix writes remain deliberate.
+    """
+    skip = set(leave_alone)
+    entries = desired(config)
+    if intent.preserves_remember:
+        skip.update(remembered_paths(config))
+        skip.update(entry.path for entry in entries
+                    if entry.phase == PHASE_LINK and entry.path in confirmed)
+    return plan([entry for entry in entries if entry.path not in skip])
+
+
+def retention_problem(config: Config, wanted: Plan, retained: Sequence[str],
+                      confirmed: Sequence[str]) -> Optional[str]:
+    """Refuse indirect changes to retained settings and unknown retained links.
+
+    Linking may copy a partner's settings. A scalar write may also propagate
+    to its linked partner. Without sufficient observation, preserving a path
+    means declining the operation that could change it indirectly.
+    """
+    keep, known = set(retained), set(confirmed)
+    writes = {write.path for write in wanted.writes}
+    for route in config.routes:
+        matrix = {p for p, _t, _a in mix_messages(route) if p.startswith("/mix/")}
+        if not writes.intersection(matrix):
+            continue
+        missing = {p for p, _t, _a in link_messages(route)}.intersection(keep) - known
+        if missing:
+            return "retained link state is not confirmed for %s" % ", ".join(sorted(missing))
+    declarations = {entry.path: entry.args for entry in desired(config)}
+    for write in wanted.writes:
+        parts = write.path.strip("/").split("/", 2)
+        if len(parts) != 3 or parts[0] not in ("input", "output"):
+            continue
+        family, channel, option = parts
+        number = int(channel)
+        left = number - (number - 1) % 2
+        pair = ("/%s/%d/" % (family, left), "/%s/%d/" % (family, left + 1))
+        if option == "stereo":
+            affected = sorted(path for path in keep if path.startswith(pair))
+            if affected:
+                return "link write %s could change retained partner settings: %s" % (
+                    write.path, ", ".join(affected))
+        else:
+            partner = "/%s/%d/%s" % (family, left + (number == left), option)
+            link = pair[0] + "stereo"
+            if partner in keep and not (link in known and declarations.get(link) == (0,)):
+                return "write %s could change retained stereo partner %s" % (write.path, partner)
+    return None
 
 
 def channel_entries(config: Config) -> Tuple[Entry, ...]:

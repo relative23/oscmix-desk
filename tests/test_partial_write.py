@@ -100,8 +100,8 @@ def test_a_write_that_fails_part_of_the_way_says_how_far_it_came(tmp_path,
                            "could not: cannot write to the backend on UDP"
                            % (allowed, len(everything)))
     assert "written: %s" % everything[0] in line
-    assert line.endswith("the desk in effect has not changed, and a reload "
-                         "or start writes it back")
+    assert line.endswith("the declared desk in effect has not changed; apply it "
+                         "explicitly or restart to restore its starting values")
 
 
 def test_a_restore_that_fails_part_of_the_way_keeps_the_profile(tmp_path):

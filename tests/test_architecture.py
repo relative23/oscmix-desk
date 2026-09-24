@@ -69,7 +69,7 @@ ALLOWED_IMPORTS = {
     "streams": {"constants", "log", "model"},
     "verify": {"backend", "constants", "devices", "log", "model",
                "observation", "osc", "reconcile", "registers", "routing"},
-    "observation": {"osc", "reconcile", "registers"},
+    "observation": {"numeric", "osc", "reconcile", "registers"},
     "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "log"},
     # `locking` since 0.7.0: the unit takes the device lock itself around
@@ -115,7 +115,7 @@ ALLOWED_IMPORTS = {
     # discovery, so no cycle.
     "profiles": {"backend", "config", "constants", "devices", "discovery",
                  "errors", "locking", "log", "marker", "model", "notices",
-                 "outcome", "paths", "process", "routing", "verify"},
+                 "outcome", "paths", "process", "reconcile", "routing", "verify"},
     # The three things a switch is made of besides its order, split out of
     # profiles in 0.7.0. Each is a near-leaf: the lock knows its wait and
     # the journal, the marker knows what a profile name is, and an outcome

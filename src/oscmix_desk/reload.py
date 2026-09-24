@@ -190,8 +190,8 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
             return bool(reconcile_now(fresh, "SIGHUP",
                                       lambda: stop_requested["stop"]))
         except ReceivePortError as exc:
-            log.error("SIGHUP: %s; reconcile skipped -- with no dump there "
-                      "is no way to tell what to leave alone", exc)
+            log.error("SIGHUP: %s; reconcile skipped -- routing dependencies "
+                      "cannot be observed", exc)
             return False
         except OSError as exc:
             # Out of `supervise` and `run_session` as a traceback until

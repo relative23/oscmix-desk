@@ -130,3 +130,42 @@ one answer per installation, and the per-channel form is four more lines
 of config for a distinction nobody has asked for. If a real case turns
 up, the key grows a channel and existing configs keep meaning what they
 meant.
+
+## 0.8.0 correction: ownership does not depend on feedback
+
+The implementation through 0.7.3 protected only observed REMEMBER
+deviations. A missing report or a previously matching value could therefore
+be selected again by a repair or reconcile; the mix reapply also repeated
+route volumes. Those writes contradicted this ADR's “after the initial
+write” rule. This correction supersedes the observed-deviation filter in
+the consequences above.
+
+The pure planner now receives an explicit operation intent:
+
+| Operation | REMEMBER writes |
+| --- | --- |
+| Initial session, including a new session after hotplug | Apply declared starting values. |
+| Explicit profile selection or explicit restoration of the main desk | Apply the requested values and verify them strictly. |
+| Repair after application | Preserve every declared REMEMBER path. |
+| Later reconcile, including SIGHUP/resume | Preserve every declared REMEMBER path. |
+
+PIN still authorizes restoration at these operations, subject to device,
+playback and dependency checks. A missing REMEMBER report is retained without
+confirmation; invalid feedback and an observed valid deviation are separate
+results. None of them authorizes another REMEMBER write. The result classifier
+does not select the write plan. Explicit profile verification still reports
+applied/unverified when any requested value cannot be confirmed.
+
+Preservation includes route volumes and indirect stereo-partner effects.
+Already confirmed links are not redundantly rewritten by later operations.
+If a required link is REMEMBER and is unknown or different, a dependent
+matrix operation is refused before writing. A link write that could change
+retained partner settings is also refused. A scalar write beside a retained
+partner needs a confirmed, declared unlinked pair. These conservative guards
+do not claim that every link transition copies every setting on the hardware.
+
+`[pin] input.stereo` and `output.stereo` may now select the policy of links
+declared by routes. This does not add stereo to channel-section settings or
+make phantom power configurable. No playback/global/nested override syntax
+is introduced. Link contradictions retain the observation rules in
+[ADR 0029](0029-revocable-observations.md).

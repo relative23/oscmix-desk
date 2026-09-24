@@ -23,6 +23,7 @@ import pytest
 from support import free_udp_port, osc_bundle
 
 from oscmix_desk import osc
+from oscmix_desk.errors import WriteFailed
 
 
 class LossyDevice(threading.Thread):
@@ -111,7 +112,13 @@ def run_under(session_mod, **device_options):
     config = session_mod.Config(routes=[route], osc_port=send_port,
                                 osc_recv_port=recv_port)
     try:
-        session_mod.verify_and_repair(config)
+        if device_options.get("drop") == 1.0:
+            with pytest.raises(WriteFailed, match="retained partner") as failure:
+                session_mod.verify_and_repair(config)
+            assert failure.value.written == ()
+            assert "/output/5/stereo" in failure.value.unwritten
+        else:
+            session_mod.verify_and_repair(config)
         device.drain()
     finally:
         device.stop()
@@ -121,15 +128,16 @@ def run_under(session_mod, **device_options):
 
 
 @pytest.mark.parametrize("drop", [0.0, 0.3, 0.7, 1.0])
-def test_the_mix_is_re_applied_however_much_the_dump_loses(session_mod,
-                                                           verify_mod,
-                                                           monkeypatch, drop):
-    # Losing the dump must never mean losing the routing. With everything
-    # dropped the link state is unknown, and the mix still has to go out:
-    # degraded beats silent.
+def test_loss_preserves_remember_and_refuses_unsafe_link_repair(session_mod,
+                                                               verify_mod,
+                                                               monkeypatch, drop):
+    # A complete loss cannot authorize a link repair which could change
+    # retained partner values. A sufficient partial dump still permits
+    # the matrix reapply, without repeating the volume starting values.
     monkeypatch.setattr(verify_mod, "VERIFY_TIMEOUT", 0.4)
     device = run_under(session_mod, drop=drop)
-    assert "/mix/5/playback/1" in device.received
+    assert ("/mix/5/playback/1" in device.received) == (drop < 1.0)
+    assert not any(path.endswith("/volume") for path in device.received)
 
 
 def test_duplicated_reports_do_not_confuse_the_read_back(session_mod):
@@ -291,12 +299,11 @@ def test_a_backend_killed_between_the_phases_does_not_crash_the_session(
     assert "/playback/1/stereo" in device.received
 
 
-def test_a_device_vanishing_mid_dump_still_leaves_the_mix_applied(
+def test_a_device_vanishing_mid_dump_refuses_to_relink_retained_values(
         session_mod, verify_mod, monkeypatch):
     # Unplugged while /refresh is still streaming: the read-back gets a
     # truncated dump and no more. It must return a verdict rather than
-    # hang, and the matrix must still be written -- an interrupted
-    # verification is not a reason to leave the routing half-done.
+    # hang; repairing unknown links must not reset retained partner state.
     monkeypatch.setattr(verify_mod, "VERIFY_TIMEOUT", 0.5)
     send_port, recv_port = free_udp_port(), free_udp_port()
     route = make_route(session_mod)
@@ -308,7 +315,10 @@ def test_a_device_vanishing_mid_dump_still_leaves_the_mix_applied(
                                 osc_recv_port=recv_port)
     started = time.monotonic()
     try:
-        session_mod.verify_and_repair(config)
+        with pytest.raises(WriteFailed, match="retained partner") as failure:
+            session_mod.verify_and_repair(config)
+        assert failure.value.written == ()
+        assert "/output/5/stereo" in failure.value.unwritten
     finally:
         device.stop()
         device.join(timeout=5)
@@ -326,7 +336,9 @@ def test_the_receive_port_taken_between_attempts_falls_back_blind(
     monkeypatch.setattr(verify_mod, "VERIFY_TIMEOUT", 0.3)
     monkeypatch.setattr(routing_mod, "LINK_SYNC_BLIND_DELAY", 0.05)
     send_port, recv_port = free_udp_port(), free_udp_port()
-    route = make_route(session_mod)
+    # No retained channel value depends on this pair: bounded link repair
+    # can proceed. The retained-value refusal is tested separately above.
+    route = session_mod.Route(name="monitors", playback=(1, 2), output=(5, 6))
     device = LossyDevice(session_mod, send_port, recv_port, dump=[])
     device.start()
 

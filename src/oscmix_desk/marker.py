@@ -110,8 +110,8 @@ def remember_active_profile(name: str, config_path: Optional[Path]) -> Marked:
         os.replace(tmp, path)
     except OSError as exc:
         log.warning("profile %r applied but not remembered: cannot write "
-                    "%s (%s); the desk holds until the next reload or "
-                    "start, which applies routing.conf", name, path, exc)
+                    "%s (%s); reload uses the previous PIN values and "
+                    "a new session uses the previous starting values", name, path, exc)
         with contextlib.suppress(OSError):
             os.unlink(tmp)
         return Marked(False, False)
@@ -159,8 +159,8 @@ def forget_active_profile(config_path: Optional[Path]) -> Marked:
     except FileNotFoundError:
         return Marked(True, True)
     except OSError as exc:
-        log.warning("cannot remove %s (%s); the desk holds until the next "
-                    "reload or start, which applies the profile it names",
+        log.warning("cannot remove %s (%s); reload uses the profile's PIN "
+                    "values and a new session uses its starting values",
                     path, exc)
         return Marked(False, False)
     durable = _fsync_directory(path.parent)

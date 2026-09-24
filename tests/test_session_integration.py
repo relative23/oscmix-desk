@@ -294,12 +294,11 @@ def test_full_startup_verification_notify_and_shutdown(tmp_path, session_mod):
         )
     try:
         datagram_log = stub_dir / "datagrams.hex"
-        # 5 routing registers, the /refresh of the verification pass and
-        # the 3 mix registers it re-applies once the dump reported the
-        # link state.
+        # Five initial writes, one refresh and one matrix reapply.
+        # REMEMBER volumes must be sent only during the initial apply.
         assert wait_for(
             lambda: datagram_log.exists()
-            and len(datagram_log.read_text().splitlines()) >= 9
+            and len(datagram_log.read_text().splitlines()) >= 7
         ), "routing + verification traffic did not arrive"
 
         # The configured ports must reach the real backend as -r/-s flags.
@@ -321,10 +320,10 @@ def test_full_startup_verification_notify_and_shutdown(tmp_path, session_mod):
         expected = [
             osc.encode_osc("/playback/1/stereo", "i", 1),
             osc.encode_osc("/output/5/stereo", "i", 1),
-        ] + mix + [osc.encode_osc("/refresh")] + mix
+        ] + mix + [osc.encode_osc("/refresh"), mix[0]]
         received = [bytes.fromhex(line)
                     for line in datagram_log.read_text().splitlines()]
-        assert received[:9] == expected
+        assert received == expected
 
         # READY=1 arrives once the backend is up and the routing was
         # applied (verification then runs in the background).

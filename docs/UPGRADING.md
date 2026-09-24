@@ -1,5 +1,34 @@
 # Upgrade and recovery
 
+## Upgrading to 0.8.0 (in development)
+
+Initial session application and explicit profile/main-desk selection still
+write declared starting values. Repair and later SIGHUP/resume reconcile now
+preserve **all REMEMBER values**, including route volumes whose feedback is
+missing, invalid or still matches the file. A full restart creates a new
+session and applies the starting values again. Use an explicit profile or
+main-desk application when deliberately restoring those values in a running
+session; a reload no longer resets them as a side effect of another repair.
+
+`[pin] output.volume = pin` continues to authorize volume restoration.
+Link and partner dependencies can refuse a later operation when it could
+change a retained setting indirectly. Read the refusal, resolve the routing
+or make an explicit desk application; an unknown value is not confirmation.
+`[pin] input.stereo` / `output.stereo = remember` retain the route's link
+after initial application and require confirmation before dependent matrix
+writes. Older versions reject these new policy options, so remove them from
+the config before a rollback. Existing syntax remains accepted.
+
+The same observation rule now governs verification and both link-sync paths.
+A later contradiction revokes a match, including at the end of an OSC bundle.
+Receive failures, cancellation and known wrong links stop dependent writes;
+the reported sent/pending paths do not imply an automatic hardware rollback.
+Explicit profile verification remains strict even for REMEMBER values.
+
+The remaining 0.8.0 integration and qualification work is tracked in the
+[release plan](plans/0.8.0-reliability-integration.md); this section is not a
+claim that the development version is ready to install.
+
 ## Upgrading to 0.7.3
 
 The configuration format, register policies and backend pin are unchanged.

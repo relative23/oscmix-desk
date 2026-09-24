@@ -174,7 +174,12 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
     verifier = session_module._apply_and_verify(child, config, stop)
 
     # Written on the configured ports, not on defaults.
-    assert applied == [((config, 7301, 8301), {})]
+    assert len(applied) == 1
+    apply_args, apply_options = applied[0]
+    assert apply_args == (config, 7301, 8301)
+    assert set(apply_options) == {"should_stop"}
+    apply_stop = apply_options["should_stop"]
+    assert not apply_stop()
     # Verified on a thread the session can outlive (ADR 0009): a daemon,
     # named for thread dumps, running the verifier exactly once.
     assert verifier is not None, "a config with state to verify got no verifier"
@@ -196,9 +201,12 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
     assert should_stop() is False
     stop["stop"] = True
     assert should_stop() is True
+    assert apply_stop() is True
     stop["stop"] = False
+    assert apply_stop() is False
     child.returncode = 1
     assert should_stop() is True
+    assert apply_stop() is True
 
 
 def test_an_empty_config_leaves_the_desk_alone(session_module, monkeypatch,

@@ -142,10 +142,13 @@ recorded device dumps instead ([ADR 0015](decisions/0015-the-register-table-is-n
 
 ## Who wins: pin and remember
 
-Every settable register carries a policy. `REMEMBER` is the default: the
-file describes the value, a dump shows it as a comment, and the device
-keeps whatever it has. `PIN` means the file owns it and every start
-writes it back.
+Every settable register carries a policy. `REMEMBER` is the default: initial
+session application and explicit desk selection write its declared starting
+value. Repair and later reconcile preserve it regardless of feedback. `PIN`
+authorizes restoration subject to device, playback and link-dependency checks.
+The pure `application_plan` selects writes from the operation intent;
+observation classification remains separate. Retained values are not counted
+as confirmations. Indirect link/partner changes are checked before writing.
 
 The device does not announce most of its own changes, so "pinned" means
 *the config wins while this session is looking*

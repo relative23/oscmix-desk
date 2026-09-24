@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     Callable,
     Dict,
@@ -29,7 +29,7 @@ from .osc import (
     Args,
     Value,
 )
-from .reconcile import desired, policy_for
+from .reconcile import PHASE_LINK, ApplyIntent, desired, policy_for, remembered_paths
 from .registers import (
     PIN,
     VERIFIABLE,
@@ -44,7 +44,6 @@ from .routing import (
     apply_routing,
     blind_reapply_mix,
     never_stop,
-    output_link_state,
     send_mix,
     wait_unless_stopped,
 )
@@ -182,6 +181,9 @@ class VerifyResult:
     confirmed: List[str]
     mismatched: List[str]
     unobserved: List[str]
+    # Invalid is a subset of mismatched, preserving strict callers' meaning
+    # while avoiding a claim that a malformed value was a user adjustment.
+    invalid: List[str] = field(default_factory=list)
 
 
 def _observe(listener: Listener, observed: Observation, prompt: Set[str],
@@ -291,24 +293,14 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
         device.request_dump()
         _observe(listener, observed, prompt, on_observed, should_stop, timeout)
         return VerifyResult(sorted(observed.confirmed), sorted(observed.mismatched),
-                            sorted(observed.unobserved))
+                            sorted(observed.unobserved), sorted(observed.invalid))
     finally:
         listener.close()
 
 
 def _report(result: VerifyResult, config: Config, device: Optional[Device],
-            attempt: int) -> Tuple[List[str], List[str]]:
-    """Say what the read-back found; return (problems, kept).
-
-    Split out of ``verify_and_repair`` when it crossed the length
-    ceiling, and the split is where the seam already was: this is the
-    judgement, the caller is the retry loop.
-
-    Both lists are returned rather than the caller recomputing ``kept``
-    for the re-apply. Two computations of one fact is how a log and an
-    action come to disagree -- and "real in the log, absent at the
-    device" is a defect 0.3.0 shipped once.
-    """
+            attempt: int) -> List[str]:
+    """Classify results; write ownership is selected independently by intent."""
     kept = _kept_by_the_device(result, device, config.policies)
     if kept:
         # Information, not a warning: the config asked for one value,
@@ -318,17 +310,24 @@ def _report(result: VerifyResult, config: Config, device: Optional[Device],
         log.info("device value kept for %s (remembered, not pinned)",
                  ", ".join(kept))
     problems = _unconfirmed(result, device, config.policies)
-    absent = result.unobserved
+    retained_unknown = [path for path in result.unobserved
+                        if policy_for(path, device, config.policies) != PIN]
+    retained_invalid = [path for path in result.invalid
+                        if policy_for(path, device, config.policies) != PIN]
+    absent = [path for path in result.unobserved if path not in retained_unknown]
     prompt = sum(register_promptly_reported(path, device) for path in absent)
     unavailable = sum(not register_ever_reported(path, device) for path in absent)
     log.info("%s (%d confirmed; %d kept by REMEMBER; %d differing PIN; "
-             "%d missing prompt; %d not observed; %d backend-unreportable)%s",
+             "%d missing prompt; %d not observed; %d backend-unreportable; "
+             "%d REMEMBER retained without feedback; %d REMEMBER invalid feedback)%s",
              "routing read-back needs repair" if problems else
              "routing verified against device state under PIN/REMEMBER policy",
-             len(result.confirmed), len(kept), len(result.mismatched) - len(kept),
+             len(result.confirmed), len(kept),
+             len(result.mismatched) - len(kept) - len(retained_invalid),
              prompt, len(absent) - prompt - unavailable, unavailable,
+             len(retained_unknown), len(retained_invalid),
              "" if attempt == 1 else " -- after retry")
-    return problems, kept
+    return problems
 
 
 def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
@@ -340,14 +339,13 @@ def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
     ``/mix/*/playback/*`` never appears at all, so treating its absence
     as a problem would put every run into a retry it cannot win.
 
-    A mismatch counts only for PIN registers. On a REMEMBER register a
-    mismatch is the *user*, not a fault: they turned something between
-    the apply and the dump, and re-sending would undo it while they
-    watched. That is the whole pin/remember distinction, and this is the
-    one place it changes behaviour.
+    Only PIN grants repair permission. Missing, invalid, matching and
+    differing REMEMBER reports all leave ownership with the device;
+    their separate result classifications must not select writes.
     """
     lost = [path for path in result.unobserved
-            if register_promptly_reported(path, device)]
+            if policy_for(path, device, overrides) == PIN
+            and register_promptly_reported(path, device)]
     insisted = [path for path in result.mismatched
                 if policy_for(path, device, overrides) == PIN]
     return sorted(insisted + lost)
@@ -359,31 +357,18 @@ def _kept_by_the_device(result: VerifyResult,
                         ) -> List[str]:
     """Mismatches this session is deliberately letting the device keep."""
     return sorted(path for path in result.mismatched
-                  if policy_for(path, device, overrides) != PIN)
+                  if path not in result.invalid and policy_for(path, device, overrides) != PIN)
 
 
 def reconcile_now(config: Config, reason: str,
                   should_stop: StopCheck = never_stop,
                   backend: Optional[Backend] = None) -> bool:
-    """Re-apply the routing, minus what the device is allowed to keep.
+    """Re-establish PIN while preserving every declared REMEMBER path.
 
-    The trigger side of the pin/remember model (ADR 0012). Pinned
-    registers are written back; remembered ones the device is holding at
-    a different value are left exactly as they are, because somebody
-    turned them.
-
-    Reads the device *first* -- that read is the only way to know which
-    remembered registers to protect, and it is why this is a reconcile
-    rather than a re-apply. Without it the write would be indiscriminate
-    and every hand-set fader would snap back on every trigger, which is
-    the behaviour this model exists to end.
-
-    Returns whether the routing was written. False means the receive
-    port is held (the mixer GUI), and this refuses rather than writing
-    blind: with no dump there is no way to tell a remembered register
-    from a pinned one at the device, so a blind write would silently do
-    the indiscriminate thing.
-
+    Read first to check link dependencies and classify results, not to
+    decide REMEMBER ownership. An unavailable receiver refuses this
+    operation; contradictions and unsafe indirect writes raise WriteFailed.
+    Returns True after the selected plan completes, including an empty one.
     Triggers are enumerated and never a timer: docs/decisions/0013.
     """
     device = device_for_name(config.device_name)
@@ -394,13 +379,13 @@ def reconcile_now(config: Config, reason: str,
     if should_stop():
         return False
     if result is None:
-        log.warning("reconcile (%s) skipped: UDP %d in use -- with no dump "
-                    "there is no way to tell what to leave alone",
+        log.warning("reconcile (%s) skipped: UDP %d in use -- "
+                    "routing dependencies cannot be observed",
                     reason, config.osc_recv_port)
         return False
 
-    kept = _kept_by_the_device(result, device, config.policies)
-    drifted = _unconfirmed(result, device, config.policies)
+    kept = remembered_paths(config)
+    drifted = _report(result, config, device, 1)
     # "drifted", not "to correct". The write below is not selective: it
     # re-applies everything except `kept`, because the playback mix
     # matrix is never reported and so can never be shown to be intact.
@@ -412,7 +397,11 @@ def reconcile_now(config: Config, reason: str,
              ", %d left to the device (%s)" % (len(kept), ", ".join(kept))
              if kept else "")
     apply_routing(config, config.osc_port, config.osc_recv_port,
-                  leave_alone=kept, backend=backend)
+                  intent=ApplyIntent.RECONCILE, confirmed=result.confirmed,
+                  require_link_confirmation=[entry.path for entry in desired(config)
+                                             if entry.phase == PHASE_LINK
+                                             and entry.path in result.mismatched],
+                  backend=backend, should_stop=should_stop)
     return True
 
 
@@ -438,7 +427,7 @@ def verify_and_repair(config: Config,
     """
     device = device_for_name(config.device_name)
     registers = expected_registers(config)
-    links = set(output_link_state(config.routes))
+    links = {entry.path for entry in desired(config) if entry.phase == PHASE_LINK}
 
     problems: List[str] = []
     for attempt in (1, 2):
@@ -455,19 +444,11 @@ def verify_and_repair(config: Config,
             blind_reapply_mix(config, should_stop)
             return
         wrong_links = links.intersection(result.mismatched)
+        problems = _report(result, config, device, attempt)
         if wrong_links:
             log.warning("link state contradicted (%s); mix reapply withheld",
                         ", ".join(sorted(wrong_links)))
-        elif links:
-            missing = links.intersection(result.unobserved)
-            if missing:
-                log.warning("dump never reported %s; re-applying mix without confirmation",
-                            ", ".join(sorted(missing)))
-            send_mix(config)
-        problems, kept = _report(result, config, device, attempt)
-        if not problems:
-            return
-        if attempt == 1:
+        if attempt == 1 and problems:
             # Write 3 of 3, and the only full re-apply. Both phases of it
             # would run against a terminating backend.
             if should_stop():
@@ -480,9 +461,18 @@ def verify_and_repair(config: Config,
             # config value -- the policy would be real in the log and
             # absent at the device.
             apply_routing(config, config.osc_port, config.osc_recv_port,
-                          leave_alone=kept,
+                          intent=ApplyIntent.REPAIR, confirmed=result.confirmed,
                           require_link_confirmation=sorted(wrong_links),
                           should_stop=should_stop)
             if wait_unless_stopped(VERIFY_SETTLE, should_stop):
                 return
+            continue
+        if not wrong_links and links:
+            missing = links.intersection(result.unobserved)
+            if missing:
+                log.warning("dump never reported %s; re-applying mix without confirmation",
+                            ", ".join(sorted(missing)))
+            send_mix(config, confirmed=result.confirmed)
+        if not problems:
+            return
     log.warning("unconfirmed after retry: %s", ", ".join(problems))
