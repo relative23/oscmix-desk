@@ -129,6 +129,13 @@ def qualify(args, root):
             record['image_id'] = read('docker', 'image', 'inspect', '--format={{.Id}}', image)
             command = ['docker', 'run', '--rm', '--platform=linux/amd64', '--network=none',
                        '--cpus=2', '--memory=2g', '--pids-limit=512']
+            if args.native and args.target == 'ubuntu2404':
+                # Ubuntu's kwin_wayland carries cap_sys_resource=ep. Its exec
+                # fails before main() unless the isolated container's
+                # bounding set includes that capability. No host bus,
+                # PID namespace, audio or GPU device is shared.
+                command.append('--cap-add=SYS_RESOURCE')
+            record['container_options'] = command[2:]
             if args.native:
                 command += ['--user=root', image, 'python3', 'tests/package_lifecycle.py', kind]
             else:

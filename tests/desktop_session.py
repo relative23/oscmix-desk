@@ -40,6 +40,12 @@ def session(args):
     env.pop('SESSION_MANAGER', None)
     for key in ('HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME'):
         Path(env[key]).mkdir(mode=0o700)
+    keys = ['DISPLAY', 'HOME', 'XDG_RUNTIME_DIR', 'XDG_CONFIG_HOME',
+            'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CURRENT_DESKTOP',
+            'XDG_SESSION_TYPE']
+    # Session startup itself activates services such as xfconfd. They must
+    # inherit this session's writable directories from the private bus.
+    run(['dbus-update-activation-environment', *keys], env)
     if args.desktop == 'gnome':
         executable = 'gnome-shell'
         command = [executable, '--wayland', '--wayland-display=wayland-test', '--no-x11']
@@ -74,13 +80,15 @@ def session(args):
             env['GDK_BACKEND'] = 'wayland' if wayland else 'x11'
             if wayland:
                 env['WAYLAND_DISPLAY'] = 'wayland-test'
+            keys.append('GDK_BACKEND')
+            if wayland:
+                keys.append('WAYLAND_DISPLAY')
+            run(['dbus-update-activation-environment', *keys], env)
             if args.desktop == 'kde':
                 children.append(subprocess.Popen(['plasmashell', '--no-respawn'],
                     env=dict(env, QT_QPA_PLATFORM='wayland'), stdout=log, stderr=log))
                 time.sleep(2)
                 assert children[-1].poll() is None, 'Plasma shell failed'
-            run(['dbus-update-activation-environment', 'DISPLAY', 'XDG_RUNTIME_DIR',
-                 'XDG_CURRENT_DESKTOP', 'XDG_SESSION_TYPE'], env)
             result = subprocess.run([
                 sys.executable, 'tests/gtk_lifecycle.py', '--gtk', '/usr/bin/oscmix-gtk',
                 '--schema', '/usr/share/glib-2.0/schemas/oscmix.gschema.xml',
