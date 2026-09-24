@@ -1,7 +1,12 @@
 # Roadmap
 
-Status for **0.7.3**, updated 2026-09-24. Implementation, qualification and publication
-are complete: corrected read-back classification, clearer
+Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
+implementation instruction. Baseline inspection and N0/N1 regressions are
+in progress; the acceptance criteria below remain open. All proposed 0.7.4 corrections are included in 0.8.0; there
+is no separate 0.7.4 milestone.
+
+Latest published release: **0.7.3**. Its implementation, qualification and
+publication are complete: corrected read-back classification, clearer
 results, runtime diagnosis, profile previews and optional upstream GTK
 packages. The [qualification records](evidence/0.7.3/) identify the source,
 software gates, desktop environments and measured UCX II state.
@@ -20,6 +25,86 @@ oscmix-desk owns declarative state, lifecycle and verification. Upstream
 and provides the existing live mixer. The standard-library core and its
 hardware guarantees remain the foundation for easier installation and
 an optional desktop companion.
+
+## 0.8.0: consistent observations, coordinated control and Linux integration
+
+**Implementation in progress; not qualified or released.** Fix the remaining observation
+and REMEMBER write-selection defects first, then implement shared use of
+the existing upstream mixer and complete the selected Linux integration
+and package-repository work. The separate desk GUI stays deferred.
+
+Detailed contracts, dependencies, target environments and release gates:
+[0.8.0 reliability and integration](plans/0.8.0-reliability-integration.md).
+
+- [ ] **N0: one observation rule for all confirmations.** Use the latest
+  decoded report in the open observation window for verification, the
+  link barrier and link-sync reapply. A contradictory report revokes an
+  earlier match. Distinguish contradiction from silence; do not release
+  a dependent matrix write on a known wrong link state.
+- [ ] **N1: preserve REMEMBER after the initial apply.** Separate initial
+  application, repair after application and later selective reconcile.
+  Missing read-back must not authorize resetting a remembered fader.
+  Keep explicit profile application and PIN overrides deliberate, and
+  check dependencies and stereo-partner effects of retained settings.
+- [ ] **N2: coordinated upstream-mixer and desk operation.** Establish one
+  backend/device ownership contract, fresh reply delivery to both clients
+  and ordering of writes across an entire desk operation. Solve read-back
+  and writer coordination together; qualify restart, disconnect, lost
+  clients and overload before claiming simultaneous operation.
+- [ ] **N3: targeted queries and genuine read-back.** Establish what the
+  device/backend can actually report, including the playback matrix;
+  implement and measure supported improvements through the existing
+  backend. Written or cached values do not become hardware confirmations.
+  Track feasibility and a delivered read-back capability separately.
+- [ ] **N4: OpenRC and runit integration.** Add tested adapters for Alpine
+  and Void using the common installer, explicit activation, selected
+  runtime user, shared locks, maintenance fencing and lifecycle contract.
+- [ ] **N5: declarative and immutable hosts.** Deliver a NixOS package and
+  module plus a Fedora Silverblue host-installation path; qualify their
+  actual activation, reboot, upgrade and rollback behavior in VMs.
+- [ ] **N6: signed native package repositories.** Publish tested APT/RPM
+  channels with authenticated metadata, key lifecycle, complete core/GTK
+  version pairs and verified package-manager upgrades and downgrades.
+  Extend native DEB qualification to Debian 13 and Ubuntu 26.04 before
+  publishing channels for them; retain the existing native/source targets.
+- [ ] **N7: compatibility and accurate operating instructions.** Update
+  PIN/REMEMBER, outcomes, launcher/status, service management, installation,
+  security and recovery documentation with the implemented contracts.
+  Keep partial profiles, readiness and read-back distinct. Reconcile
+  historical claims with later measurements rather than repeating them.
+- [ ] **N9: source-based architecture assessment and simplification.** Read
+  the actual 0.7.1 → 0.7.2 → 0.7.3 source diffs, then reassess the 0.8.0
+  changes. Identify duplicated decisions, unnecessary indirection and
+  unclear state ownership; simplify demonstrated problems while retaining
+  the established safety and diagnostic contracts. Assess code structure
+  separately from test counts, coverage, CI and hardware qualification.
+- [ ] **N8: final qualification and publication.** Complete the existing
+  release gates plus the new concurrent-client, init-system and repository
+  checks. Measure changed routing/backend behavior on the UCX II, verify
+  the actual 0.7.3 upgrade/rollback and downloaded release artifacts. N9's
+  architecture assessment and any resulting corrections must be complete.
+
+**Order:** N9 baseline assessment with N0/N1 correctness and regressions →
+N2/N3 backend contract and capability decision → coordinated runtime →
+N4/N5/N6 integration → N7/N9 final compatibility/architecture assessment →
+N8 final qualification. Installation preparation may follow the stable
+contract, but its final tests must use the final runtime/backend identity.
+
+The playback-mode guard, precise read-back categories, read-only status,
+declaration-based profile preview and exact-context mixer launcher already
+exist in 0.7.2/0.7.3. Carry them forward as explicit acceptance contracts,
+listed in the detailed plan; they are not newly discovered defects or
+unimplemented features. The shared reply/writer contract remains N2, and
+the concern about unnecessary complexity is an investigation under N9,
+not an established conclusion based on release size or subjective scores.
+
+Both correctness cases were reproduced against the unchanged 0.7.3
+runtime with simulated I/O. They are open 0.8.0 work, not a claim of a
+measured audible failure or a reason to rewrite historical release results.
+No delivery date is set before the backend-capability and repository
+hosting/signing decisions are resolved. A prototype, unavailable external
+prerequisite or measured protocol limit must not be recorded as a shipped
+feature. Scope changes stay explicit.
 
 ## 0.7.3: clearer results and existing-mixer integration
 
@@ -69,7 +154,7 @@ Detailed scope, dependencies and acceptance:
 R0–R7 are complete. The release evidence includes all software gates,
 installation/desktop checks and the physical UCX II off/on lifecycle. R5 records
 the measured workflow and ADR 0028; a shared reply distributor or upstream
-subscription protocol remains a separate implementation.
+subscription protocol is now tracked with writer coordination in 0.8.0 N2.
 
 ## Release readiness for 0.7.0
 
@@ -348,8 +433,8 @@ this first scope; users can open the existing upstream mixer.
 | Open work | When to take it on |
 | --- | --- |
 | Two physical interfaces and per-device service instances | Two devices are available to measure discovery, concurrent lifecycle and isolation; simulated identity tests alone do not qualify it. |
-| Targeted register queries / better read-back | Upstream support or a reproducible backend change exists; measure it before moving the pin. Playback-matrix read-back is still unavailable. |
-| Additional init-system adapters and immutable-system packages | The common/manual installation contract is proven and a maintained target environment is available. These stay part of the Linux portability goal. |
+| Further read-back capabilities beyond 0.8.0 N3 | A measured device/backend capability exists. A feasibility result alone does not change the current playback-matrix read-back classification. |
+| Platforms beyond the named 0.8.0 N4/N5/N6 targets | A maintained target environment and appropriate lifecycle qualification are available. The common source/manual path remains the portability fallback. |
 | A Flatpak GUI | Host integration can be exposed through a small, tested local interface; a sandboxed frontend alone does not install the host backend and udev rules. |
 | Other Fireface models | Real hardware and a measured backend/model exist. UCX II evidence does not qualify another interface. |
 
@@ -361,10 +446,13 @@ this first scope; users can open the existing upstream mixer.
 - An apply is not a hardware transaction. Validation can prevent invalid
   plans; interrupted sends can still leave partial state.
 - Playback mix and other write-only settings cannot be verified through
-  the current backend. A GUI must retain that distinction.
-- The device lock coordinates cooperating desk writers. Upstream GUI or
-  raw OSC writers can still change state; the UDP endpoint is not an
-  authenticated per-user control interface.
+  the released backend. N3 changes that classification only for genuinely
+  measured read-back; a GUI must retain the same distinction.
+- In the released version, the device lock coordinates cooperating desk
+  writers. Upstream GUI or raw OSC writers can still change state; the
+  UDP endpoint is not an authenticated per-user control interface. N2 must
+  establish its actual coordination and access boundaries before any
+  stronger claim.
 - No continuous background reconciliation, second protocol implementation,
   remote-control web server, automatic clock changes or new DSP engine is
   included in this milestone.
