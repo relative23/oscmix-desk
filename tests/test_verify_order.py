@@ -81,14 +81,15 @@ def test_latest_remember_difference_is_kept_but_not_called_equal(monkeypatch):
 def test_summary_keeps_equality_policy_and_missing_reports_distinct(caplog):
     result = verify.VerifyResult(
         confirmed=["/output/5/stereo"], mismatched=["/output/5/volume"],
-        unobserved=["/input/3/gain", "/mix/5/playback/1"])
+        unobserved=["/input/3/gain", "/mix/5/playback/1", "/mix/5/playback/2"])
     with caplog.at_level("INFO", logger="oscmix-session"):
         problems, kept = verify._report(result, Config(), UCX2, 1)
     assert problems == []
     assert kept == ["/output/5/volume"]
+    assert "device value kept for /output/5/volume (remembered, not pinned)" in caplog.text
     assert "1 confirmed; 1 kept by REMEMBER" in caplog.text
     assert ("0 differing PIN; 0 missing prompt; 1 not observed; "
-            "1 backend-unreportable") in caplog.text
+            "2 backend-unreportable") in caplog.text
     assert "under PIN/REMEMBER policy" in caplog.text
 
 
@@ -101,7 +102,8 @@ def test_summary_does_not_call_a_missing_prompt_or_pin_difference_verified(caplo
     assert problems == ["/input/3/gain", "/output/5/stereo"]
     assert kept == []
     assert "routing verified" not in caplog.text
-    assert "1 differing PIN; 1 missing prompt" in caplog.text
+    assert ("1 differing PIN; 1 missing prompt; 0 not observed; "
+            "0 backend-unreportable") in caplog.text
     assert "after retry" in caplog.text
 
 
