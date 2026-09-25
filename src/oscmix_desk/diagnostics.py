@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Sequence
 
+from . import hostservice
 from .constants import SERVICE_UNIT
 from .discovery import Device, resolve_device
 from .errors import DeviceAmbiguous
@@ -90,7 +91,13 @@ def backend_status(config: Config, proc_root: Path,
 
 
 def service_status() -> Dict[str, str]:
-    """Read systemd state without loading, enabling or starting the service."""
+    """Read the selected manager without enabling or starting the service."""
+    try:
+        host = hostservice.registered()
+        if host:
+            return hostservice.report(host, Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
+    except OSError as exc:
+        return {"state": "unavailable", "detail": str(exc)}
     properties = ("LoadState", "ActiveState", "UnitFileState", "MainPID",
                   "StatusText", "FragmentPath", "ExecStart", "Environment",
                   "EnvironmentFiles", "UnsetEnvironment")
@@ -115,6 +122,18 @@ def service_start_problem(config_path: Optional[Path], service: Dict[str, str]) 
         return "no installed service; start oscmix-session in a terminal for manual operation"
     if service.get("UnitFileState") not in ("enabled", "enabled-runtime"):
         return "service is not enabled; review the desk and explicitly enable it first"
+    if service.get("manager") in ("openrc", "runit"):
+        if service.get("Maintenance") != "false":
+            return "host service maintenance is incomplete; run oscmix-service maintenance-finish"
+        if (service.get("UserID") != str(os.getuid())
+                or service.get("ConfiguredHome") != os.environ.get("HOME")
+                or config_path is None
+                or Path(service.get("Configuration", "")).resolve() != config_path.resolve()):
+            return "host service and launcher belong to different user/configuration paths"
+        if service.get("ActiveState") != "active":
+            return ("no matching host desk process is running; inspect oscmix-service status "
+                    "or wait for its supervised restart")
+        return None
     if service.get("EnvironmentFiles"):
         return "service uses environment files; start the configured session explicitly"
     if service.get("UnsetEnvironment"):

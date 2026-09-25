@@ -100,6 +100,7 @@ acyclic graph.
 | `backend` | checked ODK1 connections, bounded leases/queues and provenance; shared read-only identity from `diagnostics` before connecting |
 | `streams` | observe the exact interface's active ALSA/USB playback mode and enforce measured playback limits before write phases; no PCM or clock changes |
 | `diagnostics` | read-only socket, exact backend/bridge/device identity and service inspection, shared by commands, status and launcher; never opens the control protocol |
+| `hostservice` | root-owned OpenRC/runit registration, exact native-supervisor child identity, persistent maintenance fences and pidfd-scoped reload; no device transport or alternate supervision loop |
 | `desktop` | inspect the matching upstream GTK executable through its display-free protocol-version command |
 | `status` | versioned read-only runtime report for source and native installations; no OSC requests or service activation |
 | `preview` | compare two partial desk declarations for omitted matrix paths and changed link requirements |

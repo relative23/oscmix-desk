@@ -51,8 +51,8 @@ def test_launch_uses_the_selected_desk_through_discovery_and_service_start(
     for key, value in {'HOME': home, 'OSCMIX_CONFIG': path, 'OSCMIX_BIN_GTK': gtk,
                        'OSCMIX_PROC_ROOT': proc}.items():
         monkeypatch.setenv(key, str(value))
-    monkeypatch.setattr(launcher, 'MAINTENANCE_FILE', tmp_path / 'maintenance')
-    monkeypatch.setattr(launcher, 'GTK_MAINTENANCE_FILE', tmp_path / 'gtk-maintenance')
+    from oscmix_desk import hostservice
+    monkeypatch.setattr(hostservice, 'STATE', tmp_path)
     monkeypatch.setattr(diagnostics, 'query', diagnostic_query)
     monkeypatch.setattr(desktop, 'query', diagnostic_query)
     clock = [0.]

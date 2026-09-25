@@ -1,0 +1,3 @@
+#!/bin/sh
+# Bound retries after disconnect, crash, missing hardware or a maintenance fence.
+sleep 5

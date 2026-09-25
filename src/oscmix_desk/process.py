@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
+from . import hostservice
 from .constants import CHILD_STOP_GRACE, SERVICE_UNIT, STALE_BACKEND_SETTLE
 from .discovery import (
     Device,
@@ -402,7 +403,15 @@ def unit_process(proc_root: Path) -> Optional[UnitProcess]:
     None when the unit is not running, when it has exited but is not
     reaped yet (its files read empty), or when the read fails.
     """
-    shown = _systemctl_output("show", "-p", "MainPID", "--value", SERVICE_UNIT)
+    try:
+        host = hostservice.registered()
+        shown: Optional[str]
+        if host:
+            shown = str(hostservice.main_pid(host, proc_root) or 0)
+        else:
+            shown = _systemctl_output("show", "-p", "MainPID", "--value", SERVICE_UNIT)
+    except OSError:
+        return None
     pid = shown.strip() if shown is not None else ""
     if not pid.isdigit() or pid == "0":
         return None
@@ -463,6 +472,12 @@ def reload_service() -> str:
     reconcile is serialised behind the verifier (ADR 0013), so whichever
     of the two writes last, it is the profile.
     """
+    try:
+        host = hostservice.registered()
+        if host:
+            return hostservice.reload(host, Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
+    except OSError:
+        return RELOAD_FAILED
     if _systemctl("is-active", "--quiet", SERVICE_UNIT) != 0:
         return RELOAD_NOT_RUNNING
     if _systemctl("reload", SERVICE_UNIT) != 0:

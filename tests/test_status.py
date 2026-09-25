@@ -9,7 +9,7 @@ from support import write_config
 from test_streams import recorded, write_card
 from two_boxes import A
 
-from oscmix_desk import cli, desktop, status
+from oscmix_desk import cli, desktop, hostservice, status
 from oscmix_desk.desktop import DesktopStatus
 from oscmix_desk.model import CommandLine, Config
 
@@ -19,7 +19,7 @@ def world(tmp_path, monkeypatch, endpoint):
     _config, _control, proc = endpoint
     monkeypatch.setenv('OSCMIX_PROC_ROOT', str(proc))
     monkeypatch.setattr(status, 'resolve_binary', lambda *_: None)
-    monkeypatch.setattr(status, 'MAINTENANCE_DIR', tmp_path)
+    monkeypatch.setattr(hostservice, 'STATE', tmp_path)
     monkeypatch.setattr(desktop, 'resolve_binary', lambda *_: None)
     monkeypatch.setattr(socket, 'socket', lambda *_a, **_kw: pytest.fail('status opened a socket'))
     monkeypatch.setattr(cli, 'run_session', lambda *_: pytest.fail('status started a session'))
@@ -168,11 +168,14 @@ def test_missing_backend_file_is_diagnosed(world, monkeypatch):
 def test_incomplete_component_maintenance_and_failed_inspection_are_distinct(world):
     path, _ = world
     (path.parent / 'package-update').touch()
+    (path.parent / 'service-update').write_text('{"stopped":true}')
     gtk = path.parent / 'gtk-package-update'
     gtk.symlink_to(gtk)
     info = status.collect_status(path, CommandLine())['sections']['installation']['maintenance']
     assert info['core']['pending'] is True
     assert info['gtk']['pending'] is None
+    assert info['service']['pending'] is True
+    assert 'host service' in info['service']['detail']
     assert 'repair' in info['core']['detail']
 
 

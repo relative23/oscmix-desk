@@ -1,0 +1,5 @@
+#!/bin/sh
+# chpst receives the selected UID, primary group and audio group explicitly.
+exec 2>&1
+install -d -o root -g audio -m 3770 /run/oscmix-desk || exit 111
+exec chpst -u @GROUPS@ /usr/local/libexec/oscmix-desk/run-session

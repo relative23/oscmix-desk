@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2073 tests (two empty parameter sets
+The latest interim `make check` passes 2134 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -19,7 +19,14 @@ playback flags and withhold incomplete compound input-mix reports. The
 targeted read or playback-matrix read-back. The maintainer explicitly retains
 genuine playback read-back as a release condition; N3 remains open. Readable state and known declared routes were restored after each
 probe. Source/native staging now checks the exact backend/bridge/GTK patch
-series, and the project signing certificate is prepared. Final hardware,
+series, and the project signing certificate is prepared. OpenRC and runit now
+supervise the same unprivileged source installation with explicit activation,
+root-owned registration, shared locks and persistent maintenance. Real Alpine
+3.24.2/musl and Void/glibc VMs pass the first absent-device lifecycle checks:
+reload during discovery, three crash/restart cycles each, maintenance across a
+reboot, source/adapter replacement, stop/disable/removal and preserved user state.
+These development checks do not close the remaining device-I/O, concurrency,
+suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
 All proposed 0.7.4 corrections are included; there is no separate 0.7.4 milestone.
 

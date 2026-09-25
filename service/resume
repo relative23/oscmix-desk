@@ -1,0 +1,5 @@
+#!/bin/sh
+# elogind passes pre/post and an action; zzz resume hooks receive no arguments.
+case "${1-}" in
+    post|"") exec /usr/local/sbin/oscmix-service resume ;;
+esac

@@ -10,6 +10,7 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from . import hostservice
 from .constants import DEFAULT_USB_ID, EXIT_CONFIG, EXIT_OK, __version__
 from .desktop import inspect_desktop
 from .diagnostics import backend_status, service_status
@@ -22,7 +23,6 @@ from .profiles import effective_config
 from .streams import playback_problem, read_playback
 
 Info = Dict[str, object]
-MAINTENANCE_DIR = Path("/var/lib/oscmix-desk")
 
 
 def _configuration(path: Optional[Path], said: CommandLine) -> Tuple[Info, Optional[Config]]:
@@ -73,16 +73,18 @@ def _installation() -> Info:
 
 def _maintenance() -> Info:
     info: Info = {}
-    for component, filename in (("core", "package-update"), ("gtk", "gtk-package-update")):
+    for component, filename in hostservice.MAINTENANCE_FILES:
         try:
-            (MAINTENANCE_DIR / filename).stat()
+            (hostservice.STATE / filename).stat()
         except FileNotFoundError:
             info[component] = {"pending": False}
         except OSError as exc:
             info[component] = {"pending": None, "detail": str(exc)}
         else:
             info[component] = {"pending": True,
-                "detail": "repair/reinstall this package before starting the service or mixer"}
+                "detail": ("finish host service maintenance before starting the service or mixer"
+                           if component == "service" else
+                           "repair/reinstall this package before starting the service or mixer")}
     return info
 
 
@@ -124,7 +126,7 @@ def collect_status(path: Optional[Path], said: CommandLine) -> Info:
     sections: Dict[str, Info] = {"installation": _installation(),
         "configuration": configuration, "service": {
             key: value for key, value in service.items() if key in (
-                "state", "detail", "ActiveState", "UnitFileState", "MainPID",
+                "state", "detail", "manager", "ActiveState", "UnitFileState", "MainPID",
                 "StatusText", "FragmentPath")}}
     if config is not None:
         proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))

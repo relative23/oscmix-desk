@@ -181,6 +181,11 @@ require flock "to serialise installation"
 mkdir -p "$LIB_DIR"
 exec 9>"$LIB_DIR/.install.lock"
 flock -n 9 || fail "another installer is using $LIB_DIR"
+if [ -f /etc/oscmix-desk/service.json ]; then
+    # Recheck under the source-install lock. maintenance-finish takes the same
+    # lock, so a preflight/activation race cannot replace a running host desk.
+    python3 "$PROJECT_DIR/scripts/install-preflight.py" "${PREFLIGHT_ARGS[@]}"
+fi
 
 # --------------------------------------------------------------------------
 # Build oscmix (backend, alsaseqio bridge, GTK mixer)

@@ -182,6 +182,15 @@ def _no_real_systemctl(monkeypatch):
     monkeypatch.setattr(process, "_systemctl_output", lambda *verb: None)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_host_service(tmp_path, monkeypatch):
+    """Tests on OpenRC/runit must never resolve the host's registered desk."""
+    from oscmix_desk import hostservice
+
+    monkeypatch.setattr(hostservice, "REGISTRATION", tmp_path / "no-host-service.json")
+    monkeypatch.setattr(hostservice, "STATE", tmp_path / "no-host-state")
+
+
 #: The functions the autouse stubs replace, as imported before any stub.
 _REAL = {}
 

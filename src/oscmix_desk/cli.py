@@ -25,6 +25,7 @@ from .constants import (
     __version__,
 )
 from .errors import ConfigError
+from .hostservice import maintenance_problem
 from .log import log
 from .model import CommandLine, Config
 from .notices import log_desk_notices
@@ -188,6 +189,12 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
         for line in describe_profiles(config_path):
             sys.stdout.write(line + "\n")
         return EXIT_OK
+
+    if not args.dry_run and not args.pipewire_sinks:
+        problem = maintenance_problem()
+        if problem:
+            log.error("%s; complete installation recovery before activation", problem)
+            return EXIT_CONFIG
 
     if args.profile is not None:
         return _switch_profile(args.profile, config_path)

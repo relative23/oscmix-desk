@@ -1,0 +1,34 @@
+#!/sbin/openrc-run
+# shellcheck shell=sh
+# OpenRC reads these service variables when it sources this file.
+# shellcheck disable=SC2034
+# User selection is generated from an explicit oscmix-service registration.
+description="Declarative UCX II desk (unprivileged audio user)"
+supervisor=supervise-daemon
+command=/usr/local/libexec/oscmix-desk/run-session
+command_user=@USER@
+pidfile=/run/oscmix-desk-supervisor.pid
+respawn_delay=5
+respawn_max=0
+retry="TERM/12/KILL/5"
+output_logger="logger -t oscmix-desk -p daemon.info"
+error_logger="logger -t oscmix-desk -p daemon.err"
+extra_started_commands="reload"
+
+depend() {
+    need localmount
+    use logger
+    after bootmisc modules
+}
+
+start_pre() {
+    checkpath --directory --mode 3770 --owner root:audio /run/oscmix-desk || return 1
+    [ -f /var/lib/oscmix-desk/service-allowed ] || return 1
+    [ ! -e /var/lib/oscmix-desk/service-update ] || return 1
+}
+
+reload() {
+    ebegin "Requesting selective reconciliation in the desk supervisor"
+    supervise-daemon "$RC_SVCNAME" --signal HUP --pidfile "$pidfile"
+    eend $?
+}

@@ -82,6 +82,18 @@ def main():
     check(not Path('/usr/lib/oscmix-desk/package-guard').exists(),
           'source installation must not shadow a native package; '
           'use its package manager to upgrade, or remove it before switching to source')
+    registration = Path('/etc/oscmix-desk/service.json')
+    if registration.exists():
+        try:
+            registered = json.loads(registration.read_text())
+            if registered['home'] == str(home):
+                check(args.manual and not args.enable,
+                      'registered host service: use --manual and oscmix-service for activation')
+                fence = Path('/var/lib/oscmix-desk/service-update')
+                stopped = fence.exists() and json.loads(fence.read_text()).get('stopped') is True
+                check(stopped, 'run sudo oscmix-service maintenance-begin before replacement')
+        except (OSError, KeyError, ValueError) as exc:
+            check(False, 'cannot establish host service maintenance state: ' + str(exc))
     distro, hint = package_hint()
     print('INFO    distribution: ' + distro)
     tools = ['flock', 'install', 'mktemp', 'sed', 'cmp']

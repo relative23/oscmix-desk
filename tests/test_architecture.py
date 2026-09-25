@@ -71,7 +71,8 @@ ALLOWED_IMPORTS = {
                "observation", "osc", "reconcile", "registers", "routing"},
     "observation": {"numeric", "osc", "reconcile", "registers"},
     "pipewire": {"errors", "model"},
-    "process": {"constants", "discovery", "log"},
+    "process": {"constants", "discovery", "hostservice", "log"},
+    "hostservice": set(),
     # `locking` since 0.7.0: the unit takes the device lock itself around
     # its apply and its verifier, and the lock is a module of its own now
     # rather than a part of profiles. What the desk in effect is, session
@@ -93,7 +94,7 @@ ALLOWED_IMPORTS = {
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
-    "cli": {"config", "constants", "errors", "log", "model", "notices",
+    "cli": {"config", "constants", "errors", "hostservice", "log", "model", "notices",
             "outcome", "paths", "pipewire", "preview", "process", "profiles", "reads",
             "session", "status"},
     # The three actions that read the device, split out of cli in 0.7.0.
@@ -123,11 +124,12 @@ ALLOWED_IMPORTS = {
     "locking": {"constants", "log"},
     "marker": {"errors", "log", "paths"},
     "outcome": set(),
-    "launcher": {"config", "constants", "desktop", "diagnostics", "discovery",
+    "launcher": {"config", "constants", "desktop", "diagnostics", "discovery", "hostservice",
                  "errors", "model", "paths"},
-    "diagnostics": {"constants", "discovery", "errors", "locking", "model", "paths", "process"},
+    "diagnostics": {"constants", "discovery", "errors", "hostservice", "locking", "model",
+                    "paths", "process"},
     "desktop": {"diagnostics", "discovery"},
-    "status": {"constants", "desktop", "diagnostics", "discovery", "errors",
+    "status": {"constants", "desktop", "diagnostics", "discovery", "errors", "hostservice",
                "marker", "model", "paths", "profiles", "streams"},
     "preview": {"model", "reconcile"},
     # What config.py was until 0.7.0, by what each part is. `model` is the

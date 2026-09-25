@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Exec the registered desk only after the native manager drops privileges."""
+import json
+import os
+import sys
+from pathlib import Path
+
+
+def run_session():
+    record = json.loads(Path('/etc/oscmix-desk/service.json').read_text())
+    if record.get('installed') is not True:
+        raise ValueError('host service installation is incomplete')
+    if os.getuid() == 0 or os.getuid() != record['uid']:
+        raise ValueError('the native manager must select the registered unprivileged user')
+    state = Path('/var/lib/oscmix-desk')
+    if not (state / 'service-allowed').is_file():
+        raise ValueError('automatic operation has not been explicitly enabled')
+    if any((state / name).exists() for name in
+           ('service-update', 'package-update', 'gtk-package-update')):
+        raise ValueError('maintenance incomplete; finish the selected installation first')
+    home, config, command = (Path(record[key]) for key in ('home', 'config', 'command'))
+    environment = {'HOME': str(home), 'USER': record['user'], 'LOGNAME': record['user'],
+                   'PATH': '/usr/local/bin:/usr/bin:/bin', 'LANG': 'C.UTF-8',
+                   'XDG_CONFIG_HOME': str(config.parent.parent),
+                   'XDG_DATA_HOME': str(home / '.local/share'),
+                   'OSCMIX_SERVICE_MANAGER': record['manager']}
+    os.chdir(home)
+    os.umask(0o077)
+    os.execve(str(command), [str(command), '--config', str(config)], environment)  # noqa: S606
+
+if __name__ == '__main__':
+    try:
+        run_session()
+    except (OSError, KeyError, ValueError) as exc:
+        print('oscmix service: ' + str(exc), file=sys.stderr)
+        raise SystemExit(75) from exc

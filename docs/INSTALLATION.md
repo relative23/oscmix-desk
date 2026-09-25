@@ -97,7 +97,82 @@ The source path is exercised on Debian 13, Ubuntu 24.04/26.04, Fedora 44,
 openSUSE Leap 16, Arch and Alpine 3.22/musl. Container tests cover building,
 installation, the CLI and simulated lifecycle. They do not qualify every
 desktop, init adapter, CPU architecture or actual hardware configuration.
-OpenRC/runit automation and immutable-system recipes remain separate adapters.
+The additional 0.8.0 OpenRC/runit adapters are described below; their final VM
+qualification remains separate from these historical container results.
+
+## Alpine/OpenRC and Void/runit (0.8.0 development)
+
+Install the ordinary source payload as the intended audio user. The host kernel
+must provide ALSA sequencer support (`/dev/snd/seq`); a cloud kernel without the
+sound modules cannot operate the interface. Add the user to `audio` and start a
+new login session before using it. Build prerequisites are reported by
+`./install.sh --check --manual`; GTK additionally needs `gtk+3.0-dev` on Alpine
+or `gtk+3-devel glib-devel` on Void.
+
+```sh
+./install.sh --manual --no-udev
+~/.local/bin/oscmix-session --dry-run --timeout 0
+sudo python3 scripts/install-service.py install --manager openrc --user YOUR_USER
+```
+
+On Void select `--manager runit` instead. The administrator registration takes
+the user's home from the account database; `--config /absolute/file.conf` selects
+an alternate desk. One registered service is supported per host. Registration
+does not enable or start the mixer. Inspect and explicitly activate it with:
+
+```sh
+oscmix-service status
+sudo oscmix-service enable
+~/.local/bin/oscmix-session --status --json
+```
+
+The native manager drops to the selected user's UID/groups before loading any
+user-installed code. It creates the shared `root:audio` lock directory with mode
+`3770` at startup. It retries discovery after a missing/disconnected interface
+or a crashed backend with at least five seconds between process starts. A
+running desk process does not certify connected or verified hardware.
+`start`, `stop`, `reload` and `disable` are explicit administrator operations.
+The GTK launcher reuses a matching running session; it cannot enable a host
+service implicitly. A profile switch signals only the identified desk process.
+
+OpenRC sends output to the host syslog with tag `oscmix-desk`. Runit's `svlogd`
+rotates files in `/var/log/oscmix-desk`. If the host already supplies
+`/etc/zzz.d/resume` or `/etc/elogind/system-sleep`, registration adds the matching
+resume hook. It requests selective reconciliation only for an enabled, running
+desk outside maintenance. Install the host's sleep integration first, or update
+the adapters under maintenance after adding it. An absent hook directory is
+not a claim of automatic resume support.
+
+For an update or software rollback, keep the service fenced while replacing
+both the user payload and root-owned adapters from the selected source tree:
+
+```sh
+sudo oscmix-service maintenance-begin
+./install.sh --manual --no-udev
+sudo python3 scripts/install-service.py update
+~/.local/bin/oscmix-session --dry-run --timeout 0
+sudo oscmix-service maintenance-finish
+```
+
+An interrupted update leaves a persistent fence across reboot; repeat the
+failed installation/update step before finishing maintenance. The installer
+refuses replacement of a registered home without a confirmed stop. Finish
+checks configuration and the exact core/bridge/GTK build pairing as the audio
+user, then restores the previous active/enabled state. Configuration, profiles
+and the active marker retain their user ownership and contents. Software
+rollback does not roll hardware state back.
+
+To remove host integration, run `sudo oscmix-service disable` followed by
+`sudo oscmix-service remove`, then run `./uninstall.sh` as the audio user if the
+payload should also be removed. The shared lock directory and user desk are
+preserved. These adapters use UID/group isolation; they do not provide the
+systemd unit's sandbox.
+
+`tests/native_service_lifecycle.py` is the reproducible absent-device lifecycle
+check for the disposable qualification VMs. Its two phases surround a real
+reboot with maintenance left open. It refuses a non-qualification host, another
+runtime account or a connected RME USB device. This covers native supervision
+and state retention, not physical-device routing or the remaining VM fault cases.
 
 ## Native packages
 

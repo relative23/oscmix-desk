@@ -38,6 +38,15 @@ core/GTK package pair, then restart deliberately with the preserved desk.
 Hardware values that changed after the backup are not restored by a package
 rollback. Preserve readable state and known declared playback routes separately.
 
+Registered OpenRC/runit installations use the explicit
+[host maintenance procedure](INSTALLATION.md#alpineopenrc-and-voidrunit-080-development).
+Both the user payload and root-owned adapters must be updated while the
+persistent fence is present. A failed or interrupted update does not authorize
+manual activation; repeat the failed step and then finish maintenance. Explicit
+stop/disable during maintenance overrides automatic restart. To return to a
+version predating these adapters, disable and remove the host integration before
+installing that version, and use its supported foreground or systemd workflow.
+
 The remaining 0.8.0 integration and qualification work is tracked in the
 [release plan](plans/0.8.0-reliability-integration.md); this section is not a
 claim that the development version is ready to install.

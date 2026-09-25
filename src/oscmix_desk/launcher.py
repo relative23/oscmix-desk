@@ -16,14 +16,13 @@ from .desktop import inspect_desktop
 from .diagnostics import BackendStatus, backend_status, service_start_problem, service_status
 from .discovery import resolve_binary
 from .errors import ConfigError
+from .hostservice import maintenance_problem
 from .model import Config
 from .paths import discover_config_path
 
 BACKEND_WAIT = float(os.environ.get("OSCMIX_BACKEND_WAIT", "5"))
 SERVICE = SERVICE_UNIT
 SYSTEM_CONFIG = Path("/etc/oscmix/routing.conf")
-MAINTENANCE_FILE = Path("/var/lib/oscmix-desk/package-update")
-GTK_MAINTENANCE_FILE = Path("/var/lib/oscmix-desk/gtk-package-update")
 log = logging.getLogger("oscmix-launch")
 
 
@@ -61,13 +60,15 @@ def ensure_backend(config: Config, path: Optional[Path], proc_root: Path) -> Bac
         raise OSError(status.detail)
     if status.device is None or status.device.client is None:
         raise OSError("selected Fireface is not connected or has no ALSA sequencer client")
-    problem = service_start_problem(path, service_status())
+    service = service_status()
+    problem = service_start_problem(path, service)
     if problem:
         raise OSError(problem)
-    log.info("starting enabled %s", SERVICE)
-    systemctl_user("reset-failed", SERVICE)
-    if systemctl_user("start", "--no-block", SERVICE):
-        raise OSError("could not start %s; inspect its user journal" % SERVICE)
+    if service.get("manager") not in ("openrc", "runit"):
+        log.info("starting enabled %s", SERVICE)
+        systemctl_user("reset-failed", SERVICE)
+        if systemctl_user("start", "--no-block", SERVICE):
+            raise OSError("could not start %s; inspect its user journal" % SERVICE)
     deadline = time.monotonic() + BACKEND_WAIT
     while True:
         status = backend_status(config, proc_root, path)
@@ -92,8 +93,9 @@ def _launch(proc_root: Path) -> None:
     desktop = inspect_desktop(gtk)
     if desktop.problem:
         raise OSError(desktop.problem)
-    if MAINTENANCE_FILE.exists() or GTK_MAINTENANCE_FILE.exists():
-        raise OSError("package maintenance is incomplete; finish package repair first")
+    problem = maintenance_problem()
+    if problem:
+        raise OSError(problem + "; finish installation recovery first")
     status = ensure_backend(config, path, proc_root)
     if (status.pid is None or status.endpoint is None or status.device is None
             or not status.device.serial):

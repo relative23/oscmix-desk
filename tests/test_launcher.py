@@ -269,8 +269,8 @@ def launcher_world(launch_mod, clean_env, tmp_path):
     identity = ('OSCMIX_CONTROL_SOCKET', 'OSCMIX_BACKEND_PID', 'OSCMIX_DEVICE_SERIAL')
     clean_env.setattr(launch_mod.os, 'execve', lambda path, args, env:
                       execs.append((path, args, {k: env[k] for k in identity})))
-    clean_env.setattr(launch_mod, 'MAINTENANCE_FILE', tmp_path / 'maintenance')
-    clean_env.setattr(launch_mod, 'GTK_MAINTENANCE_FILE', tmp_path / 'gtk-maintenance')
+    from oscmix_desk import hostservice
+    clean_env.setattr(hostservice, 'STATE', tmp_path)
     return launch_mod, clean_env, calls, notifications, execs
 
 
@@ -285,8 +285,9 @@ def test_matching_manual_backend_opens_gui_without_systemd(launcher_world):
 
 
 @pytest.mark.parametrize('kind', ['binary', 'protocol', 'maintenance',
-                                'gtk-maintenance'])
-def test_desktop_prerequisites_are_checked_before_starting_any_backend(launcher_world, kind):
+                                'gtk-maintenance', 'service-maintenance'])
+def test_desktop_prerequisites_are_checked_before_starting_any_backend(launcher_world, kind,
+                                                                      tmp_path):
     from oscmix_desk.desktop import DesktopStatus
 
     mod, monkey, calls, notices, execs = launcher_world
@@ -294,9 +295,11 @@ def test_desktop_prerequisites_are_checked_before_starting_any_backend(launcher_
     if kind == 'binary':
         monkey.setattr(mod, 'resolve_gtk_binary', lambda: None)
     elif kind == 'maintenance':
-        mod.MAINTENANCE_FILE.write_text('pending')
+        (tmp_path / 'package-update').write_text('pending')
     elif kind == 'gtk-maintenance':
-        mod.GTK_MAINTENANCE_FILE.write_text('pending')
+        (tmp_path / 'gtk-package-update').write_text('pending')
+    elif kind == 'service-maintenance':
+        (tmp_path / 'service-update').write_text('pending')
     else:
         monkey.setattr(mod, 'inspect_desktop', lambda *_: DesktopStatus('gtk', kind + ' failed'))
     assert mod.main() == 1

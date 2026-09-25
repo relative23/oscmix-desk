@@ -79,6 +79,18 @@ if ! manages_this_home && systemctl --user show-environment 2>/dev/null \
     exit 1
 fi
 
+if [ -f /etc/oscmix-desk/service.json ]; then
+    python3 - "$HOME" <<'PY'
+import json
+import sys
+from pathlib import Path
+record = json.loads(Path('/etc/oscmix-desk/service.json').read_text())
+if record['home'] == sys.argv[1]:
+    raise SystemExit('Disable and remove the registered host service with oscmix-service '
+                     'before uninstalling its runtime. No files removed.')
+PY
+fi
+
 if manages_this_home; then
     info "stopping and disabling oscmix.service"
     systemctl --user stop oscmix.service 2>/dev/null || true
