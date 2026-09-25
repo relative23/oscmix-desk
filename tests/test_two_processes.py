@@ -7,18 +7,13 @@ started together do not, and that is the case the lock exists for.
 """
 
 import os
-import socket
 import subprocess
 import sys
-import threading
+from pathlib import Path
 
 import pytest
-from support import free_udp_port, proc_with_ports, write_config
-from test_session_integration import (
-    SESSION_BIN,
-    _enable_subprocess_coverage,
-    _guard_systemctl,
-)
+from support import fake_proc, write_config
+from test_session_integration import SESSION_BIN, _enable_subprocess_coverage, _guard_systemctl
 
 from oscmix_desk import osc
 
@@ -39,11 +34,31 @@ OWNER = {"/playback/1/stereo": "a", "/output/3/stereo": "a",
          "/output/8/volume": "b"}
 
 
+PROFILE_PROCESS = """\
+import os, runpy, sys, time
+sys.path[:0] = [os.environ['STUB_SOURCE'], os.environ['STUB_TESTS']]
+from backend_doubles import RecordingBackend
+from oscmix_desk import profiles, osc
+from oscmix_desk.backend import OSCMIX
+
+class IndependentRecorder(RecordingBackend):
+    traits = OSCMIX
+    def __init__(self):
+        super().__init__(reports=lambda sent: iter(sent))
+    def send(self, messages):
+        for message in messages:
+            super().send([message])
+            with open(os.environ['STUB_TRAFFIC'], 'a') as log:
+                log.write(osc.encode_osc(message[0], message[1], *message[2]).hex() + '\\n')
+            time.sleep(.05)
+
+profiles.connect_backend = lambda *a, **k: IndependentRecorder()
+runpy.run_path(os.environ['STUB_ENTRY'], run_name='__main__')
+"""
+
+
 def test_two_switches_from_two_processes_do_not_interleave(tmp_path):
-    send_port, recv_port = free_udp_port(), free_udp_port()
-    path = write_config(tmp_path / "routing.conf",
-                        "[osc]\nport = %d\nrecv-port = %d\n"
-                        % (send_port, recv_port))
+    path = write_config(tmp_path / "routing.conf", "")
     for name, text in PROFILES.items():
         write_config(tmp_path / "profiles" / ("%s.conf" % name), text)
     sysfs = tmp_path / "sysfs" / "5-2"
@@ -60,50 +75,40 @@ def test_two_switches_from_two_processes_do_not_interleave(tmp_path):
         "XDG_RUNTIME_DIR": str(runtime),
         "OSCMIX_LOCK_DIR": str(tmp_path / "no-shared-lock-dir"),
         "OSCMIX_SYSTEM_CONFIG": str(tmp_path / "no-system-config"),
-        "OSCMIX_PROC_ROOT": str(proc_with_ports(tmp_path / "proc", send_port)),
+        "OSCMIX_PROC_ROOT": str(fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])),
         "OSCMIX_SYSFS_USB": str(tmp_path / "sysfs"),
         "OSCMIX_SEQ_DEV": str(tmp_path / "no-such-seq-device"),
         # The barrier is what gives two unserialised switches the room to
         # interleave: links, a wait, then the mix.
         "OSCMIX_LINK_TIMEOUT": "0.2",
-        "OSCMIX_LINK_SETTLE": "0.3",
     })
     _enable_subprocess_coverage(env)
     _guard_systemctl(tmp_path, env)
 
-    # The backend's port, and the receive port held the way the mixer GUI
-    # holds it: both switches are applied and not read back, at once.
-    wire = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    wire.bind(("127.0.0.1", send_port))
-    wire.settimeout(0.2)
-    held = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    held.bind(("127.0.0.1", recv_port))
-    seen, stop = [], threading.Event()
-
-    def record():
-        while not stop.is_set():
-            try:
-                datagram, _ = wire.recvfrom(65536)
-            except socket.timeout:
-                continue
-            for message in osc.iter_osc_messages(datagram):
-                seen.append(osc.decode_osc(message)[0])
-
-    recorder = threading.Thread(target=record, daemon=True)
-    recorder.start()
+    # Isolate the device file lock from the backend lease. The two processes
+    # use the real CLI, planner, verifier and marker, but each has an independent
+    # recording connection. A coordinating fake could otherwise mask a broken
+    # file lock by serialising the clients itself. Real backend lease exclusion
+    # is checked separately against the C backend in backend_control.py.
+    traffic = tmp_path / "traffic.hex"
+    env.update(STUB_TRAFFIC=str(traffic), STUB_SOURCE=str(SESSION_BIN.parent.parent / "src"),
+               STUB_TESTS=str(Path(__file__).parent), STUB_ENTRY=str(SESSION_BIN))
+    wrapper = tmp_path / "profile-process.py"
+    wrapper.write_text(PROFILE_PROCESS)
+    switches = []
     try:
         switches = [subprocess.Popen(
-            [sys.executable, str(SESSION_BIN), "--config", str(path),
-             "--profile", name],
+            [sys.executable, str(wrapper), "--config", str(path), "--profile", name],
             env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             for name in PROFILES]
-        results = [(p.wait(timeout=60), p.stdout.read(), p.stderr.read())
-                   for p in switches]
+        results = [p.communicate(timeout=30) for p in switches]
+        results = [(p.returncode, out, err) for p, (out, err) in zip(switches, results)]
     finally:
-        stop.set()
-        recorder.join(timeout=5)
-        wire.close()
-        held.close()
+        for child in switches:
+            if child.poll() is None:
+                child.kill()
+            child.wait(timeout=3)
+    seen = [osc.decode_osc(bytes.fromhex(line))[0] for line in traffic.read_text().splitlines()]
 
     assert [code for code, _out, _err in results] == [0, 0], results
     owners = [OWNER[path] for path in seen if path in OWNER]

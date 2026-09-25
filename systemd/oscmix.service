@@ -39,11 +39,10 @@ RestartSec=3
 # error, two interfaces and no [device] serial to choose, or a session
 # already running on the port. Restarting cannot fix any of them.
 RestartPreventExitStatus=2
-# The worst case to READY=1 is constants.startup_budget(): the device
-# wait, the stale-backend settle, the port wait, the link barrier and,
-# since the start holds the device lock, the lock wait (0.6.9 found that
-# term missing). tests/test_unit_file.py keeps 10 s of margin on it.
-TimeoutStartSec=100
+# constants.startup_budget includes device discovery, endpoint readiness,
+# both lock waits, connection/ACK deadlines and the hard backend lease.
+# Tests keep at least ten seconds of scheduling margin before this deadline.
+TimeoutStartSec=210
 TimeoutStopSec=10
 
 # Sandboxing, restricted to what a *user* unit can actually enforce.

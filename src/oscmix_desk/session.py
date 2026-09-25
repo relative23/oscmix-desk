@@ -16,6 +16,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
+from .backend import Control, connect_backend
 from .constants import (
     CHILD_STOP_GRACE,
     EXIT_CONFIG,
@@ -31,7 +32,6 @@ from .discovery import (
     device_serials,
     lock_key,
     resolve_binary,
-    udp_port_listening,
     usb_device_authorized,
     usb_device_present,
     usb_revision,
@@ -42,12 +42,12 @@ from .errors import (
     DeviceLockUnavailable,
     ReceivePortError,
 )
-from .locking import DeviceLock, take_device_lock
+from .locking import DeviceLock, control_path, take_device_lock
 from .log import log
 from .model import Config
 from .notices import log_desk_notices
 from .notify import sd_notify
-from .process import _cleanup_stale_backend, socket_owner, supervise
+from .process import _cleanup_stale_backend, control_socket_owner, supervise
 from .reconcile import desired, plan
 from .reload import _config_path, _desk_under_the_lock, _reconcile
 from .routing import apply_routing, wait_unless_stopped
@@ -73,14 +73,15 @@ def _print_dry_run(client: Optional[int], config: Config) -> None:
     """
     log.info("dry run: live USB playback mode is not validated; "
              "the active hardware stream is checked before writes")
-    print("would run: alsaseqio %s:1 oscmix"
+    print("would run: alsaseqio -x %s:1 oscmix -c <device control socket>"
           % ("<client>" if client is None else client))
     for path, types, values in plan(desired(config)).messages():
         print("would send: %s ,%s %s"
               % (path, types, " ".join(map(str, values))))
 
 
-def _start_backend(client: int, config: Config) -> Optional["subprocess.Popen[bytes]"]:
+def _start_backend(client: int, config: Config, config_path: Optional[Path] = None
+                    ) -> Optional["subprocess.Popen[bytes]"]:
     """Launch ``alsaseqio <client>:1 oscmix``, or None if a binary is missing."""
     alsaseqio = resolve_binary("alsaseqio", "OSCMIX_BIN_ALSASEQIO")
     backend = resolve_binary("oscmix", "OSCMIX_BIN_BACKEND")
@@ -88,13 +89,9 @@ def _start_backend(client: int, config: Config) -> Optional["subprocess.Popen[by
         log.error("alsaseqio/oscmix not found -- run install.sh first")
         return None
 
-    # Pass the configured ports through to oscmix -- its compiled-in
-    # defaults are 7222/8222 and would silently diverge from routing.conf
-    # otherwise. (oscmix-gtk keeps its own port settings; users changing
-    # these also need to adjust the GUI's connection settings.)
-    command = [alsaseqio, "%d:1" % client, backend,
-               "-r", "udp!127.0.0.1!%d" % config.osc_port,
-               "-s", "udp!127.0.0.1!%d" % config.osc_recv_port]
+    endpoint = control_path(config_path, lock_key(config.usb_id, config.serial))
+    endpoint.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    command = [alsaseqio, "-x", "%d:1" % client, backend, "-c", str(endpoint)]
     log.info("starting: %s", " ".join(command))
     return subprocess.Popen(command)
 
@@ -131,45 +128,27 @@ def _install_reload_handler(reload_requested: Dict[str, bool]) -> None:
     signal.signal(signal.SIGHUP, handle_reload)
 
 
-def _await_backend_port(child: "subprocess.Popen[bytes]", config: Config,
+def _await_backend_port(child: "subprocess.Popen[bytes]", endpoint: Path,
                         proc_root: Path) -> bool:
-    """Wait until oscmix binds its OSC port; False when it never did.
-
-    A living backend is not a listening one, and this is UDP: every
-    datagram sent to a port nobody bound is accepted by the kernel and
-    dropped. The apply would look like it worked, the verifier would
-    confirm nothing, and `Type=notify` would have told systemd the desk
-    is set. The caller fails the start instead (0.6.6).
-    """
+    """Wait for this child's listening control socket, without connecting."""
     deadline = time.monotonic() + PORT_READY_TIMEOUT
-    announced = False
     while time.monotonic() < deadline:
-        if udp_port_listening(config.osc_port, proc_root):
-            # Bound is not enough: bound *by this backend* is. A
-            # stranger holding the port is not readiness, and the
-            # cleanup deliberately leaves strangers alone (ADR 0021).
-            #
-            # An owner that cannot be resolved is not this backend
-            # either. The cleanup already reads that uncertainty as
-            # "touch nobody"; reading it here as "ready" was the same
-            # doubt answered two opposite ways (0.6.7).
-            owner = socket_owner(config.osc_port, proc_root)
+        try:
+            owner = control_socket_owner(endpoint, proc_root)
             if owner == child.pid:
-                log.info("oscmix is listening on UDP %d", config.osc_port)
+                log.info("oscmix is listening at %s", endpoint)
                 return True
-            if not announced:
-                if owner is None:
-                    log.warning("UDP %d is bound, but the process holding it "
-                                "cannot be identified", config.osc_port)
-                else:
-                    log.warning("UDP %d is held by pid %d, not by this "
-                                "backend", config.osc_port, owner)
-                announced = True
+            if owner is not None:
+                log.error("control endpoint %s is held by pid %d, not started backend %d",
+                          endpoint, owner, child.pid)
+                return False
+        except (OSError, ValueError) as exc:
+            log.error("cannot inspect backend readiness: %s", exc)
+            return False
         if child.poll() is not None:
             return False
         time.sleep(0.25)
-    log.error("oscmix is not listening on UDP %d after %.0fs",
-              config.osc_port, PORT_READY_TIMEOUT)
+    log.error("oscmix did not bind %s within %.0fs", endpoint, PORT_READY_TIMEOUT)
     return False
 
 
@@ -224,36 +203,35 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         lock.release()
         return None
 
-    config = _desk_under_the_lock(config_path, config)
-    if not desired(config):
-        # Everything the config declares, not only its routes. Since
-        # 0.4.0 a file may consist of `[input:3]`, `[eq:input:3]` or
-        # `[clock]` sections alone, and a check on `config.routes` skipped
-        # every such file at start -- while `--dry-run` printed its
-        # writes and a SIGHUP reload sent them. The same shape as the
-        # two half-config defects fixed in 0.3.0: a function that looked
-        # at one part of the config and treated the rest as empty.
-        log.info("nothing declared in the config; leaving mixer state "
-                 "untouched")
-        lock.release()
-        return None
-
-    sd_notify("STATUS=applying routing")
+    device = None
     try:
-        apply_routing(config, config.osc_port, config.osc_recv_port,
+        config = _desk_under_the_lock(config_path, config)
+        empty = not desired(config)
+        device = connect_backend(config, config_path, expected_pid=child.pid, reader=empty,
+                                 should_stop=lambda: stop_requested["stop"]
+                                 or child.poll() is not None)
+        if empty:
+            # Even an empty desk must identify the launched backend before
+            # signalling readiness; it needs no write lease or verifier.
+            log.info("nothing declared in the config; leaving mixer state untouched")
+            device.close()
+            lock.release()
+            return None
+        sd_notify("STATUS=applying routing")
+        device.begin()
+        apply_routing(config, device,
                       should_stop=lambda: stop_requested["stop"] or child.poll() is not None)
-    except Exception:
-        # The lock is this process's promise that nobody else writes
-        # while it does. A write that raised must not keep it: the next
-        # switch would wait out the full timeout and then refuse.
+        return _verify_in_background(child, config, stop_requested, lock, device)
+    except BaseException:
+        if device is not None:
+            device.close()
         lock.release()
         raise
-    return _verify_in_background(child, config, stop_requested, lock)
 
 
 def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
                           stop_requested: Dict[str, bool],
-                          lock: DeviceLock) -> threading.Thread:
+                          lock: DeviceLock, backend: Control) -> threading.Thread:
     """Read the routing back on a thread, and free the lock when done.
 
     The lock spans the apply and this, because the verifier re-applies:
@@ -270,12 +248,15 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
         # session is in, and when the last one ended. It says what the
         # unit is doing; the lock is what keeps another writer out.
         try:
-            if wait_unless_stopped(VERIFY_SETTLE, should_stop):
+            if wait_unless_stopped(VERIFY_SETTLE, should_stop, backend):
                 return
             sd_notify("STATUS=verifying routing")
-            verify_and_repair(config, should_stop)
-            sd_notify("STATUS=running; verifier finished at %s"
-                      % time.strftime("%H:%M:%S"))
+            complete = verify_and_repair(config, backend, should_stop)
+            if should_stop():
+                return
+            backend.finish()
+            sd_notify("STATUS=running; verifier %s at %s"
+                      % ("finished" if complete else "incomplete", time.strftime("%H:%M:%S")))
         except ReceivePortError as exc:
             # Not "skipped": this port can never be read, so the desk
             # stays unverified until somebody changes `[osc] recv-port`
@@ -287,11 +268,11 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
             # The socket, not the desk: a thread traceback said nothing a
             # person could act on, and the lock's release was all that
             # happened (0.6.10).
-            log.error("verifier could not reach the backend on UDP %d (%s)",
-                      config.osc_port, exc)
+            log.error("verifier lost its backend operation (%s)", exc)
             sd_notify("STATUS=running; verifier failed at %s"
                       % time.strftime("%H:%M:%S"))
         finally:
+            backend.close()
             lock.release()
 
     thread = threading.Thread(target=deferred_verify, name="verify",
@@ -436,8 +417,7 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
     except DeviceLockUnavailable:
         log.error("failing the start so systemd tries again")
     except OSError as exc:
-        log.error("cannot write to the backend on UDP %d (%s); failing the "
-                  "start", config.osc_port, exc)
+        log.error("cannot complete backend writes (%s); failing the start", exc)
     else:
         sd_notify("READY=1")
         return verifier, None
@@ -469,14 +449,14 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
         _print_dry_run(client, config)
         return EXIT_OK
 
-    if _cleanup_stale_backend(config.osc_port, proc_root) is not None:
-        # Two sessions on one port would take turns killing each other's
-        # backend (0.6.9, measured). The one that is already running keeps
-        # the desk; this one says why it stops. Exit 2 rather than 1: a
-        # restart cannot fix it, and RestartPreventExitStatus keeps a
-        # unit started beside a manual session from looping on it.
-        return EXIT_CONFIG
-    child = _start_backend(client, config)
+    try:
+        endpoint = control_path(_config_path(args), interface.key)
+        if _cleanup_stale_backend(endpoint, interface, proc_root) is not None:
+            return EXIT_CONFIG
+        child = _start_backend(client, config, _config_path(args))
+    except OSError as exc:
+        log.error("cannot start the coordinated backend: %s", exc)
+        return EXIT_FAILURE
     if child is None:
         return EXIT_FAILURE
 
@@ -484,7 +464,7 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     reload_requested = {"reload": False}
     _install_stop_handlers(child, stop_requested)
     _install_reload_handler(reload_requested)
-    if not _await_backend_port(child, config, proc_root) \
+    if not _await_backend_port(child, endpoint, proc_root) \
             and usb_device_present(config.usb_id, sysfs_usb):
         # The port never came up while the device is still there.
         # Routing written into a port nobody bound is dropped by the
@@ -492,8 +472,7 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
         # is set. A backend that exited cleanly before binding used to
         # reach that READY through the exit mapping (0.6.7); the device
         # being gone is still the clean no-op it always was.
-        log.error("backend never bound UDP %d; failing the start",
-                  config.osc_port)
+        log.error("backend never bound its control socket; failing the start")
         if child.poll() is None:
             _stop_child(child)
         return EXIT_FAILURE

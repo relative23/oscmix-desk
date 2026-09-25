@@ -196,17 +196,17 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
         return _report_outcome(restore_main(config_path), config_path)
 
     if args.snapshot:
-        return _snapshot(config)
+        return _snapshot(config, config_path)
 
     if args.diff or args.pipewire_sinks:
         # The two that show this desk. A dump shows the device's, and a
         # snapshot and a listing show none.
         log_desk_notices(config)
     if args.diff:
-        return _diff(config)
+        return _diff(config, config_path)
 
     if args.dump_config:
-        return _dump_config(config)
+        return _dump_config(config, config_path)
 
     if args.pipewire_sinks:
         return _pipewire_sinks(args, config)

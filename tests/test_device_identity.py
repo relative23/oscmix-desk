@@ -20,7 +20,7 @@ import pytest
 from support import fake_proc, free_udp_port, repo_file, write_config
 from two_boxes import DESK, A, B, add_clients, lock_dir
 
-from oscmix_desk import locking, profiles
+from oscmix_desk import diagnostics, locking, profiles
 from oscmix_desk import marker as marker_mod
 from oscmix_desk import outcome as outcome_mod
 from oscmix_desk import reload as reload_mod
@@ -36,7 +36,7 @@ KEY_B = "2a39-3fd9-99887766"
 class _Child:
     """A backend that is up for as long as the test needs it."""
 
-    pid = 4242
+    pid = os.getpid()
     returncode = None
 
     def poll(self):
@@ -83,15 +83,15 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
     monkeypatch.setattr(session_module, "_install_reload_handler", lambda *a: None)
     monkeypatch.setattr(session_module, "_await_backend_port", lambda *a: True)
     monkeypatch.setattr(session_module, "apply_routing", lambda *a, **k: None)
-    monkeypatch.setattr(session_module, "verify_and_repair", lambda *a, **k: None)
+    monkeypatch.setattr(session_module, "verify_and_repair", lambda *a, **k: True)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
 
-    def start(client, config):
+    def start(client, config, config_path=None):
         started.append(client)
         return _Child()
 
-    def reconcile(config, reason, should_stop):
-        reconciled.append(config.osc_port)
+    def reconcile(config, reason, backend, should_stop):
+        reconciled.append(config.serial)
         return True
 
     def supervise(child, stop, on_reload=None, reload_requested=None):
@@ -111,59 +111,41 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
 # The architecture test: two identical boxes, the desk for B.
 # --------------------------------------------------------------------------
 
-def test_every_path_takes_b_s_lock_and_reaches_only_b(
-        tmp_path, monkeypatch, recording_backend):
-    port = free_udp_port()
-    proc = fake_proc(tmp_path / "proc", boxes=[A, B],
-                     bound=[(port, "oscmix", B[0])])
-    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    lock_dir(tmp_path, monkeypatch)
-    path = _desk(tmp_path, port, serial=B[1])
-    keys, started, reconciled, wired = [], [], [], []
-    _record_keys(monkeypatch, session_module, keys)
-    _record_keys(monkeypatch, reload_mod, keys)
-    _record_keys(monkeypatch, locking, keys, who="switch")
-    monkeypatch.setattr(profiles, "loopback",
-                        lambda send, recv: wired.append(send) or recording_backend)
+def test_every_path_takes_b_s_lock_and_reaches_only_b(tmp_path, monkeypatch, coordinated):
+    from control_peer import BEGIN, END
 
-    code, unit, notified = _run_the_unit(tmp_path, monkeypatch, path,
-                                         started, reconciled)
-    switched = profiles.switch_profile("b", config_path=path, verify=False)
-    restored = profiles.restore_main(config_path=path, verify=False)
-
-    assert code == session_module.EXIT_OK
-    assert "READY=1" in notified
-    assert started == [B[0]], "the unit bridges B's client, not the first one"
-    assert unit.serial == B[1]
-    assert [who for who, _key in keys] == ["session", "reload",
-                                           "switch", "switch"], \
-        "apply, reconcile, switch and restore each took the lock"
-    assert {key for _who, key in keys} == {KEY_B}, keys
-    assert switched.applied
-    assert restored.applied
-    assert wired == [port, port], "the switch and the restore wrote to B's port"
-    assert reconciled == [port]
+    with coordinated() as peer:
+        path = _desk(tmp_path, 7222, serial=B[1])
+        keys, started, reconciled = [], [], []
+        _record_keys(monkeypatch, session_module, keys)
+        _record_keys(monkeypatch, reload_mod, keys)
+        _record_keys(monkeypatch, locking, keys, who="switch")
+        code, unit, notified = _run_the_unit(tmp_path, monkeypatch, path,
+                                            started, reconciled)
+        switched = profiles.switch_profile("b", config_path=path, verify=False)
+        restored = profiles.restore_main(config_path=path, verify=False)
+        assert code == session_module.EXIT_OK
+        assert "READY=1" in notified
+        assert started == [B[0]]
+        assert unit.serial == B[1]
+        assert [who for who, _key in keys] == ["session", "reload", "switch", "switch"]
+        assert {key for _who, key in keys} == {KEY_B}
+        assert switched.applied
+        assert restored.applied
+        assert reconciled == [B[1]]
+        assert peer.requests.count(BEGIN) == peer.requests.count(END) == 4
+        assert peer.writes, "no real control request reached the selected endpoint"
 
 
-def test_a_switch_refuses_a_backend_that_drives_the_other_box(
-        tmp_path, monkeypatch, recording_backend):
-    port = free_udp_port()
-    proc = fake_proc(tmp_path / "proc", boxes=[A, B],
-                     bound=[(port, "oscmix", A[0])])     # A's backend, on B's port
-    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    lock_dir(tmp_path, monkeypatch)
-    path = _desk(tmp_path, port, serial=B[1])
-    wired = []
-    monkeypatch.setattr(profiles, "loopback",
-                        lambda send, recv: wired.append(send) or recording_backend)
-
-    outcome = profiles.switch_profile("b", config_path=path, verify=False)
-    assert outcome.state == outcome_mod.REFUSED
-    assert outcome.reason == ("the backend on UDP %d drives the interface "
-                              "%s, not %s" % (port, A[1], B[1]))
-    assert wired == []
-    assert recording_backend.sent == []
-    assert not marker_mod.active_profile_path(path).exists()
+def test_a_switch_refuses_a_backend_that_drives_the_other_box(tmp_path, coordinated):
+    with coordinated(client=A[0]) as peer:
+        path = _desk(tmp_path, 7222, serial=B[1])
+        outcome = profiles.switch_profile("b", config_path=path, verify=False)
+        assert outcome.state == outcome_mod.REFUSED
+        assert "backend drives another interface" in outcome.reason
+        assert peer.requests == []
+        assert peer.writes == []
+        assert not marker_mod.active_profile_path(path).exists()
 
 
 def test_two_boxes_and_no_serial_refuse_everywhere(tmp_path, monkeypatch):
@@ -188,59 +170,45 @@ def test_two_boxes_and_no_serial_refuse_everywhere(tmp_path, monkeypatch):
         assert "2 interfaces match" in outcome.reason
 
 
-def test_one_box_gives_the_unit_and_a_switch_the_same_key(
-        tmp_path, monkeypatch, recording_backend):
-    """The 0.6.8 split in its simplest form: one resolution for both."""
-    port = free_udp_port()
-    proc = fake_proc(tmp_path / "proc", boxes=[A],
-                     bound=[(port, "oscmix", A[0])])
-    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    lock_dir(tmp_path, monkeypatch)
-    path = _desk(tmp_path, port)
-    keys = []
-    _record_keys(monkeypatch, session_module, keys)
-    _record_keys(monkeypatch, reload_mod, keys)
-    _record_keys(monkeypatch, locking, keys, who="switch")
-    monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
-
-    _run_the_unit(tmp_path, monkeypatch, path, [], [])
-    profiles.switch_profile("b", config_path=path, verify=False)
-    assert {key for _who, key in keys} == {lock_key("2a39:3fd9", A[1])}
+def test_one_box_gives_the_unit_and_a_switch_the_same_key(tmp_path, monkeypatch, coordinated):
+    with coordinated(serial=A[1], client=A[0], boxes=(A,)):
+        path = _desk(tmp_path, 7222)
+        keys = []
+        _record_keys(monkeypatch, session_module, keys)
+        _record_keys(monkeypatch, reload_mod, keys)
+        _record_keys(monkeypatch, locking, keys, who="switch")
+        code, _, _ = _run_the_unit(tmp_path, monkeypatch, path, [], [])
+        assert code == session_module.EXIT_OK
+        assert profiles.switch_profile("b", config_path=path, verify=False).applied
+        assert {key for _who, key in keys} == {lock_key("2a39:3fd9", A[1])}
 
 
 # --------------------------------------------------------------------------
 # The port: bound is not reachable (review probe C, against a real socket).
 # --------------------------------------------------------------------------
 
-def test_a_stranger_s_socket_on_the_port_is_refused_and_receives_nothing(
-        tmp_path, monkeypatch):
-    """A real socket, a real /proc for who holds it, a simulated interface.
-
-    The interface is simulated so the test does not depend on a Fireface
-    being switched on: it passed for days on a desk with the UCX II up and
-    failed the first time the box was off -- which is every CI runner.
-    The port and its owner are the machine's own, which is the point.
-    """
-    stranger = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    stranger.bind(("127.0.0.1", 0))
+def test_a_strangers_socket_is_refused_without_connecting(tmp_path, tmp_path_factory, monkeypatch):
+    # Use the real kernel Unix socket table and owner, with a simulated UCX.
+    shared = tmp_path_factory.mktemp("stranger")
+    monkeypatch.setenv("OSCMIX_LOCK_DIR", str(shared))
+    endpoint = locking.control_path(None, lock_key("2a39:3fd9", A[1]))
+    stranger = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+    stranger.bind(str(endpoint))
+    stranger.listen(1)
     stranger.setblocking(False)
-    port = stranger.getsockname()[1]
     try:
-        monkeypatch.setenv("OSCMIX_PROC_ROOT", "/proc")
         box = fake_proc(tmp_path / "box", boxes=[A])
         resolve = profiles.resolve_device
-        monkeypatch.setattr(
-            profiles, "resolve_device",
-            lambda usb, name, serial, _proc: resolve(usb, name, serial, box))
-        lock_dir(tmp_path, monkeypatch)
-        path = _desk(tmp_path, port)
+        for module in (profiles, diagnostics):
+            monkeypatch.setattr(module, "resolve_device",
+                                lambda usb, name, serial, _proc: resolve(usb, name, serial, box))
+        monkeypatch.setenv("OSCMIX_PROC_ROOT", "/proc")
+        path = _desk(tmp_path, 7222, serial=A[1])
         outcome = profiles.switch_profile("b", config_path=path, verify=False)
-        assert outcome.state == outcome_mod.REFUSED, outcome.reason
-        assert outcome.reason == (
-            "UDP %d is held by pid %d, not by an oscmix backend of this user"
-            % (port, os.getpid()))
+        assert outcome.state == outcome_mod.REFUSED
+        assert "endpoint belongs to an incompatible program" in outcome.reason
         with pytest.raises(BlockingIOError):
-            stranger.recv(65535)
+            stranger.accept()
         assert not marker_mod.active_profile_path(path).exists()
     finally:
         stranger.close()
@@ -283,53 +251,43 @@ def test_hardware_evidence_refuses_to_name_one_of_two_boxes(tmp_path,
 
 
 def test_a_backend_that_changes_during_the_lock_wait_is_refused_after_it(
-        tmp_path, monkeypatch, recording_backend):
-    """Checked before a 30 s wait and never again, the switch wrote anyway."""
-    port = free_udp_port()
-    proc = fake_proc(tmp_path / "proc", boxes=[A, B],
-                     bound=[(port, "oscmix", B[0])])
-    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    lock_dir(tmp_path, monkeypatch)
-    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
-    path = _desk(tmp_path, port, serial=B[1])
-    wired = []
-    monkeypatch.setattr(profiles, "loopback",
-                        lambda send, recv: wired.append(send) or recording_backend)
-    held = locking.take_device_lock(None, KEY_B)
-    assert held is not None
+        tmp_path, monkeypatch, coordinated):
+    with coordinated() as peer:
+        monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
+        path = _desk(tmp_path, 7222, serial=B[1])
+        held = locking.take_device_lock(None, KEY_B)
+        assert held is not None
 
-    def backend_swapped_then_lock_released():
-        bridge = next(p for p in proc.iterdir() if p.name.isdigit()
-                      and (p / "comm").read_text().strip() == "alsaseqio")
-        (bridge / "cmdline").write_bytes(b"alsaseqio\x0024:1\x00oscmix\x00")
-        held.release()
+        def changed():
+            (peer.proc / str(os.getpid() + 1) / "cmdline").write_bytes(
+                b"alsaseqio\0-x\0" + b"24:1\0oscmix\0")
+            held.release()
 
-    threading.Timer(0.3, backend_swapped_then_lock_released).start()
-    outcome = profiles.switch_profile("b", config_path=path, verify=False)
-    assert outcome.state == outcome_mod.REFUSED
-    assert outcome.reason == ("the backend on UDP %d drives the interface "
-                              "%s, not %s" % (port, A[1], B[1]))
-    assert wired == []
-    assert recording_backend.sent == []
-    assert not marker_mod.active_profile_path(path).exists()
+        timer = threading.Timer(0.2, changed)
+        timer.start()
+        try:
+            outcome = profiles.switch_profile("b", config_path=path, verify=False)
+        finally:
+            timer.join()
+            held.release()
+        assert outcome.state == outcome_mod.REFUSED
+        assert "backend drives another interface" in outcome.reason
+        assert peer.requests == []
+        assert peer.writes == []
+        assert not marker_mod.active_profile_path(path).exists()
 
 
-def test_names_that_are_not_utf8_do_not_break_a_switch(tmp_path, monkeypatch,
-                                                        recording_backend):
-    """The kernel cuts comm at 15 bytes, and user space names its clients."""
-    port = free_udp_port()
-    proc = fake_proc(tmp_path / "proc", boxes=[B], bound=[(port, "oscmix", B[0])])
-    odd = proc / "45000"
-    (odd / "fd").mkdir(parents=True)
-    (odd / "comm").write_bytes(b"abc\xce\n")
-    (odd / "stat").write_bytes(b"45000 (abc\xce) S 1 0 0\n")
-    (odd / "cmdline").write_bytes(b"")
-    add_clients(proc, b'Client 130 : "\xff\xfe" [User Legacy]\n')
-    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    lock_dir(tmp_path, monkeypatch)
-    path = _desk(tmp_path, port, serial=B[1])
-    monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
-    assert profiles.switch_profile("b", config_path=path, verify=False).applied
+def test_names_that_are_not_utf8_do_not_break_a_switch(tmp_path, coordinated):
+    with coordinated(boxes=(B,)) as peer:
+        odd = peer.proc / "45000"
+        (odd / "fd").mkdir(parents=True)
+        (odd / "comm").write_bytes(b"abc\xce\n")
+        (odd / "stat").write_bytes(b"45000 (abc\xce) S 1 0 0\n")
+        (odd / "cmdline").write_bytes(b"")
+        add_clients(peer.proc, b'Client 130 : "\xff\xfe" [User Legacy]\n')
+        path = _desk(tmp_path, 7222, serial=B[1])
+        assert profiles.switch_profile("b", config_path=path, verify=False).applied
+        assert peer.writes
 
 
 def test_a_backend_left_without_its_interface_is_not_written_to(
@@ -346,11 +304,9 @@ def test_a_backend_left_without_its_interface_is_not_written_to(
     path = _desk(tmp_path, port)
     keys = []
     _record_keys(monkeypatch, locking, keys, who="switch")
-    monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
     outcome = profiles.switch_profile("b", config_path=path, verify=False)
     assert outcome.state == outcome_mod.REFUSED
-    assert outcome.reason == ("2a39:3fd9 is not visible to ALSA, so no backend "
-                              "can be driving it")
+    assert outcome.reason == "the selected interface and its serial are not visible to ALSA"
     assert keys == []
 
 
@@ -451,51 +407,51 @@ def test_a_start_names_an_interface_the_kernel_has_not_authorized(
     assert "snd-usb-audio" not in caplog.text
 
 
-def test_a_restore_also_checks_again_after_the_lock_wait(
-        tmp_path, monkeypatch, recording_backend):
-    port = free_udp_port()
-    proc = fake_proc(tmp_path / "proc", boxes=[A, B],
-                     bound=[(port, "oscmix", B[0])])
-    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    lock_dir(tmp_path, monkeypatch)
-    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
-    path = _desk(tmp_path, port, serial=B[1])
-    monkeypatch.setattr(profiles, "loopback", lambda *a: recording_backend)
-    held = locking.take_device_lock(None, KEY_B)
+def test_a_restore_also_checks_again_after_the_lock_wait(tmp_path, monkeypatch, coordinated):
+    with coordinated() as peer:
+        monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
+        path = _desk(tmp_path, 7222, serial=B[1])
+        held = locking.take_device_lock(None, KEY_B)
 
-    def swapped_then_released():
-        bridge = next(p for p in proc.iterdir() if p.name.isdigit()
-                      and (p / "comm").read_text().strip() == "alsaseqio")
-        (bridge / "cmdline").write_bytes(b"alsaseqio\x0024:1\x00oscmix\x00")
-        held.release()
+        def changed():
+            (peer.proc / str(os.getpid() + 1) / "cmdline").write_bytes(
+                b"alsaseqio\0-x\0" + b"24:1\0oscmix\0")
+            held.release()
 
-    threading.Timer(0.3, swapped_then_released).start()
-    outcome = profiles.restore_main(config_path=path, verify=False)
-    assert outcome.state == outcome_mod.REFUSED
-    assert outcome.name == "routing.conf"
-    assert outcome.reason == ("the backend on UDP %d drives the interface "
-                              "%s, not %s" % (port, A[1], B[1]))
-    assert recording_backend.sent == []
+        timer = threading.Timer(0.2, changed)
+        timer.start()
+        try:
+            outcome = profiles.restore_main(config_path=path, verify=False)
+        finally:
+            timer.join()
+            held.release()
+        assert outcome.state == outcome_mod.REFUSED
+        assert outcome.name == "routing.conf"
+        assert "backend drives another interface" in outcome.reason
+        assert peer.requests == []
+        assert peer.writes == []
 
 
-def test_the_switch_refusal_after_the_wait_names_the_profile(
-        tmp_path, monkeypatch, recording_backend):
-    port = free_udp_port()
-    proc = fake_proc(tmp_path / "proc", boxes=[B], bound=[(port, "oscmix", B[0])])
-    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    lock_dir(tmp_path, monkeypatch)
-    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
-    path = _desk(tmp_path, port, serial=B[1])
-    held = locking.take_device_lock(None, KEY_B)
+def test_the_switch_refusal_after_the_wait_names_the_profile(tmp_path, monkeypatch, coordinated):
+    with coordinated(boxes=(B,)) as peer:
+        monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
+        path = _desk(tmp_path, 7222, serial=B[1])
+        held = locking.take_device_lock(None, KEY_B)
 
-    def backend_gone_then_released():
-        (proc / "net" / "udp").write_text("  sl  local_address\n")
-        held.release()
+        def gone():
+            peer.path.unlink()
+            held.release()
 
-    threading.Timer(0.3, backend_gone_then_released).start()
-    outcome = profiles.switch_profile("b", config_path=path, verify=False)
-    assert (outcome.state, outcome.name) == (outcome_mod.REFUSED, "b")
-    assert "nothing is listening on UDP" in outcome.reason
+        timer = threading.Timer(0.2, gone)
+        timer.start()
+        try:
+            outcome = profiles.switch_profile("b", config_path=path, verify=False)
+        finally:
+            timer.join()
+            held.release()
+        assert (outcome.state, outcome.name) == (outcome_mod.REFUSED, "b")
+        assert "no coordinated backend endpoint" in outcome.reason
+        assert peer.requests == []
 
 
 def test_a_restore_that_cannot_reach_its_interface_takes_no_lock(
@@ -520,7 +476,7 @@ def test_a_restore_that_cannot_reach_its_interface_takes_no_lock(
 
 
 def test_a_verifier_that_cannot_reach_the_backend_ends_quietly(
-        tmp_path, monkeypatch, caplog):
+        tmp_path, monkeypatch, caplog, recording_backend):
     from oscmix_desk import Config
 
     def unreachable(*_a, **_k):
@@ -534,10 +490,10 @@ def test_a_verifier_that_cannot_reach_the_backend_ends_quietly(
     lock = locking.take_device_lock(None, KEY_B)
     with caplog.at_level("ERROR"):
         thread = session_module._verify_in_background(_Child(), Config(),
-                                                      {"stop": False}, lock)
+                                                      {"stop": False}, lock, recording_backend)
         thread.join(5)
     assert not thread.is_alive()
-    assert "verifier could not reach the backend" in caplog.text
+    assert "verifier lost its backend operation" in caplog.text
     assert any("verifier failed" in s for s in statuses)
     assert locking.take_device_lock(None, KEY_B, wait=0.2) is not None, \
         "the lock was released"

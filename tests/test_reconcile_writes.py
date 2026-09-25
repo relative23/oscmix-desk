@@ -7,43 +7,19 @@ compared.
 
 
 
+import pytest
+from backend_doubles import RecordingBackend
 from reconcile_desk import config_of
 
+from oscmix_desk.backend import OSCMIX
+from oscmix_desk.errors import ReceivePortError
 
-class _Device:
-    """A backend that reports whatever it is told to, and records writes."""
+
+class _Device(RecordingBackend):
+    traits = OSCMIX
 
     def __init__(self, reports):
-        self.sent = []
-        self._reports = reports
-        from oscmix_desk import backend as backend_mod
-        self.traits = backend_mod.OSCMIX
-
-    def send(self, messages):
-        self.sent.extend((p, t, tuple(a)) for p, t, a in messages)
-
-    def request_dump(self):
-        pass
-
-    def listen(self):
-        return _Replay(self._reports)
-
-class _Replay:
-    def __init__(self, reports):
-        self._reports = list(reports)
-
-    def messages(self, _timeout):
-        while self._reports:
-            yield self._reports.pop(0)
-
-    def close(self):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_exc):
-        pass
+        super().__init__(reports=lambda _sent: iter(reports))
 
 def test_a_reconcile_leaves_a_remembered_value_alone(tmp_path, monkeypatch):
     """The behaviour the whole trigger exists for.
@@ -55,7 +31,6 @@ def test_a_reconcile_leaves_a_remembered_value_alone(tmp_path, monkeypatch):
     from oscmix_desk import routing, verify
 
     monkeypatch.setattr(routing, "LINK_ECHO_TIMEOUT", 0.01)
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
     # A mismatch deliberately holds the observation window open for a
     # correcting report, so at the shipped 10 s this test would pay all
     # of it -- per mutant, in the mutation run. The outcome is what is
@@ -77,7 +52,6 @@ def test_a_reconcile_corrects_a_pinned_value(tmp_path, monkeypatch):
     from oscmix_desk import routing, verify
 
     monkeypatch.setattr(routing, "LINK_ECHO_TIMEOUT", 0.01)
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
     monkeypatch.setattr(verify, "VERIFY_TIMEOUT", 0.3)
 
     device = _Device([("/output/1/stereo", "i", (1,)),
@@ -91,21 +65,15 @@ def test_a_reconcile_corrects_a_pinned_value(tmp_path, monkeypatch):
         "a pinned register that drifted has to be written back")
 
 def test_a_reconcile_refuses_rather_than_writing_blind(tmp_path):
-    """No dump means no way to tell pinned from remembered *at the device*.
-
-    Writing anyway would be the indiscriminate re-apply this model
-    exists to end, so a held receive port is a refusal -- and it says so
-    rather than reporting success.
-    """
     from oscmix_desk import verify
 
     class Deaf(_Device):
-        def listen(self):
-            return None
+        def messages(self, _timeout):
+            raise ReceivePortError(104, "backend disconnected")
 
     device = Deaf([])
-    assert verify.reconcile_now(config_of(tmp_path), "test",
-                                backend=device) is False
+    with pytest.raises(ReceivePortError, match="disconnected"):
+        verify.reconcile_now(config_of(tmp_path), "test", device)
     assert device.sent == []
 
 def test_a_stop_during_a_reconcile_writes_nothing(tmp_path):
@@ -135,7 +103,6 @@ def test_a_reconcile_corrects_what_the_register_table_pins(tmp_path,
     from oscmix_desk import routing, verify
 
     monkeypatch.setattr(routing, "LINK_ECHO_TIMEOUT", 0.01)
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
     monkeypatch.setattr(verify, "VERIFY_TIMEOUT", 0.3)
 
     config = config_of(tmp_path, "\n[output:5]\nreflevel = +4dBu\n")
@@ -164,7 +131,6 @@ def test_a_reconcile_leaves_what_the_register_table_remembers(tmp_path,
     from oscmix_desk import routing, verify
 
     monkeypatch.setattr(routing, "LINK_ECHO_TIMEOUT", 0.01)
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
     monkeypatch.setattr(verify, "VERIFY_TIMEOUT", 0.3)
 
     config = config_of(tmp_path, "\n[output:5]\nreflevel = +4dBu\n")
@@ -192,7 +158,6 @@ def test_the_reconcile_log_does_not_claim_to_be_selective(tmp_path,
     from oscmix_desk import routing, verify
 
     monkeypatch.setattr(routing, "LINK_ECHO_TIMEOUT", 0.01)
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
     monkeypatch.setattr(verify, "VERIFY_TIMEOUT", 0.3)
 
     device = _Device([("/output/1/stereo", "i", (1,)),

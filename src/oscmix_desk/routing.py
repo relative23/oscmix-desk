@@ -9,13 +9,8 @@ import time
 from enum import Enum
 from typing import Callable, Dict, Mapping, Optional, Sequence
 
-from .backend import Backend, loopback
-from .constants import (
-    DEFAULT_OSC_RECV_PORT,
-    LINK_ECHO_TIMEOUT,
-    LINK_SETTLE,
-    LINK_SYNC_BLIND_DELAY,
-)
+from .backend import Control
+from .constants import LINK_ECHO_TIMEOUT
 from .errors import WriteFailed
 from .log import log
 from .model import Config, Route
@@ -47,7 +42,8 @@ def never_stop() -> bool:
     return False
 
 
-def wait_unless_stopped(seconds: float, should_stop: StopCheck) -> bool:
+def wait_unless_stopped(seconds: float, should_stop: StopCheck,
+                        backend: Optional[Control] = None) -> bool:
     """Sleep, waking early on a stop request. True if a stop was asked for.
 
     A plain ``time.sleep`` is what let ``LINK_SYNC_BLIND_DELAY`` outlast
@@ -65,7 +61,10 @@ def wait_unless_stopped(seconds: float, should_stop: StopCheck) -> bool:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             return False
-        time.sleep(min(0.1, remaining))
+        if backend is None:
+            time.sleep(min(0.1, remaining))
+        else:
+            backend.wait(min(0.1, remaining))
 
 
 class LinkEcho(Enum):
@@ -77,7 +76,6 @@ class LinkEcho(Enum):
 
     CONFIRMED = "confirmed"          # every register arrived at its value
     SILENT = "silent"                # the wait ran out
-    UNOBSERVABLE = "unobservable"    # the mixer GUI holds the receive port
     CONTRADICTED = "contradicted"    # latest decoded value is wrong/invalid
     CANCELLED = "cancelled"          # no further write is permitted
 
@@ -85,9 +83,8 @@ class LinkEcho(Enum):
         return self is LinkEcho.CONFIRMED
 
 
-def await_link_echo(expected: Mapping[str, int], recv_port: int,
+def await_link_echo(expected: Mapping[str, int], backend: Control,
                     timeout: Optional[float] = None, *,
-                    backend: Optional[Backend] = None,
                     should_stop: StopCheck = never_stop) -> LinkEcho:
     """Wait until oscmix reports every register in ``expected`` at its value.
 
@@ -117,32 +114,24 @@ def await_link_echo(expected: Mapping[str, int], recv_port: int,
         return LinkEcho.CONFIRMED
     if timeout is None:
         timeout = LINK_ECHO_TIMEOUT
-    device = backend if backend is not None else loopback(0, recv_port)
-    listener = device.listen()
-    if listener is None:
-        return LinkEcho.UNOBSERVABLE
     observed = Observation({path: ("i", (value,)) for path, value in expected.items()})
     deadline = time.monotonic() + timeout
-    try:
-        while not observed.complete:
-            if should_stop():
-                return LinkEcho.CANCELLED
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                break
-            for report in listener.messages(min(.25, remaining)):
-                observed.absorb(report)
+    while not observed.complete:
         if should_stop():
             return LinkEcho.CANCELLED
-        if observed.mismatched:
-            return LinkEcho.CONTRADICTED
-        return LinkEcho.CONFIRMED if observed.complete else LinkEcho.SILENT
-    finally:
-        listener.close()
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        for report in backend.messages(min(.25, remaining)):
+            observed.absorb(report)
+    if should_stop():
+        return LinkEcho.CANCELLED
+    if observed.mismatched:
+        return LinkEcho.CONTRADICTED
+    return LinkEcho.CONFIRMED if observed.complete else LinkEcho.SILENT
 
 
-def _cross_the_barrier(config: Config, recv_port: int,
-                       device: Backend, *,
+def _cross_the_barrier(config: Config, device: Control, *,
                        expected: Optional[Mapping[str, int]] = None,
                        require_confirmation: Sequence[str] = (),
                        should_stop: StopCheck = never_stop) -> None:
@@ -158,8 +147,7 @@ def _cross_the_barrier(config: Config, recv_port: int,
         return
     timeout = LINK_ECHO_TIMEOUT
     echoed = await_link_echo(output_link_state(config.routes) if expected is None else expected,
-                             recv_port,
-                             timeout, backend=device, should_stop=should_stop)
+                             device, timeout, should_stop=should_stop)
     if echoed is LinkEcho.CANCELLED:
         raise OSError("stop requested during link observation; remaining writes refused")
     if echoed is LinkEcho.CONTRADICTED:
@@ -167,12 +155,7 @@ def _cross_the_barrier(config: Config, recv_port: int,
     if require_confirmation and echoed is not LinkEcho.CONFIRMED:
         raise OSError("fresh link confirmation required for %s; remaining writes refused"
                       % ", ".join(sorted(require_confirmation)))
-    if echoed is LinkEcho.UNOBSERVABLE:
-        log.info("link echo unobservable (UDP %d in use); waiting %.1fs",
-                 recv_port, LINK_SETTLE)
-        if wait_unless_stopped(LINK_SETTLE, should_stop):
-            raise OSError("stop requested during link settle; remaining writes refused")
-    elif echoed is LinkEcho.SILENT:
+    if echoed is LinkEcho.SILENT:
         # Normal when the pairs were already linked: no change, no echo.
         log.info("no link change reported within %.1fs; mix matrix will "
                  "be re-applied after the register sync", timeout)
@@ -180,9 +163,7 @@ def _cross_the_barrier(config: Config, recv_port: int,
         log.info("channel pairs linked and confirmed by the device")
 
 
-def apply_routing(config: Config, port: int,
-                  recv_port: int = DEFAULT_OSC_RECV_PORT, *,
-                  backend: Optional[Backend] = None,
+def apply_routing(config: Config, backend: Control, *,
                   leave_alone: Sequence[str] = (),
                   require_link_confirmation: Sequence[str] = (),
                   intent: ApplyIntent = ApplyIntent.INITIAL,
@@ -222,12 +203,11 @@ def apply_routing(config: Config, port: int,
     # first, and it dropped the barrier: applying and verifying a
     # profile took 48 ms on a live UCX II, which is not enough time for
     # a barrier that is measured in seconds.
-    device = backend if backend is not None else loopback(port, recv_port)
     # Only the output links need the barrier: /playback/<n>/stereo goes
     # through setinputstereo(), which updates oscmix's state right away,
     # while /output/<n>/stereo relies on the device report -- see
     # backend.Traits.reports_link_state_on_write.
-    _send_in_order(wanted, config, recv_port, device,
+    _send_in_order(wanted, config, backend,
                    require_link_confirmation, should_stop)
     for route in config.routes:
         kind, source = route.source
@@ -253,8 +233,8 @@ def apply_routing(config: Config, port: int,
                  "the device", len(skip))
 
 
-def _send_in_order(wanted: Plan, config: Config, recv_port: int,
-                   device: Backend, require_confirmation: Sequence[str],
+def _send_in_order(wanted: Plan, config: Config,
+                   device: Control, require_confirmation: Sequence[str],
                    should_stop: StopCheck) -> None:
     """Links, the barrier, the mix, then channel state.
 
@@ -276,7 +256,7 @@ def _send_in_order(wanted: Plan, config: Config, recv_port: int,
                               before, [w.path for w in burst] + after)
         try:
             if index == 1 and burst and (echoes or require_confirmation):
-                _cross_the_barrier(config, recv_port, device,
+                _cross_the_barrier(config, device,
                                    expected=echoes,
                                    require_confirmation=require_confirmation,
                                    should_stop=should_stop)
@@ -310,7 +290,7 @@ def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
     return state
 
 
-def send_mix(config: Config, *, confirmed: Sequence[str] = ()) -> None:
+def send_mix(config: Config, backend: Control, *, confirmed: Sequence[str] = ()) -> None:
     """Repair the mix matrix without reasserting REMEMBER starting values.
 
     Through the planner, like the apply: a register two routes share
@@ -326,35 +306,5 @@ def send_mix(config: Config, *, confirmed: Sequence[str] = ()) -> None:
     if problem:
         raise WriteFailed(OSError(problem), [], [write.path for write in mix])
     PlaybackGuard(config).check()
-    loopback(config.osc_port, config.osc_recv_port).send(
-        write.message() for write in mix)
+    backend.send(write.message() for write in mix)
     log.info("mix matrix re-applied against the synchronized link state")
-
-
-def blind_reapply_mix(config: Config,
-                      should_stop: StopCheck = never_stop,
-                      why: Optional[str] = None) -> None:
-    """Re-apply the mix when the device dump cannot be observed.
-
-    ``why`` names the cause in the log when it is not the usual one.
-
-    The mixer GUI holds the receive port, so the link reports are
-    invisible; ``/refresh`` still has to go out because that dump is what
-    teaches oscmix the device's real link state, and the wait afterwards
-    is a plain guess at how long it takes.
-
-    This is the longest-running path in the verifier, and the one a user
-    actually hits: the GUI holding the port is the normal desktop case.
-    A stop during the delay abandons the re-apply rather than writing
-    routing at a backend that is being shut down.
-    """
-    if should_stop():
-        return
-    loopback(config.osc_port, config.osc_recv_port).request_dump()
-    log.info("register sync unobservable (%s); re-applying mix after %.0fs",
-             why or "UDP %d in use" % config.osc_recv_port,
-             LINK_SYNC_BLIND_DELAY)
-    if wait_unless_stopped(LINK_SYNC_BLIND_DELAY, should_stop):
-        log.info("stop requested during the blind delay; mix not re-applied")
-        return
-    send_mix(config)

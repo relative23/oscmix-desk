@@ -30,20 +30,18 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
-from .backend import Backend, loopback
+from .backend import Control, connect_backend
 from .config import load_config
 from .constants import VERIFY_TIMEOUT
 from .devices import device_for_name
 from .discovery import (
     Device,
     resolve_device,
-    udp_port_listening,
     usb_device_present,
 )
 from .errors import (
     ConfigError,
     DeviceAmbiguous,
-    ReceivePortError,
     WriteFailed,
 )
 from .locking import _switch_lock, held_elsewhere
@@ -64,7 +62,6 @@ from .outcome import (
     Outcome,
 )
 from .paths import list_profiles, profile_path
-from .process import port_holder
 from .reconcile import ApplyIntent
 from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
@@ -176,90 +173,19 @@ def _proc_root() -> Path:
 
 
 def _target(config: Config, reach: bool) -> Device:
-    """The interface this write is for, or _Refused with the reason.
-
-    One resolution for the lock key and for the reachability check, so
-    the two cannot describe different boxes (ADR 0024). ``reach`` is
-    False when the caller hands in its own backend and so owns the other
-    end of the socket -- the test seam, and the only caller that uses it.
-    Ambiguity refuses either way: it is about which lock to take.
-    """
+    """Resolve the lock identity before waiting; the connection checks it again."""
     try:
         device = resolve_device(config.usb_id, config.device_name,
                                 config.serial, _proc_root())
     except DeviceAmbiguous as exc:
         raise _Refused(str(exc)) from exc
     if reach:
-        reason = _unreachable(config, device)
-        if reason is not None:
-            raise _Refused(reason)
+        sysfs = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
+        if not usb_device_present(config.usb_id, sysfs):
+            raise _Refused("%s is not connected" % config.usb_id)
+        if device.client is None or not device.serial:
+            raise _Refused("the selected interface and its serial are not visible to ALSA")
     return device
-
-
-def _still_the_target(config: Config, target: Device) -> Optional[str]:
-    """Why a write must not go ahead after the lock wait, or None.
-
-    The wait can take 30 s, and the backend on the port can change in
-    that time: checked only before it, a switch wrote to whatever held the
-    port afterwards and recorded the marker (found by review, 0.6.9). A
-    window of milliseconds remains between this and the first datagram;
-    it is the one a UDP write cannot close.
-    """
-    try:
-        now = _target(config, reach=True)
-    except _Refused as refusal:
-        return str(refusal)
-    if now.key != target.key:
-        return ("the interface changed while waiting for the device lock "
-                "(%s, now %s)" % (target.key, now.key))
-    return None
-
-
-def _unreachable(config: Config, device: Device) -> Optional[str]:
-    """Why a write would not reach this interface, or None when it would.
-
-    A write to an unreachable device is not a write: the datagrams land
-    in a port nobody bound, or in the wrong one, and a switch that
-    reports `applied` for that records a desired state that was never at
-    the device.
-
-    Presence in sysfs is not reachability -- a logical disconnect leaves
-    the sysfs entry in place (0.6.8) -- and a bound port is not either:
-    in 0.6.8 a stranger's socket on the OSC port took a whole routing
-    and the marker was set. The port has to be held by an oscmix of this
-    user, and when its alsaseqio parent says which client it bridges,
-    that has to be the interface resolved above (ADR 0024).
-    """
-    sysfs = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
-    if not usb_device_present(config.usb_id, sysfs):
-        return "%s is not connected" % config.usb_id
-    if device.client is None:
-        # The backend bridges a sequencer client; no client, no backend for
-        # this box -- whatever holds the port. Checked here and not only by
-        # the serial comparison below, which has nothing to compare once
-        # the card list and the clients are gone: in that state a switch
-        # keyed on `<usb id>-unknown` and wrote beside the unit's lock
-        # (found by review, 0.6.9).
-        return ("%s%s is not visible to ALSA, so no backend can be driving it"
-                % (config.usb_id,
-                   " with serial %s" % device.serial if device.serial else ""))
-    port = config.osc_port
-    if not udp_port_listening(port, _proc_root()):
-        return ("nothing is listening on UDP %d, so the backend is not "
-                "running" % port)
-    holder = port_holder(port, _proc_root())
-    if holder is None or not holder.oscmix:
-        return ("UDP %d is held by %s, not by an oscmix backend of this user"
-                % (port, "pid %d" % holder.pid if holder is not None
-                   else "a process that cannot be identified"))
-    if device.serial and holder.serial and holder.serial != device.serial:
-        return ("the backend on UDP %d drives the interface %s, not %s"
-                % (port, holder.serial, device.serial))
-    if (device.client is not None and holder.client is not None
-            and holder.client != device.client):
-        return ("the backend on UDP %d bridges sequencer client %d, not %d"
-                % (port, holder.client, device.client))
-    return None
 
 
 def _refused_for_the_device(name: str, reason: str) -> "Outcome":
@@ -308,108 +234,75 @@ def effective_config(config_path: Optional[Path],
 
 
 def switch_profile(name: str, config_path: Optional[Path] = None,
-                   backend: Optional[Backend] = None,
+                   backend: Optional[Control] = None,
                    verify: bool = True) -> Outcome:
-    """Switch the desk to a profile and say what happened.
-
-    Never raises for a bad config: an unparseable profile is an
-    ``Outcome``, because the caller has to distinguish "your typo cost
-    you nothing" from "it is applied but I could not check" and an
-    exception collapses those into the same thing.
-    """
+    """Parse a profile fully, then apply it as one coordinated operation."""
     try:
         config = load_profile(name, config_path)
     except ConfigError as exc:
-        # Before any socket exists. The ordering is the promise.
-        # The message names the profile: on a desk with five of them,
-        # "channel 99 out of range" without a name is a search.
-        log.error("profile %r refused, nothing written: %s", name, exc)
-        return Outcome(state=REFUSED, name=name, reason=str(exc))
-    log_desk_notices(config)
-
-    try:
-        target = _target(config, reach=backend is None)
-    except _Refused as refusal:
-        return _refused_for_the_device(name, str(refusal))
-
-    with _switch_lock(config_path, target.key) as held:
-        if not held:
-            return _refused_for_the_lock(name)
-        changed = _still_the_target(config, target) if backend is None else None
-        if changed is not None:
-            return _refused_for_the_device(name, changed)
-        device = backend if backend is not None else loopback(
-            config.osc_port, config.osc_recv_port)
-        gave_out = _written(name, config, device)
-        if gave_out is not None:
-            return gave_out
-        # Applied, so remembered: from here on every start and reload is
-        # this profile's, until --no-profile (ADR 0018). A marker that
-        # could not be written travels in the outcome rather than only
-        # in the log: the caller must then not reload the unit, whose
-        # reconcile would undo what just landed (ADR 0019).
-        marked = remember_active_profile(name, config_path)
-
-        if not verify:
-            # Not confirmed, because nobody looked -- which is a different
-            # fact from "looked and did not see it", and the state is the
-            # same either way. Everything expected goes in the list.
-            outcome = Outcome(state=APPLIED_UNVERIFIED, name=name,
-                              reason=NOT_CHECKED,
-                              unverified=sorted(expected_registers(config)),
-                              read_back=False)
-        else:
-            outcome = _check(name, config, device)
-        return replace(outcome, persisted=marked.in_effect,
-                       durable=marked.durable)
+        return _refused_for_the_device(name, str(exc))
+    return _activate(config, config_path, name, backend, verify)
 
 
 def restore_main(config_path: Optional[Path] = None,
-                 backend: Optional[Backend] = None,
+                 backend: Optional[Control] = None,
                  verify: bool = True) -> Outcome:
-    """Apply `routing.conf` again and forget the active profile.
-
-    The same transaction as a switch, with the main config as the desk
-    and "routing.conf" as the name the outcome carries: parsed and
-    validated in full before the first datagram, then written, then
-    checked. The marker goes only once the write is on the wire; a
-    refused restore leaves the profile in effect and says so.
-    """
+    """Apply the main desk; clear the marker only after the operation finishes."""
     try:
         config = load_config(config_path)
     except ConfigError as exc:
-        log.error("routing.conf refused, nothing written: %s", exc)
-        return Outcome(state=REFUSED, name="routing.conf", reason=str(exc))
+        return _refused_for_the_device("routing.conf", str(exc))
+    return _activate(config, config_path, None, backend, verify)
+
+
+def _activate(config: Config, config_path: Optional[Path], name: Optional[str],
+              backend: Optional[Control], verify: bool) -> Outcome:
+    label = name if name is not None else "routing.conf"
     log_desk_notices(config)
     try:
         target = _target(config, reach=backend is None)
     except _Refused as refusal:
-        return _refused_for_the_device("routing.conf", str(refusal))
-
+        return _refused_for_the_device(label, str(refusal))
+    config = replace(config, serial=target.serial)
     with _switch_lock(config_path, target.key) as held:
         if not held:
-            return _refused_for_the_lock("routing.conf")
-        changed = _still_the_target(config, target) if backend is None else None
-        if changed is not None:
-            return _refused_for_the_device("routing.conf", changed)
-        device = backend if backend is not None else loopback(
-            config.osc_port, config.osc_recv_port)
-        gave_out = _written("routing.conf", config, device)
-        if gave_out is not None:
-            return gave_out
-        marked = forget_active_profile(config_path)
-        if not verify:
-            outcome = Outcome(state=APPLIED_UNVERIFIED, name="routing.conf",
-                              reason=NOT_CHECKED,
-                              unverified=sorted(expected_registers(config)),
-                              read_back=False)
-        else:
-            outcome = _check("routing.conf", config, device)
-        return replace(outcome, persisted=marked.in_effect,
-                       durable=marked.durable)
+            return _refused_for_the_lock(label)
+        device = backend
+        applied = False
+        try:
+            if device is None:
+                device = connect_backend(config, config_path)
+            device.begin()
+            gave_out = _written(label, config, device)
+            if gave_out is not None:
+                return gave_out
+            applied = True
+            if verify:
+                outcome = _check(label, config, device)
+            else:
+                outcome = Outcome(state=APPLIED_UNVERIFIED, name=label,
+                                  reason=NOT_CHECKED,
+                                  unverified=sorted(expected_registers(config)),
+                                  read_back=False)
+            # A dead/lost lease invalidates observations and cannot publish a
+            # successful marker, even when all individual writes were sent.
+            device.finish()
+        except OSError as exc:
+            if not applied:
+                return _refused_for_the_device(label, str(exc))
+            return Outcome(state=APPLIED_UNVERIFIED, name=label,
+                           reason="backend operation did not finish: %s" % exc,
+                           unverified=sorted(expected_registers(config)),
+                           persisted=False, read_back=False)
+        finally:
+            if device is not None:
+                device.close()
+        marked = (remember_active_profile(name, config_path) if name is not None
+                  else forget_active_profile(config_path))
+        return replace(outcome, persisted=marked.in_effect, durable=marked.durable)
 
 
-def _written(name: str, config: Config, device: Backend
+def _written(name: str, config: Config, device: Control
              ) -> Optional[Outcome]:
     """Write the desk. None when all of it went out; else how far it came.
 
@@ -423,11 +316,9 @@ def _written(name: str, config: Config, device: Backend
     which is the repair (ADR 0027).
     """
     try:
-        apply_routing(config, config.osc_port, config.osc_recv_port,
-                      backend=device, intent=ApplyIntent.EXPLICIT)
+        apply_routing(config, device, intent=ApplyIntent.EXPLICIT)
     except WriteFailed as exc:
-        cause = "cannot write to the backend on UDP %d (%s)" % (
-            config.osc_port, exc.strerror)
+        cause = "cannot complete backend writes (%s)" % (exc.strerror or exc)
         if not exc.written:
             log.error("%r refused, nothing written: %s", name, cause)
             return Outcome(state=REFUSED, name=name, reason=cause)
@@ -441,7 +332,7 @@ def _written(name: str, config: Config, device: Backend
     return None
 
 
-def _check(name: str, config: Config, device: Backend) -> Outcome:
+def _check(name: str, config: Config, device: Control) -> Outcome:
     """Read the state back and classify the switch.
 
     Delegates the whole read-back to ``verify.verify_routing`` against
@@ -457,10 +348,8 @@ def _check(name: str, config: Config, device: Backend) -> Outcome:
     model = device_for_name(config.device_name)
     registers = expected_registers(config)
     try:
-        result = verify_routing(registers, config.osc_port,
-                                config.osc_recv_port, VERIFY_TIMEOUT,
-                                device_model=model, backend=device)
-    except (ReceivePortError, WriteFailed) as exc:
+        result = verify_routing(registers, device, VERIFY_TIMEOUT, device_model=model)
+    except OSError as exc:
         # Applied -- the barrier waited blind -- and unverifiable for a
         # reason that is not the mixer GUI: the receive port cannot be
         # bound, or the request for the state could not be sent. The
@@ -470,14 +359,6 @@ def _check(name: str, config: Config, device: Backend) -> Outcome:
         return Outcome(state=APPLIED_UNVERIFIED, name=name,
                        reason=exc.strerror or str(exc),
                        unverified=sorted(registers), read_back=False)
-    if result is None:
-        # The mixer GUI holds the port. Applied, blind, and said so.
-        log.info("profile %r applied; read-back port in use, cannot verify",
-                 name)
-        return Outcome(state=APPLIED_UNVERIFIED, name=name,
-                       reason="receive port in use (mixer GUI running?)",
-                       unverified=sorted(registers), read_back=False)
-
     unverified = sorted(result.mismatched + result.unobserved)
     if not unverified:
         return Outcome(state=APPLIED_VERIFIED, name=name)

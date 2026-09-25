@@ -225,7 +225,7 @@ def test_a_switch_to_an_absent_interface_writes_nothing(tmp_path, monkeypatch):
     assert not marker_mod.active_profile_path(path).exists(), \
         "and it remembers nothing"
 
-def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, monkeypatch):
+def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, tmp_path_factory, monkeypatch):
     """Presence in sysfs is not reachability.
 
     Measured on the desk: `authorized=0` emptied the ALSA card list and
@@ -235,7 +235,7 @@ def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, monkeypatch):
     for datagrams the kernel dropped. udev stops the unit the moment the
     device goes, and a stopped unit does the same thing by itself.
     """
-    shared_lock_dir(tmp_path, monkeypatch)
+    shared_lock_dir(tmp_path_factory.mktemp("lock"), monkeypatch)
     sysfs = tmp_path / "sysfs"
     (sysfs / "5-2").mkdir(parents=True)
     (sysfs / "5-2" / "idVendor").write_text("2a39\n")
@@ -250,5 +250,5 @@ def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, monkeypatch):
     path = desk(tmp_path, tracking=TRACKING)
     outcome = profiles.switch_profile("tracking", config_path=path)
     assert outcome.state == outcome_mod.REFUSED
-    assert "nothing is listening" in outcome.reason
+    assert "no coordinated backend endpoint" in outcome.reason
     assert not marker_mod.active_profile_path(path).exists()

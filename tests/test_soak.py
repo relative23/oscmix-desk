@@ -124,9 +124,8 @@ def one_startup(tmp_path, session_mod, cycle):
         # The ports reaching the backend are part of the result, not a
         # detail: a cycle that resolved a stale port would still route.
         argv = json.loads((stub_dir / "argv.json").read_text())
-        assert argv == ["42:1", str(backend),
-                        "-r", "udp!127.0.0.1!%d" % port,
-                        "-s", "udp!127.0.0.1!%d" % recv_port], \
+        assert argv == ["-x", "42:1", str(backend), "-c",
+                        str(Path(env["OSCMIX_LOCK_DIR"]) / "2a39-3fd9-00000000.control")], \
             "cycle %d: backend arguments diverged" % cycle
 
         proc.send_signal(signal.SIGTERM)

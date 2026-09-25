@@ -12,13 +12,12 @@ from typing import Dict, List, Optional, Tuple
 
 from .constants import DEFAULT_USB_ID, EXIT_CONFIG, EXIT_OK, __version__
 from .desktop import inspect_desktop
-from .diagnostics import backend_status, port_state, service_status
+from .diagnostics import backend_status, service_status
 from .discovery import resolve_binary
 from .errors import ConfigError
 from .marker import active_profile
 from .model import CommandLine, Config
 from .paths import profile_path
-from .process import socket_owner
 from .profiles import effective_config
 from .streams import playback_problem, read_playback
 
@@ -118,18 +117,6 @@ def _playback(config: Config, proc_root: Path) -> Info:
         return {"state": "unknown", "detail": str(exc)}
 
 
-def _receiver(config: Config, proc_root: Path) -> Info:
-    try:
-        state = port_state(config.osc_recv_port, proc_root)
-        owner = socket_owner(config.osc_recv_port, proc_root) if state == "occupied" else None
-    except (OSError, ValueError) as exc:
-        return {"state": "unknown", "port": config.osc_recv_port, "detail": str(exc)}
-    else:
-        return {"state": state, "port": config.osc_recv_port, "owner_pid": owner,
-                "detail": ("close the owning mixer or wait for the current read-back, then retry"
-                           if state == "occupied" else "no listener observed; not a reservation")}
-
-
 def collect_status(path: Optional[Path], said: CommandLine) -> Info:
     """Only inspect files and query host metadata; no OSC or audio operation."""
     configuration, config = _configuration(path, said)
@@ -141,19 +128,18 @@ def collect_status(path: Optional[Path], said: CommandLine) -> Info:
                 "StatusText", "FragmentPath")}}
     if config is not None:
         proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
-        backend = backend_status(config, proc_root)
+        backend = backend_status(config, proc_root, path)
         sections["backend"] = asdict(backend)
         if backend.state == "ready" and backend.pid is not None:
             sections["backend"]["running_file"] = _running_backend(
                 backend.pid, proc_root, sections["installation"])
         selected = replace(config, serial=backend.device.serial) if backend.device else config
         sections["playback"] = _playback(selected, proc_root)
-        sections["receive_port"] = _receiver(config, proc_root)
     else:
-        for name in ("backend", "playback", "receive_port"):
+        for name in ("backend", "playback"):
             sections[name] = {"state": "unknown", "detail": "fix the invalid configuration first"}
-    sections["desktop"] = asdict(inspect_desktop(config))
-    return {"schema_version": 1, "desk_version": __version__, "read_only": True,
+    sections["desktop"] = asdict(inspect_desktop())
+    return {"schema_version": 2, "desk_version": __version__, "read_only": True,
             "configuration_valid": config is not None,
             "verification": "not-performed", "sections": sections,
             "note": "point-in-time inspection; service readiness and profile selection "

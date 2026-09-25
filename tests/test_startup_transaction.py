@@ -14,6 +14,11 @@ from oscmix_desk import locking
 from oscmix_desk import reload as reload_mod
 
 
+@pytest.fixture(autouse=True)
+def operation(monkeypatch, session_module, recording_backend):
+    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
+
+
 def _lock_probe(path):
 
     return locking.take_device_lock(path, device_key(path), wait=0.1)
@@ -254,41 +259,14 @@ def test_a_backend_that_is_already_gone_is_not_an_error(session_module):
 
     session_module._stop_child(Gone())      # no raise
 
-def test_the_port_wait_answers_whether_the_port_came_up(session_module,
-                                                        monkeypatch, tmp_path):
-    """Four answers, and the caller fails the start on three of them.
-
-    Before 0.6.6 this returned nothing at all, so a backend that was
-    alive and deaf reached READY=1 (ADR 0021). Since 0.6.7 a bound port
-    counts only when its owner can be shown to be this backend: the
-    cleanup already reads an unresolvable owner as "touch nobody", and
-    reading it here as "ready" answered one doubt two opposite ways.
-    """
-    from test_process import fake_proc
-
-    from oscmix_desk import Config
-
-    config = Config(osc_port=7301)
-    proc = fake_proc(tmp_path, {"202": ("oscmix", "oscmix")},
-                     listening_port=7301, owner="202")
-    assert session_module._await_backend_port(RunningChild(pid=202), config,
-                                              proc) is True
-
-    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.2)
-    assert session_module._await_backend_port(RunningChild(pid=999), config,
-                                              proc) is False, \
-        "a port held by somebody else is not this backend listening"
-
-    nobody = fake_proc(tmp_path / "b", {"202": ("oscmix", "oscmix")},
-                       listening_port=7301)
-    assert session_module._await_backend_port(RunningChild(pid=202), config,
-                                              nobody) is False, \
-        "an owner nobody can resolve is not this backend either"
-
-    monkeypatch.setattr(session_module, "udp_port_listening", lambda *a: False)
-    assert session_module._await_backend_port(FakeChild(0), config,
-                                              proc) is False, \
-        "a backend that exited is not a port that came up"
+def test_readiness_requires_the_started_childs_listening_endpoint(session_module, endpoint):
+    _config, path, proc = endpoint
+    assert session_module._await_backend_port(RunningChild(pid=101), path, proc) is True
+    assert session_module._await_backend_port(RunningChild(pid=999), path, proc) is False
+    (proc / "101/fd/3").unlink()
+    assert session_module._await_backend_port(FakeChild(0), path, proc) is False
+    (proc / "net/unix").write_text("bad table")
+    assert session_module._await_backend_port(RunningChild(pid=101), path, proc) is False
 
 def test_a_backend_that_exits_before_it_binds_fails_the_start(session_mod,
                                                               lifecycle):
@@ -310,22 +288,9 @@ def test_a_device_unplugged_during_the_start_is_still_a_clean_no_op(
                      usb_present=False) == session_mod.EXIT_OK
     assert ready_count(lifecycle.notifications) == 1
 
-def test_a_stranger_on_the_port_is_reported_once_not_every_poll(
-        session_module, monkeypatch, tmp_path, caplog):
-    """Once, not once per 0.25 s, and not never.
-
-    The announcement flag is the whole difference between a line that
-    explains a stalled start and either silence or a hundred copies of
-    the same sentence.
-    """
-    from test_process import fake_proc
-
-    from oscmix_desk import Config
-
-    proc = fake_proc(tmp_path, {"201": ("other", "other")},
-                     listening_port=7301, owner="201")
-    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.6)
-    with caplog.at_level("WARNING"):
-        assert session_module._await_backend_port(
-            RunningChild(pid=202), Config(osc_port=7301), proc) is False
-    assert caplog.text.count("is held by pid 201") == 1
+def test_another_owner_refuses_once_without_polling(session_module, endpoint, monkeypatch, caplog):
+    _config, path, proc = endpoint
+    monkeypatch.setattr(session_module.time, "sleep", lambda *_: pytest.fail("polled a stranger"))
+    with caplog.at_level("ERROR"):
+        assert session_module._await_backend_port(RunningChild(pid=202), path, proc) is False
+    assert caplog.text.count("is held by pid 101") == 1

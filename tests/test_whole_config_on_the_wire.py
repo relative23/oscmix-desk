@@ -2,59 +2,15 @@
 the dry run prints exactly those datagrams.
 """
 
-import socket
-import threading
-import time
-
 import oracle
 from oscmix_fakes import make_route
-from support import free_udp_port, repo_file
+from support import repo_file
 
 from oscmix_desk import osc
 
 
-class CapturingBackend(threading.Thread):
-    """A socket that only records, in arrival order, what reaches it.
-
-    FakeOscmix above models the link state machine and reports paths.
-    This one keeps the decoded message whole -- path, type tags and
-    arguments -- because that is what the dry run prints and therefore
-    what has to match.
-    """
-
-    def __init__(self, session_mod, port):
-        super().__init__(daemon=True)
-        self.session_mod = session_mod
-        self.received = []
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("127.0.0.1", port))
-        # Short, and a timeout continues rather than ends the thread.
-        # It used to be 3.0 s with `return` on timeout, which meant
-        # stop() was only noticed after the next recvfrom expired -- so
-        # every test using this paid a 3-second join it was not
-        # measuring anything with. That is per test, per mutant.
-        self.sock.settimeout(0.05)
-        self.stopping = threading.Event()
-
-    def stop(self):
-        self.stopping.set()
-
-    def run(self):
-        while not self.stopping.is_set():
-            try:
-                data, _ = self.sock.recvfrom(65536)
-            except socket.timeout:
-                continue
-            except OSError:
-                return
-            for message in osc.iter_osc_messages(data):
-                try:
-                    self.received.append(osc.decode_osc(message))
-                except ValueError:
-                    continue
-
 def test_the_dry_run_prints_exactly_the_datagrams_the_apply_sends(
-        session_mod, routing_mod, monkeypatch, capsys):
+        session_mod, routing_mod, monkeypatch, capsys, wire_peer):
     """Roadmap item G: the printed sequence *is* the sent sequence.
 
     Two routes, because a single route cannot exhibit the bug class this
@@ -71,35 +27,17 @@ def test_the_dry_run_prints_exactly_the_datagrams_the_apply_sends(
         make_route(session_mod, name="phones", playback=(3, 4), output=(7, 8)),
         make_route(session_mod, name="talkback", playback=(5,), output=(9,)),
     ]
-    port, recv_port = free_udp_port(), free_udp_port()
-    config = session_mod.Config(osc_port=port, osc_recv_port=recv_port,
-                                routes=routes)
+    config = session_mod.Config(routes=routes)
 
     session_module._print_dry_run(42, config)
     printed = [line[len("would send: "):]
                for line in capsys.readouterr().out.splitlines()
                if line.startswith("would send: ")]
 
-    # No echo will arrive on an unbound recv port, so the barrier would
-    # burn LINK_ECHO_TIMEOUT; the order under test does not depend on it.
-    monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
-    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.05)
-    backend = CapturingBackend(session_mod, port)
-    backend.start()
-    try:
-        session_mod.apply_routing(session_mod.Config(routes=list(routes)), port, recv_port)
-        # The apply returns as soon as the last sendto did; give the
-        # reader a moment to drain the socket buffer.
-        deadline = time.monotonic() + 3.0
-        while len(backend.received) < len(printed) and time.monotonic() < deadline:
-            time.sleep(0.02)
-    finally:
-        backend.stop()
-        backend.join(timeout=3)
-        backend.sock.close()
-
+    with wire_peer(echo=True) as (device, peer):
+        session_mod.apply_routing(config, device)
     sent = ["%s ,%s %s" % (path, tags, " ".join(map(str, args)))
-            for path, tags, args in backend.received]
+            for path, tags, args in map(osc.decode_osc, peer.writes)]
     assert printed == sent
 
 def test_the_plan_puts_every_link_before_every_mix(session_mod):
@@ -120,7 +58,7 @@ def test_the_plan_puts_every_link_before_every_mix(session_mod):
     assert sorted(plan.messages()) == sorted(declared)
 
 def test_everything_the_config_asks_for_reaches_the_wire(session_mod,
-                                                        monkeypatch):
+                                                        monkeypatch, wire_peer):
     """The general form of a defect that shipped twice in two shapes.
 
     First as roadmap item G: `--dry-run` walked route by route while the
@@ -145,10 +83,8 @@ def test_everything_the_config_asks_for_reaches_the_wire(session_mod,
     from oscmix_desk import routing as routing_mod
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
 
-    send_port, recv_port = free_udp_port(), free_udp_port()
     config = session_mod.Config(
         device_name="Fireface UCX II",
-        osc_port=send_port, osc_recv_port=recv_port,
         routes=(make_route(session_mod, volume=-6.0),
                 session_mod.Route(name="mon", input=(1, 2), output=(7, 8))),
         channels=(
@@ -157,23 +93,12 @@ def test_everything_the_config_asks_for_reaches_the_wire(session_mod,
             session_mod.ChannelSetting("output", 5, "reflevel", "+4dBu"),
         ))
 
-    device = CapturingBackend(session_mod, send_port)
-    device.start()
-    try:
-        session_mod.apply_routing(config, send_port, recv_port)
-        deadline = time.monotonic() + 3.0
-        from oscmix_desk import reconcile
+    from oscmix_desk import reconcile
 
-        wanted = [e.path for e in reconcile.desired(config)]
-        while (len({p for p, _t, _a in device.received}) < len(wanted)
-               and time.monotonic() < deadline):
-            time.sleep(0.02)
-    finally:
-        device.stop()
-        device.join(timeout=3)
-        device.sock.close()
-
-    sent = {path for path, _tags, _args in device.received}
+    wanted = [e.path for e in reconcile.desired(config)]
+    with wire_peer(echo=True) as (device, peer):
+        session_mod.apply_routing(config, device)
+    sent = {osc.decode_osc(packet)[0] for packet in peer.writes}
     missing = [p for p in wanted if p not in sent]
     assert missing == [], (
         "the config asks for these and the apply never sent them: %s" % missing)

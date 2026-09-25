@@ -1,23 +1,21 @@
-"""A receive port that cannot be bound is not a busy one (0.6.11, ADR 0025).
+"""Connection and receive failures remain distinct from a quiet device.
 
-`Backend.listen` answered None for every OSError, and None means one
-thing to every caller: the mixer GUI has the port. Measured: `[osc]
-recv-port = 80` fails with EACCES for an ordinary user, and the desk ran
-unverified for good under "in use -- close the mixer GUI".
-
-Receive failure now ends dependent writes with exact partial accounting.
-A blind fallback must not discard a contradiction observed before failure.
-An occupied receiver remains distinct from an actual receive error.
+ODK1 replaces the formerly exclusive UDP receive port. A failed operation
+never falls back to blind writes and preserves exact partial results.
 """
 
 import argparse
 import errno
 import os
+import re
 import socket
+import time
 from pathlib import Path
 
 import pytest
-from support import free_udp_port, write_config
+from backend_doubles import RecordingBackend
+from control_peer import ScriptedControl
+from support import write_config
 
 from oscmix_desk import backend, locking, profiles, routing, verify
 from oscmix_desk import outcome as outcome_mod
@@ -27,24 +25,12 @@ from oscmix_desk import session as session_module
 from oscmix_desk.constants import EXIT_FAILURE
 from oscmix_desk.errors import ReceivePortError, WriteFailed
 
-#: What the double raises, as `str()` and as `strerror`.
-DENIED = "cannot bind the receive port UDP 80: Permission denied"
+DENIED = "cannot read the backend: Permission denied"
 DENIED_STR = "[Errno 13] " + DENIED
-
-DESK = """
-[route:main]
-output = 1/2
-playback = 1/2
-level = 0.0
-
-[output:1]
-volume = -10.0
-"""
+DESK = "[route:main]\noutput=1/2\nplayback=1/2\nlevel=0.0\n[output:1]\nvolume=-10.0\n"
 
 
 class _Socket:
-    """A socket whose bind fails the way the test says."""
-
     def __init__(self, error):
         self.error = error
         self.closed = False
@@ -52,149 +38,75 @@ class _Socket:
     def bind(self, _address):
         raise self.error
 
+    def settimeout(self, _timeout):
+        pass
+
+    def connect(self, _address):
+        raise self.error
+
     def close(self):
         self.closed = True
 
 
-def _failing_with(monkeypatch, error):
-    sock = _Socket(error)
-    monkeypatch.setattr(backend.socket, "socket", lambda *_a: sock)
-    return sock
-
-
-# --------------------------------------------------------------------------
-# The seam: None is EADDRINUSE and nothing else.
-# --------------------------------------------------------------------------
-
-def test_only_a_held_port_is_the_normal_state(monkeypatch):
-    sock = _failing_with(monkeypatch,
-                         OSError(errno.EADDRINUSE, "Address already in use"))
-    assert backend.loopback(7222, 8222).listen() is None
-    assert sock.closed
-
-
-@pytest.mark.parametrize("code", [errno.EACCES, errno.EADDRNOTAVAIL,
-                                  errno.ENOBUFS])
-def test_any_other_bind_failure_carries_its_reason(monkeypatch, code):
+@pytest.mark.parametrize("code", [errno.EACCES, errno.ENOENT, errno.ECONNREFUSED, errno.ENOBUFS])
+def test_connect_failure_preserves_reason_and_closes_socket(tmp_path, monkeypatch, code):
+    peer = ScriptedControl(tmp_path / "c")
     cause = OSError(code, os.strerror(code))
-    sock = _failing_with(monkeypatch, cause)
-    with pytest.raises(ReceivePortError) as raised:
-        backend.loopback(7222, 80).listen()
-    assert sock.closed, "the socket leaked"
-    assert raised.value.errno == code
-    assert raised.value.strerror == (
-        "cannot bind the receive port UDP 80: %s" % os.strerror(code))
-    assert raised.value.__cause__ is cause
-    assert isinstance(raised.value, OSError), \
-        "the verifier's and the reconcile's OSError handlers rely on it"
+    sock = _Socket(cause)
+    try:
+        monkeypatch.setattr(backend.socket, "socket", lambda *_args: sock)
+        with pytest.raises(OSError, match=re.escape(os.strerror(code))) as failure:
+            backend.Control(peer.path, os.getpid())
+        assert failure.value is cause
+        assert sock.closed
+        assert peer.requests == []
+    finally:
+        peer.close()
 
 
-def test_a_socket_that_cannot_be_had_is_the_same_error(monkeypatch):
-    def no_socket(*_a):
+def test_a_socket_that_cannot_be_created_preserves_the_reason(monkeypatch):
+    def exhausted(*_args):
         raise OSError(errno.EMFILE, "Too many open files")
 
-    monkeypatch.setattr(backend.socket, "socket", no_socket)
-    with pytest.raises(ReceivePortError) as raised:
-        backend.loopback(7222, 8222).listen()
-    assert raised.value.errno == errno.EMFILE
-    assert "UDP 8222: Too many open files" in raised.value.strerror
+    monkeypatch.setattr(backend.socket, "socket", exhausted)
+    with pytest.raises(OSError, match="Too many open files") as failure:
+        backend.Control(Path("/not-accessed"), os.getpid())
+    assert failure.value.errno == errno.EMFILE
 
 
-def _unprivileged_ports_start():
+@pytest.mark.skipif(os.geteuid() == 0, reason="root bypasses owner-mode denial")
+def test_kernel_endpoint_permissions_refuse_before_handshake(tmp_path):
+    peer = ScriptedControl(tmp_path / "c")
     try:
-        return int(Path("/proc/sys/net/ipv4/ip_unprivileged_port_start")
-                   .read_text())
-    except (OSError, ValueError):
-        return 1024
-
-
-@pytest.mark.skipif(os.geteuid() == 0 or _unprivileged_ports_start() <= 80,
-                    reason="this user may bind port 80")
-def test_the_measured_case_a_privileged_receive_port():
-    """Against the kernel, not a double: the case this was found with."""
-    # Neither root nor a lowered threshold, and still allowed to bind it:
-    # CAP_NET_BIND_SERVICE in a rootless container, for one. Asked of the
-    # kernel directly, so the test skips instead of leaking a listener.
-    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        probe.bind(("127.0.0.1", 80))
-    except OSError as exc:
-        denied = exc.errno == errno.EACCES
-    else:
-        denied = False
+        peer.path.chmod(0)
+        with pytest.raises(PermissionError):
+            backend.Control(peer.path, os.getpid())
+        assert peer.requests == []
     finally:
-        probe.close()
-    if not denied:
-        pytest.skip("this process may bind port 80, or something holds it")
-    with pytest.raises(ReceivePortError) as raised:
-        backend.loopback(free_udp_port(), 80).listen()
-    assert raised.value.errno == errno.EACCES
+        peer.close()
 
-
-# --------------------------------------------------------------------------
-# The apply is never torn.
-# --------------------------------------------------------------------------
 
 def test_the_barrier_reports_partial_writes_when_the_receiver_fails(
-        tmp_path, unbindable_backend, monkeypatch, caplog):
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
-    slept = []
-    monkeypatch.setattr(routing.time, "sleep", slept.append)
+        tmp_path, unbindable_backend):
     config = profiles.load_config(write_config(tmp_path / "routing.conf", DESK))
     with pytest.raises(WriteFailed, match=DENIED) as caught:
-        routing.apply_routing(config, 7222, 80, backend=unbindable_backend)
+        routing.apply_routing(config, unbindable_backend)
     paths = [path for path, _tags, _args in unbindable_backend.sent]
     assert paths == ["/playback/1/stereo", "/output/1/stereo"]
     assert caught.value.written == tuple(paths)
     assert caught.value.unwritten == ("/mix/1/playback/1", "/output/1/volume")
-    assert slept == []
-    assert "in use" not in caplog.text
 
 
-def test_the_public_echo_wait_raises_rather_than_answering_none(
-        unbindable_backend):
-    """None still means the GUI; callers that want to go on catch this."""
-    with pytest.raises(ReceivePortError):
-        routing.await_link_echo({"/output/1/stereo": 1}, 80,
-                                backend=unbindable_backend)
+def test_the_public_echo_wait_raises_instead_of_claiming_silence(unbindable_backend):
+    with pytest.raises(ReceivePortError, match=DENIED):
+        routing.await_link_echo({"/output/1/stereo": 1}, unbindable_backend, .1)
 
 
-# --------------------------------------------------------------------------
-# The verifier: the mix is made safe first, then the failure is reported.
-# --------------------------------------------------------------------------
-
-def test_the_verifier_does_not_write_after_a_receive_failure(
-        tmp_path, monkeypatch):
+def test_the_verifier_does_not_write_after_a_receive_failure(tmp_path, unbindable_backend):
     config = profiles.load_config(write_config(tmp_path / "routing.conf", DESK))
-    order = []
-
-    def cannot_bind(*_a, **_k):
-        order.append("verify")
-        raise ReceivePortError(errno.EACCES, DENIED)
-
-    monkeypatch.setattr(verify, "verify_routing", cannot_bind)
-    monkeypatch.setattr(
-        verify, "blind_reapply_mix",
-        lambda cfg, stop, why=None: order.append(("blind", cfg, why)))
-    with pytest.raises(ReceivePortError):
-        verify.verify_and_repair(config)
-    assert order == ["verify"]
-
-
-def test_the_blind_re_apply_names_the_cause_it_is_given(tmp_path, monkeypatch,
-                                                         caplog):
-    config = profiles.load_config(write_config(tmp_path / "routing.conf", DESK))
-    sent = []
-    monkeypatch.setattr(routing, "loopback", lambda *_a: argparse.Namespace(
-        request_dump=lambda: sent.append("dump")))
-    monkeypatch.setattr(routing, "wait_unless_stopped", lambda *_a: False)
-    monkeypatch.setattr(routing, "send_mix", lambda cfg: sent.append("mix"))
-    with caplog.at_level("INFO"):
-        routing.blind_reapply_mix(config, why="cannot bind UDP 80")
-        routing.blind_reapply_mix(config)
-    assert sent == ["dump", "mix", "dump", "mix"]
-    assert "register sync unobservable (cannot bind UDP 80)" in caplog.text
-    assert "register sync unobservable (UDP 8222 in use)" in caplog.text
+    with pytest.raises(ReceivePortError, match=DENIED):
+        verify.verify_and_repair(config, unbindable_backend)
+    assert unbindable_backend.sent == []
 
 
 class _Child:
@@ -205,111 +117,137 @@ class _Child:
         return None
 
 
-def _shared_locks(tmp_path, monkeypatch):
-    shared = tmp_path / "locks"
-    shared.mkdir(mode=0o770)
-    monkeypatch.setenv("OSCMIX_LOCK_DIR", str(shared))
-
-
-def test_the_status_says_failed_and_the_journal_says_why(tmp_path, monkeypatch,
-                                                         caplog):
-    def cannot_bind(*_a, **_k):
-        raise ReceivePortError(errno.EACCES, DENIED)
-
-    monkeypatch.setattr(session_module, "verify_and_repair", cannot_bind)
-    monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
+def test_the_status_says_failed_and_the_journal_says_why(
+        tmp_path, monkeypatch, caplog, unbindable_backend):
+    monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.)
     statuses = []
     monkeypatch.setattr(session_module, "sd_notify", statuses.append)
-    _shared_locks(tmp_path, monkeypatch)
-    lock = locking.take_device_lock(None, "2a39-3fd9-99887766")
+    path = write_config(tmp_path / "routing.conf", DESK)
+    lock = locking.take_device_lock(path, "key")
     with caplog.at_level("ERROR"):
         thread = session_module._verify_in_background(
-            _Child(), session_module.Config(), {"stop": False}, lock)
+            _Child(), profiles.load_config(path), {"stop": False}, lock, unbindable_backend)
         thread.join(5)
     assert not thread.is_alive()
     assert "routing cannot be verified: " + DENIED_STR in caplog.text
-    assert "could not reach the backend" not in caplog.text, \
-        "that line names the send port, which is fine"
     assert statuses[-1].startswith("STATUS=running; verifier failed at ")
-    assert locking.take_device_lock(None, "2a39-3fd9-99887766",
-                                     wait=0.2) is not None
+    again = locking.take_device_lock(path, "key", wait=.2)
+    assert again is not None
+    again.release()
+    assert unbindable_backend.operations[-1] == "close"
 
 
-def test_a_reconcile_stands_down_and_names_the_port(tmp_path, monkeypatch,
-                                                    caplog):
-    def cannot_bind(*_a, **_k):
-        raise ReceivePortError(errno.EACCES, DENIED)
-
-    monkeypatch.setattr(reload_mod, "reconcile_now", cannot_bind)
+def test_a_reconcile_stands_down_and_names_receive_failure(
+        tmp_path, monkeypatch, caplog, unbindable_backend):
+    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: unbindable_backend)
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
-    _shared_locks(tmp_path, monkeypatch)
     path = write_config(tmp_path / "routing.conf", DESK)
     with caplog.at_level("ERROR"):
         reload_mod._reconcile(argparse.Namespace(config=path),
-                                  session_module.Config(), {"stop": False})
-    assert "SIGHUP: %s; reconcile skipped" % DENIED_STR in caplog.text
-    assert "cannot reach the backend" not in caplog.text
+                                      profiles.load_config(path), {"stop": False})
+    assert DENIED_STR in caplog.text
     assert statuses[-1].startswith("STATUS=running; reconcile skipped")
+    assert unbindable_backend.sent == []
+    assert unbindable_backend.operations == ["begin", "close"]
 
-
-# --------------------------------------------------------------------------
-# A switch and the three reads.
-# --------------------------------------------------------------------------
 
 def test_a_switch_keeps_the_marker_when_its_link_receiver_fails(
-        tmp_path, unbindable_backend, monkeypatch, caplog):
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
-    write_config(tmp_path / "routing.conf", DESK)
+        tmp_path, unbindable_backend, caplog):
+    path = write_config(tmp_path / "routing.conf", DESK)
     write_config(tmp_path / "profiles" / "tracking.conf", DESK)
+    marker = tmp_path / "active-profile"
+    marker.write_text("previous\n")
     with caplog.at_level("ERROR"):
-        outcome = profiles.switch_profile(
-            "tracking", config_path=tmp_path / "routing.conf",
-            backend=unbindable_backend)
+        outcome = profiles.switch_profile("tracking", config_path=path, backend=unbindable_backend)
     assert outcome.state == outcome_mod.WRITTEN_IN_PART
     assert DENIED in outcome.reason
     assert outcome.unwritten == ["/mix/1/playback/1", "/output/1/volume"]
     assert outcome.persisted is False
-    written = [path for path, _t, _a in unbindable_backend.sent]
-    assert written == ["/playback/1/stereo", "/output/1/stereo"]
-    assert outcome.written == written
-    assert "written in part" in caplog.text
+    assert outcome.written == ["/playback/1/stereo", "/output/1/stereo"]
     assert outcome.read_back is False
+    assert marker.read_text() == "previous\n"
+    assert "written in part" in caplog.text
     assert "the declared desk in effect has not changed" in outcome.describe()
 
 
 @pytest.mark.parametrize("flag", ["--diff", "--snapshot", "--dump-config"])
 def test_a_read_fails_with_the_reason_and_not_with_a_traceback(
-        tmp_path, monkeypatch, caplog, flag):
+        tmp_path, monkeypatch, caplog, flag, unbindable_backend):
     from oscmix_desk import cli
 
-    monkeypatch.setattr(reads_mod, "loopback", lambda *_a: _unbindable())
+    monkeypatch.setattr(reads_mod, "connect_backend", lambda *_a, **_k: unbindable_backend)
     path = write_config(tmp_path / "routing.conf", DESK)
     with caplog.at_level("ERROR"):
         assert cli.main(["--config", str(path), flag]) == EXIT_FAILURE
     assert DENIED in caplog.text
     assert "close the mixer GUI" not in caplog.text
+    assert unbindable_backend.operations == ["close"]
 
 
-def _unbindable():
-    from backend_doubles import UnbindableBackend
-    return UnbindableBackend()
+class _BrokenReceive:
+    def __init__(self, sock, failure):
+        self.sock = sock
+        self.failure = failure
+        self.reads = 0
+
+    def settimeout(self, timeout):
+        self.timeout = timeout
+        self.sock.settimeout(timeout)
+
+    def recvmsg(self, _size):
+        self.reads += 1
+        if isinstance(self.failure, socket.timeout):
+            time.sleep(self.timeout)
+        raise self.failure
+
+    def close(self):
+        self.sock.close()
 
 
-def test_a_real_listener_still_binds_and_releases():
-    """The rewrite of listen() must not have cost the ordinary path."""
-    port = free_udp_port()
-    with backend.loopback(free_udp_port(), port).listen() as listener:
-        assert listener is not None
-        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        with pytest.raises(OSError, match="in use"):
-            probe.bind(("127.0.0.1", port))
-        probe.close()
+def test_receive_error_invalidates_the_connection_instead_of_spinning(wire_peer):
+    with wire_peer() as (device, _peer):
+        sock = _BrokenReceive(device._sock, OSError(errno.ENETDOWN, "Network is down"))
+        device._sock = sock
+        with pytest.raises(ReceivePortError, match=r"backend receive failed:.*Network is down"):
+            list(device.messages(.1))
+        with pytest.raises(ReceivePortError, match="no longer valid"):
+            list(device.messages(.1))
+        assert sock.reads == 1
+        assert device._lease is None
 
 
-# --------------------------------------------------------------------------
-# The two scripts that bind the port themselves and skip for a held one.
-# --------------------------------------------------------------------------
+def test_socket_timeout_remains_silence(wire_peer):
+    with wire_peer() as (device, _peer):
+        sock = _BrokenReceive(device._sock, socket.timeout("timed out"))
+        device._sock = sock
+        assert list(device.messages(.1)) == []
+        assert sock.reads == 1
+
+
+def test_a_connection_closed_by_its_owner_is_no_longer_readable(wire_peer):
+    with wire_peer() as (device, _peer):
+        device.close()
+        with pytest.raises(ReceivePortError, match="no longer valid"):
+            list(device.messages(.05))
+
+
+class _DeafBackend(RecordingBackend):
+    def __init__(self):
+        super().__init__()
+        self.reads = 0
+
+    def messages(self, _timeout):
+        self.reads += 1
+        raise ReceivePortError(errno.ENETDOWN, "Network is down")
+
+
+def test_the_read_back_raises_instead_of_spinning_out_its_window():
+    device = _DeafBackend()
+    with pytest.raises(ReceivePortError, match="Network is down"):
+        verify.verify_routing({"/output/1/volume": ("f", (-10.,))}, device, 5.)
+    assert device.reads == 1
+
 
 def _script(name):
     import importlib.util
@@ -323,164 +261,42 @@ def _script(name):
     return module
 
 
-def test_record_dump_skips_for_a_held_port_and_fails_for_any_other_cause(
-        monkeypatch, capsys):
-    """Exit 77 tells `make` and CI "nothing to measure here". A port that
-    cannot be bound for another reason is not that."""
+@pytest.mark.parametrize("code", [errno.EBUSY, errno.EACCES, errno.ECONNRESET])
+def test_record_dump_connection_failure_is_not_a_hardware_skip(monkeypatch, tmp_path,
+                                                              capsys, code):
+    from types import SimpleNamespace
+
     record = _script("record-dump")
-    held = _Socket(OSError(errno.EADDRINUSE, "Address already in use"))
-    monkeypatch.setattr(record.socket, "socket", lambda *_a: held)
-    with pytest.raises(SystemExit) as skipped:
-        record.bind_or_skip(8222)
-    assert skipped.value.code == record.EXIT_SKIP
-    assert held.closed
-    assert "close the mixer GUI" in capsys.readouterr().err
+    released = []
+    monkeypatch.setattr(record.sys, "argv", ["record-dump.py", "--out", str(tmp_path / "out")])
+    monkeypatch.setattr(record, "load_config", lambda *_: profiles.Config())
+    monkeypatch.setattr(record, "resolve_device", lambda *_: SimpleNamespace(key="device"))
+    monkeypatch.setattr(record, "take_device_lock", lambda *_:
+                        SimpleNamespace(release=lambda: released.append(True)))
 
-    denied = _Socket(OSError(errno.EACCES, "Permission denied"))
-    monkeypatch.setattr(record.socket, "socket", lambda *_a: denied)
-    with pytest.raises(SystemExit) as failed:
-        record.bind_or_skip(80)
-    assert failed.value.code == 1
-    assert denied.closed
-    err = capsys.readouterr().err
-    assert "cannot bind the receive port UDP 80: Permission denied" in err
-    assert "mixer GUI" not in err
+    def failed(*_args, **_kwargs):
+        raise OSError(code, os.strerror(code))
+
+    monkeypatch.setattr(record, "connect_backend", failed)
+    assert record.main() == 1
+    assert released == [True]
+    assert os.strerror(code) in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()
 
 
-def test_the_evidence_tool_tells_a_held_port_from_an_unbindable_one():
-    """`verify-hardware.py` builds its reader deep inside main(), behind a
-    device and a sink, so the rule is held structurally: the skip is
-    guarded by EADDRINUSE and the other branch returns 1."""
-    from support import repo_file
+def test_meter_connection_failure_frees_the_device_lock(monkeypatch):
+    from types import SimpleNamespace
 
-    source = repo_file("scripts", "verify-hardware.py").read_text()
-    guard = source.index("reader = LevelReader(config.osc_recv_port)")
-    block = source[guard:source.index("sinks = playback_sinks()", guard)]
-    assert "exc.errno != errno.EADDRINUSE" in block
-    assert block.index("return 1") < block.index("return EXIT_SKIP")
-    assert "cannot bind the receive port UDP" in block
+    measure = _script("verify-hardware")
+    released = []
+    monkeypatch.setattr(measure, "resolve_device", lambda *_: SimpleNamespace(key="device"))
+    monkeypatch.setattr(measure, "take_device_lock", lambda *_:
+                        SimpleNamespace(release=lambda: released.append(True)))
 
+    def denied(*_args, **_kwargs):
+        raise PermissionError(errno.EACCES, "Permission denied")
 
-# --------------------------------------------------------------------------
-# 0.7.0: a port that was bound and then cannot be read (third outside
-# review). A timeout is how a wait ends; any other socket error read as
-# "nothing arrived" too, returned at once, and every reader then spun --
-# measured, 1.3 million reads in half a second -- until its window closed
-# and it reported silence from a backend that was never asked.
-# --------------------------------------------------------------------------
-
-DOWN = "cannot read the receive port UDP 8333: Network is down"
-
-
-class _DeadSocket:
-    """Bound, and then the network under it went away."""
-
-    def __init__(self):
-        self.reads = 0
-
-    def settimeout(self, _timeout):
-        pass
-
-    def recvfrom(self, _size):
-        self.reads += 1
-        raise OSError(errno.ENETDOWN, "Network is down")
-
-    def close(self):
-        pass
-
-
-class _DeafBackend:
-    """Sends go out; the receive port binds and then cannot be read."""
-
-    traits = backend.OSCMIX
-
-    def __init__(self):
-        self.sent = []
-        self.socket = _DeadSocket()
-
-    def send(self, messages):
-        self.sent.extend(message[0] for message in messages)
-
-    def request_dump(self):
-        self.sent.append("/refresh")
-
-    def listen(self):
-        return backend.Listener(self.socket, 8333)
-
-
-def test_a_timeout_is_nothing_and_any_other_error_is_named():
-    listener = backend.Listener(_DeadSocket(), 8333)
-    with pytest.raises(ReceivePortError) as failed:
-        list(listener.messages(0.25))
-    assert (failed.value.errno, failed.value.strerror) == (errno.ENETDOWN, DOWN)
-    with pytest.raises(ReceivePortError, match="cannot read the receive "
-                                               "port: Network is down"):
-        list(backend.Listener(_DeadSocket()).messages(0.25))
-
-    class Quiet(_DeadSocket):
-        def recvfrom(self, _size):
-            raise socket.timeout("timed out")
-
-    assert list(backend.Listener(Quiet(), 8333).messages(0.25)) == []
-
-
-def test_a_socket_closed_under_the_listener_is_the_same_error():
-    """`settimeout` on a closed socket raised a bare OSError, past every
-    handler that knows what to do about a receive port."""
-    real = backend.loopback(free_udp_port(), free_udp_port()).listen()
-    real.close()
-    with pytest.raises(ReceivePortError, match="cannot read the receive port"):
-        list(real.messages(0.05))
-
-
-def test_the_barrier_stops_on_a_port_it_cannot_read(tmp_path,
-                                                          monkeypatch, caplog):
-    slept = []
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.01)
-    monkeypatch.setattr(routing.time, "sleep", slept.append)
-    config = profiles.load_config(write_config(tmp_path / "routing.conf", DESK))
-    device = _DeafBackend()
-    with pytest.raises(WriteFailed, match=DOWN) as caught:
-        routing.apply_routing(config, 7222, 8333, backend=device)
-    assert device.sent == ["/playback/1/stereo", "/output/1/stereo"]
-    assert caught.value.written == tuple(device.sent)
-    assert caught.value.unwritten == ("/mix/1/playback/1", "/output/1/volume")
-    assert slept == []
-    assert device.socket.reads == 1, "one read, not a loop of them"
-
-
-@pytest.mark.parametrize("flag", ["--diff", "--snapshot", "--dump-config"])
-def test_a_read_that_cannot_read_says_so_at_once(tmp_path, monkeypatch,
-                                                 caplog, flag):
-    """It spun for the whole window and then asked whether oscmix runs."""
-    from oscmix_desk import cli
-
-    device = _DeafBackend()
-    monkeypatch.setattr(reads_mod, "loopback", lambda *_a: device)
-    monkeypatch.setattr(reads_mod, "DUMP_LISTEN_SETTLE", 0.0)
-    path = write_config(tmp_path / "routing.conf", DESK)
-    with caplog.at_level("ERROR"):
-        assert cli.main(["--config", str(path), flag]) == EXIT_FAILURE
-    assert DOWN in caplog.text
-    assert "is oscmix running" not in caplog.text
-    assert device.socket.reads == 1
-
-
-def test_a_switch_that_cannot_read_back_says_why(tmp_path, monkeypatch):
-    monkeypatch.setattr(routing, "LINK_SETTLE", 0.0)
-    path = write_config(tmp_path / "routing.conf", DESK)
-    write_config(tmp_path / "profiles" / "p.conf", DESK)
-    outcome = profiles.switch_profile("p", config_path=path,
-                                      backend=_DeafBackend())
-    assert outcome.state == outcome_mod.WRITTEN_IN_PART
-    assert (outcome.read_back, outcome.persisted) == (False, False)
-    assert DOWN in outcome.reason
-
-
-def test_the_read_back_raises_instead_of_spinning_out_its_window(monkeypatch):
-    monkeypatch.setattr(verify, "VERIFY_SETTLE", 0.0)
-    device = _DeafBackend()
-    with pytest.raises(ReceivePortError, match="Network is down"):
-        verify.verify_routing({"/output/1/volume": ("f", (-10.0,))}, 7222,
-                              8333, 5.0, backend=device)
-    assert device.socket.reads == 1
+    monkeypatch.setattr(measure, "connect_backend", denied)
+    with pytest.raises(PermissionError, match="Permission denied"):
+        measure.LevelReader(profiles.Config(), None, None)
+    assert released == [True]

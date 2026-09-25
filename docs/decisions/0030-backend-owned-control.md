@@ -47,7 +47,11 @@ type, never symlink targets. An active owner is not replaced. A stale socket
 is removed only under that owner lock after checking its type and ownership.
 The unprivileged runtime uses the existing runtime-directory fallback where
 host integration was deliberately omitted; its narrower ownership scope
-must be reported explicitly.
+must be reported explicitly. Path selection is read-only and deterministic;
+a permission failure creating that selected directory refuses the operation
+instead of falling back to a different lock/owner. Relative XDG runtime
+paths are ignored. A pathname too long for the Unix socket is refused before
+starting the backend.
 
 The ALSA bridge requests an exclusive sending subscription to the selected
 hardware port. This prevents a second cooperating sequencer backend from
@@ -61,7 +65,11 @@ limited to their owner and the directory group. Kernel pathname permissions
 authorize access; `SO_PEERCRED` supplies the actual peer PID/UID/GID. Desk
 checks the server PID, bridge, selected interface, serial and process identity
 against its resolved target, then binds observations to that connection and
-a random backend epoch. A claimed model name or an old familiar endpoint is
+a random backend epoch. The GTK launcher supplies the checked socket, PID and
+device serial; GTK verifies the kernel peer and handshake serial before
+requesting a refresh. A socket symlink is refused by both clients. A matching
+GTK companion identifies its protocol with a display-free `--control-version`
+command; old UDP GSettings no longer select the endpoint. A claimed model name or an old familiar endpoint is
 insufficient. Recheck device identity and active playback capacity at write
 boundaries. A disconnected/replaced backend invalidates every observation.
 

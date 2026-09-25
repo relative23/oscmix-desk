@@ -15,7 +15,7 @@ from oscmix_desk import session as session_module
 
 
 def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
-        tmp_path, monkeypatch, caplog):
+        tmp_path, monkeypatch, caplog, recording_backend):
     import argparse
 
     from oscmix_desk import Config
@@ -23,6 +23,7 @@ def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
     def unreachable(*_a, **_k):
         raise OSError(101, "Network is unreachable")
 
+    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: recording_backend)
     monkeypatch.setattr(reload_mod, "reconcile_now", unreachable)
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
@@ -31,9 +32,9 @@ def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
     with caplog.at_level("ERROR"):
         reload_mod._reconcile(argparse.Namespace(config=path), Config(),
                                   {"stop": False})
-    assert ("SIGHUP: cannot reach the backend on UDP 7222 ([Errno 101] "
-            "Network is unreachable); reconcile skipped") in caplog.text
-    assert statuses[-1].startswith("STATUS=running; reconcile skipped")
+    assert ("SIGHUP: backend operation failed ([Errno 101] "
+            "Network is unreachable); reconcile incomplete") in caplog.text
+    assert statuses[-1].startswith("STATUS=running; reconcile incomplete")
 
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
 def test_a_re_read_desk_keeps_every_machine_setting_of_the_process(
@@ -306,7 +307,7 @@ def test_a_start_that_finds_no_interface_has_said_what_there_is_to_say(
 
 
 def test_a_start_gives_its_notices_about_the_desk_it_applies(
-        tmp_path, caplog, monkeypatch):
+        tmp_path, caplog, monkeypatch, recording_backend):
     """The top of a start speaks about the file as read before the wait for
     the device and the lock. A file with no routes in it, given some in
     that time, went to an interface nobody modelled unannounced: another
@@ -315,6 +316,7 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Some Box\n")
     started = profiles.load_config(path)
+    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
     applied = []
     monkeypatch.setattr(session_module, "apply_routing",
                         lambda config, *a, **k: applied.append(config))
@@ -325,6 +327,8 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
                     "[route:x]\nplayback = 1/2\noutput = 29/30\n")
 
     class Running:
+        pid = 4242
+
         def poll(self):
             return None
 

@@ -15,12 +15,8 @@ from typing import (
     Tuple,
 )
 
-from .backend import (
-    Backend,
-    Listener,
-    loopback,
-)
-from .constants import DUMP_LISTEN_SETTLE, VERIFY_SETTLE, VERIFY_TIMEOUT
+from .backend import Control
+from .constants import VERIFY_SETTLE, VERIFY_TIMEOUT
 from .devices import device_for_name
 from .log import log
 from .model import Config
@@ -42,7 +38,6 @@ from .registers import (
 from .routing import (
     StopCheck,
     apply_routing,
-    blind_reapply_mix,
     never_stop,
     send_mix,
     wait_unless_stopped,
@@ -186,7 +181,7 @@ class VerifyResult:
     invalid: List[str] = field(default_factory=list)
 
 
-def _observe(listener: Listener, observed: Observation, prompt: Set[str],
+def _observe(backend: Control, observed: Observation, prompt: Set[str],
              on_observed: Optional[Callable[[str, Sequence[Value]], None]],
              should_stop: StopCheck, timeout: float) -> None:
     """Read reports until the window closes, a stop is asked, or time runs out.
@@ -203,7 +198,7 @@ def _observe(listener: Listener, observed: Observation, prompt: Set[str],
         if _window_may_close(observed.expected, prompt,
                              observed.confirmed, observed.mismatched):
             return
-        for report in listener.messages(0.25):
+        for report in backend.messages(0.25):
             observed.absorb(report)
             if on_observed is not None:
                 on_observed(report[0], report[2])
@@ -235,15 +230,14 @@ def _window_may_close(registers: Registers, reportable: Set[str],
     return bool(reportable) and reportable <= confirmed
 
 
-def verify_routing(registers: Registers, send_port: int, recv_port: int,
+def verify_routing(registers: Registers, backend: Control,
                    timeout: float = VERIFY_TIMEOUT,
                    on_observed: Optional[Callable[[str, Sequence[Value]],
                                                   None]] = None,
                    should_stop: StopCheck = never_stop,
                    *,
                    device_model: Optional[Device] = None,
-                   backend: Optional[Backend] = None,
-                   ) -> Optional[VerifyResult]:
+                   ) -> VerifyResult:
     # device_model is keyword-only and last on purpose: inserting it into
     # the positional signature silently shifted `timeout` into it for
     # every existing caller, which the suite caught immediately and a
@@ -258,7 +252,7 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
     for that path in this window, or unobserved when none arrived. Arrival
     order is not an atomic hardware snapshot or a device timestamp.
 
-    A short settle precedes the request; see ``DUMP_LISTEN_SETTLE``.
+    The checked request ACK opens the observation window.
 
     ``on_observed`` is called for each decoded report. It is an observation
     hook, not a safe write boundary: the remainder of the delivery may
@@ -277,25 +271,12 @@ def verify_routing(registers: Registers, send_port: int, recv_port: int,
     # every time.
     prompt = {path for path in registers
               if register_ever_reported(path, device_model)}
-    # A caller may hand in its own backend -- the profile switch does,
-    # so that the switch and the session share one read-back loop
-    # instead of two that can disagree. Both defects 0.3.0 fixed
-    # were a second implementation of something that already existed.
-    device = backend if backend is not None else loopback(send_port,
-                                                          recv_port)
-    listener = device.listen()
-    if listener is None:
-        return None
-    try:
-        time.sleep(DUMP_LISTEN_SETTLE)   # see the constant: ICMP backlog
-        if should_stop():
-            return VerifyResult([], [], sorted(registers))
-        device.request_dump()
-        _observe(listener, observed, prompt, on_observed, should_stop, timeout)
-        return VerifyResult(sorted(observed.confirmed), sorted(observed.mismatched),
-                            sorted(observed.unobserved), sorted(observed.invalid))
-    finally:
-        listener.close()
+    if should_stop():
+        return VerifyResult([], [], sorted(registers))
+    backend.request_dump()
+    _observe(backend, observed, prompt, on_observed, should_stop, timeout)
+    return VerifyResult(sorted(observed.confirmed), sorted(observed.mismatched),
+                        sorted(observed.unobserved), sorted(observed.invalid))
 
 
 def _report(result: VerifyResult, config: Config, device: Optional[Device],
@@ -360,9 +341,8 @@ def _kept_by_the_device(result: VerifyResult,
                   if path not in result.invalid and policy_for(path, device, overrides) != PIN)
 
 
-def reconcile_now(config: Config, reason: str,
-                  should_stop: StopCheck = never_stop,
-                  backend: Optional[Backend] = None) -> bool:
+def reconcile_now(config: Config, reason: str, backend: Control,
+                  should_stop: StopCheck = never_stop) -> bool:
     """Re-establish PIN while preserving every declared REMEMBER path.
 
     Read first to check link dependencies and classify results, not to
@@ -372,16 +352,9 @@ def reconcile_now(config: Config, reason: str,
     Triggers are enumerated and never a timer: docs/decisions/0013.
     """
     device = device_for_name(config.device_name)
-    result = verify_routing(expected_registers(config), config.osc_port,
-                            config.osc_recv_port, VERIFY_TIMEOUT,
-                            should_stop=should_stop, device_model=device,
-                            backend=backend)
+    result = verify_routing(expected_registers(config), backend, VERIFY_TIMEOUT,
+                            should_stop=should_stop, device_model=device)
     if should_stop():
-        return False
-    if result is None:
-        log.warning("reconcile (%s) skipped: UDP %d in use -- "
-                    "routing dependencies cannot be observed",
-                    reason, config.osc_recv_port)
         return False
 
     kept = remembered_paths(config)
@@ -396,17 +369,17 @@ def reconcile_now(config: Config, reason: str,
              reason, len(result.confirmed), len(drifted),
              ", %d left to the device (%s)" % (len(kept), ", ".join(kept))
              if kept else "")
-    apply_routing(config, config.osc_port, config.osc_recv_port,
+    apply_routing(config, backend,
                   intent=ApplyIntent.RECONCILE, confirmed=result.confirmed,
                   require_link_confirmation=[entry.path for entry in desired(config)
                                              if entry.phase == PHASE_LINK
                                              and entry.path in result.mismatched],
-                  backend=backend, should_stop=should_stop)
+                  should_stop=should_stop)
     return True
 
 
-def verify_and_repair(config: Config,
-                      should_stop: StopCheck = never_stop) -> None:
+def verify_and_repair(config: Config, backend: Control,
+                      should_stop: StopCheck = never_stop) -> bool:
     """Read the applied routing back and re-send once on problems.
 
     A register is a *problem* when the device reported a different value
@@ -432,17 +405,12 @@ def verify_and_repair(config: Config,
     problems: List[str] = []
     for attempt in (1, 2):
         if should_stop():
-            return
-        result = verify_routing(registers, config.osc_port, config.osc_recv_port,
+            return False
+        result = verify_routing(registers, backend,
                                 VERIFY_TIMEOUT, should_stop=should_stop,
                                 device_model=device)
         if should_stop():
-            return
-        if result is None:
-            log.info("routing verification skipped: UDP %d in use "
-                     "(mixer GUI running?)", config.osc_recv_port)
-            blind_reapply_mix(config, should_stop)
-            return
+            return False
         wrong_links = links.intersection(result.mismatched)
         problems = _report(result, config, device, attempt)
         if wrong_links:
@@ -452,7 +420,7 @@ def verify_and_repair(config: Config,
             # Write 3 of 3, and the only full re-apply. Both phases of it
             # would run against a terminating backend.
             if should_stop():
-                return
+                return False
             log.warning("%d register(s) unconfirmed (%s); re-sending routing",
                         len(problems), ", ".join(problems))
             # Everything except what the device is allowed to keep. A
@@ -460,19 +428,20 @@ def verify_and_repair(config: Config,
             # lost link register drags every remembered fader back to the
             # config value -- the policy would be real in the log and
             # absent at the device.
-            apply_routing(config, config.osc_port, config.osc_recv_port,
+            apply_routing(config, backend,
                           intent=ApplyIntent.REPAIR, confirmed=result.confirmed,
                           require_link_confirmation=sorted(wrong_links),
                           should_stop=should_stop)
-            if wait_unless_stopped(VERIFY_SETTLE, should_stop):
-                return
+            if wait_unless_stopped(VERIFY_SETTLE, should_stop, backend):
+                return False
             continue
         if not wrong_links and links:
             missing = links.intersection(result.unobserved)
             if missing:
                 log.warning("dump never reported %s; re-applying mix without confirmation",
                             ", ".join(sorted(missing)))
-            send_mix(config, confirmed=result.confirmed)
+            send_mix(config, backend, confirmed=result.confirmed)
         if not problems:
-            return
+            return not wrong_links
     log.warning("unconfirmed after retry: %s", ", ".join(problems))
+    return False

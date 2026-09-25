@@ -10,7 +10,7 @@ landed at 53% on cli.py and was found by the gate, on a push.
 """
 
 import pytest
-from support import free_udp_port, proc_with_ports, write_config
+from support import fake_proc, free_udp_port, write_config
 from two_boxes import DESK
 
 from oscmix_desk import cli
@@ -85,14 +85,21 @@ def _config_with(tmp_path, profiles, monkeypatch=None):
             "hardware")
     send_port, recv_port = free_udp_port(), free_udp_port()
     if monkeypatch is not None:
-        # Since 0.6.8 a switch that opens its own socket refuses when
-        # nothing holds the send port, because a write nobody receives
-        # must not be reported as applied (ADR 0023). These tests drive
-        # the real CLI against no backend on purpose -- what they assert
-        # is the outcome-to-exit-code translation, not reachability,
-        # which has its own test. So the port is shown as bound.
-        monkeypatch.setenv("OSCMIX_PROC_ROOT",
-                           str(proc_with_ports(tmp_path / "proc", send_port)))
+        from backend_doubles import RecordingBackend
+
+        from oscmix_desk import profiles as profiles_mod
+        from oscmix_desk.backend import OSCMIX
+
+        # This module checks CLI outcomes. Wire identity and lifecycle run
+        # through actual Control peers in the integration tests.
+        def quiet(*_args, **_kwargs):
+            device = RecordingBackend()
+            device.traits = OSCMIX
+            return device
+
+        monkeypatch.setattr(profiles_mod, "connect_backend", quiet)
+        monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(
+            tmp_path / "proc", boxes=[(24, "24216011")])))
     return write_config(tmp_path / "routing.conf",
                         "[osc]\nport = %d\nrecv-port = %d\n"
                         % (send_port, recv_port))
@@ -157,7 +164,6 @@ def test_an_applied_but_unverifiable_switch_still_exits_ok(tmp_path, capsys,
     from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import routing as routing_mod
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
-    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.05)
     monkeypatch.setattr(profiles_mod, "VERIFY_TIMEOUT", 0.3)
 
     path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
@@ -184,7 +190,6 @@ def _quick_wire(monkeypatch):
     from oscmix_desk import routing as routing_mod
 
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
-    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.05)
     monkeypatch.setattr(profiles_mod, "VERIFY_TIMEOUT", 0.2)
 
 

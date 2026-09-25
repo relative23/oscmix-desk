@@ -18,6 +18,7 @@ SIGKILL, process failure or power loss can prevent that restoration.
 """
 
 import argparse
+import errno
 import hashlib
 import json
 import os
@@ -31,25 +32,26 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from measurement import build_evidence
+
 from oscmix_desk import devices
 from oscmix_desk import registers as R
-from oscmix_desk.backend import loopback
+from oscmix_desk.backend import connect_backend
 from oscmix_desk.constants import (
     DEFAULT_DEVICE_NAME,
-    DEFAULT_OSC_PORT,
-    DEFAULT_OSC_RECV_PORT,
     DEFAULT_USB_ID,
-    DUMP_LISTEN_SETTLE,
     __version__,
 )
 from oscmix_desk.discovery import (
     Device,
-    built_backend_revision,
     device_firmware,
     resolve_device,
 )
-from oscmix_desk.errors import DeviceAmbiguous
+from oscmix_desk.errors import DeviceAmbiguous, WriteFailed
 from oscmix_desk.locking import take_device_lock
+from oscmix_desk.model import Config
 from oscmix_desk.numeric import (
     expected_report,
     finite,
@@ -58,8 +60,8 @@ from oscmix_desk.numeric import (
     number_value,
     report_value,
 )
-from oscmix_desk.process import port_holder
 from oscmix_desk.reconcile import matches
+from oscmix_desk.streams import playback_problem, read_playback
 
 #: Steps as a fraction of the declared range, smallest first. One percent
 #: is below the quantisation of several families, which is the point: it
@@ -308,7 +310,6 @@ class Readback(dict):
 def read_all(device, listener, seconds: float = 6.0) -> Dict[str, object]:
     """Every register the backend reports, as a path -> value map."""
     seen = Readback()
-    time.sleep(DUMP_LISTEN_SETTLE)
     device.request_dump()
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
@@ -369,7 +370,7 @@ def _unchanged(before: object, after: object) -> bool:
 
 
 def write_batch(device, writes: Sequence[Tuple[str, R.Register, object]],
-                pace: float = WRITE_PACE) -> None:
+                pace: float = WRITE_PACE, *, restoring: bool = False) -> None:
     """Put a pass of writes on the wire, slowly enough to survive.
 
     One datagram at a time with a gap between them. The gap is the whole
@@ -382,7 +383,7 @@ def write_batch(device, writes: Sequence[Tuple[str, R.Register, object]],
         report_value(value, register)
         messages.append((path, register.tags[:1], (as_tag(value, register.tags),)))
     for message in messages:
-        device.send([message])
+        device.send([message], restoring=restoring)
         time.sleep(pace)
 
 
@@ -421,14 +422,14 @@ def _pass(device, listener, group: Sequence[Tuple[str, R.Register]],
         attempts[path].append((value, size, got))
         if got is not None and not _unchanged(state[path], got):
             settled.append(path)
-    write_batch(device, [(p, r, state[p]) for p, r, _v, _s in writes])
+    write_batch(device, [(p, r, state[p]) for p, r, _v, _s in writes], restoring=True)
     return read_all(device, listener), settled
 
 
 def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
           state: Dict[str, object],
-          note=None) -> List[Dict[str, object]]:
-    """Probe every register, escalating only where nothing moved.
+          note=None, step: int = 0) -> List[Dict[str, object]]:
+    """One bounded attempt, restoring each parity before the next one.
 
     Passes are split by channel parity because a linked pair moves
     together: writing channel 3 drags channel 4 with it, so writing both
@@ -455,26 +456,25 @@ def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
         else:
             pending.append((path, register))
     attempts: Dict[str, list] = {path: [] for path, _r in pending}
-    for step in range(max(len(STEPS), len(UNBOUNDED_STEPS))):
-        for odd in (True, False):
-            group = [(p, r) for p, r in pending
-                     if bool((channel_of(p) or 1) % 2) is odd]
-            if not group:
-                continue
-            state, settled = _pass(device, listener, group, state, step,
-                                   attempts)
-            say("step %d, %s: %d written, %d answered"
-                 % (step + 1, "odd" if odd else "even", len(group),
-                    len(settled)))
-            # A lost partner restoration must not become the next
-            # pass's baseline. Measured on input 9/10: 0.4 remained on
-            # channel 10, so its next probe rounded back to the original
-            # zero and was mistaken for an ignored write. It could also
-            # falsely confirm an already-present partner change.
-            state, unrestored = repair(device, listener, reference, state)
-            if unrestored:
-                raise RuntimeError("pass restoration incomplete: %s" % ", ".join(unrestored))
-            pending = [(p, r) for p, r in pending if p not in set(settled)]
+    for odd in (True, False):
+        group = [(p, r) for p, r in pending
+                 if bool((channel_of(p) or 1) % 2) is odd]
+        if not group:
+            continue
+        state, settled = _pass(device, listener, group, state, step,
+                               attempts)
+        say("step %d, %s: %d written, %d answered"
+             % (step + 1, "odd" if odd else "even", len(group),
+                len(settled)))
+        # A lost partner restoration must not become the next
+        # pass's baseline. Measured on input 9/10: 0.4 remained on
+        # channel 10, so its next probe rounded back to the original
+        # zero and was mistaken for an ignored write. It could also
+        # falsely confirm an already-present partner change.
+        state, unrestored = repair(device, listener, reference, state)
+        if unrestored:
+            raise RuntimeError("pass restoration incomplete: %s" % ", ".join(unrestored))
+        pending = [(p, r) for p, r in pending if p not in set(settled)]
     known = dict(targets)
     for path in [p for p, _r in targets]:
         if path in attempts:
@@ -535,64 +535,84 @@ def repair(device, listener, reference: Dict[str, object],
                 except (TypeError, ValueError):
                     continue
                 writes.append((path, register, reference[path]))
-        write_batch(device, writes)
+        write_batch(device, writes, restoring=True)
         current = (readback or read_all)(device, listener)
     return current, drifted(reference, current)
 
 
 class CheckedBackend:
-    """Hold the sweep to the same single interface and backend throughout.
+    """One measurement operation with a fixed peer, device and playback mode.
 
-    The cooperative lock does not stop hot-unplug or a foreign process
-    taking the UDP port. Recheck before sending, including restoration;
-    a lost identity is a reason to leave drift visible, never to guess.
+    Restoration uses this same connection. A lost peer or device identity
+    cannot reconnect to a replacement and overwrite its state.
     """
 
-    def __init__(self, interface: Device, port: int, recv_port: int,
+    def __init__(self, interface: Device, config_path: Optional[Path], build_dir: Path,
                  proc_root: Path = Path("/proc")) -> None:
         self.interface = interface
-        self.port = port
         self.proc_root = proc_root
-        self.holder = port_holder(port, proc_root)
+        self.config = Config(serial=interface.serial)
+        self.playback = read_playback(self.config, proc_root)
+        self.started = 0.0
         self.check_identity()
-        self.device = loopback(port, recv_port)
+        self.device = connect_backend(self.config, config_path)
         self.sent = []
+        try:
+            self.evidence = build_evidence(self.device, build_dir, proc_root)
+        except BaseException:
+            self.device.close()
+            raise
 
     def check_identity(self) -> None:
-        current = resolve_device(DEFAULT_USB_ID, DEFAULT_DEVICE_NAME, "", self.proc_root)
-        holder = port_holder(self.port, self.proc_root)
-        if (not current.serial or current.client is None or current != self.interface
-                or holder is None or not holder.oscmix or holder != self.holder
-                or holder.client != current.client
-                or (holder.serial is not None and holder.serial != current.serial)):
+        current = resolve_device(DEFAULT_USB_ID, DEFAULT_DEVICE_NAME,
+                                 self.interface.serial, self.proc_root)
+        if not current.serial or current.client is None or current != self.interface:
             raise ValueError("sweep backend/interface identity cannot be confirmed")
+        current_mode = read_playback(self.config, self.proc_root)
+        if current_mode != self.playback:
+            raise ValueError("USB playback mode or identity changed during the measurement")
+        if current_mode.mode is not None:
+            problem = playback_problem(self.config, current_mode.mode)
+            if problem:
+                raise ValueError(problem)
 
-    def send(self, messages) -> None:
+    def begin(self):
+        self.device.begin()
+        self.started = time.monotonic()
+
+    def finish(self):
+        self.device.finish()
+
+    def send(self, messages, *, restoring=False) -> None:
+        # Stop probing early enough for bounded restoration inside the same
+        # 90-second lease. A lost/expired lease never reconnects to restore.
+        messages = list(messages)
+        if time.monotonic() - self.started > (80 if restoring else 35):
+            raise WriteFailed(OSError(errno.ETIMEDOUT, "measurement write budget expired"),
+                              [], [path for path, _tags, _args in messages])
         self.check_identity()
-        self.device.send(messages)
+        try:
+            self.device.send(messages)
+        except WriteFailed as exc:
+            self.sent.extend(messages[:len(exc.written)])
+            raise
         self.sent.extend(messages)
 
     def request_dump(self) -> None:
         self.check_identity()
         self.device.request_dump()
 
-    def listen(self):
-        return self.device.listen()
+    def messages(self, timeout):
+        return self.device.messages(timeout)
+
+    def close(self):
+        self.device.close()
 
     def binary_evidence(self) -> Dict[str, object]:
-        if self.holder is None:
-            raise ValueError("no backend to identify")
-        executable = self.proc_root / str(self.holder.pid) / "exe"
-        built = Path(__file__).resolve().parent.parent / "build/oscmix/oscmix"
-        running_hash = hashlib.sha256(executable.read_bytes()).hexdigest()
-        build_hash = hashlib.sha256(built.read_bytes()).hexdigest()
-        if running_hash != build_hash:
-            raise ValueError("running backend differs from the recorded build")
-        return {"pid": self.holder.pid, "sha256": running_hash,
-                "matches_local_build": True}
+        return self.evidence
 
 
-def measure_and_restore(device, listener, targets, before, note=None):
+def measure_and_restore(device, listener, targets, before, note=None, step=0):
     """Capture failure and restoration evidence even after an interrupted probe."""
     findings = []
     error = None
@@ -606,7 +626,7 @@ def measure_and_restore(device, listener, targets, before, note=None):
     for sig in previous:
         signal.signal(sig, interrupted)
     try:
-        findings = sweep(device, listener, targets, before, note)
+        findings = sweep(device, listener, targets, before, note, step)
     except (Exception, KeyboardInterrupt) as exc:
         error = "%s: %s" % (type(exc).__name__, exc)
     finally:
@@ -624,6 +644,62 @@ def measure_and_restore(device, listener, targets, before, note=None):
             for sig, handler in previous.items():
                 signal.signal(sig, handler)
     return findings, after, unrestored, error
+
+
+def measure_chunks(device, targets, note=None):
+    """Each parity chunk/attempt has its own fresh baseline and complete lease.
+
+    GTK may edit between operations. The next operation observes those edits
+    as its new baseline; it never restores a snapshot from a released lease.
+    Records keep each baseline separately so that boundary stays visible.
+    """
+    findings, history, transactions = {}, {}, []
+    failure = None
+    unrestored = []
+    for step in range(max(len(STEPS), len(UNBOUNDED_STEPS))):
+        pending = [(path, register) for path, register in targets
+                   if path not in findings or findings[path]['verdict'] == 'ignored'
+                   or (findings[path]['verdict'] == 'undetermined'
+                       and findings[path].get('attempts', 0) > 0)]
+        for odd in (True, False):
+            group = [(path, register) for path, register in pending
+                     if bool((channel_of(path) or 1) % 2) is odd]
+            for start in range(0, len(group), 32):
+                chunk = group[start:start + 32]
+                record = {'step': step + 1, 'targets': [p for p, _ in chunk],
+                          'before': {}, 'after': {}, 'not_restored': [], 'error': None}
+                transactions.append(record)
+                try:
+                    device.begin()
+                    before = read_all(device, device)
+                    record['before'] = before
+                    record['before_messages'] = getattr(before, 'messages', {})
+                    if not before:
+                        failure = 'backend reported no baseline; nothing was probed'
+                        record['error'] = failure
+                        return list(findings.values()), transactions, unrestored, failure
+                    measured, after, unrestored, failure = measure_and_restore(
+                        device, device, chunk, before, note, step)
+                    record.update(after=after, after_messages=getattr(after, 'messages', {}),
+                                  not_restored=unrestored, error=failure)
+                    device.finish()
+                except (Exception, KeyboardInterrupt) as exc:
+                    failure = '%s%s: %s' % ((failure + '; ') if failure else '',
+                                           type(exc).__name__, exc)
+                    record['error'] = failure
+                    return list(findings.values()), transactions, unrestored, failure
+                for finding in measured:
+                    path = finding['path']
+                    previous = history.setdefault(path, [])
+                    previous.extend(dict(item, baseline=before.get(path), attempt=step + 1)
+                                    for item in finding.get('observations', []))
+                    findings[path] = dict(finding, observations=list(previous),
+                                          attempts=len(previous))
+                    if 'step' in finding:
+                        findings[path]['step'] = step + 1
+                if unrestored or failure:
+                    return list(findings.values()), transactions, unrestored, failure
+    return [findings[path] for path, _ in targets], transactions, unrestored, failure
 
 
 def json_safe(value):
@@ -678,9 +754,10 @@ def main() -> int:
                         help="probe only paths containing this substring")
     parser.add_argument("--out", type=Path, default=None,
                         help="write the artifact here")
-    parser.add_argument("--osc-port", type=int, default=DEFAULT_OSC_PORT)
-    parser.add_argument("--osc-recv-port", type=int,
-                        default=DEFAULT_OSC_RECV_PORT)
+    parser.add_argument("--config", type=Path, help="same configuration directory as the session")
+    parser.add_argument("--backend-build", type=Path,
+                        default=Path(__file__).resolve().parents[1] / "build/coordinated",
+                        help="prepared and compiled backend source directory")
     args = parser.parse_args()
     targets = settable(args.limit, args.match)
     if not targets:
@@ -694,48 +771,39 @@ def main() -> int:
     # for it -- the shared lock directory does not depend on one.
     try:
         interface = resolve_device(DEFAULT_USB_ID, DEFAULT_DEVICE_NAME, "",
-                                   Path("/proc"))
+                                   Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
     except DeviceAmbiguous as exc:
         # The sweep writes to whichever backend holds the default port and
         # names the box in its artifact; with two boxes it could do
         # neither honestly (ADR 0024).
         sys.stderr.write("%s; the sweep supports one interface\n" % exc)
         return 1
-    lock = take_device_lock(None, interface.key)
+    lock = take_device_lock(args.config, interface.key)
     if lock is None:
         sys.stderr.write("another writer holds the device lock; not "
                          "sweeping\n")
         return 1
 
     try:
-        device = CheckedBackend(interface, args.osc_port, args.osc_recv_port)
+        device = CheckedBackend(interface, args.config, args.backend_build,
+                                Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
         running_backend = device.binary_evidence()
-        listener = device.listen()
     except (OSError, ValueError, DeviceAmbiguous) as exc:
         lock.release()
         sys.stderr.write("%s\n" % exc)
         return 1
-    if listener is None:
-        lock.release()
-        sys.stderr.write("UDP %d is in use -- close the mixer GUI\n"
-                         % args.osc_recv_port)
-        return 1
     try:
-        before = read_all(device, listener)
-        if not before:
-            sys.stderr.write("the backend reported nothing -- is it running, "
-                             "and is the Fireface connected?\n")
-            return 1
-        sys.stderr.write("probing %d of %d settable registers\n"
+        sys.stderr.write("probing %d of %d settable registers in bounded operations\n"
                          % (len(targets), len(settable())))
         started = time.monotonic()
-        findings, after, unrestored, failure = measure_and_restore(
-            device, listener, targets, before,
-            lambda text: sys.stderr.write(text + "\n"))
+        findings, transactions, unrestored, failure = measure_chunks(
+            device, targets, lambda text: sys.stderr.write(text + "\n"))
         elapsed = time.monotonic() - started
     finally:
-        listener.close()
-        lock.release()
+        try:
+            device.close()
+        finally:
+            lock.release()
 
     source_after = source_evidence()
     if (source['runtime_sha256'] != source_after['runtime_sha256']
@@ -744,12 +812,11 @@ def main() -> int:
 
     serial = interface.serial or None
     artifact = {
-        "schema": 2,
+        "schema": 3,
         "taken": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "device": ("Fireface UCX II, serial %s" % serial if serial
                    else "serial unknown"),
-        "oscmix_revision": built_backend_revision(
-            Path(__file__).resolve().parent.parent) or "unknown",
+        "oscmix_revision": running_backend["upstream"],
         "running_backend": running_backend,
         "sent": device.sent,
         "tool_sha256": source['tool_sha256'],
@@ -757,16 +824,14 @@ def main() -> int:
         "firmware": device_firmware(
             DEFAULT_USB_ID,
             Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")),
-            before),
+            transactions[0]["before"] if transactions else {}),
         "probed": len(targets),
         "seconds": round(elapsed, 2),
         "write_pace": WRITE_PACE,
         "method": METHOD,
         "error": failure,
-        "before": before,
-        "after": after,
-        "before_messages": before.messages if isinstance(before, Readback) else {},
-        "after_messages": after.messages if isinstance(after, Readback) else {},
+        "transactions": transactions,
+        "complete": len(findings) == len(targets) and failure is None,
         "summary": summarise(findings),
         "not_restored": unrestored,
         "findings": findings,
@@ -787,7 +852,8 @@ def main() -> int:
         return 1
     if artifact["not_restored"]:
         return 1
-    if failure or any(f["verdict"] not in ("confirmed", "skipped") for f in findings):
+    if (not artifact["complete"] or failure
+            or any(f["verdict"] not in ("confirmed", "skipped") for f in findings)):
         sys.stderr.write("sweep incomplete: %s\n" % (failure or summarise(findings)))
         return 1
     return 0

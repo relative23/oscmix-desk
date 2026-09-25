@@ -262,12 +262,13 @@ def launcher_world(launch_mod, clean_env, tmp_path):
     clean_env.setattr(launch_mod, 'inspect_desktop', lambda *_: DesktopStatus(
         '/usr/bin/oscmix-gtk', None))
     clean_env.setattr(launch_mod, 'backend_status', lambda *_: BackendStatus(
-        'ready', 'matched', Device('2a39:3fd9', '24216011', 24), 40000))
-    clean_env.setattr(launch_mod, 'port_state', lambda *_: 'free')
+        'ready', 'matched', Device('2a39:3fd9', '24216011', 24), 40000, '/isolated/control'))
     clean_env.setattr(launch_mod, 'systemctl_user', lambda *args: calls.append(args) or 0)
     clean_env.setattr(launch_mod, 'notify', lambda title, body, urgency='normal':
                       notifications.append(body))
-    clean_env.setattr(launch_mod.os, 'execv', lambda path, args: execs.append((path, args)))
+    identity = ('OSCMIX_CONTROL_SOCKET', 'OSCMIX_BACKEND_PID', 'OSCMIX_DEVICE_SERIAL')
+    clean_env.setattr(launch_mod.os, 'execve', lambda path, args, env:
+                      execs.append((path, args, {k: env[k] for k in identity})))
     clean_env.setattr(launch_mod, 'MAINTENANCE_FILE', tmp_path / 'maintenance')
     clean_env.setattr(launch_mod, 'GTK_MAINTENANCE_FILE', tmp_path / 'gtk-maintenance')
     return launch_mod, clean_env, calls, notifications, execs
@@ -276,12 +277,14 @@ def launcher_world(launch_mod, clean_env, tmp_path):
 def test_matching_manual_backend_opens_gui_without_systemd(launcher_world):
     mod, _, calls, notices, execs = launcher_world
     assert mod.main() == 0
-    assert execs == [('/usr/bin/oscmix-gtk', ['/usr/bin/oscmix-gtk'])]
+    assert execs == [('/usr/bin/oscmix-gtk', ['/usr/bin/oscmix-gtk'],
+                      {'OSCMIX_CONTROL_SOCKET': '/isolated/control', 'OSCMIX_BACKEND_PID': '40000',
+                       'OSCMIX_DEVICE_SERIAL': '24216011'})]
     assert calls == []
     assert notices == []
 
 
-@pytest.mark.parametrize('kind', ['binary', 'schema', 'connection', 'maintenance',
+@pytest.mark.parametrize('kind', ['binary', 'protocol', 'maintenance',
                                 'gtk-maintenance'])
 def test_desktop_prerequisites_are_checked_before_starting_any_backend(launcher_world, kind):
     from oscmix_desk.desktop import DesktopStatus
@@ -326,12 +329,13 @@ def test_disconnected_interface_does_not_start_a_service(launcher_world):
     assert calls == []
 
 
-def test_busy_reply_port_is_an_actionable_refusal(launcher_world):
+def test_incomplete_identity_cannot_be_passed_to_gtk(launcher_world):
+    from oscmix_desk.diagnostics import BackendStatus
+
     mod, monkey, calls, notices, execs = launcher_world
-    monkey.setattr(mod, 'port_state', lambda *_: 'occupied')
+    monkey.setattr(mod, 'backend_status', lambda *_: BackendStatus('ready', 'incomplete'))
     assert mod.main() == 1
-    assert '8222' in notices[0]
-    assert 'verification' in notices[0]
+    assert 'identity is incomplete' in notices[0]
     assert execs == calls == []
 
 
@@ -353,19 +357,22 @@ def test_profile_machine_values_do_not_redirect_the_launcher(launcher_world, tmp
     write_conf(tmp_path / 'active-profile', 'old\n')
     monkey.setenv('OSCMIX_CONFIG', str(path))
     observed = []
-    from oscmix_desk.desktop import DesktopStatus
-    monkey.setattr(mod, 'inspect_desktop', lambda config, gtk:
-                    observed.append((config.osc_port, config.osc_recv_port)) or
-                    DesktopStatus(gtk, None))
+    real = mod.backend_status
+
+    def inspect(config, proc, config_path):
+        observed.append((config.osc_port, config.osc_recv_port, config_path))
+        return real(config, proc, config_path)
+
+    monkey.setattr(mod, 'backend_status', inspect)
     assert mod.main() == 0
-    assert observed == [(9001, 9002)]
+    assert observed == [(9001, 9002, path)]
 
 
 def test_failing_exec_is_a_message_without_a_traceback(launcher_world, caplog):
     mod, monkey, _, notices, _ = launcher_world
     def fail(*_args):
         raise OSError('bad executable format')
-    monkey.setattr(mod.os, 'execv', fail)
+    monkey.setattr(mod.os, 'execve', fail)
     assert mod.main() == 1
     assert 'could not execute' in notices[0]
     assert 'Traceback' not in caplog.text
@@ -379,7 +386,7 @@ def test_only_an_enabled_matching_service_may_be_started(launcher_world, problem
     mod, monkey, calls, notices, execs = launcher_world
     device = Device('2a39:3fd9', '24216011', 24)
     states = iter([BackendStatus('absent', 'no listener', device),
-                   BackendStatus('ready', 'matched', device)])
+                   BackendStatus('ready', 'matched', device, 40000, '/isolated/control')])
     monkey.setattr(mod, 'backend_status', lambda *_: next(states))
     monkey.setattr(mod, 'service_status', lambda: {'state': 'observed'})
     monkey.setattr(mod, 'service_start_problem', lambda *_: problem)

@@ -66,7 +66,7 @@ class DeviceLock:
 
 def device_lock_path(config_path: Optional[Path],
                      key: Optional[str] = None) -> Optional[Path]:
-    """Where the lock for this device lives.
+    """Where the lock for this device lives, without creating anything.
 
     `/run/oscmix-desk/<key>.lock` whenever that directory exists, which
     the installer creates through tmpfiles.d. It is the only candidate
@@ -90,18 +90,28 @@ def device_lock_path(config_path: Optional[Path],
             # runtime directory had (ADR 0023). Unusable is a refusal.
             return shared / ("%s.lock" % key)
         runtime = os.environ.get("XDG_RUNTIME_DIR")
-        if runtime:
+        if runtime and os.path.isabs(runtime):
             directory = Path(runtime) / "oscmix-desk"
-            try:
-                directory.mkdir(parents=True, exist_ok=True)
-            except OSError as exc:
-                log.warning("cannot use %s (%s); falling back to the config "
-                            "directory", directory, exc)
-            else:
-                return directory / ("%s.lock" % key)
+            return directory / ("%s.lock" % key)
     if config_path is None:
         return None
     return Path(config_path).parent / SWITCH_LOCK
+
+
+def control_path(config_path: Optional[Path], key: str) -> Path:
+    """The same runtime directory and device key for every cooperating client.
+
+    Selection must not depend on whether the caller can create a directory:
+    falling back on a permission failure would select another owner. Status
+    uses this function without making a directory or opening the endpoint.
+    """
+    lock = device_lock_path(config_path, key)
+    if lock is None:
+        raise OSError(errno.ENOENT, "no runtime or configuration directory for backend control")
+    path = lock.parent.resolve() / (key + ".control")
+    if len(os.fsencode(path)) >= 108:
+        raise OSError(errno.ENAMETOOLONG, "backend control path exceeds the Unix socket limit")
+    return path
 
 
 #: How every lock file is opened. The shared directory is writable by a
@@ -240,6 +250,11 @@ def take_device_lock(config_path: Optional[Path],
     path = device_lock_path(config_path, key)
     if path is None:
         return DeviceLock()          # no config, so nothing to contend with
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        log.error("cannot create the device runtime directory %s: %s", path.parent, exc)
+        return None
     fd = _open_lock(path)
     if fd is None:
         log.error("cannot open the device lock at %s: %s", path,

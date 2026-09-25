@@ -78,7 +78,7 @@ ALLOWED_IMPORTS = {
     # asks reload.
     # `devices` since 0.7.0: a start says when the interface reports
     # another firmware than the one its register table was recorded on.
-    "session": {"constants", "devices", "discovery", "errors", "locking",
+    "session": {"backend", "constants", "devices", "discovery", "errors", "locking",
                 "log", "model", "notices", "notify", "process", "reconcile",
                 "reload", "routing", "verify"},
     # What a running session does with a desk it reads again, split out
@@ -88,7 +88,7 @@ ALLOWED_IMPORTS = {
     # answered in profiles.effective_config; profiles sits above verify
     # and imports nothing from here, so no cycle. `locking` for the lock
     # around every reconcile.
-    "reload": {"constants", "discovery", "errors", "locking", "log", "model",
+    "reload": {"backend", "constants", "discovery", "errors", "locking", "log", "model",
                "notices", "notify", "paths", "profiles", "verify"},
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
@@ -101,8 +101,8 @@ ALLOWED_IMPORTS = {
     # serial and firmware, which are the leaf's to answer. `process` for
     # whose backend holds the port, `dump` for the device's state as a
     # config.
-    "reads": {"backend", "constants", "devices", "discovery", "dump", "errors",
-              "log", "model", "osc", "process", "reconcile"},
+    "reads": {"backend", "constants", "devices", "discovery", "dump",
+              "log", "model", "osc", "reconcile"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
@@ -115,7 +115,7 @@ ALLOWED_IMPORTS = {
     # discovery, so no cycle.
     "profiles": {"backend", "config", "constants", "devices", "discovery",
                  "errors", "locking", "log", "marker", "model", "notices",
-                 "outcome", "paths", "process", "reconcile", "routing", "verify"},
+                 "outcome", "paths", "reconcile", "routing", "verify"},
     # The three things a switch is made of besides its order, split out of
     # profiles in 0.7.0. Each is a near-leaf: the lock knows its wait and
     # the journal, the marker knows what a profile name is, and an outcome
@@ -125,10 +125,10 @@ ALLOWED_IMPORTS = {
     "outcome": set(),
     "launcher": {"config", "constants", "desktop", "diagnostics", "discovery",
                  "errors", "model", "paths"},
-    "diagnostics": {"constants", "discovery", "errors", "model", "paths", "process"},
-    "desktop": {"diagnostics", "discovery", "model"},
+    "diagnostics": {"constants", "discovery", "errors", "locking", "model", "paths", "process"},
+    "desktop": {"diagnostics", "discovery"},
     "status": {"constants", "desktop", "diagnostics", "discovery", "errors",
-               "marker", "model", "paths", "process", "profiles", "streams"},
+               "marker", "model", "paths", "profiles", "streams"},
     "preview": {"model", "reconcile"},
     # What config.py was until 0.7.0, by what each part is. `model` is the
     # desk as data and what nearly everything reads -- the reconciler, the
@@ -154,7 +154,9 @@ ALLOWED_IMPORTS = {
     # `errors` since 0.6.11: a receive port that cannot be bound for a
     # reason other than a holder is an exception every caller has to be
     # able to name, and errors is a leaf.
-    "backend": {"errors", "osc"},
+    # Shared read-only identity below every command; connection/lease ownership
+    # above it. Diagnostics never imports this transport or a write command.
+    "backend": {"constants", "diagnostics", "discovery", "errors", "model", "osc"},
     # Pure: config + the message shapes + the register table. No
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.

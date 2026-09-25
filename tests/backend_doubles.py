@@ -15,12 +15,38 @@ class RecordingBackend:
         self.sent = []
         self.dumps = 0
         self._reports = reports
+        self._listener = None
+        self.device_name = "Fireface UCX II (00000000)"
+        self.epoch = bytes(16)
+        self.operations = []
 
     def send(self, messages):
         self.sent.extend((p, t, tuple(a)) for p, t, a in messages)
+        self._listener = None
 
     def request_dump(self):
         self.dumps += 1
+        self._listener = None
+
+    def begin(self):
+        self.operations.append("begin")
+
+    def finish(self):
+        self.operations.append("finish")
+
+    def close(self):
+        self.operations.append("close")
+
+    def wait(self, seconds):
+        import time
+        time.sleep(seconds)
+
+    def messages(self, timeout):
+        if self._reports is None:
+            return
+        if self._listener is None:
+            self._listener = ReplayListener(self, self._reports)
+        yield from self._listener.messages(timeout)
 
     def listen(self):
         if self._reports is None:
@@ -68,6 +94,10 @@ class UnbindableBackend(RecordingBackend):
         from oscmix_desk.errors import ReceivePortError
         raise ReceivePortError(
             13, "cannot bind the receive port UDP 80: Permission denied")
+
+    def messages(self, _timeout):
+        from oscmix_desk.errors import ReceivePortError
+        raise ReceivePortError(13, "cannot read the backend: Permission denied")
 
 def echo_within_traits(sent):
     """Echo back what a backend with OSCMIX's traits would report.

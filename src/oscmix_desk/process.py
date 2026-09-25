@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
+import getopt
 import os
 import re
 import signal
+import stat
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from .constants import CHILD_STOP_GRACE, SERVICE_UNIT, STALE_BACKEND_SETTLE
 from .discovery import (
+    Device,
     parse_seq_clients,
     serial_in,
-    udp_port_listening,
-    udp_socket_inodes,
 )
 from .log import log
 
@@ -53,22 +54,10 @@ def find_stale_backends(proc_root: Path) -> List[int]:
     return sorted(pids)
 
 
-def socket_owner(port: int, proc_root: Path) -> Optional[int]:
-    """The PID holding the UDP socket on ``port``, when it can be told.
-
-    Name and user are not ownership. Until 0.6.6 the cleanup terminated
-    every `oscmix` of this user as soon as *anything* held the port, so
-    a second interface's backend on another port could be killed by a
-    start whose port was taken by something else entirely.
-
-    The socket inode is the link: `/proc/net/udp` gives it for the bound
-    port, and `/proc/<pid>/fd/*` points at `socket:[<inode>]`. None
-    means nobody could be shown to hold it, and the caller then leaves
-    every process alone.
-    """
-    inodes = udp_socket_inodes(port, proc_root)
+def _owner_of_sockets(inodes: Set[str], proc_root: Path) -> Optional[int]:
     if not inodes:
         return None
+    owners: Set[int] = set()
     for entry in sorted(proc_root.iterdir()):
         if not entry.name.isdigit():
             continue
@@ -82,17 +71,69 @@ def socket_owner(port: int, proc_root: Path) -> Optional[int]:
             except OSError:
                 continue
             if target.startswith("socket:[") and target[8:-1] in inodes:
-                return int(entry.name)
-    return None
+                owners.add(int(entry.name))
+    if len(owners) > 1:
+        raise OSError("control socket has multiple process owners")
+    return next(iter(owners), None)
+
+
+def control_socket_owner(path: Path, proc_root: Path) -> Optional[int]:
+    """Read the listening SEQPACKET inode; never connect or create a path.
+
+    A missing/unreadable/malformed table is uncertainty, not an absent
+    backend. An established connection at the same pathname is not the
+    listening endpoint. Names may contain spaces, so only the seven fixed
+    fields are split before comparing the complete pathname.
+    """
+    lines = (proc_root / "net" / "unix").read_text().splitlines()
+    if not lines or lines[0].split()[:7] != [
+            "Num", "RefCount", "Protocol", "Flags", "Type", "St", "Inode"]:
+        raise OSError("Unix socket table is missing its header")
+    inodes: Set[str] = set()
+    for line in lines[1:]:
+        fields = line.split(maxsplit=7)
+        if len(fields) < 7:
+            raise OSError("Unix socket table contains a malformed row")
+        if (len(fields) == 8 and fields[7] == str(path)
+                and fields[3:6] == ["00010000", "0005", "01"]):
+            if not fields[6].isdigit():
+                raise OSError("Unix control socket has an invalid inode")
+            inodes.add(fields[6])
+    if len(inodes) > 1:
+        raise OSError("multiple listening control endpoints have the same pathname")
+    return _owner_of_sockets(inodes, proc_root)
+
+
+def control_holder(path: Path, proc_root: Path) -> Optional[BackendOwner]:
+    """Associate this endpoint with its exact coordinated backend and bridge."""
+    owner = control_socket_owner(path, proc_root)
+    if owner is None:
+        return None
+    entry = proc_root / str(owner)
+    args = (entry / "cmdline").read_bytes().split(b"\0")
+    if args[-1] == b"":
+        args.pop()
+    executable = Path(os.readlink(entry / "exe"))
+    if not args or executable.name != "oscmix" or Path(os.fsdecode(args[0])).name != "oscmix":
+        return BackendOwner(owner, False, None, None)
+    try:
+        options, rest = getopt.getopt([os.fsdecode(arg) for arg in args[1:]], "dlp:c:")
+    except getopt.GetoptError:
+        return BackendOwner(owner, False, None, None)
+    endpoints = [value for option, value in options if option == "-c"]
+    if rest or len(endpoints) != 1 or endpoints[0] != str(path):
+        return BackendOwner(owner, False, None, None)
+    client = _bridged_client(entry, proc_root)
+    return BackendOwner(owner, True, client, _client_serial(client, proc_root))
 
 
 @dataclass(frozen=True)
-class PortHolder:
-    """Who holds a UDP port, as far as /proc can tell.
+class BackendOwner:
+    """Who holds the coordinated endpoint, as far as /proc can tell.
 
-    ``oscmix`` is whether it is an oscmix backend of this user (any
-    user's, for root). ``client`` is the sequencer client its alsaseqio
-    parent bridges -- the unit starts ``alsaseqio <client>:1 oscmix`` --
+    ``oscmix`` requires the executable, command line and endpoint to match.
+    ``client`` is the sequencer client its alsaseqio
+    parent bridges -- the unit starts ``alsaseqio -x <client>:1 oscmix`` --
     and ``serial`` the number in that client's name. Either is None when
     the chain cannot be followed, which is not the same as a mismatch.
     """
@@ -103,48 +144,10 @@ class PortHolder:
     serial: Optional[str]
 
 
-def port_holder(port: int, proc_root: Path) -> Optional[PortHolder]:
-    """The process holding ``port`` and the interface it drives, or None.
-
-    "Something is bound" is not "the backend for this box is bound". A
-    profile switch that asked only the first question wrote a whole
-    routing into a stranger's socket, reported `applied` and recorded
-    the marker -- measured against a plain Python socket in 0.6.8
-    (ADR 0024). The start already knew better: it accepts the port only
-    from the child it spawned.
-    """
-    owner = socket_owner(port, proc_root)
-    if owner is None:
-        return None
-    entry = proc_root / str(owner)
-    client = _bridged_client(entry, proc_root)
-    return PortHolder(pid=owner, oscmix=_is_oscmix_of_this_user(entry),
-                      client=client, serial=_client_serial(client, proc_root))
-
-
-def _is_oscmix_of_this_user(entry: Path) -> bool:
-    uid = os.getuid()
-    try:
-        if uid != 0 and entry.stat().st_uid != uid:
-            return False
-        # errors="replace": the kernel cuts comm at 15 bytes, which can
-        # split a multibyte character, and any process on the machine is
-        # read here -- a strict decode raised out of every switch (0.6.9).
-        comm = (entry / "comm").read_text(errors="replace").strip()
-        argv0 = (entry / "cmdline").read_bytes().split(b"\0")[0]
-    except OSError:
-        return False
-    return "oscmix" in (comm, os.path.basename(argv0.decode(errors="replace")))
-
-
-#: ``alsaseqio 24:1 oscmix ...``: client and port of the bridged device.
-_BRIDGE_ARG = re.compile(rb"(\d+):\d+")
-
-
 def _bridged_client(entry: Path, proc_root: Path) -> Optional[int]:
     """The sequencer client the alsaseqio beside ``entry`` bridges.
 
-    The unit runs ``alsaseqio 24:1 oscmix ...``. alsaseqio forks, the
+    The unit runs ``alsaseqio -x 24:1 oscmix ...``. alsaseqio forks, the
     original process execs oscmix and binds the port, and the child stays
     alsaseqio with the client in its argv -- measured on the desk, where
     the port holder is the *parent* of the alsaseqio. Children are looked
@@ -152,16 +155,24 @@ def _bridged_client(entry: Path, proc_root: Path) -> Optional[int]:
     bridge that runs the other way round.
     """
     holder = entry.name
+    clients = []
     for candidate in _children_of(holder, proc_root) + _parent_of(entry, proc_root):
         try:
             args = (candidate / "cmdline").read_bytes().split(b"\0")
         except OSError:
             continue
-        for arg in args[1:]:
-            match = _BRIDGE_ARG.fullmatch(arg)
-            if match:
-                return int(match.group(1))
-    return None
+        try:
+            executable = Path(os.readlink(candidate / "exe"))
+        except OSError:
+            continue
+        if (executable.name != "alsaseqio" or not args
+                or Path(os.fsdecode(args[0])).name != "alsaseqio"
+                or len(args) < 4 or args[1] != b"-x"
+                or re.fullmatch(rb"\d+:1", args[2]) is None
+                or Path(os.fsdecode(args[3])).name != "oscmix"):
+            continue
+        clients.append(int(args[2].split(b":", 1)[0]))
+    return clients[0] if len(clients) == 1 else None
 
 
 def _children_of(pid: str, proc_root: Path) -> List[Path]:
@@ -200,46 +211,41 @@ def _client_serial(client: Optional[int], proc_root: Path) -> Optional[str]:
     return serial_in(name) if name is not None else None
 
 
-def _cleanup_stale_backend(port: int, proc_root: Path) -> Optional[int]:
-    """A stale oscmix (e.g. from a manual run) would hold the OSC port.
+def _cleanup_stale_backend(path: Path, device: Device,
+                            proc_root: Path) -> Optional[int]:
+    """Terminate only this user's orphaned, exactly associated control owner.
 
-    Only the process that demonstrably holds the port is terminated,
-    and only when it is an oscmix of this user *whose session is gone*.
-    A backend whose parent is a live oscmix-session is not stale, it is
-    someone's running desk: until 0.6.10 a second session started by hand
-    terminated the unit's backend, the unit restarted and terminated the
-    manual one in turn (measured). The pid of that live session is
-    returned instead, and the caller refuses to start. Anything else
-    keeps the port and the start fails on the port wait, which is the
-    honest outcome: this project does not get to kill a stranger's
-    process to make room for itself.
+    The backend itself handles an abandoned socket under its owner lock.
+    A live session, another interface or uncertain ownership is a refusal;
+    never terminate an old UDP session or make room by killing a stranger.
     """
-    if not udp_port_listening(port, proc_root):
+    try:
+        endpoint = path.lstat()
+    except FileNotFoundError:
         return None
-    owner = socket_owner(port, proc_root)
-    if owner is None:
-        log.warning("UDP port %d is in use and its owner cannot be "
-                    "identified; leaving every process alone", port)
+    if not stat.S_ISSOCK(endpoint.st_mode):
+        log.error("control endpoint %s is not a real socket; leaving it alone", path)
+        return -1
+    try:
+        holder = control_holder(path, proc_root)
+    except (OSError, ValueError) as exc:
+        log.error("cannot identify the control owner at %s: %s", path, exc)
+        return -1
+    if holder is None:
         return None
-    if owner not in find_stale_backends(proc_root):
-        log.warning("UDP port %d is held by pid %d, which is not an oscmix "
-                    "of this user; leaving it alone", port, owner)
-        return None
-    session = _supervising_session(proc_root / str(owner), proc_root)
+    if (not holder.oscmix or holder.client != device.client
+            or holder.serial != device.serial
+            or holder.pid not in find_stale_backends(proc_root)):
+        log.error("control endpoint %s belongs to another backend/user; leaving it alone", path)
+        return holder.pid
+    session = _supervising_session(proc_root / str(holder.pid), proc_root)
     if session is not None:
-        log.error("UDP port %d is held by the backend (pid %d) of a running "
-                  "oscmix-session (pid %d); stop that session first -- "
-                  "systemctl --user stop oscmix.service if it is the unit",
-                  port, owner, session)
+        log.error("backend pid %d belongs to running oscmix-session pid %d; stop that "
+                  "session explicitly before starting another", holder.pid, session)
         return session
-    log.warning("UDP port %d already in use; terminating the stale oscmix "
-                "that holds it (pid %d)", port, owner)
-    if not _terminate(owner, lambda: _still_stale(owner, port, proc_root)):
-        # Not signalled, so the port stays held and a backend started now
-        # could not bind it. Exit 2 like a session in the way: a restart
-        # cannot change what this machine lets a process do.
-        return owner
-    # Part of the startup budget; see constants.startup_budget.
+    log.warning("terminating orphaned backend pid %d at %s", holder.pid, path)
+    if not _terminate(holder.pid, lambda: _still_stale(holder.pid, path, device, proc_root)):
+        return holder.pid
     time.sleep(STALE_BACKEND_SETTLE)
     return None
 
@@ -247,7 +253,7 @@ def _cleanup_stale_backend(port: int, proc_root: Path) -> Optional[int]:
 def _supervising_session(entry: Path, proc_root: Path) -> Optional[int]:
     """The pid of the live oscmix-session that spawned ``entry``, or None.
 
-    The session runs ``alsaseqio <client>:1 oscmix``; alsaseqio forks
+    The session runs ``alsaseqio -x <client>:1 oscmix``; alsaseqio forks
     and execs oscmix in the original process, so the backend's parent is
     the session itself. A parent that is gone -- the backend reparented
     to init or a subreaper -- or that is not an oscmix-session leaves
@@ -264,9 +270,14 @@ def _supervising_session(entry: Path, proc_root: Path) -> Optional[int]:
     return int(parent) if "oscmix-session" in names else None
 
 
-def _still_stale(pid: int, port: int, proc_root: Path) -> bool:
-    """Recheck the target after a pidfd pins its process identity."""
-    return (socket_owner(port, proc_root) == pid
+def _still_stale(pid: int, path: Path, device: Device, proc_root: Path) -> bool:
+    """Recheck all association facts after a pidfd pins the process."""
+    try:
+        holder = control_holder(path, proc_root)
+    except (OSError, ValueError):
+        return False
+    return (holder is not None and holder.pid == pid and holder.oscmix
+            and holder.client == device.client and holder.serial == device.serial
             and pid in find_stale_backends(proc_root)
             and _supervising_session(proc_root / str(pid), proc_root) is None)
 

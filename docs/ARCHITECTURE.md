@@ -97,15 +97,15 @@ acyclic graph.
 | `reconcile` | `desired` / `observed` / `plan`: what should be written, in what order, and why |
 | `observation` | latest decoded classification for a fixed expectation set and one observation window; matches are revocable, and no observation performs a write |
 | `dump` | the other direction: what the device reports, recovered as routes and settings and rendered as a `routing.conf` |
-| `backend` | the one place that opens a socket to the device; its `Traits` name the upstream behaviour the timing constants work around |
+| `backend` | checked ODK1 connections, bounded leases/queues and provenance; shared read-only identity from `diagnostics` before connecting |
 | `streams` | observe the exact interface's active ALSA/USB playback mode and enforce measured playback limits before write phases; no PCM or clock changes |
-| `diagnostics` | read-only port, backend identity and service inspection, shared by status and launcher |
-| `desktop` | inspect the existing upstream GTK executable, schema and saved connection without changing settings |
+| `diagnostics` | read-only socket, exact backend/bridge/device identity and service inspection, shared by commands, status and launcher; never opens the control protocol |
+| `desktop` | inspect the matching upstream GTK executable through its display-free protocol-version command |
 | `status` | versioned read-only runtime report for source and native installations; no OSC requests or service activation |
 | `preview` | compare two partial desk declarations for omitted matrix paths and changed link requirements |
 | `routing` | send a plan in two phases, with the link barrier between them |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
-| `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and say who holds a port and which interface that backend bridges |
+| `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and associate the listening control inode with its executable and exclusive ALSA bridge |
 | `pipewire` | generate named virtual sinks from the same config |
 | `locking` | the lock every writer of one interface holds: where it lives, how it is opened, how long it is waited for |
 | `marker` | which profile is in effect, remembered beside the config: read, written through a rename, removed |
@@ -163,8 +163,10 @@ oscmix only learns a pair is linked when the device echoes the change
 back over MIDI, and a `/mix` write that overtakes that echo is evaluated
 against the stale flag ([ADR 0001](decisions/0001-two-phase-routing-apply.md)).
 
-The barrier waits for the echo, or for a fixed settle when the receive
-port is held by the mixer GUI and the echo cannot be observed.
+The barrier waits for device-origin reports on the operation connection.
+GTK has its own subscription and cannot take away the desk receive path.
+A quiet device can time out without confirmation; connection failure cannot
+be translated into silence or a blind write.
 A contradicted link, cancellation or receive error stops dependent writes
 with exact sent/pending paths. Background link sync uses the completed verifier
 result; no internal observation callback writes inside an OSC delivery.
@@ -172,8 +174,23 @@ result; no internal observation callback writes inside an OSC delivery.
 ## The two seams
 
 **`backend`** is the only module that opens a socket. Everything above it
-takes a `Backend` argument, which is what lets the whole apply and verify
-path be driven by a fake in tests.
+borrows the operation owner's `Control` connection. The owner takes the file
+lock, connects to the checked kernel peer and acquires a backend lease, then
+keeps both across every write, observation and repair. Routing and verification
+never select a transport, reconnect or acquire another lease. Profile switch
+and main-desk restore use one activation path; the acknowledged operation end
+precedes marker persistence under the still-held file lock. Disconnect/failed
+completion leaves that marker unchanged. See [ADR 0030](decisions/0030-backend-owned-control.md).
+
+The connection filters backend-derived cache reports out of hardware
+observations and preserves each decoded delivery until its consumer finishes
+it. Read actions carry the connected serial and epoch into their result;
+they do not resolve snapshot identity again after the read. Their observed
+values replace earlier reports, rather than retaining the first report.
+Status remains file/procfs/service inspection and opens no control connection.
+The dependency graph is acyclic: `backend` may call read-only `diagnostics`,
+which uses `process`, `discovery` and pure runtime-path selection from `locking`.
+Neither diagnosis nor planning imports a command that writes hardware.
 
 **`devices`** is the only place that knows a device exists. The model is
 indexed by device from the first line (`registers.Device`), so a second

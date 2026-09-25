@@ -32,8 +32,6 @@ def route_config(**kwargs):
 def recorded(monkeypatch, reports):
     backend = RecordingBackend(reports)
     backend.traits = OSCMIX
-    monkeypatch.setattr(routing, "loopback", lambda *_: backend)
-    monkeypatch.setattr(verify, "loopback", lambda *_: backend)
     return backend
 
 
@@ -59,7 +57,7 @@ def test_other_pin_repair_cannot_reset_either_route_volume(monkeypatch, value, i
     backend = recorded(monkeypatch, reports)
     config = route_config(channels=[ChannelSetting("input", 3, "gain", 6.)])
     if intent is ApplyIntent.REPAIR:
-        verify.verify_and_repair(config)
+        verify.verify_and_repair(config, backend)
     else:
         assert verify.reconcile_now(config, "reload", backend=backend)
     assert ("/input/3/gain", "f", (6.,)) in backend.sent
@@ -73,26 +71,21 @@ def test_other_pin_repair_cannot_reset_either_route_volume(monkeypatch, value, i
 def test_starting_values_belong_only_to_initial_or_explicit_apply(monkeypatch, intent, pinned):
     backend = recorded(monkeypatch, lambda _: LINKS)
     config = route_config(policies={("output", "volume"): PIN} if pinned else {})
-    routing.apply_routing(config, 9000, backend=backend, intent=intent,
-                          confirmed=[path for path, _, _ in LINKS])
+    routing.apply_routing(config, backend, intent=intent, confirmed=[path for path, _, _ in LINKS])
     expected = pinned or intent in (ApplyIntent.INITIAL, ApplyIntent.EXPLICIT)
     assert [p for p, _, _ in backend.sent if p.endswith("/volume")] == (
         ["/output/5/volume", "/output/6/volume"] if expected else [])
 
 
 @pytest.mark.parametrize("pinned", [False, True])
-@pytest.mark.parametrize("blind", [False, True])
-def test_mix_reapply_obeys_effective_volume_policy(monkeypatch, pinned, blind):
+def test_mix_reapply_obeys_effective_volume_policy(monkeypatch, pinned):
     backend = recorded(monkeypatch, lambda _: LINKS)
     config = route_config(policies={("output", "volume"): PIN} if pinned else {})
-    if blind:
-        routing.blind_reapply_mix(config)
-    else:
-        routing.send_mix(config)
+    routing.send_mix(config, backend)
     assert backend.sent == [("/mix/5/playback/1", "fi", (0., 0))] + (
         [("/output/5/volume", "f", (-6.,)), ("/output/6/volume", "f", (-6.,))]
         if pinned else [])
-    assert backend.dumps == int(blind)
+    assert backend.dumps == 0
 
 
 @pytest.mark.parametrize("value", [None, 0, 1, 2])
@@ -136,14 +129,12 @@ def test_scalar_write_cannot_change_a_retained_stereo_partner(monkeypatch, unlin
                               ChannelSetting("output", 6, "volume", -6.)])
     confirmed = ["/playback/1/stereo", "/output/5/stereo"]
     if unlinked:
-        routing.apply_routing(config, 9000, backend=backend,
-                              leave_alone=["/output/6/volume"],
+        routing.apply_routing(config, backend, leave_alone=["/output/6/volume"],
                               intent=ApplyIntent.RECONCILE, confirmed=confirmed)
         assert ("/output/5/volume", "f", (-6.,)) in backend.sent
     else:
         with pytest.raises(WriteFailed, match="retained stereo partner"):
-            routing.apply_routing(config, 9000, backend=backend,
-                                  leave_alone=["/output/6/volume"],
+            routing.apply_routing(config, backend, leave_alone=["/output/6/volume"],
                                   intent=ApplyIntent.RECONCILE, confirmed=confirmed)
         assert backend.sent == []
 
@@ -190,29 +181,18 @@ def test_explicit_profile_remains_strict_and_persists_after_unverified_apply(
 def test_full_restart_reasserts_starting_value_after_selective_reconcile(monkeypatch):
     backend = recorded(monkeypatch, lambda _: [("/output/5/volume", "f", (-30.,))])
     config = Config(channels=[ChannelSetting("output", 5, "volume", -6.)])
-    routing.apply_routing(config, 9000, backend=backend)
+    routing.apply_routing(config, backend)
     assert verify.reconcile_now(config, "reload", backend=backend)
     assert backend.sent == [("/output/5/volume", "f", (-6.,))]
-    routing.apply_routing(config, 9000, backend=backend)
+    routing.apply_routing(config, backend)
     assert backend.sent == [("/output/5/volume", "f", (-6.,))] * 2
 
 
 def test_delayed_volume_feedback_stays_remembered(monkeypatch):
     backend = recorded(monkeypatch, lambda _: [])
 
-    def listen():
-        batches = iter([LINKS, [("/output/5/volume", "f", (-30.,))]])
-
-        class Listener:
-            def messages(self, _timeout):
-                yield from next(batches, [])
-
-            def close(self):
-                pass
-
-        return Listener()
-
-    monkeypatch.setattr(backend, "listen", listen)
+    batches = iter([LINKS, [("/output/5/volume", "f", (-30.,))]])
+    monkeypatch.setattr(backend, "messages", lambda _timeout: iter(next(batches, [])))
     assert verify.reconcile_now(route_config(), "delayed feedback", backend=backend)
     assert backend.sent == [("/mix/5/playback/1", "fi", (0., 0))]
 
@@ -230,9 +210,10 @@ def test_reload_waits_for_startup_verification_without_resetting_missing_remembe
     path.write_text("[output:5]\nvolume=-6\n")
     config = config_mod.load_config(path)
     backend = recorded(monkeypatch, lambda _: [])
+    monkeypatch.setattr(reload, "connect_backend", lambda *_a, **_k: backend)
     statuses = []
     monkeypatch.setattr(reload, "sd_notify", statuses.append)
-    routing.apply_routing(config, 9000, backend=backend)
+    routing.apply_routing(config, backend)
 
     class StartupVerifier:
         alive = True
@@ -242,7 +223,7 @@ def test_reload_waits_for_startup_verification_without_resetting_missing_remembe
 
         def join(self, timeout):
             assert timeout > 0
-            verify.verify_and_repair(config)
+            verify.verify_and_repair(config, backend)
             path.write_text("[output:5]\nvolume=-12\n")
             self.alive = False
 

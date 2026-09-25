@@ -14,11 +14,12 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 import pytest
-from support import fake_proc, free_udp_port, read_until_ready
+from support import control_owner, fake_proc, free_udp_port, read_until_ready
 
 from oscmix_desk import osc
 
@@ -51,86 +52,8 @@ UDP_HEADER = (
     "retrnsmt   uid  timeout inode ref pointer drops\n"
 )
 
-STUB_ALSASEQIO = """\
-#!/usr/bin/env python3
-import ctypes, json, os, signal, socket, sys
-
-stub_dir = os.environ["STUB_DIR"]
-port = int(os.environ["STUB_PORT"])
-reply_port = int(os.environ.get("STUB_REPLY_PORT", "0"))
-
-# Die with the session that started us. Without this the stub outlives
-# any run that does not shut down cleanly -- an interrupted pytest, a
-# SIGKILLed session -- and sits in its 0.2s recv loop forever holding a
-# UDP port. Three of them were found alive 21 hours after the run that
-# started them. SIGKILL rather than SIGTERM because one test installs
-# SIG_IGN for SIGTERM on purpose, and that stub is exactly the one most
-# likely to be left behind.
-#
-# PR_SET_PDEATHSIG is 1. It is preserved across exec, so setting it here
-# is correct, and it is armed before anything else so the window where
-# the parent can die unnoticed is as small as possible -- the getppid
-# check below closes what is left of it.
-try:
-    ctypes.CDLL("libc.so.6", use_errno=True).prctl(1, signal.SIGKILL)
-    if os.getppid() == 1:      # parent died between fork and prctl
-        sys.exit(0)
-except OSError:
-    pass                       # not Linux, or no libc: leak rather than fail
-
-with open(os.path.join(stub_dir, "pid"), "w") as f:
-    f.write(str(os.getpid()))
-
-with open(os.path.join(stub_dir, "argv.json"), "w") as f:
-    json.dump(sys.argv[1:], f)
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind(("127.0.0.1", port))
-sock.settimeout(0.2)
-
-# The signal disposition has to be in place before the port is
-# advertised: the tests treat that entry as "the backend is up" and send
-# SIGTERM right after seeing it. Installed later, a SIGTERM landing in
-# between would kill this stub with the default disposition instead of
-# being ignored, and the SIGTERM->SIGKILL escalation would never be
-# exercised.
-running = [True]
-if os.environ.get("STUB_IGNORE_TERM"):
-    signal.signal(signal.SIGTERM, signal.SIG_IGN)
-else:
-    signal.signal(signal.SIGTERM, lambda *a: running.__setitem__(0, False))
-
-# Only now advertise the port in the fake /proc/net/udp.
-with open(os.environ["STUB_PROC_UDP"], "w") as f:
-    f.write(os.environ["STUB_PROC_UDP_HEADER"])
-    f.write("  100: 0100007F:%04X 00000000:0000 07 00000000:00000000 "
-            "00:00000000 00000000  1000        0 1 2 0 0\\n" % port)
-
-# And the link that proves this process holds it. Since 0.6.7 the
-# session accepts a bound port only from an owner it can resolve, so
-# the stub has to look like a real backend in /proc as well.
-proc_root = os.path.dirname(os.path.dirname(os.environ["STUB_PROC_UDP"]))
-handles = os.path.join(proc_root, str(os.getpid()), "fd")
-os.makedirs(handles, exist_ok=True)
-if not os.path.lexists(os.path.join(handles, "3")):
-    os.symlink("socket:[1]", os.path.join(handles, "3"))
-
-stored = []
-log = open(os.path.join(stub_dir, "datagrams.hex"), "a")
-while running[0]:
-    try:
-        data, _ = sock.recvfrom(65536)
-    except socket.timeout:
-        continue
-    log.write(data.hex() + "\\n")
-    log.flush()
-    if data.startswith(b"/refresh") and reply_port:
-        for register in stored:
-            sock.sendto(register, ("127.0.0.1", reply_port))
-    else:
-        stored.append(data)
-sys.exit(0)
-"""
+STUB_ALSASEQIO = (Path(__file__).parent / "session_backend.py").read_text()
+UNIX_HEADER = "Num RefCount Protocol Flags Type St Inode Path\n"
 
 ROUTING_CONF = """\
 [osc]
@@ -151,7 +74,7 @@ def make_env(tmp_path, *, with_client, with_usb, port=None, reply_port=None):
     (proc_root / "net").mkdir(parents=True)
     if with_client:
         (proc_root / "asound" / "seq" / "clients").write_text(SEQ_CLIENTS)
-    (proc_root / "net" / "udp").write_text(UDP_HEADER)
+    (proc_root / "net" / "unix").write_text(UNIX_HEADER)
 
     sysfs = tmp_path / "sysfs"
     sysfs.mkdir()
@@ -163,16 +86,21 @@ def make_env(tmp_path, *, with_client, with_usb, port=None, reply_port=None):
 
     stub_dir = tmp_path / "stub"
     stub_dir.mkdir()
-    stub = stub_dir / "alsaseqio-stub"
+    stub = stub_dir / "alsaseqio"
     stub.write_text(STUB_ALSASEQIO)
     stub.chmod(0o755)
-    backend = stub_dir / "oscmix-dummy"
+    backend = stub_dir / "oscmix"
     backend.write_text("#!/bin/sh\nexit 0\n")
     backend.chmod(0o755)
 
     env = dict(os.environ)
     env.pop("NOTIFY_SOCKET", None)
+    shared = tempfile.mkdtemp(prefix="integration-",
+                              dir=Path(os.environ["XDG_RUNTIME_DIR"]).parent)
     env.update({
+        "OSCMIX_LOCK_DIR": shared,
+        "STUB_TESTS_DIR": str(Path(__file__).parent),
+        "STUB_SOURCE_DIR": str(PROJECT_ROOT / "src"),
         # Keep the test hermetic: never read the real user config.
         "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
         "OSCMIX_PROC_ROOT": str(proc_root),
@@ -183,13 +111,10 @@ def make_env(tmp_path, *, with_client, with_usb, port=None, reply_port=None):
         "STUB_DIR": str(stub_dir),
         "STUB_PORT": str(port or 0),
         "STUB_REPLY_PORT": str(reply_port or 0),
-        "STUB_PROC_UDP": str(proc_root / "net" / "udp"),
-        "STUB_PROC_UDP_HEADER": UDP_HEADER,
+        "STUB_PROC_UNIX": str(proc_root / "net" / "unix"),
         # Background re-apply and verification: no need to sit through
         # the real device's multi-second register sync.
         "OSCMIX_LINK_TIMEOUT": "0.2",
-        "OSCMIX_LINK_SETTLE": "0.1",
-        "OSCMIX_LINK_SYNC_DELAY": "0.2",
     })
     _enable_subprocess_coverage(env)
     _guard_systemctl(tmp_path, env)
@@ -303,9 +228,8 @@ def test_full_startup_verification_notify_and_shutdown(tmp_path, session_mod):
 
         # The configured ports must reach the real backend as -r/-s flags.
         argv = json.loads((stub_dir / "argv.json").read_text())
-        assert argv == ["42:1", str(backend),
-                        "-r", "udp!127.0.0.1!%d" % port,
-                        "-s", "udp!127.0.0.1!%d" % recv_port]
+        assert argv == ["-x", "42:1", str(backend), "-c",
+                        str(Path(env["OSCMIX_LOCK_DIR"]) / "2a39-3fd9-00000000.control")]
 
         # Byte-exact routing messages, in order: the links first, then the
         # mix matrix, then the verification's state request, and finally
@@ -460,8 +384,8 @@ def test_sigterm_ignoring_backend_gets_sigkilled(tmp_path):
     try:
         assert wait_for(lambda: (stub_dir / "argv.json").exists())
         # Wait until the backend is considered up before stopping it.
-        assert wait_for(lambda: "0100007F" in Path(
-            env["STUB_PROC_UDP"]).read_text())
+        assert wait_for(lambda: "00010000 0005 01" in Path(
+            env["STUB_PROC_UNIX"]).read_text())
         proc.send_signal(signal.SIGTERM)
         # SIGTERM is ignored by the stub; after the 5s grace period the
         # supervisor must escalate to SIGKILL and still exit cleanly.
@@ -502,31 +426,34 @@ def test_dry_run_prints_plan_without_starting(tmp_path):
     config.write_text(ROUTING_CONF.format(port=port, recv_port=recv_port))
     result = run_session(["--config", str(config), "--dry-run"], env)
     assert result.returncode == 0
-    assert "would run: alsaseqio 42:1" in result.stdout
+    assert "would run: alsaseqio -x 42:1" in result.stdout
     assert "/mix/5/playback/1" in result.stdout
     assert not (stub_dir / "argv.json").exists()  # nothing was spawned
 
 
-def launch_env(tmp_path, *, connected=True):
-    """A real launcher process with isolated process and desktop metadata."""
+def launch_env(tmp_path, request, *, connected=True):
+    """Real launcher, isolated identity files and a headless companion stand-in."""
     env, _, _ = make_env(tmp_path, with_client=connected, with_usb=connected)
-    proc = fake_proc(tmp_path / 'launch-proc',
-                     boxes=[(42, '00000000')] if connected else [],
-                     bound=[(7222, 'oscmix', 42)] if connected else [])
-    gsettings = tmp_path / 'guard-bin/gsettings'
-    gsettings.write_text("#!/bin/sh\ncat <<'SETTINGS'\n"
-                        "oscmix send-host '127.0.0.1'\noscmix send-port 7222\n"
-                        "oscmix recv-host '127.0.0.1'\noscmix recv-port 8222\nSETTINGS\n")
-    gsettings.chmod(0o755)
+    proc = fake_proc(tmp_path / 'launch-proc', boxes=[(42, '00000000')] if connected else [])
+    if connected:
+        endpoint = Path(env['OSCMIX_LOCK_DIR']) / '2a39-3fd9-00000000.control'
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        request.addfinalizer(sock.close)
+        sock.bind(str(endpoint))
+        sock.listen(1)
+        control_owner(proc, endpoint, 40000, 42)
+    gtk = tmp_path / 'guard-bin/oscmix-gtk'
+    gtk.write_text('#!/bin/sh\nif [ "$1" = --control-version ]; then echo ODK1; fi\n')
+    gtk.chmod(0o755)
     config = tmp_path / 'launcher.conf'
     config.write_text('')
     env.update(OSCMIX_PROC_ROOT=str(proc), OSCMIX_CONFIG=str(config),
-               OSCMIX_NO_NOTIFY='1', OSCMIX_BACKEND_WAIT='0.3', OSCMIX_BIN_GTK='/bin/true')
+               OSCMIX_NO_NOTIFY='1', OSCMIX_BACKEND_WAIT='0.3', OSCMIX_BIN_GTK=str(gtk))
     return env
 
 
-def test_launcher_exits_one_without_device(tmp_path):
-    env = launch_env(tmp_path, connected=False)
+def test_launcher_exits_one_without_device(tmp_path, request):
+    env = launch_env(tmp_path, request, connected=False)
     result = subprocess.run(
         [sys.executable, str(LAUNCH_BIN)],
         env=env, capture_output=True, text=True, timeout=30,
@@ -535,8 +462,8 @@ def test_launcher_exits_one_without_device(tmp_path):
     assert "not connected" in result.stderr
 
 
-def test_launcher_reuses_a_matching_backend_and_execs_gui(tmp_path):
-    env = launch_env(tmp_path)
+def test_launcher_reuses_a_matching_backend_and_execs_gui(tmp_path, request):
+    env = launch_env(tmp_path, request)
     result = subprocess.run(
         [sys.executable, str(LAUNCH_BIN)],
         env=env, capture_output=True, text=True, timeout=30,
@@ -545,10 +472,10 @@ def test_launcher_reuses_a_matching_backend_and_execs_gui(tmp_path):
     assert not (tmp_path / 'systemctl-guard.log').exists()
 
 
-def test_launcher_reports_a_failing_exec_instead_of_crashing(tmp_path):
+def test_launcher_reports_an_unexecutable_companion_before_starting_anything(tmp_path, request):
     # os.execv only returns by failing. A desktop-icon launch must end in
     # a readable error, not a traceback.
-    env = launch_env(tmp_path)
+    env = launch_env(tmp_path, request)
     broken = tmp_path / "broken-gtk"
     broken.write_text("#!/nonexistent/interpreter\n")
     broken.chmod(0o755)
@@ -562,7 +489,7 @@ def test_launcher_reports_a_failing_exec_instead_of_crashing(tmp_path):
         env=env, capture_output=True, text=True, timeout=30,
     )
     assert result.returncode == 1
-    assert "could not execute" in result.stderr
+    assert "cannot identify the coordinated GTK companion" in result.stderr
     assert "Traceback" not in result.stderr
     assert not (tmp_path / 'systemctl-guard.log').exists()
 

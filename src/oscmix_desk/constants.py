@@ -17,30 +17,6 @@ DEFAULT_OSC_RECV_PORT = 8222
 DEFAULT_DEVICE_TIMEOUT = 30.0
 PORT_READY_TIMEOUT = 10.0
 CHILD_STOP_GRACE = float(os.environ.get("OSCMIX_STOP_GRACE", "5"))
-# Bind the receive port, then wait this long before asking for a dump.
-#
-# Upstream writes to a *connected* UDP socket, and `writeosc` in main.c
-# ignores ECONNREFUSED. While nothing is bound on the receive port, each
-# of the ~880 meter datagrams a second draws an ICMP port-unreachable
-# that Linux queues as a pending socket error, and the next write fails
-# with exactly that errno -- silently, by design, because the normal case
-# is "the GUI is not running and we do not care".
-#
-# So the first datagram after a bind is spent absorbing that error. And
-# the first datagram after a /refresh is the one thing setrefresh()
-# flushes by hand: every /playback/<n>/stereo, all twenty, in one bundle.
-# Bind and ask immediately and they are gone.
-#
-# Measured on a UCX II, twelve trials per gap: 0.0 s delivered them 4
-# times out of 12, 0.1 s and 0.3 s twelve out of twelve. The mechanism
-# needs one datagram, which at the meter rate is about 1.1 ms, so 0.1 s
-# is roughly ninety times what it takes -- a margin, not a tuned value.
-#
-# Nothing noticed for two releases because /playback/* was wrongly
-# classified as never-reported, so losing it was not counted as a
-# problem. Fixing that classification is what made this visible.
-DUMP_LISTEN_SETTLE = float(os.environ.get("OSCMIX_DUMP_SETTLE", "0.1"))
-
 VERIFY_TIMEOUT = 10.0
 VERIFY_SETTLE = 0.5
 # oscmix only learns that an output pair is stereo-linked when the *device*
@@ -62,32 +38,11 @@ VERIFY_SETTLE = 0.5
 # audio works, and again after that sync, when oscmix's link state is
 # guaranteed correct.
 LINK_ECHO_TIMEOUT = float(os.environ.get("OSCMIX_LINK_TIMEOUT", "1.5"))
-LINK_SETTLE = float(os.environ.get("OSCMIX_LINK_SETTLE", "1.5"))
-# Used when the receive port is taken and the sync cannot be observed --
-# which is the *normal* desktop case, because oscmix-gtk holds that port
-# whenever the mixer window is open. The session cannot see the dump, so
-# it waits this long and then rewrites the mix from what it hopes is a
-# synchronised link state.
-#
-# 20 -> 5 (2026-08-17), on a measurement rather than a guess. The 20 s
-# came from the same unrecorded observation as the "15-20 s dump" figure.
-# tests/data/cold-plug-timeline.json is that observation done properly:
-# a real USB replug, captured on both OSC ports so a request can be told
-# apart from a device push. The registers this wait exists for --
-# /output/<n>/stereo -- came back 0.01 s after the /refresh that asked
-# for them, 2.26 s after the backend started, and the whole dump was over
-# by ~4 s with nothing further in the remaining 272 s.
-#
-# 5 s is still more than twice the measurement. It is not tuned to the
-# number; it is the smallest round value that keeps a comfortable margin,
-# because the cost of being too short (a mix rewritten against a stale
-# link state) is worse than the cost of being too long (a few seconds
-# before the routing is re-established).
-#
-# Raise it with OSCMIX_LINK_SYNC_DELAY if a slower device needs it, and
-# say so -- that would mean this measurement does not generalise beyond
-# a UCX II, which is worth knowing.
-LINK_SYNC_BLIND_DELAY = float(os.environ.get("OSCMIX_LINK_SYNC_DELAY", "5"))
+# ODK1 server limits, qualified against the versioned C backend. Acquisition
+# precedes a lease whose total duration cannot be extended by keepalives.
+CONTROL_ACQUIRE_TIMEOUT = 30.0
+CONTROL_LEASE_TOTAL = 90.0
+CONTROL_ACK_TIMEOUT = 2.0
 
 LEVEL_MIN, LEVEL_MAX = -65.0, 6.0
 # An unlinked pair route reaches oscmix's setlevel() branch that halves the
@@ -161,32 +116,15 @@ SWITCH_LOCK_WAIT = 30.0
 
 
 def startup_budget(device_timeout: float = DEFAULT_DEVICE_TIMEOUT) -> float:
-    """Worst-case seconds from process start to ``READY=1``.
+    """Bound foreground startup, including contention and the server lease.
 
-    Five waits govern this path and two systemd deadlines have to
-    contain it. The relationship used to live in a comment in the unit
-    file, where nothing checked it and `--timeout` -- a command-line
-    argument in `ExecStart` -- could push the start past
-    `TimeoutStartSec` and have the unit killed *mid-apply*. That is a
-    torn routing state reached by editing a number.
-
-    The terms, in the order `run_session` reaches them:
-
-    * ``device_timeout``    -- ``wait_for_device``
-    * ``STALE_BACKEND_SETTLE`` -- ``_cleanup_stale_backend``
-    * ``PORT_READY_TIMEOUT``   -- ``_await_backend_port``
-    * ``SWITCH_LOCK_WAIT``  -- ``take_device_lock`` in
-      ``_apply_and_verify``: the start has waited for the device lock
-      since 0.6.5, and until 0.6.9 the budget did not say so
-    * the link barrier      -- ``LINK_ECHO_TIMEOUT`` when the receive
-      port is observable, ``LINK_SETTLE`` when the mixer GUI holds it.
-      Never both, so the worst case is the larger.
-
-    Verification is deliberately *not* in here: it runs on a daemon
-    thread after ``READY=1``, which is the whole point of deferring it.
+    Device discovery, orphan cleanup, endpoint readiness and file-lock wait
+    precede connecting/HELLO and lease acquisition. Once acquired, all write
+    phases (including their link barrier) must finish within the server's
+    hard lease limit. Include one last ACK timeout after that deadline.
+    Background verification shares the same lease, after READY; it cannot
+    extend this bound. Local process scheduling adds the unit's margin.
     """
-    return (device_timeout
-            + STALE_BACKEND_SETTLE
-            + PORT_READY_TIMEOUT
-            + SWITCH_LOCK_WAIT
-            + max(LINK_ECHO_TIMEOUT, LINK_SETTLE))
+    return (device_timeout + STALE_BACKEND_SETTLE + PORT_READY_TIMEOUT
+            + SWITCH_LOCK_WAIT + CONTROL_ACQUIRE_TIMEOUT + CONTROL_LEASE_TOTAL
+            + 3 * CONTROL_ACK_TIMEOUT)

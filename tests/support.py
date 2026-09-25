@@ -104,8 +104,20 @@ def _fake_process(directory, pid, comm, ppid, argv, socket_inode=None):
     (entry / "stat").write_text("%d (%s) S %d 0 0\n" % (pid, comm, ppid))
     (entry / "cmdline").write_bytes(
         b"\0".join(a.encode() for a in argv) + b"\0")
+    (entry / "exe").symlink_to("/usr/bin/" + comm)
     if socket_inode is not None:
         (entry / "fd" / "3").symlink_to("socket:[%d]" % socket_inode)
+
+
+def control_owner(proc, endpoint, pid, client, *, comm="oscmix", parent=1):
+    """Add a coordinated listener and exclusive bridge to a fake /proc."""
+    _fake_process(proc, pid, comm, parent, [comm, "-c", str(endpoint)], 100501)
+    if client is not None:
+        _fake_process(proc, pid + 1, "alsaseqio", pid,
+                      ["alsaseqio", "-x", "%d:1" % client, "oscmix", "-c", str(endpoint)])
+    (proc / "net/unix").write_text(
+        "Num RefCount Protocol Flags Type St Inode Path\n"
+        "0: 2 0 00010000 0005 01 100501 " + str(endpoint) + "\n")
 
 def proc_with_ports(directory, *ports):
     """A /proc in which an oscmix of this user holds each of ``ports``.
@@ -200,4 +212,3 @@ def started_with(config, device=None, osc_port=None, serial=None):
     if serial is not None:
         config = replace(config, serial=serial)
     return replace(config, overrides=said)
-

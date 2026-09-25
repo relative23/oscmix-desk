@@ -5,7 +5,7 @@ import socket
 from dataclasses import replace
 
 import pytest
-from support import fake_proc, write_config
+from support import write_config
 from test_streams import recorded, write_card
 from two_boxes import A
 
@@ -15,8 +15,8 @@ from oscmix_desk.model import CommandLine, Config
 
 
 @pytest.fixture
-def world(tmp_path, monkeypatch):
-    proc = fake_proc(tmp_path / 'proc', boxes=[A], bound=[(7222, 'oscmix', A[0])])
+def world(tmp_path, monkeypatch, endpoint):
+    _config, _control, proc = endpoint
     monkeypatch.setenv('OSCMIX_PROC_ROOT', str(proc))
     monkeypatch.setattr(status, 'resolve_binary', lambda *_: None)
     monkeypatch.setattr(status, 'MAINTENANCE_DIR', tmp_path)
@@ -24,7 +24,7 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setattr(socket, 'socket', lambda *_a, **_kw: pytest.fail('status opened a socket'))
     monkeypatch.setattr(cli, 'run_session', lambda *_: pytest.fail('status started a session'))
     path = tmp_path / 'routing.conf'
-    path.write_text('[route:main]\nplayback=1/2\noutput=5/6\n')
+    path.write_text('[device]\nserial=24216011\n[route:main]\nplayback=1/2\noutput=5/6\n')
     return path, proc
 
 
@@ -33,14 +33,16 @@ def test_json_describes_the_observation_without_claiming_verified(world, capsys)
     write_card(proc, recorded())
     assert cli.main(['--config', str(path), '--status', '--json']) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report['schema_version'] == 1
+    assert report['schema_version'] == 2
     assert report['read_only'] is True
     assert report['verification'] == 'not-performed'
     sections = report['sections']
     assert sections['backend']['state'] == 'ready'
     assert sections['backend']['device']['serial'] == A[1]
     assert sections['playback']['rate'] == 48000
-    assert sections['receive_port']['state'] == 'free'
+    assert sections['backend']['endpoint'].endswith('24216011.control')
+    assert sections['backend']['pid'] == 101
+    assert 'receive_port' not in sections
     assert sections['desktop']['binary'] is None
     assert sections['service']['state'] == 'unavailable'
 
@@ -88,20 +90,18 @@ def test_active_profile_and_selected_file_are_reported_without_changing_them(wor
     assert section['selected_file'] == str(profile)
 
 
-def test_occupied_receive_port_reports_only_an_identified_owner(world, monkeypatch):
+def test_unidentified_endpoint_is_unknown(world):
     path, proc = world
-    proc = fake_proc(proc.parent / 'gui-proc', boxes=[A], bound=[(8222, 'oscmix-gtk', None)])
-    monkeypatch.setenv('OSCMIX_PROC_ROOT', str(proc))
-    section = status.collect_status(path, CommandLine())['sections']['receive_port']
-    assert section['state'] == 'occupied'
-    assert section['owner_pid'] == 40000
-    assert 'close' in section['detail']
+    (proc / '101/fd/3').unlink()
+    section = status.collect_status(path, CommandLine())['sections']['backend']
+    assert section['state'] == 'unknown'
+    assert 'no identified listening owner' in section['detail']
 
 
-def test_unreadable_proc_is_unknown_not_a_free_receive_port(world):
+def test_unreadable_proc_is_unknown_not_absence(world):
     path, proc = world
-    (proc / 'net/udp').unlink()
-    section = status.collect_status(path, CommandLine())['sections']['receive_port']
+    (proc / 'net/unix').unlink()
+    section = status.collect_status(path, CommandLine())['sections']['backend']
     assert section['state'] == 'unknown'
 
 
@@ -179,12 +179,15 @@ def test_incomplete_component_maintenance_and_failed_inspection_are_distinct(wor
 @pytest.mark.parametrize('same', [False, True])
 def test_running_binary_is_compared_with_resolved_binary(world, monkeypatch, same):
     path, proc = world
-    selected = path.parent / 'selected-backend'
+    selected = path.parent / 'new' / 'oscmix'
+    selected.parent.mkdir()
     selected.write_bytes(b'new-backend')
-    running = selected if same else path.parent / 'old-backend'
+    running = selected if same else path.parent / 'old' / 'oscmix'
     if not same:
+        running.parent.mkdir()
         running.write_bytes(b'previous-backend')
-    (proc / '40000/exe').symlink_to(running)
+    (proc / '101/exe').unlink()
+    (proc / '101/exe').symlink_to(running)
     monkeypatch.setattr(status, 'resolve_binary', lambda *_: str(selected))
     info = status.collect_status(path, CommandLine())['sections']['backend']['running_file']
     assert info['state'] == 'observed'
@@ -194,7 +197,7 @@ def test_running_binary_is_compared_with_resolved_binary(world, monkeypatch, sam
 
 def test_status_can_report_a_valid_installed_desktop(world, monkeypatch):
     path, _ = world
-    monkeypatch.setattr(status, 'inspect_desktop', lambda _: DesktopStatus('/gtk', None))
+    monkeypatch.setattr(status, 'inspect_desktop', lambda: DesktopStatus('/gtk', None))
     assert status.collect_status(path, CommandLine())['sections']['desktop']['problem'] is None
 
 

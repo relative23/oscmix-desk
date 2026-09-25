@@ -54,8 +54,8 @@ def test_another_quantity_is_not_confirmed(tmp_path, monkeypatch,
     assert [write.path for write in plan.writes] == [path]
     backend = RecordingBackend(reports=lambda _sent: [(path, "f", (got,))])
     monkeypatch.setattr(verify.time, "sleep", lambda _seconds: None)
-    result = verify.verify_routing(verify.expected_registers(config), 0, 0,
-                                  timeout=.002, device_model=UCX2, backend=backend)
+    result = verify.verify_routing(verify.expected_registers(config), backend,
+                                   timeout=.002, device_model=UCX2)
     assert result.confirmed == []
     assert result.mismatched == [path]
 
@@ -130,7 +130,8 @@ def test_an_invalid_gain_report_is_not_an_active_config(value):
 def test_snapshot_keeps_sub_tenth_changes_visible(monkeypatch, capsys):
     path = "/output/1/roomeq/delay"
     value = struct.unpack("!f", struct.pack("!f", .001))[0]
-    monkeypatch.setattr(reads, "_read_device", lambda _config: {path: (value,)})
+    monkeypatch.setattr(reads, "_read_device", lambda *_args: reads.DeviceRead(
+        {path: (value,)}, "00000000", "00" * 16))
     assert reads._snapshot(Config()) == 0
     row = capsys.readouterr().out.splitlines()[-1]
     assert row.startswith(path + " ")
@@ -151,9 +152,9 @@ def test_the_highest_q_report_exports_as_the_highest_q(tmp_path):
 def test_invalid_link_reports_do_not_release_either_barrier(monkeypatch, value):
     path = "/output/5/stereo"
     backend = RecordingBackend(reports=lambda _sent: [(path, "i", (value,))])
-    assert (routing.await_link_echo({path: 1}, 0, .01, backend=backend)
+    assert (routing.await_link_echo({path: 1}, backend, .01)
             is routing.LinkEcho.CONTRADICTED)
-    result = verify.verify_routing({path: ("i", (1,))}, 0, 0, .01, backend=backend)
+    result = verify.verify_routing({path: ("i", (1,))}, backend, .01)
     assert result.confirmed == []
     assert result.mismatched == [path]
 

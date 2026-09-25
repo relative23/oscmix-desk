@@ -24,33 +24,36 @@ Fireface.
 from __future__ import annotations
 
 import argparse
-import errno
 import json
 import math
 import os
 import re
 import shutil
-import socket
 import struct
 import subprocess
 import sys
 import tempfile
 import time
 import wave
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from measurement import build_evidence, observations
+
 from oscmix_desk import discover_config_path, load_config
+from oscmix_desk.backend import connect_backend
 from oscmix_desk.constants import LEVEL_MIN
 from oscmix_desk.discovery import (
-    built_backend_revision,
     device_firmware,
     resolve_device,
 )
 from oscmix_desk.errors import DeviceAmbiguous
-from oscmix_desk.osc import decode_osc, encode_osc, iter_osc_messages
+from oscmix_desk.locking import take_device_lock
 
 EXIT_SKIP = 77
 # How much louder an output must be when its own side carries the tone
@@ -69,7 +72,7 @@ MIN_ABOVE_BACKGROUND_DB = 12.0
 SILENCE_DB = -144.0
 TONE_SECONDS = 5.0
 TONE_HZ = 1000.0
-TONE_AMPLITUDE = 0.3
+TONE_AMPLITUDE = 0.003
 
 
 def write_tone(path: Path, left: bool, right: bool, rate: int = 48000) -> None:
@@ -88,82 +91,67 @@ def write_tone(path: Path, left: bool, right: bool, rate: int = 48000) -> None:
 
 
 class LevelReader:
-    """Collects ``/output/<n>/level`` reports from oscmix.
+    """Device reports and meters from one identified, shared ODK1 stream.
 
-    Binds the receive port directly. The mixer GUI holds it while it is
-    open, which is why this refuses to run rather than competing for
-    datagrams: a split stream would produce quietly wrong numbers.
+    Each source-pair measurement holds a backend lease for its complete
+    background/left/right/read-back sequence. No register is written here.
+    The file lock spans the full command; the connection never reconnects.
     """
 
-    def __init__(self, recv_port: int) -> None:
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("127.0.0.1", recv_port))
-        self.sock.settimeout(0.2)
-        #: `/hardware/dspvers`, when a dump has reported it; the evidence
-        #: records it next to the USB revision (see discovery.device_firmware).
+    def __init__(self, config, config_path, build_dir) -> None:
+        proc = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
+        interface = resolve_device(config.usb_id, config.device_name, config.serial, proc)
+        self.lock = take_device_lock(config_path, interface.key)
+        if self.lock is None:
+            raise OSError("hardware measurement device lock unavailable")
+        self.device = None
+        try:
+            self.device = connect_backend(config, config_path, sources=5)
+            self.evidence = build_evidence(self.device, build_dir, proc)
+        except BaseException:
+            self.close()
+            raise
         self.dspvers: Optional[object] = None
-        self.reports = 0            # any level message at all = backend alive
+        self.reports = 0
 
     def close(self) -> None:
-        self.sock.close()
+        if self.device is not None:
+            self.device.close()
+        self.lock.release()
 
     def peaks(self, seconds: float) -> Dict[int, float]:
-        """Highest peak level per output channel over ``seconds``."""
+        """Highest METERS-origin peak per output over the measured window."""
         result: Dict[int, float] = {}
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
-            try:
-                datagram, _ = self.sock.recvfrom(65536)
-            except socket.timeout:
-                continue
-            except OSError:
-                break
-            for message in iter_osc_messages(datagram):
-                try:
-                    path, _tags, args = decode_osc(message)
-                except (ValueError, struct.error):
+            for path, _tags, args, origin, _seq in observations(self.device, .2):
+                if (origin != 4 or not path.startswith("/output/")
+                        or not path.endswith("/level") or not args
+                        or not isinstance(args[0], float)):
                     continue
-                if not (path.startswith("/output/") and path.endswith("/level")):
+                parts = path.split("/")
+                if len(parts) != 4 or not parts[2].isdigit():
                     continue
-                if not args or not isinstance(args[0], float):
-                    continue
-                channel = int(path.split("/")[2])
-                peak = args[0]
-                if peak != peak:                               # NaN
-                    continue
-                self.reports += 1
+                channel, peak = int(parts[2]), args[0]
                 if peak == float("-inf"):
                     peak = SILENCE_DB
+                if not math.isfinite(peak):
+                    continue
+                self.reports += 1
                 result[channel] = max(result.get(channel, SILENCE_DB), peak)
         return result
 
-
-    def output_state(self, send_port: int, outputs: Sequence[int],
+    def output_state(self, outputs: Sequence[int],
                      seconds: float = 6.0) -> Dict[int, Dict[str, object]]:
-        """The fader and mute of each output, straight from the device.
-
-        A verdict that says "no audio here" without saying why is half a
-        measurement. The first real run of this tool reported outputs 1/2
-        as failing and blamed other audio on the bus; the actual cause
-        was ``/output/1/volume`` sitting at -65 dB, which is the fader
-        pulled shut. The tool could see that and did not say it.
-        """
+        """Latest device-origin fader/mute reports after a fresh request."""
         wanted = {"/output/%d/%s" % (channel, field): (channel, field)
                   for channel in outputs for field in ("volume", "mute")}
         state: Dict[int, Dict[str, object]] = {c: {} for c in outputs}
-        self.sock.sendto(encode_osc("/refresh"), ("127.0.0.1", send_port))
+        self.device.request_dump()
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
-            if all(len(fields) == 2 for fields in state.values()):
-                break
-            try:
-                datagram, _ = self.sock.recvfrom(65536)
-            except (socket.timeout, OSError):
-                continue
-            for message in iter_osc_messages(datagram):
-                try:
-                    path, _tags, args = decode_osc(message)
-                except (ValueError, struct.error):
+            for path, _tags, args, origin, _seq in observations(self.device, .2):
+                if origin != 1:
                     continue
                 if path == "/hardware/dspvers" and args:
                     self.dspvers = args[0]
@@ -171,15 +159,6 @@ class LevelReader:
                     channel, field = wanted[path]
                     state[channel][field] = args[0]
         return state
-
-
-def backend_revision() -> Optional[str]:
-    """The upstream oscmix commit this measurement was taken against.
-
-    Moved into the library when the write sweep needed the same answer;
-    see ``discovery.built_backend_revision`` for why it is recorded.
-    """
-    return built_backend_revision(Path(__file__).resolve().parent.parent)
 
 
 def sink_layout(sink: Optional[str]) -> Optional[Tuple[str, List[str]]]:
@@ -298,24 +277,24 @@ def play(wav: Path, sink: Optional[str]) -> None:
     if sink:
         command += ["--target", sink]
     command.append(str(wav))
-    subprocess.run(command, capture_output=True, check=False)
+    try:
+        subprocess.run(command, capture_output=True, check=True,
+                       timeout=TONE_SECONDS + 5.0)
+    except subprocess.SubprocessError as exc:
+        raise OSError("tone playback failed: %s" % exc) from exc
 
 
 def measure(reader: LevelReader, wav: Path, sink: Optional[str]) -> Dict[int, float]:
     """Play the tone and return the peak level seen per output."""
-    import threading
-
-    peaks: Dict[int, float] = {}
-
-    def collect() -> None:
-        peaks.update(reader.peaks(TONE_SECONDS + 1.0))
-
-    thread = threading.Thread(target=collect)
-    thread.start()
-    time.sleep(0.3)
-    play(wav, sink)
-    thread.join()
-    return peaks
+    with ThreadPoolExecutor(max_workers=1) as collector:
+        measured = collector.submit(reader.peaks, TONE_SECONDS + 1.0)
+        time.sleep(0.3)
+        # A failed reader must stop this measurement, even when it failed
+        # before playback. A worker exception is never a silent empty meter.
+        if measured.done():
+            measured.result()
+        play(wav, sink)
+        return measured.result()
 
 
 def explain_silence(channel: int, state: Dict[int, Dict[str, object]]) -> str:
@@ -401,13 +380,16 @@ def main() -> int:
     parser.add_argument("--evidence", type=Path,
                         help="write the measurements here as JSON")
     parser.add_argument("--sink", help="PipeWire sink to play into")
+    parser.add_argument("--backend-build", type=Path,
+                        default=Path(__file__).resolve().parents[1] / "build/coordinated")
     args = parser.parse_args()
 
     if not shutil.which("pw-play"):
         print("skip: pw-play not found", file=sys.stderr)
         return EXIT_SKIP
 
-    config = load_config(args.config or discover_config_path())
+    config_path = args.config or discover_config_path()
+    config = load_config(config_path)
     try:
         serial = device_serial(config)
     except DeviceAmbiguous as exc:
@@ -434,19 +416,10 @@ def main() -> int:
         return EXIT_SKIP
 
     try:
-        reader = LevelReader(config.osc_recv_port)
-    except OSError as exc:
-        if exc.errno != errno.EADDRINUSE:
-            # Not the GUI, and not a reason to skip: a measurement that
-            # cannot bind its port for another reason has failed (0.6.11).
-            print("error: cannot bind the receive port UDP %d: %s"
-                  % (config.osc_recv_port, exc.strerror or exc),
-                  file=sys.stderr)
-            return 1
-        print("skip: UDP %d is in use -- close the mixer GUI, its meters "
-              "and ours would split the stream" % config.osc_recv_port,
-              file=sys.stderr)
-        return EXIT_SKIP
+        reader = LevelReader(config, config_path, args.backend_build)
+    except (OSError, ValueError) as exc:
+        print("error: cannot establish hardware measurement: %s" % exc, file=sys.stderr)
+        return 1
 
     sinks = playback_sinks()
     if args.sink:
@@ -490,14 +463,18 @@ def main() -> int:
                         })
                     continue
 
-                silence = reader.peaks(2.0)
-                left = measure(reader, left_wav, sink)
-                right = measure(reader, right_wav, sink)
-                reports = max(reports, reader.reports)
-                state = reader.output_state(
-                    config.osc_port,
-                    sorted({c for route in by_source[source]
-                            for c in route.output}))
+                try:
+                    reader.device.begin()
+                    silence = reader.peaks(2.0)
+                    left = measure(reader, left_wav, sink)
+                    right = measure(reader, right_wav, sink)
+                    reports = max(reports, reader.reports)
+                    state = reader.output_state(
+                        sorted({c for route in by_source[source] for c in route.output}))
+                    reader.device.finish()
+                except OSError as exc:
+                    print("hardware measurement interrupted: %s" % exc, file=sys.stderr)
+                    return 1
                 for route in by_source[source]:
                     finding = check_route(route.name, route.output, left,
                                           right, silence, state)
@@ -544,7 +521,8 @@ def main() -> int:
         "sink_channels": {name: (sink_layout(name) or (name, []))[1]
                           for name in sorted(set(sinks.values()))},
         "serial": serial,
-        "oscmix_revision": backend_revision(),
+        "oscmix_revision": reader.evidence["upstream"],
+        "running_backend": reader.evidence,
         # Which firmware the numbers below were taken against. Two
         # artifacts that differ here are measurements of two devices,
         # whatever the serial says; a claim about "the device" carried

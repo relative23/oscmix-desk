@@ -76,7 +76,7 @@ def test_a_dry_run_starts_nothing(session_mod, lifecycle, capsys):
     route = session_mod.Route(name="m", playback=(1, 2), output=(5, 6))
     assert lifecycle(dry_run=True, routes=[route]) == session_mod.EXIT_OK
     printed = capsys.readouterr().out
-    assert "would run: alsaseqio 42:1" in printed
+    assert "would run: alsaseqio -x 42:1" in printed
     assert "/output/5/stereo" in printed
     assert ready_count(lifecycle.notifications) == 0, (
         "a dry run is not a started service")
@@ -94,7 +94,7 @@ def test_a_dry_run_shows_its_plan_without_the_interface(
     assert lifecycle(dry_run=True, routes=[route], seq_client=None,
                      usb_present=usb_present) == code
     printed = capsys.readouterr().out
-    assert "would run: alsaseqio <client>:1 oscmix" in printed
+    assert "would run: alsaseqio -x <client>:1 oscmix" in printed
     assert "would send: /output/5/stereo ,i 1" in printed
     assert lifecycle.children == [], "and still starts nothing"
 
@@ -137,7 +137,7 @@ def test_a_signal_death_is_named_not_just_numbered(session_module, monkeypatch,
 # --------------------------------------------------------------------------
 
 
-def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
+def test_a_config_without_routes_is_still_applied(session_module, monkeypatch, recording_backend):
     """Since 0.4.0 a file may declare channel or global state and no route.
 
     `_apply_and_verify` returned before `apply_routing` whenever
@@ -156,6 +156,7 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
     from oscmix_desk import ChannelSetting, Config
     from oscmix_desk.model import GlobalSetting
 
+    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
     applied = []
     verified = []
     notices = []
@@ -163,7 +164,7 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
     monkeypatch.setattr(session_module, "apply_routing",
                         lambda *args, **kwargs: applied.append((args, kwargs)))
     monkeypatch.setattr(session_module, "verify_and_repair",
-                        lambda *args, **kwargs: verified.append((args, kwargs)))
+                        lambda *args, **kwargs: verified.append((args, kwargs)) or True)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
 
     child = RunningChild()
@@ -176,7 +177,7 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
     # Written on the configured ports, not on defaults.
     assert len(applied) == 1
     apply_args, apply_options = applied[0]
-    assert apply_args == (config, 7301, 8301)
+    assert apply_args == (config, recording_backend)
     assert set(apply_options) == {"should_stop"}
     apply_stop = apply_options["should_stop"]
     assert not apply_stop()
@@ -193,7 +194,8 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
     import re
     assert re.fullmatch(r"STATUS=running; verifier finished at \d\d:\d\d:\d\d",
                         notices[2])
-    (verified_config, should_stop), kwargs = verified[0]
+    (verified_config, verified_backend, should_stop), kwargs = verified[0]
+    assert verified_backend is recording_backend
     assert verified_config is config
     assert kwargs == {}
     # The stop check carries both reasons to stop writing: a shutdown
@@ -210,11 +212,14 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch):
 
 
 def test_an_empty_config_leaves_the_desk_alone(session_module, monkeypatch,
-                                               caplog):
+                                               caplog, recording_backend):
     # The other half of the rule above: a file that declares nothing
     # writes nothing and starts no verifier, and says so.
     from oscmix_desk import Config
 
+    checked = []
+    monkeypatch.setattr(session_module, "connect_backend",
+                        lambda *a, **k: checked.append(k) or recording_backend)
     monkeypatch.setattr(session_module, "apply_routing",
                         lambda *a, **k: pytest.fail("nothing to apply"))
     with caplog.at_level("INFO"):
@@ -222,6 +227,9 @@ def test_an_empty_config_leaves_the_desk_alone(session_module, monkeypatch,
                                                     {"stop": False})
     assert verifier is None
     assert "leaving mixer state untouched" in caplog.text
+    assert checked[0]["reader"] is True
+    assert checked[0]["expected_pid"] == RunningChild().pid
+    assert recording_backend.operations == ["close"]
 
 
 # --------------------------------------------------------------------------

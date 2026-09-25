@@ -1,4 +1,4 @@
-"""Finding the device and the backend: ALSA sequencer, USB sysfs, UDP."""
+"""Finding the device and the backend: ALSA sequencer and USB sysfs."""
 
 from __future__ import annotations
 
@@ -6,11 +6,10 @@ import collections
 import os
 import re
 import shutil
-import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .errors import DeviceAmbiguous
 from .log import log
@@ -223,23 +222,6 @@ def _first(args: Sequence[object]) -> Optional[object]:
     return args[0] if args else None
 
 
-def udp_port_listening(port: int, proc_root: Path) -> bool:
-    """Check /proc/net/udp{,6} for a socket bound to ``port``."""
-    for name in ("udp", "udp6"):
-        try:
-            lines = (proc_root / "net" / name).read_text().splitlines()[1:]
-        except OSError:
-            continue
-        for line in lines:
-            fields = line.split()
-            if len(fields) < 2 or ":" not in fields[1]:
-                continue
-            local_port = int(fields[1].rsplit(":", 1)[1], 16)
-            if local_port == port:
-                return True
-    return False
-
-
 def lock_key(usb_id: str, serial: str) -> str:
     """The lock file name for one interface, from what identifies it.
 
@@ -331,34 +313,6 @@ def wait_for_device(usb_id: str, device_name: str, serial: str,
             return None
         time.sleep(1.0)
 
-def udp_socket_inodes(port: int, proc_root: Path) -> Set[str]:
-    """Inode numbers of the UDP sockets bound to ``port``.
-
-    The inode is what ties a listening port to the process that holds
-    it: ``/proc/<pid>/fd/<n>`` links to ``socket:[<inode>]``. Without
-    that step, "something holds the port" and "this process holds the
-    port" are the same statement, which is how a cleanup can terminate
-    a process that never had the port.
-    """
-    inodes = set()
-    for name in ("udp", "udp6"):
-        try:
-            lines = (proc_root / "net" / name).read_text().splitlines()[1:]
-        except OSError:
-            continue
-        for line in lines:
-            fields = line.split()
-            if len(fields) < 10 or ":" not in fields[1]:
-                continue
-            try:
-                local_port = int(fields[1].rsplit(":", 1)[1], 16)
-            except ValueError:
-                continue
-            if local_port == port:
-                inodes.add(fields[9])
-    return inodes
-
-
 def resolve_binary(name: str, env_var: str) -> Optional[str]:
     """Locate a binary: env override, then ~/.local/bin, then PATH.
 
@@ -427,27 +381,3 @@ def device_serials(cards: Path = Path("/proc/asound/cards"),
         if serial and serial not in found:
             found.append(serial)
     return found
-
-
-def built_backend_revision(repo_root: Path) -> Optional[str]:
-    """The upstream oscmix commit built under ``repo_root``, or None.
-
-    A measurement that does not say which backend produced it cannot be
-    compared against the next one. ``install.sh`` pins the revision;
-    recording what is actually checked out in ``build/oscmix`` is what
-    makes an evidence artifact mean something, and reading the checkout
-    rather than the pin keeps the two honest against each other.
-    """
-    build = repo_root / "build" / "oscmix"
-    if not (build / ".git").exists():
-        return None
-    # Without an explicit git-dir, a broken nested checkout makes Git
-    # walk upwards and report oscmix-desk's own revision as the backend's.
-    result = subprocess.run(
-        ["git", "-C", str(build), "--git-dir=.git", "rev-parse",
-         "--verify", "HEAD^{commit}"],
-        capture_output=True, text=True, check=False)
-    revision = result.stdout.strip()
-    if result.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", revision):
-        return None
-    return revision

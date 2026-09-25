@@ -397,8 +397,11 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
     seen = []
 
     def record(name):
-        return lambda *a: seen.append(
-            (name, a[-1].device_name, a[-1].osc_port, a[-1].overrides)) or 0
+        def called(*args):
+            config = args[1] if name == "start" else args[0]
+            seen.append((name, config.device_name, config.osc_port, config.overrides))
+            return 0
+        return called
 
     monkeypatch.setattr(cli, "run_session", record("start"))
     monkeypatch.setattr(cli, "_diff", record("--diff"))

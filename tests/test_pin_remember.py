@@ -334,43 +334,6 @@ def test_a_dumped_config_round_trips_through_the_parser(tmp_path):
 
 
 # --------------------------------------------------------------------------
-# A wait that came out of this work, and the recording behind it.
-# --------------------------------------------------------------------------
-
-def test_the_dump_settle_is_bounded_from_both_sides():
-    """ADR 0010: a device wait names its measurement and is held to it.
-
-    `DUMP_LISTEN_SETTLE` exists because upstream writes to a *connected*
-    UDP socket and `writeosc` ignores ECONNREFUSED. While nothing is
-    bound on the receive port, every meter datagram draws an ICMP
-    port-unreachable that Linux queues; the next write fails with it and
-    is dropped. Bind and ask for a dump in the same breath and the
-    casualty is the bundle `setrefresh()` flushes first -- all twenty
-    `/playback/<n>/stereo`.
-
-    Measured on a UCX II, twelve trials per gap: 0.0 s delivered them
-    4/12, 0.1 s and 0.3 s 12/12. With the wait in place, twelve
-    consecutive `verify_routing` calls lost it 0 times, against 5 of 10
-    before.
-
-    Bounded from both sides because either mistake is silent. Too small
-    and the register is lost again, which now reads as "unconfirmed after
-    retry" in the journal. Too large and every verification, every
-    profile switch and every --dump-config pays it.
-    """
-    from oscmix_desk.constants import DUMP_LISTEN_SETTLE
-
-    # One meter datagram at the measured rate (~880/s) is what the
-    # mechanism actually needs.
-    one_datagram = 1.0 / 880
-    assert 2 * one_datagram <= DUMP_LISTEN_SETTLE
-    assert 100 * one_datagram >= DUMP_LISTEN_SETTLE
-    # And it must stay small against the window it precedes.
-    from oscmix_desk.constants import VERIFY_TIMEOUT
-    assert DUMP_LISTEN_SETTLE < VERIFY_TIMEOUT / 20
-
-
-# --------------------------------------------------------------------------
 # And the dump has to actually feed the renderer.
 # --------------------------------------------------------------------------
 

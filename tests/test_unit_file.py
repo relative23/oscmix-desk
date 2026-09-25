@@ -236,14 +236,14 @@ def test_the_budget_names_every_wait_on_the_path(unit):
                 + constants.STALE_BACKEND_SETTLE
                 + constants.PORT_READY_TIMEOUT
                 + constants.SWITCH_LOCK_WAIT
-                + max(constants.LINK_ECHO_TIMEOUT, constants.LINK_SETTLE))
+                + constants.CONTROL_ACQUIRE_TIMEOUT
+                + constants.CONTROL_LEASE_TOTAL + 3 * constants.CONTROL_ACK_TIMEOUT)
     assert constants.startup_budget() == expected
-    # The link barrier is one wait or the other, never both: the settle
-    # only runs when the echo could not be observed at all.
-    assert constants.startup_budget() < (
-        constants.DEFAULT_DEVICE_TIMEOUT + constants.STALE_BACKEND_SETTLE
-        + constants.PORT_READY_TIMEOUT + constants.SWITCH_LOCK_WAIT
-        + constants.LINK_ECHO_TIMEOUT + constants.LINK_SETTLE)
+    # The server's hard lease includes foreground links, all write ACKs and
+    # background repair; keepalives cannot extend it. Do not budget an
+    # unbounded number of per-message waits or omit lease contention.
+    assert constants.CONTROL_LEASE_TOTAL == 90
+    assert constants.CONTROL_ACQUIRE_TIMEOUT == 30
 
 
 def test_verification_is_off_the_startup_path_structurally(unit):
@@ -260,14 +260,21 @@ def test_verification_is_off_the_startup_path_structurally(unit):
 
     from oscmix_desk import session
 
-    tree = ast.parse(inspect.getsource(session._apply_and_verify))
-    starts_a_thread = any(
-        isinstance(node, ast.Attribute) and node.attr == "Thread"
-        for node in ast.walk(tree))
-    assert starts_a_thread, (
-        "_apply_and_verify no longer defers verification to a thread; "
-        "the blind delay and the verify window are now on the path to "
-        "READY=1 and startup_budget must account for them")
+    tree = ast.parse(inspect.getsource(session._verify_in_background))
+    threads = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+               and isinstance(node.func, ast.Attribute) and node.func.attr == "Thread"]
+    assert len(threads) == 1
+    target = next(keyword.value.id for keyword in threads[0].keywords
+                  if keyword.arg == "target")
+    worker = next(node for node in tree.body[0].body
+                  if isinstance(node, ast.FunctionDef) and node.name == target)
+    assert any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+               and node.func.id == "verify_and_repair" for node in ast.walk(worker))
+    # A return annotation mentioning threading.Thread is not proof that a
+    # worker is actually created or that verification executes inside it.
+    apply = ast.parse(inspect.getsource(session._apply_and_verify))
+    assert not any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                   and node.func.id == "verify_and_repair" for node in ast.walk(apply))
 
     # ... and READY=1 follows the apply, and only a successful one. Since
     # 0.6.10 the apply sits in _apply_or_fail: the try body calls

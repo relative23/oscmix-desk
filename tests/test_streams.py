@@ -263,7 +263,7 @@ def test_known_bad_mode_refuses_before_any_phase_is_sent(proc):
     device = RecordingBackend(reports=echo_link_flags_only)
     device.traits = OSCMIX
     with pytest.raises(WriteFailed) as caught:
-        routing.apply_routing(routed(), 7222, backend=device)
+        routing.apply_routing(routed(), device)
     assert not device.sent
     assert not caught.value.written
     assert caught.value.unwritten == (
@@ -290,7 +290,7 @@ def test_changes_between_phases_report_exact_partial_writes(proc, before, after)
 
     device = ChangingBackend(reports=echo_link_flags_only)
     with pytest.raises(WriteFailed, match="changed during the apply") as caught:
-        routing.apply_routing(routed(), 7222, backend=device)
+        routing.apply_routing(routed(), device)
     assert caught.value.written == ("/playback/1/stereo", "/output/5/stereo")
     assert caught.value.unwritten == ("/mix/5/playback/1",)
     assert all(path.endswith("/stereo") for path, _tags, _args in device.sent)
@@ -308,7 +308,7 @@ def test_a_change_after_the_last_write_does_not_invent_a_partial_apply(proc):
                 write_card(proc, recorded(192000, 20))
 
     device = ChangingBackend(reports=echo_link_flags_only)
-    routing.apply_routing(routed(), 7222, backend=device)
+    routing.apply_routing(routed(), device)
     assert len(device.sent) == 3
 
 
@@ -333,8 +333,8 @@ def test_profile_marker_does_not_advance_after_a_mode_refusal(proc, tmp_path, pa
         assert not result.persisted
 
 
-def test_verifiers_mix_reapply_also_checks_the_live_mode(proc, monkeypatch):
+def test_verifiers_mix_reapply_also_checks_the_live_mode(proc, recording_backend):
     write_card(proc, recorded(192000, 20))
-    monkeypatch.setattr(routing, "loopback", lambda *_args: pytest.fail("backend reached"))
     with pytest.raises(OSError, match="failed the measured"):
-        routing.send_mix(routed())
+        routing.send_mix(routed(), recording_backend)
+    assert recording_backend.sent == []

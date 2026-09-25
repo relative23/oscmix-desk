@@ -13,32 +13,30 @@ from __future__ import annotations
 import os
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .backend import loopback
+from .backend import connect_backend
 from .constants import (
-    DUMP_LISTEN_SETTLE,
     EXIT_DIFFERS,
     EXIT_FAILURE,
     EXIT_OK,
 )
 from .devices import device_for_name
-from .discovery import device_firmware, resolve_device
+from .discovery import device_firmware, serial_in
 from .dump import (
     channels_from_observed,
     globals_from_observed,
     render_config,
     routes_from_observed,
 )
-from .errors import DeviceAmbiguous, ReceivePortError
 from .log import log
 from .model import Config
 from .osc import (
     Args,
     Value,
 )
-from .process import port_holder
 from .reconcile import (
     PHASE_CHANNEL,
     PHASE_LINK,
@@ -60,25 +58,13 @@ DUMP_READ_SECONDS = 8.0
 DUMP_QUIET_SECONDS = 1.0
 
 
-def _snapshot_serial(config: Config) -> str:
-    """The box a snapshot names in its header: the one it read.
+@dataclass(frozen=True)
+class DeviceRead:
+    """Latest values received from one checked backend instance, never a snapshot cache."""
 
-    The read goes to whatever backend holds the OSC port, so the header
-    names the interface that backend bridges when that can be followed,
-    and the resolved interface otherwise. In 0.6.9's first form it named
-    the resolved box even when the port belonged to another one's backend
-    (found by review); until 0.6.9, the first serial in the card list.
-    """
-    proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
-    holder = port_holder(config.osc_port, proc_root)
-    if holder is not None and holder.serial:
-        return holder.serial
-    try:
-        device = resolve_device(config.usb_id, config.device_name,
-                                config.serial, proc_root)
-    except DeviceAmbiguous:
-        return "ambiguous"
-    return device.serial or "?"
+    registers: Dict[str, Args]
+    serial: str
+    epoch: str
 
 
 #: Phase numbers as the diff prints them. The apply writes in this
@@ -95,7 +81,7 @@ _PHASE_NAMES = ((PHASE_LINK, "links"),
 _STREAMING_SUFFIXES = ("/level", "/meter")
 
 
-def _snapshot(config: Config) -> int:
+def _snapshot(config: Config, config_path: Optional[Path] = None) -> int:
     """Print every register the device reports, verbatim and sorted.
 
     `--dump-config` renders a *config*, so it can only show registers a
@@ -111,9 +97,10 @@ def _snapshot(config: Config) -> int:
     Meters are excluded because they change between any two reads, which
     would make every comparison noisy and none of them wrong.
     """
-    seen = _read_device(config)
-    if seen is None:
+    reading = _read_device(config, config_path)
+    if reading is None:
         return EXIT_FAILURE
+    seen = reading.registers
 
     rows = [(path, args) for path, args in seen.items()
             if not path.endswith(_STREAMING_SUFFIXES)]
@@ -127,17 +114,16 @@ def _snapshot(config: Config) -> int:
     # file that does not say cannot be checked later.
     sys.stdout.write(
         "# oscmix-session --snapshot: %d registers; %s serial %s, usb %s, "
-        "dsp %s\n" % (len(rows), config.device_name, _snapshot_serial(config),
-                       firmware["usb_revision"] or "?",
-                       "?" if firmware["dsp_version"] is None
-                       else firmware["dsp_version"]))
+        "dsp %s; backend epoch %s; device-origin reports\n"
+        % (len(rows), config.device_name, reading.serial, firmware["usb_revision"] or "?",
+           "?" if firmware["dsp_version"] is None else firmware["dsp_version"], reading.epoch))
     for path, args in sorted(rows):
         sys.stdout.write("%s %s\n" % (path, " ".join(_one_value(a)
                                                      for a in args)))
     return EXIT_OK
 
 
-def _diff(config: Config) -> int:
+def _diff(config: Config, config_path: Optional[Path] = None) -> int:
     """Print what an apply would write, and what it would leave alone.
 
     The reconciler already answers this -- `plan()` is what the session
@@ -161,9 +147,10 @@ def _diff(config: Config) -> int:
     device holds, so counting it would make the exit code permanently 3
     and worth nothing.
     """
-    seen = _read_device(config)
-    if seen is None:
+    reading = _read_device(config, config_path)
+    if reading is None:
         return EXIT_FAILURE
+    seen = reading.registers
 
     model = device_for_name(config.device_name)
     result = plan(desired(config), seen, model)
@@ -225,79 +212,49 @@ def _one_value(value: Value) -> str:
     return str(value)
 
 
-def _read_device(config: Config) -> Optional[Dict[str, Args]]:
-    """Every register the running backend reports, or None with a reason.
+def _read_device(config: Config, config_path: Optional[Path] = None
+                 ) -> Optional[DeviceRead]:
+    """Request a fresh window as a nonwriting subscriber of the checked backend.
 
-    Shared by `--dump-config` and `--diff`, which ask the device the same
-    question and differ only in what they do with the answer. An empty
-    read is a failure rather than an empty result: "you have no routing"
-    and "nobody answered" call for opposite responses.
+    Readings belong to this epoch and use the latest decoded value per path.
+    Missing, derived or disconnected data is never a complete device snapshot.
+    Physical changes and GUI writes may occur during this observation window.
     """
-    device = loopback(config.osc_port, config.osc_recv_port)
-    try:
-        listener = device.listen()
-    except ReceivePortError as exc:
-        # Not the GUI, so closing it would not help; say what it is.
-        log.error("%s", exc.strerror)
-        return None
-    if listener is None:
-        log.error("UDP %d is in use -- close the mixer GUI; its meters and "
-                  "this read would split the device's replies",
-                  config.osc_recv_port)
-        return None
-
+    device = None
     seen: Dict[str, Args] = {}
     try:
-        # The same settle the verifier takes, and for the same reason.
-        # `setrefresh` answers with `/playback/N/stereo` synchronously,
-        # out of oscmix's own memory, before the device's dump reaches
-        # the wire; while nothing is bound on the receive port every
-        # meter datagram draws an ICMP port-unreachable that Linux
-        # queues, and the next write is dropped with it. Measured here:
-        # without this, 4 of 8 reads came back with 1982 registers and
-        # no playback stereo at all; with it, 11 of 11 read 2002.
-        #
-        # `--dump-config` has had this hole since it existed, while the
-        # constant's own docstring claimed this path paid the wait.
-        time.sleep(DUMP_LISTEN_SETTLE)
+        device = connect_backend(config, config_path, reader=True)
         device.request_dump()
         deadline = time.monotonic() + DUMP_READ_SECONDS
         quiet_after = deadline
         while time.monotonic() < deadline:
             fresh = False
-            for path, _tags, args in listener.messages(0.25):
-                if path not in seen:
+            for path, _tags, args in device.messages(0.25):
+                if path not in seen or tuple(args) != seen[path]:
                     fresh = True
-                seen.setdefault(path, tuple(args))
+                seen[path] = tuple(args)
             if fresh:
-                # Stop once the dump goes quiet rather than always
-                # waiting out the window: it is over in ~2 s on a UCX II,
-                # and a command that takes 8 s regardless invites being
-                # interrupted halfway. The level meters keep streaming,
-                # so "quiet" means no register we had not already seen.
                 quiet_after = time.monotonic() + DUMP_QUIET_SECONDS
             elif seen and time.monotonic() > quiet_after:
                 break
-    except ReceivePortError as exc:
-        # The port was had and then could not be read. Not silence from
-        # the backend, which is what an empty read is taken for below.
-        log.error("%s", exc.strerror)
+        if not seen:
+            log.error("the backend supplied no device-origin reports in the refresh window")
+            return None
+        return DeviceRead(seen, serial_in(device.device_name) or "?", device.epoch.hex())
+    except OSError as exc:
+        log.error("cannot read the selected backend: %s", exc)
         return None
     finally:
-        listener.close()
-
-    if not seen:
-        log.error("no reply from the backend on UDP %d -- is oscmix running?",
-                  config.osc_recv_port)
-        return None
-    return seen
+        if device is not None:
+            device.close()
 
 
-def _dump_config(config: Config) -> int:
+def _dump_config(config: Config, config_path: Optional[Path] = None) -> int:
     """Print a routing.conf built from what the device reports."""
-    seen = _read_device(config)
-    if seen is None:
+    reading = _read_device(config, config_path)
+    if reading is None:
         return EXIT_FAILURE
+    seen = reading.registers
 
     model = device_for_name(config.device_name)
     warnings: List[str] = []

@@ -1,54 +1,12 @@
-"""UDP port detection via /proc/net/udp (no ss/netstat dependency)."""
+"""Device readiness and read-only endpoint ownership."""
 
 from oscmix_desk import discovery, process
 
-# Real /proc/net/udp format; 0x1C36 == 7222.
-UDP_WITH_OSCMIX = """\
-  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
-  100: 0100007F:1C36 00000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 123456 2 0000000000000000 0
-  101: 00000000:0044 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 654321 2 0000000000000000 0
-"""
 
-UDP_WITHOUT_OSCMIX = """\
-  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
-  101: 00000000:0044 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 654321 2 0000000000000000 0
-"""
-
-UDP6_WITH_OSCMIX = """\
-  sl  local_address                         remote_address                        st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode ref pointer drops
-  200: 00000000000000000000000001000000:1C36 00000000000000000000000000000000:0000 07 00000000:00000000 00:00000000 00000000  1000        0 999999 2 0000000000000000 0
-"""
-
-
-def make_proc(tmp_path, udp=None, udp6=None):
-    net = tmp_path / "proc" / "net"
-    net.mkdir(parents=True)
-    if udp is not None:
-        (net / "udp").write_text(udp)
-    if udp6 is not None:
-        (net / "udp6").write_text(udp6)
-    return tmp_path / "proc"
-
-
-def test_detects_listening_port(session_mod, tmp_path):
-    proc = make_proc(tmp_path, udp=UDP_WITH_OSCMIX)
-    assert discovery.udp_port_listening(7222, proc) is True
-
-
-def test_ignores_other_ports(session_mod, tmp_path):
-    proc = make_proc(tmp_path, udp=UDP_WITHOUT_OSCMIX)
-    assert discovery.udp_port_listening(7222, proc) is False
-
-
-def test_detects_ipv6_socket(session_mod, tmp_path):
-    proc = make_proc(tmp_path, udp=UDP_WITHOUT_OSCMIX, udp6=UDP6_WITH_OSCMIX)
-    assert discovery.udp_port_listening(7222, proc) is True
-
-
-def test_missing_proc_files(session_mod, tmp_path):
-    proc = tmp_path / "proc"
-    proc.mkdir()
-    assert discovery.udp_port_listening(7222, proc) is False
+def test_readiness_finds_the_listening_control_owner(endpoint):
+    _config, path, proc = endpoint
+    assert process.control_socket_owner(path, proc) == 101
+    assert process.control_socket_owner(path.with_name("other.control"), proc) is None
 
 
 def test_find_stale_backends_matches_only_oscmix(session_mod, tmp_path):
@@ -116,58 +74,3 @@ def test_wait_for_device_tolerates_a_missing_proc_file(session_mod, tmp_path):
     # snd_seq not loaded yet: the file simply is not there.
     assert discovery.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
                                        0.3, tmp_path / "nothing") is None
-
-
-# --------------------------------------------------------------------------
-# The inode behind the port (ADR 0021).
-# --------------------------------------------------------------------------
-
-def test_the_inode_of_the_bound_socket_is_found(session_mod, tmp_path):
-    # Column ten of /proc/net/udp, and it is what ties the port to the
-    # process that holds it.
-    from oscmix_desk.discovery import udp_socket_inodes
-
-    proc = make_proc(tmp_path, udp=UDP_WITH_OSCMIX, udp6=UDP6_WITH_OSCMIX)
-    assert udp_socket_inodes(7222, proc) == {"123456", "999999"}
-    assert udp_socket_inodes(68, proc) == {"654321"}
-    assert udp_socket_inodes(9999, proc) == set()
-
-
-def test_a_truncated_row_is_skipped_rather_than_believed(session_mod,
-                                                         tmp_path):
-    """A line without the inode column says nothing about ownership.
-
-    Reading it as a match would hand the cleanup a name it cannot
-    resolve, and the cleanup signals processes.
-    """
-    from oscmix_desk.discovery import udp_socket_inodes
-
-    header = UDP_WITH_OSCMIX.splitlines()[0]
-    proc = make_proc(tmp_path, udp=header + "\n  100: 0100007F:1C36 x\n")
-    assert udp_socket_inodes(7222, proc) == set()
-
-
-def test_a_local_address_that_is_not_hex_is_skipped(session_mod, tmp_path):
-    from oscmix_desk.discovery import udp_socket_inodes
-
-    header = UDP_WITH_OSCMIX.splitlines()[0]
-    row = ("  100: 0100007F:ZZZZ 00000000:0000 07 00000000:00000000 "
-           "00:00000000 00000000  1000        0 123456 2 0 0\n")
-    proc = make_proc(tmp_path, udp=header + "\n" + row)
-    assert udp_socket_inodes(7222, proc) == set()
-
-
-def test_a_broken_row_does_not_end_the_table(session_mod, tmp_path):
-    """A line this cannot parse is one line, not the end of the file.
-
-    With `break` instead of `continue` the socket after a malformed row
-    is invisible, and an invisible socket is an unresolvable owner: the
-    start would refuse a port its own backend holds.
-    """
-    from oscmix_desk.discovery import udp_socket_inodes
-
-    header = UDP_WITH_OSCMIX.splitlines()[0]
-    good = UDP_WITH_OSCMIX.splitlines()[1]
-    proc = make_proc(tmp_path, udp="\n".join([header, "  99: nonsense",
-                                              good]) + "\n")
-    assert udp_socket_inodes(7222, proc) == {"123456"}

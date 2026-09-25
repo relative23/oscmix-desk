@@ -14,6 +14,8 @@ confident 3.4 dB "failure" on a route that was working perfectly.
 """
 
 import importlib.util
+import subprocess
+from types import SimpleNamespace
 
 import pytest
 from support import repo_file
@@ -33,6 +35,33 @@ def harness():
 
 
 QUIET = {5: -144.0, 6: -144.0}
+
+
+@pytest.mark.parametrize("failure", [subprocess.CalledProcessError(1, "pw-play"),
+                                     subprocess.TimeoutExpired("pw-play", 10)])
+def test_failed_or_stuck_tone_is_a_measurement_failure(harness, monkeypatch, tmp_path, failure):
+    def run(command, **options):
+        assert command == ["pw-play", "--target", "simulated-sink", str(tmp_path / "tone.wav")]
+        assert options["check"] is True
+        assert options["timeout"] == harness.TONE_SECONDS + 5.0
+        raise failure
+    monkeypatch.setattr(harness.subprocess, "run", run)
+    with pytest.raises(OSError, match="tone playback failed"):
+        harness.play(tmp_path / "tone.wav", "simulated-sink")
+
+
+def test_meter_worker_failure_is_not_a_missing_meter_verdict(harness, monkeypatch, tmp_path):
+    def failed_reader(_seconds):
+        raise OSError("backend disconnected")
+    monkeypatch.setattr(harness, "play", lambda *_args: None)
+    with pytest.raises(OSError, match="backend disconnected"):
+        harness.measure(SimpleNamespace(peaks=failed_reader), tmp_path / "tone.wav", "sink")
+
+
+def test_meter_worker_returns_its_complete_result(harness, monkeypatch, tmp_path):
+    monkeypatch.setattr(harness, "play", lambda *_args: None)
+    assert harness.measure(SimpleNamespace(peaks=lambda _seconds: {5: -44.0}),
+                           tmp_path / "tone.wav", "sink") == {5: -44.0}
 
 
 def test_a_working_pair_passes(harness):
@@ -142,7 +171,7 @@ def test_tone_generation_puts_the_signal_on_one_side(harness, tmp_path):
         assert handle.getnchannels() == 2
         frames = handle.readframes(min(handle.getnframes(), 48000))
     samples = struct.unpack("<%dh" % (len(frames) // 2), frames)
-    assert max(abs(value) for value in samples[0::2]) > 1000
+    assert 70 <= max(abs(value) for value in samples[0::2]) <= 100
     assert max(abs(value) for value in samples[1::2]) == 0
 
 

@@ -1,13 +1,18 @@
-"""Routing verification: state read-back over the OSC receive port."""
+"""Routing verification across the production coordinated client."""
 
-import socket
-import threading
+import os
+import tempfile
+from pathlib import Path
 
 import oracle
-from support import free_udp_port, repo_file
+import pytest
+from control_peer import REFRESH, ScriptedControl
+from support import repo_file
 
 from oscmix_desk import osc, verify
+from oscmix_desk.backend import Control
 from oscmix_desk.devices import UCX2
+from oscmix_desk.errors import ReceivePortError
 from oscmix_desk.observation import Observation
 
 
@@ -62,36 +67,15 @@ def test_register_matches_with_float_tolerance():
     assert match("i", (1,), (-1,)) is False              # sign, integer path
 
 
-class Reflector(threading.Thread):
-    """Minimal oscmix stand-in: replies to /refresh with canned state."""
-
-    def __init__(self, send_port, recv_port, state):
-        super().__init__(daemon=True)
-        self.recv_port = recv_port
-        self.state = state
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("127.0.0.1", send_port))
-        self.sock.settimeout(5)
-
-    def run(self):
+def run_verify(session_mod, registers, state, timeout=3.0, **kwargs):
+    with tempfile.TemporaryDirectory(prefix="verify-") as directory:
+        server = ScriptedControl(Path(directory) / "control.sock", reports=state)
+        client = Control(server.path, os.getpid(), reader=True)
         try:
-            data, _ = self.sock.recvfrom(65536)
-        except socket.timeout:
-            return
-        if data.startswith(b"/refresh"):
-            for message in self.state:
-                self.sock.sendto(message, ("127.0.0.1", self.recv_port))
-        self.sock.close()
-
-
-def run_verify(session_mod, registers, state, timeout=3.0):
-    send_port, recv_port = free_udp_port(), free_udp_port()
-    reflector = Reflector(send_port, recv_port, state)
-    reflector.start()
-    result = session_mod.verify_routing(registers, send_port, recv_port,
-                                        timeout=timeout)
-    reflector.join()
-    return result
+            return session_mod.verify_routing(registers, client, timeout=timeout, **kwargs)
+        finally:
+            client.close()
+            server.close()
 
 
 def test_verify_confirms_matching_state(session_mod):
@@ -154,18 +138,16 @@ def test_later_matching_report_overrides_mismatch(session_mod):
     assert result.mismatched == []
 
 
-def test_verify_returns_none_when_recv_port_taken(session_mod):
-    route = make_route(session_mod)
-    registers = session_mod.expected_registers(session_mod.Config(routes=[route]))
-    send_port, recv_port = free_udp_port(), free_udp_port()
-    blocker = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    blocker.bind(("127.0.0.1", recv_port))
+def test_verify_propagates_a_lost_refresh_acknowledgement(session_mod, tmp_path):
+    server = ScriptedControl(tmp_path / "control.sock", lose_reply=REFRESH)
+    client = Control(server.path, os.getpid(), reader=True)
     try:
-        result = session_mod.verify_routing(registers, send_port, recv_port,
-                                            timeout=0.5)
+        with pytest.raises(ReceivePortError, match="disconnected"):
+            session_mod.verify_routing({"/output/5/volume": ("f", (0.,))}, client, timeout=.1)
+        assert server.writes == []
     finally:
-        blocker.close()
-    assert result is None
+        client.close()
+        server.close()
 
 
 def test_a_mismatch_keeps_the_window_open(session_mod):
@@ -214,7 +196,7 @@ def test_a_corrupt_message_does_not_end_the_dump(session_mod):
     # Decode failures `continue` rather than `break`: one malformed
     # datagram in a multi-thousand-message dump must not abandon the rest.
     registers = {"/output/5/volume": ("f", (0.0,))}
-    state = [b"\x01\x02\x03",                      # no NUL: undecodable
+    state = [b"\x01\x02\x03\x04",                      # no NUL: undecodable
              osc.encode_osc("/output/5/volume", "f", 0.0)]
     result = run_verify(session_mod, registers, state)
     assert result.confirmed == ["/output/5/volume"]
@@ -226,13 +208,8 @@ def test_observer_receives_the_path_and_its_arguments(session_mod):
     seen = []
     registers = {"/output/5/stereo": ("i", (1,))}
     state = [osc.encode_osc("/output/5/stereo", "i", 1)]
-    send_port, recv_port = free_udp_port(), free_udp_port()
-    reflector = Reflector(send_port, recv_port, state)
-    reflector.start()
-    session_mod.verify_routing(registers, send_port, recv_port, 3.0,
-                               on_observed=lambda path, args:
-                               seen.append((path, tuple(args))))
-    reflector.join()
+    run_verify(session_mod, registers, state,
+               on_observed=lambda path, args: seen.append((path, tuple(args))))
     assert ("/output/5/stereo", (1,)) in seen
 
 

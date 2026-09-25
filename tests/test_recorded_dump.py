@@ -227,27 +227,16 @@ def test_the_cold_plug_timeline_names_its_revision(cold):
         "too short to say anything about what does *not* happen later")
 
 
-def test_the_link_registers_arrive_long_before_the_blind_delay_expires(cold):
-    """The number the blind re-apply waits out, measured.
-
-    When the mixer GUI holds the receive port the session cannot observe
-    the dump, so it waits LINK_SYNC_BLIND_DELAY and then rewrites the
-    mix. That wait is only honest if it outlasts the device -- and only
-    useful if it does not outlast it by an order of magnitude.
-    """
+def test_recorded_output_links_fit_within_the_observation_window(cold):
+    # Historical device timing, not a qualification of the new patch series.
+    # 0.8.0 has no blind retry for a receive channel held by GTK; the shared
+    # backend owns that channel. Contradiction/loss is tested on live Control.
     from oscmix_desk import constants
 
-    reports = cold["first_report_seconds"]
-    links = {p: t for p, t in reports.items()
-             if p.startswith("/output/") and p.endswith("/stereo")}
-    assert links, "no /output/*/stereo in the timeline at all"
-    slowest = max(links.values())
-    assert slowest < constants.LINK_SYNC_BLIND_DELAY, (
-        "the blind delay (%.0fs) is shorter than the device needs (%.2fs)"
-        % (constants.LINK_SYNC_BLIND_DELAY, slowest))
-    # Recorded so the margin is visible rather than implied: measured
-    # 2.26 s against a 20 s wait.
-    assert slowest < 5.0
+    links = [t for path, t in cold["first_report_seconds"].items()
+             if path.startswith("/output/") and path.endswith("/stereo")]
+    assert links
+    assert max(links) < constants.VERIFY_TIMEOUT
 
 
 def test_the_dump_answers_almost_immediately(cold):
@@ -312,45 +301,8 @@ def test_the_cold_dump_is_incomplete_and_that_matters_for_0_3_0(cold, dump):
         "whether the warning in this test still applies")
 
 
-def test_the_blind_delay_is_derived_from_the_timeline_not_from_folklore(cold):
-    """The constant and its evidence, tied together.
-
-    LINK_SYNC_BLIND_DELAY was 20 s, from the same unrecorded observation
-    that produced the "15-20 s dump" figure. It is 5 s now, and this is
-    what makes that a measurement rather than a different guess: the
-    margin over the recorded worst case is asserted here, so shrinking
-    the constant without a new recording fails, and so does a pin bump
-    that makes the device slower without anyone re-recording.
-    """
-    from oscmix_desk import constants
-
-    slowest_link = max(t for p, t in cold["first_report_seconds"].items()
-                       if p.startswith("/output/") and p.endswith("/stereo"))
-    margin = constants.LINK_SYNC_BLIND_DELAY / slowest_link
-    assert margin >= 2.0, (
-        "the blind delay is %.1fs against a measured %.2fs -- only %.1fx. "
-        "Either re-record tests/data/cold-plug-timeline.json or raise the "
-        "constant" % (constants.LINK_SYNC_BLIND_DELAY, slowest_link, margin))
-    # And an upper bound, which is the half nobody usually writes: a wait
-    # an order of magnitude past the evidence is not caution, it is an
-    # unmeasured number wearing caution's clothes. That is what 20 s was.
-    assert margin <= 10.0, (
-        "the blind delay is %.1fx the measured need (%.2fs); if the device "
-        "really is that slow, record it -- if it is not, shorten the wait"
-        % (margin, slowest_link))
 
 
-def test_the_blind_delay_still_fits_the_shutdown_budget(cold):
-    # It runs on the verifier thread, which the session joins for
-    # VERIFIER_STOP_GRACE before exiting (ADR 0009). The wait itself is
-    # interruptible, so the delay never gates shutdown -- but if it were
-    # ever made a plain sleep again, this is the number that would
-    # matter.
-    from oscmix_desk import constants
-
-    assert constants.LINK_SYNC_BLIND_DELAY < 10.0, (
-        "a blind delay longer than TimeoutStopSec is only survivable "
-        "because wait_unless_stopped exists; see ADR 0009")
 
 
 def test_playback_stereo_survives_a_cold_plug_completely(cold):

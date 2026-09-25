@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
-import getopt
 import os
 import re
 import shlex
+import stat
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Sequence
 
 from .constants import SERVICE_UNIT
-from .discovery import Device, resolve_device, udp_port_listening
+from .discovery import Device, resolve_device
 from .errors import DeviceAmbiguous
+from .locking import control_path
 from .model import Config
 from .paths import discover_config_path
-from .process import port_holder
+from .process import control_holder
 
 
 def query(command: Sequence[str]) -> str:
@@ -32,29 +33,6 @@ def query(command: Sequence[str]) -> str:
     return result.stdout.strip()
 
 
-def port_state(port: int, proc_root: Path) -> str:
-    """Free/occupied, or an exception when procfs cannot establish either.
-
-    The existing socket helpers tolerate unavailable tables for discovery.
-    Diagnosis must not translate a denied read into an available port.
-    """
-    for name in ("udp", "udp6"):
-        try:
-            lines = (proc_root / "net" / name).read_text().splitlines()
-        except FileNotFoundError:
-            if name == "udp6":
-                continue
-            raise
-        if not lines or "local_address" not in lines[0]:
-            raise OSError("UDP table %s is missing its header" % name)
-        for line in lines[1:]:
-            fields = line.split()
-            if (len(fields) < 10 or
-                    re.fullmatch(r"[0-9A-Fa-f]+:[0-9A-Fa-f]{4}", fields[1]) is None):
-                raise OSError("UDP table %s contains a malformed socket row" % name)
-    return "occupied" if udp_port_listening(port, proc_root) else "free"
-
-
 @dataclass(frozen=True)
 class BackendStatus:
     """A momentary association, never a lease on a process or device."""
@@ -63,82 +41,52 @@ class BackendStatus:
     detail: str
     device: Optional[Device] = None
     pid: Optional[int] = None
+    endpoint: Optional[str] = None
+    uid: Optional[int] = None
+    gid: Optional[int] = None
 
 
-def backend_status(config: Config, proc_root: Path) -> BackendStatus:
-    """Use the same device and socket-owner helpers as the write paths."""
+def backend_status(config: Config, proc_root: Path,
+                   config_path: Optional[Path] = None) -> BackendStatus:
+    """Inspect the exact coordinated endpoint without connecting to it."""
     try:
         device = resolve_device(config.usb_id, config.device_name, config.serial, proc_root)
-        bound = port_state(config.osc_port, proc_root)
-        if bound == "free":
-            return BackendStatus("absent", "no backend on UDP %d" % config.osc_port, device)
-        holder = port_holder(config.osc_port, proc_root)
+        path = control_path(config_path, device.key)
+        try:
+            endpoint = path.lstat()
+        except FileNotFoundError:
+            return BackendStatus("absent", "no coordinated backend endpoint", device,
+                                 endpoint=str(path))
+        if not stat.S_ISSOCK(endpoint.st_mode):
+            return BackendStatus("conflict", "control endpoint is not a real socket", device,
+                                 endpoint=str(path))
+        holder = control_holder(path, proc_root)
     except (OSError, ValueError, DeviceAmbiguous) as exc:
         return BackendStatus("unknown", str(exc))
     if holder is None:
-        return BackendStatus("unknown", "OSC port occupied; owner cannot be identified", device)
+        return BackendStatus("unknown", "control endpoint has no identified listening owner",
+                             device, endpoint=str(path))
     if not holder.oscmix:
-        return BackendStatus("conflict", "OSC port belongs to another program/user",
-                             device, holder.pid)
+        return BackendStatus("conflict", "endpoint belongs to an incompatible program",
+                             device, holder.pid, str(path))
     if device.client is None or holder.client is None:
-        return BackendStatus("unknown", "cannot associate backend with an ALSA client",
-                             device, holder.pid)
-    if holder.client != device.client or (device.serial and holder.serial != device.serial):
-        return BackendStatus("conflict", "backend drives another interface", device, holder.pid)
+        return BackendStatus("unknown", "cannot establish the exclusive ALSA bridge",
+                             device, holder.pid, str(path))
+    if not device.serial or not holder.serial:
+        return BackendStatus("unknown", "device/backend serial identity is unavailable",
+                             device, holder.pid, str(path))
+    if holder.client != device.client or holder.serial != device.serial:
+        return BackendStatus("conflict", "backend drives another interface", device,
+                             holder.pid, str(path))
     try:
-        reply = _reply_destination(holder.pid, proc_root)
-    except (OSError, ValueError) as exc:
-        return BackendStatus("unknown", str(exc), device, holder.pid)
-    if reply != "udp!127.0.0.1!%d" % config.osc_recv_port:
-        return BackendStatus("conflict", "backend reply destination differs from the desk: "
-                             + reply, device, holder.pid)
-    return BackendStatus("ready", "backend belongs to the selected interface", device, holder.pid)
-
-
-def _reply_destination(pid: int, proc_root: Path) -> str:
-    """Pinned main.c accepts -s and -m in order; no flag means loopback 8222."""
-    argv = (proc_root / str(pid) / "cmdline").read_bytes().split(b"\0")
-    if not argv[0]:
-        raise ValueError("backend command line is unavailable")
-    try:
-        if argv[-1] == b"":
-            argv.pop()
-        options, extra = getopt.getopt(_socket_arguments(argv[1:]), "dlr:s:mp:")
-    except getopt.GetoptError as exc:
-        raise ValueError("cannot determine backend reply destination: %s" % exc) from exc
-    if extra:
-        raise ValueError("unexpected backend command arguments")
-    reply = "udp!127.0.0.1!8222"
-    for key, value in options:
-        if key == "-s":
-            reply = value
-        elif key == "-m":
-            reply = "udp!224.0.0.1!8222"
-    return reply
-
-
-def _socket_arguments(arguments: Sequence[bytes]) -> Sequence[str]:
-    """Undo pinned socket.c's in-place replacement of '!' by NUL in argv.
-
-    /proc/cmdline observes the modified memory, so a live '-s udp!host!port'
-    appears as four fields. Preserve order, including repeated -s and -m.
-    Only the known three-part UDP forms are reconstructed.
-    """
-    words = [os.fsdecode(arg) for arg in arguments]
-    result = []
-    index = 0
-    while index < len(words):
-        word = words[index]
-        if word in ("-r", "-s") and index + 3 < len(words) and words[index + 1] == "udp":
-            result.extend([word, "!".join(words[index + 1:index + 4])])
-            index += 4
-        elif word in ("-rudp", "-sudp") and index + 2 < len(words):
-            result.append("!".join(words[index:index + 3]))
-            index += 3
-        else:
-            result.append(word)
-            index += 1
-    return result
+        process = (proc_root / str(holder.pid)).stat()
+        if endpoint.st_uid != process.st_uid:
+            return BackendStatus("conflict", "endpoint and backend have different owners",
+                                 device, holder.pid, str(path))
+    except OSError as exc:
+        return BackendStatus("unknown", str(exc), device, holder.pid, str(path))
+    return BackendStatus("ready", "coordinated backend belongs to the selected interface",
+                         device, holder.pid, str(path), process.st_uid, process.st_gid)
 
 
 def service_status() -> Dict[str, str]:

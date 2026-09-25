@@ -7,147 +7,79 @@ import io
 import os
 from pathlib import Path
 
-from support import fake_proc, free_udp_port
-from two_boxes import DESK, B, unit
+from two_boxes import DESK, unit
 
 from oscmix_desk import cli
 from oscmix_desk import outcome as outcome_mod
-from oscmix_desk.process import port_holder
+from oscmix_desk.process import control_holder
 
 
-def test_the_holder_is_followed_to_the_client_it_bridges(tmp_path):
-    port = free_udp_port()
-    proc = fake_proc(tmp_path, boxes=[B], bound=[(port, "oscmix", B[0])])
-    holder = port_holder(port, proc)
-    assert holder is not None
-    assert (holder.oscmix, holder.client, holder.serial) == (True, B[0], B[1])
+def test_the_holder_is_followed_to_the_client_it_bridges(endpoint):
+    _config, path, proc = endpoint
+    holder = control_holder(path, proc)
+    assert (holder.oscmix, holder.client, holder.serial) == (True, 24, "24216011")
 
-def test_a_bridge_above_the_holder_is_found_too(tmp_path):
-    """alsaseqio forks and oscmix is the parent on a real desk; not always."""
-    port = free_udp_port()
-    proc = fake_proc(tmp_path, boxes=[B], bound=[(port, "oscmix", None)])
-    holder_entry = next(p for p in proc.iterdir() if p.name.isdigit())
-    parent = proc / "39000"
-    (parent / "fd").mkdir(parents=True)
-    (parent / "comm").write_text("alsaseqio\n")
-    (parent / "stat").write_text("39000 (alsaseqio) S 1 0 0\n")
-    (parent / "cmdline").write_bytes(b"alsaseqio\x0028:1\x00oscmix\x00")
-    (holder_entry / "stat").write_text("%s (oscmix) S 39000 0 0\n"
-                                       % holder_entry.name)
-    holder = port_holder(port, proc)
-    assert (holder.client, holder.serial) == (B[0], B[1])
 
-def test_a_holder_that_is_not_oscmix_and_one_without_a_bridge(tmp_path):
-    port, other = free_udp_port(), free_udp_port()
-    proc = fake_proc(tmp_path, boxes=[B],
-                     bound=[(port, "python3", None), (other, "oscmix", None)])
-    stranger = port_holder(port, proc)
-    assert stranger is not None
-    assert stranger.oscmix is False
-    lone = port_holder(other, proc)
-    assert (lone.oscmix, lone.client, lone.serial) == (True, None, None)
-    assert port_holder(free_udp_port(), proc) is None
+def test_a_bridge_above_the_holder_is_found_too(endpoint):
+    _config, path, proc = endpoint
+    (proc / "101/stat").write_text("101 (oscmix) S 102 0 0\n")
+    (proc / "102/stat").write_text("102 (alsaseqio) S 1 0 0\n")
+    holder = control_holder(path, proc)
+    assert (holder.client, holder.serial) == (24, "24216011")
 
-def test_another_user_s_oscmix_is_not_this_desk_s_backend(tmp_path, monkeypatch):
-    """Name is not ownership; for root, any user's oscmix is still oscmix."""
-    from oscmix_desk import process
 
-    port = free_udp_port()
-    proc = fake_proc(tmp_path, boxes=[B], bound=[(port, "oscmix", B[0])])
-    someone_else = os.getuid() + 1       # read before os.getuid is replaced
-    monkeypatch.setattr(process.os, "getuid", lambda: someone_else)
-    assert port_holder(port, proc).oscmix is False
-    monkeypatch.setattr(process.os, "getuid", lambda: 0)
-    assert port_holder(port, proc).oscmix is True
+def test_the_bridge_is_found_past_an_unreadable_sibling_and_a_bracket_in_a_name(endpoint):
+    _config, path, proc = endpoint
+    (proc / "100").mkdir()
+    (proc / "100/stat").write_text("100 (gone) S 101 0 0\n")
+    (proc / "102/stat").write_text("102 (als)aseqio) S 101 0 0\n")
+    holder = control_holder(path, proc)
+    assert (holder.client, holder.serial) == (24, "24216011")
 
-def _holder(tmp_path, comm, argv, children=(), stat_comm=None):
-    """A /proc with one UDP holder whose comm, argv and children we choose."""
-    port = free_udp_port()
-    proc = fake_proc(tmp_path, boxes=[B], bound=[(port, "oscmix", None)])
-    entry = next(p for p in proc.iterdir() if p.name.isdigit())
-    (entry / "comm").write_bytes(comm)
-    (entry / "cmdline").write_bytes(argv)
-    for pid, child_stat, child_argv in children:
-        child = proc / str(pid)
-        (child / "fd").mkdir(parents=True)
-        if child_stat is not None:
-            (child / "stat").write_bytes(child_stat % entry.name.encode())
-        if child_argv is not None:
-            (child / "cmdline").write_bytes(child_argv)
-    return port, proc
-
-def test_an_oscmix_is_known_by_its_name_or_by_its_program(tmp_path):
-    by_program = _holder(tmp_path / "a", b"osc-renamed\n",
-                         b"/home/u/.local/bin/oscmix\x00-r\x00udp\x00")
-    by_name = _holder(tmp_path / "b", b"oscmix\n", b"/usr/bin/python3\x00x\x00")
-    neither = _holder(tmp_path / "c", b"python3\n", b"/usr/bin/python3\x00x\x00")
-    assert port_holder(*by_program).oscmix is True
-    assert port_holder(*by_name).oscmix is True
-    assert port_holder(*neither).oscmix is False
-
-def test_an_unreadable_or_undecodable_holder_is_not_an_oscmix(tmp_path):
-    port, proc = _holder(tmp_path / "a", b"oscmix\n", b"oscmix\x00")
-    entry = next(p for p in proc.iterdir() if p.name.isdigit())
-    (entry / "comm").unlink()
-    assert port_holder(port, proc).oscmix is False
-    odd = _holder(tmp_path / "b", b"\xff\xfe\n", b"/x/\xffoscmix\x00")
-    assert port_holder(*odd).oscmix is False
-
-def test_the_bridge_is_found_past_an_unreadable_sibling_and_a_bracket_in_a_name(
-        tmp_path):
-    port, proc = _holder(
-        tmp_path, b"oscmix\n", b"oscmix\x00",
-        children=[
-            (39999, b"39999 (gone) S %s 0 0\n", None),         # no cmdline
-            (40005, b"40005 (als)aseqio) S %s 0 0\n",
-             b"alsaseqio\x0028:1\x00oscmix\x00"),
-        ])
-    holder = port_holder(port, proc)
-    assert (holder.client, holder.serial) == (B[0], B[1])
-
-def _backend_with_parent(tmp_path, parent_argv):
-    """A /proc where an oscmix holds a port and its parent is ``parent_argv``."""
+def _backend_with_parent(endpoint, parent_argv):
+    """A coordinated backend with the given parent; no actual process is signalled."""
+    from oscmix_desk.discovery import Device
     from oscmix_desk.process import _cleanup_stale_backend
 
-    port = free_udp_port()
-    proc = fake_proc(tmp_path, bound=[(port, "oscmix", None)])
-    holder = next(p for p in proc.iterdir() if p.name.isdigit())
+    config, path, proc = endpoint
+    holder = proc / "101"
     parent = proc / "39000"
     (parent / "fd").mkdir(parents=True)
     (parent / "comm").write_text("python3\n")
     (parent / "stat").write_text("39000 (python3) S 1 0 0\n")
     (parent / "cmdline").write_bytes(b"\0".join(a.encode() for a in parent_argv) + b"\0")
-    (holder / "stat").write_text("%s (oscmix) S 39000 0 0\n" % holder.name)
-    return port, proc, holder, _cleanup_stale_backend
+    (holder / "stat").write_text("101 (oscmix) S 39000 0 0\n")
+    device = Device(config.usb_id, config.serial, 24)
+    return path, device, proc, holder, _cleanup_stale_backend
 
-def test_a_backend_of_a_live_session_is_not_stale(tmp_path, monkeypatch):
+def test_a_backend_of_a_live_session_is_not_stale(endpoint, monkeypatch):
     """A second session by hand terminated the unit's backend (measured)."""
     from oscmix_desk import process
 
-    port, proc, _holder, cleanup = _backend_with_parent(
-        tmp_path, ["python3", "/home/u/.local/bin/oscmix-session"])
+    port, device, proc, _holder, cleanup = _backend_with_parent(
+        endpoint, ["python3", "/home/u/.local/bin/oscmix-session"])
     monkeypatch.setattr(process.os, "getuid", os.getuid)
     killed = []
     monkeypatch.setattr(process, "_terminate",
                         lambda pid, still_stale: killed.append(pid) or True)
-    assert cleanup(port, proc) == 39000
+    assert cleanup(port, device, proc) == 39000
     assert killed == []
 
-def test_a_backend_whose_session_is_gone_is_stale(tmp_path, monkeypatch):
+def test_a_backend_whose_session_is_gone_is_stale(endpoint, monkeypatch):
     from oscmix_desk import process
 
-    port, proc, holder, cleanup = _backend_with_parent(tmp_path, ["bash"])
+    port, device, proc, holder, cleanup = _backend_with_parent(endpoint, ["bash"])
     monkeypatch.setattr(process.os, "getuid", os.getuid)
     monkeypatch.setattr(process, "STALE_BACKEND_SETTLE", 0.0)
     killed = []
     monkeypatch.setattr(process, "_terminate",
                         lambda pid, still_stale: killed.append(pid) or True)
-    assert cleanup(port, proc) is None
+    assert cleanup(port, device, proc) is None
     assert killed == [int(holder.name)]
     # Reparented to init after its session died: stale as well.
     (holder / "stat").write_text("%s (oscmix) S 1 0 0\n" % holder.name)
     killed.clear()
-    assert cleanup(port, proc) is None
+    assert cleanup(port, device, proc) is None
     assert killed == [int(holder.name)]
 
 def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch,
@@ -314,21 +246,21 @@ def test_the_unit_s_process_is_read_from_proc(tmp_path, monkeypatch):
     assert process.unit_process(tmp_path) is None
 
 def test_a_session_named_past_the_interpreter_or_under_init_is_not_one(
-        tmp_path, monkeypatch):
+        endpoint, monkeypatch):
     """Only argv[0] or argv[1] names the program -- `python3 <script>` or
     the script itself. A later argument that happens to be called
     oscmix-session is an editor's file, and a backend whose parent is
     pid 1 has no session whatever pid 1 runs."""
     from oscmix_desk import process
 
-    port, proc, holder, cleanup = _backend_with_parent(
-        tmp_path, ["vim", "-R", "oscmix-session"])
+    port, device, proc, holder, cleanup = _backend_with_parent(
+        endpoint, ["vim", "-R", "oscmix-session"])
     monkeypatch.setattr(process.os, "getuid", os.getuid)
     monkeypatch.setattr(process, "STALE_BACKEND_SETTLE", 0.0)
     killed = []
     monkeypatch.setattr(process, "_terminate",
                         lambda pid, still_stale: killed.append(pid) or True)
-    assert cleanup(port, proc) is None
+    assert cleanup(port, device, proc) is None
     assert killed == [int(holder.name)]
     init = proc / "1"
     init.mkdir()

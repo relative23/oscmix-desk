@@ -288,6 +288,125 @@ def diagnostic_query():
     return _REAL["diagnostic_query"]
 
 
+@pytest.fixture
+def wire_peer(tmp_path_factory):
+    """A leased production client and independent scripted protocol peer."""
+    from contextlib import contextmanager
+
+    from control_peer import ScriptedControl
+
+    from oscmix_desk.backend import Control
+
+    @contextmanager
+    def run(**options):
+        root = tmp_path_factory.mktemp("wire")
+        peer = ScriptedControl(root / "c", **options)
+        device = Control(peer.path, os.getpid())
+        try:
+            device.begin()
+            yield device, peer
+        finally:
+            device.close()
+            peer.close()
+
+    return run
+
+
+@pytest.fixture
+def read_peer(tmp_path_factory, monkeypatch):
+    """A real control connection for read-command tests, with scripted replies.
+
+    Only the already-tested identity association is substituted. Subscription,
+    refresh, framed observations, deadlines and disconnects use the real client.
+    """
+    from contextlib import contextmanager
+
+    from control_peer import ScriptedControl
+    from support import osc_bundle
+
+    from oscmix_desk import reads
+    from oscmix_desk.backend import Control
+    from oscmix_desk.osc import encode_osc
+
+    @contextmanager
+    def run(registers, **faults):
+        root = tmp_path_factory.mktemp("read")
+        reports = [osc_bundle([encode_osc(p, t, *a) for p, t, a in registers])]
+        peer = ScriptedControl(root / "c", reports=reports if registers else [], **faults)
+
+        def connect(config, config_path=None, *, reader=False):
+            assert reader is True
+            return Control(peer.path, os.getpid(), reader=True)
+
+        try:
+            with monkeypatch.context() as patch:
+                patch.setattr(reads, "connect_backend", connect)
+                yield peer
+        finally:
+            peer.close()
+
+    return run
+
+
+@pytest.fixture
+def endpoint(tmp_path_factory, monkeypatch):
+    """A real listening endpoint with independently editable /proc evidence."""
+    from support import control_owner, fake_proc
+    from two_boxes import A
+
+    from oscmix_desk import locking
+    from oscmix_desk.model import Config
+
+    root = tmp_path_factory.mktemp("identity")
+    shared = root / "shared"
+    shared.mkdir()
+    monkeypatch.setenv("OSCMIX_LOCK_DIR", str(shared))
+    config = Config(serial=A[1])
+    path = locking.control_path(None, "2a39-3fd9-" + A[1])
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+    sock.bind(str(path))
+    sock.listen(1)
+    proc = fake_proc(root / "proc", boxes=[A, (25, "99887766")])
+    control_owner(proc, path, 101, 24)
+    yield config, path, proc
+    sock.close()
+
+
+@pytest.fixture
+def coordinated(tmp_path_factory, monkeypatch):
+    """Scripted endpoint with real peer credentials and a simulated ALSA identity."""
+    import struct
+    from contextlib import contextmanager
+
+    from control_peer import ScriptedControl
+    from support import control_owner, fake_proc
+    from two_boxes import A, B
+
+    from oscmix_desk.locking import control_path
+
+    @contextmanager
+    def run(serial=B[1], client=B[0], boxes=(A, B)):
+        root = tmp_path_factory.mktemp("peer")
+        shared = root / "shared"
+        shared.mkdir()
+        monkeypatch.setenv("OSCMIX_LOCK_DIR", str(shared))
+        path = control_path(None, "2a39-3fd9-" + serial)
+        proc = fake_proc(root / "proc", boxes=boxes)
+        control_owner(proc, path, os.getpid(), client)
+        monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
+        name = next((s for c, s in boxes if c == client), serial)
+        hello = bytes(range(16)) + struct.pack(">II", os.getpid(), 1)
+        peer = ScriptedControl(path, handshake=hello + ("Fireface UCX II (%s)\0" % name).encode(),
+                               echo=True)
+        peer.proc = proc
+        try:
+            yield peer
+        finally:
+            peer.close()
+
+    return run
+
+
 @pytest.fixture(scope="session")
 def routing_mod():
     """Reach into routing for its own knobs.
@@ -511,9 +630,9 @@ def lifecycle(session_module, monkeypatch):
         # what `run.config` is from the moment there is a backend to start.
         start_backend = session_module._start_backend
 
-        def start(client, running):
+        def start(client, running, config_path=None):
             run.config = running
-            return start_backend(client, running)
+            return start_backend(client, running, config_path)
 
         monkeypatch.setattr(session_module, "_start_backend", start)
 

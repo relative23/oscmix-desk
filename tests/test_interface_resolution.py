@@ -5,7 +5,7 @@ the card list, from one resolution that never guesses (ADR 0024).
 import threading
 
 import pytest
-from support import fake_proc, free_udp_port, write_config
+from support import fake_proc, write_config
 from two_boxes import DESK, A, B, add_clients
 
 from oscmix_desk import profiles
@@ -16,7 +16,7 @@ from oscmix_desk.discovery import (
     serial_in,
 )
 from oscmix_desk.errors import DeviceAmbiguous
-from oscmix_desk.process import port_holder
+from oscmix_desk.process import control_holder
 
 
 def test_the_serial_is_read_from_a_device_name():
@@ -50,12 +50,11 @@ def test_the_card_list_decides_when_no_client_is_up(tmp_path):
     assert resolve_device("2a39:3fd9", "Fireface UCX II", "", one).serial == A[1]
     assert Device("2a39:3fd9", "", None).key == "2a39-3fd9-unknown"
 
-def test_a_known_client_without_a_readable_client_list_has_no_serial(tmp_path):
-    port = free_udp_port()
-    proc = fake_proc(tmp_path, boxes=[B], bound=[(port, "oscmix", B[0])])
-    (proc / "asound" / "seq" / "clients").unlink()
-    holder = port_holder(port, proc)
-    assert (holder.client, holder.serial) == (B[0], None)
+def test_a_known_client_without_a_readable_client_list_has_no_serial(endpoint):
+    _config, path, proc = endpoint
+    (proc / "asound/seq/clients").unlink()
+    holder = control_holder(path, proc)
+    assert (holder.client, holder.serial) == (24, None)
 
 def test_a_fireface_of_another_model_is_not_a_second_candidate(tmp_path):
     """Counting every Fireface line made a UCX II beside an 802 ambiguous."""

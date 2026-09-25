@@ -3,12 +3,18 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-An interim `make check` passes 2017 tests (two empty parameter sets skipped),
-with 98% coverage.
-N2 now has a versioned backend/GTK patch series and simulated-MIDI software
-qualification: 43 preparation/protocol tests and actual GTK fader, lease,
-start-order, disconnect and peer-identity checks pass on a fresh series build.
-Desk-client integration and the final acceptance criteria remain open.
+The coordinated runtime's interim `make check` passes 2060 tests (two empty
+parameter sets skipped); a separate coverage run passes the 97% ratchet.
+N2 now uses one checked, backend-owned connection through desk apply,
+verification, repair and profile/reload operations. The fresh versioned
+backend/GTK build passes 60 preparation/protocol tests and the actual GTK
+fader, lease, start-order, disconnect and identity checks with simulated MIDI.
+Actual desk CLI processes and GTK also pass a combined simulated-MIDI test:
+two profiles serialize through read-back, GTK cannot write during the operation,
+and backend loss preserves the marker without replay after restart. Measurement
+tools now use the same checked connection and record exact build provenance.
+These are interim software checks; hardware and installation qualification
+remain open.
 All proposed 0.7.4 corrections are included; there is no separate 0.7.4 milestone.
 
 Latest published release: **0.7.3**. Its implementation, qualification and

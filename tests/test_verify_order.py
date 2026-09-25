@@ -39,11 +39,10 @@ def observe(monkeypatch, registers, batches):
     monkeypatch.setattr(verify.time, "monotonic",
                         lambda: next(ticks))
     ticks = itertools.count(0, 0.01)
-    result = verify.verify_routing(
-        registers, 0, 0, timeout=1, device_model=UCX2, backend=backend,
-        on_observed=lambda path, args: seen.append((path, args)))
+    result = verify.verify_routing(registers, backend, timeout=1, device_model=UCX2,
+                                   on_observed=lambda path, args: seen.append((path, args)))
     assert backend.dumps == 1
-    assert backend.closed
+    assert not backend.closed  # helper borrows the operation connection
     return result, seen
 
 
@@ -137,10 +136,9 @@ def test_startup_uses_latest_report_for_repair_and_remember(
     config = Config(channels=[ChannelSetting('output', n, 'volume', 0.) for n in (5, 7)],
                     policies={('output', 'volume'): PIN} if pin else {})
     writes = []
-    monkeypatch.setattr(verify, 'loopback', lambda *_: contradiction)
     monkeypatch.setattr(verify, 'apply_routing', lambda *_a, **kw: writes.append(kw))
     with caplog.at_level('INFO', logger='oscmix-session'):
-        verify.verify_and_repair(config)
+        verify.verify_and_repair(config, contradiction)
     assert len(writes) == int(pin)
     assert ('unconfirmed after retry' in caplog.text) is pin
     assert ('1 kept by REMEMBER' in caplog.text) is not pin

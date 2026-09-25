@@ -11,7 +11,6 @@ import errno
 import pytest
 from backend_doubles import RecordingBackend, echo_link_flags_only
 from profile_desk import GOOD, TRACKING, desk
-from support import free_udp_port
 
 from oscmix_desk import backend as backend_mod
 from oscmix_desk import cli, profiles
@@ -72,7 +71,7 @@ def test_a_write_that_never_starts_is_a_refusal(tmp_path):
                                       backend=device, verify=False)
     assert outcome.state == outcome_mod.REFUSED
     assert not outcome.applied
-    assert "cannot write to the backend on UDP" in outcome.reason
+    assert "cannot complete backend writes" in outcome.reason
     assert "Network is unreachable" in outcome.reason
     assert marker_mod.active_profile(path) is None
 
@@ -97,7 +96,7 @@ def test_a_write_that_fails_part_of_the_way_says_how_far_it_came(tmp_path,
         "the desk in effect is still the one a reload writes back"
     line = outcome.describe()
     assert line.startswith("wrote %d of %d register(s) of 'tracking' and then "
-                           "could not: cannot write to the backend on UDP"
+                           "could not: cannot complete backend writes"
                            % (allowed, len(everything)))
     assert "written: %s" % everything[0] in line
     assert line.endswith("the declared desk in effect has not changed; apply it "
@@ -151,44 +150,33 @@ def test_the_command_exits_1_and_asks_the_unit_to_put_the_desk_back(
 # The accounting itself, against a socket that gives out.
 # --------------------------------------------------------------------------
 
-class _Socket:
-    def __init__(self, allowed, log):
-        self.allowed, self.log = allowed, log
-
-    def sendto(self, data, _address):
-        if len(self.log) >= self.allowed:
-            raise OSError(errno.ENETUNREACH, "Network is unreachable")
-        self.log.append(data)
-
-    def close(self):
-        self.log.append("closed")
-
-
-def test_the_backend_says_which_of_a_burst_went_out(monkeypatch):
-    sent = []
-    device = backend_mod.loopback(free_udp_port(), free_udp_port())
-    monkeypatch.setattr(backend_mod.socket, "socket",
-                        lambda *a: _Socket(2, sent))
-    burst = [("/output/%d/volume" % n, "f", (0.0,)) for n in (1, 2, 3, 4)]
-    with pytest.raises(WriteFailed) as failed:
-        device.send(burst)
-    assert failed.value.written == ("/output/1/volume", "/output/2/volume")
-    assert failed.value.unwritten == ("/output/3/volume", "/output/4/volume")
-    assert (failed.value.errno, failed.value.strerror) == (
-        errno.ENETUNREACH, "Network is unreachable")
-    assert sent[-1] == "closed", "and the socket is not left open"
+def test_the_backend_counts_a_lost_ack_as_possibly_written(wire_peer):
+    burst = [("/output/%d/volume" % n, "f", (0.,)) for n in (1, 2, 3, 4)]
+    with wire_peer(disconnect_after="/output/2/volume") as (device, peer):
+        with pytest.raises(WriteFailed) as failed:
+            device.send(burst)
+        assert failed.value.written == ("/output/1/volume", "/output/2/volume")
+        assert failed.value.unwritten == ("/output/3/volume", "/output/4/volume")
+        assert failed.value.errno == errno.ECONNRESET
+        assert peer.order == list(failed.value.written)
+        assert device._closed
+        assert ("sent (hardware unconfirmed): /output/1/volume, /output/2/volume; "
+                "pending: /output/3/volume, /output/4/volume") in str(failed.value)
 
 
-def test_a_socket_that_cannot_be_had_is_a_write_that_never_started(
-        monkeypatch):
-    def none_left(*_a):
+def test_connection_exhaustion_before_a_switch_is_a_refusal(tmp_path, monkeypatch):
+    path = desk(tmp_path, main=GOOD, tracking=TRACKING)
+
+    def exhausted(*_a, **_k):
         raise OSError(errno.EMFILE, "Too many open files")
 
-    device = backend_mod.loopback(free_udp_port(), free_udp_port())
-    monkeypatch.setattr(backend_mod.socket, "socket", none_left)
-    with pytest.raises(WriteFailed) as failed:
-        device.send([("/output/1/volume", "f", (0.0,))])
-    assert (failed.value.written, failed.value.unwritten) == (
-        (), ("/output/1/volume",))
-    assert isinstance(failed.value, OSError), \
-        "so a start, a verifier and a reconcile stand down as they did"
+    from support import fake_proc
+
+    monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(tmp_path / "proc",
+                       boxes=[(24, "24216011")])))
+    monkeypatch.setattr(profiles, "connect_backend", exhausted)
+    result = profiles.switch_profile("tracking", config_path=path)
+    assert result.state == outcome_mod.REFUSED
+    assert result.written == []
+    assert "Too many open files" in result.reason
+    assert marker_mod.active_profile(path) is None

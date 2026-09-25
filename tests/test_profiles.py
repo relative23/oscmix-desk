@@ -21,6 +21,7 @@ a live desk is that a typo costs you a message, not your monitoring.
 
 
 import pytest
+from backend_doubles import RecordingBackend
 from profile_desk import GOOD, TRACKING, desk
 from support import write_config
 
@@ -174,7 +175,8 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
     # Shortened here because the outcome is under test, not the
     # duration -- tests/test_apply_routing.py owns the timing.
     from oscmix_desk import routing as routing_mod
-    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.01)
+    monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.01)
+    monkeypatch.setattr(profiles, "VERIFY_TIMEOUT", 0.01)
 
     write_config(tmp_path / "profiles" / "tracking.conf", GOOD)
     outcome = profiles.switch_profile("tracking",
@@ -185,13 +187,9 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
     assert outcome.applied is True
     assert outcome.unverified, "unverifiable without a list is not an outcome"
     assert "/output/1/volume" in outcome.unverified
-    # Nobody looked, so the line must not read like a read-back that ran
-    # and came up short ("N register(s) unconfirmed", until 0.6.11).
-    assert outcome.read_back is False
-    assert outcome.describe() == (
-        "applied 'tracking'; not read back (receive port in use (mixer GUI "
-        "running?)), so none of its %d register(s) is confirmed"
-        % len(outcome.unverified))
+    assert outcome.read_back is True
+    assert "unconfirmed" in outcome.describe()
+    assert "mixer GUI" not in outcome.describe()
 
 
 def test_the_four_states_are_the_only_four(tmp_path):
@@ -391,14 +389,15 @@ def test_two_switches_do_not_interleave_on_the_wire(tmp_path, routing_mod,
 
     from oscmix_desk import backend as backend_mod
 
-    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.05)
+    monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
     path = desk(tmp_path, tracking=TRACKING, mixdown=GOOD)
     wire = []
 
-    class SlowBackend:
+    class SlowBackend(RecordingBackend):
         traits = backend_mod.OSCMIX
 
         def __init__(self, tag):
+            super().__init__()
             self.tag = tag
 
         def send(self, messages):
@@ -458,45 +457,26 @@ def test_the_device_key_names_the_box_not_the_file(tmp_path):
 # --------------------------------------------------------------------------
 
 
-def test_reachability_reads_the_real_sysfs_and_proc_by_default(monkeypatch):
-    """The overrides are test seams; the defaults are what a desk runs."""
+def test_target_resolution_uses_host_defaults_without_overrides(monkeypatch):
     from pathlib import Path
 
     from oscmix_desk import Config
     from oscmix_desk.discovery import Device
-    from oscmix_desk.process import PortHolder
 
     monkeypatch.delenv("OSCMIX_SYSFS_USB", raising=False)
     monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
     seen = []
-    present, bound = [True], [True]
-    holder = [PortHolder(pid=7, oscmix=True, client=24, serial="24216011")]
+    present = [True]
+    target = [Device(usb_id="2a39:3fd9", serial="24216011", client=24)]
     monkeypatch.setattr(profiles, "usb_device_present",
                         lambda usb_id, sysfs: seen.append(sysfs) or present[0])
-    monkeypatch.setattr(profiles, "udp_port_listening",
-                        lambda port, proc: seen.append(proc) or bound[0])
-    monkeypatch.setattr(profiles, "port_holder",
-                        lambda port, proc: seen.append(proc) or holder[0])
-    config = Config()
-    box = Device(usb_id="2a39:3fd9", serial="24216011", client=24)
-    assert profiles._unreachable(config, box) is None
-    assert seen == [Path("/sys/bus/usb/devices"), Path("/proc"), Path("/proc")]
-
-    holder[0] = PortHolder(pid=7, oscmix=True, client=28, serial="99887766")
-    assert profiles._unreachable(config, box) == (
-        "the backend on UDP 7222 drives the interface 99887766, not 24216011")
-    holder[0] = PortHolder(pid=7, oscmix=True, client=28, serial=None)
-    assert profiles._unreachable(config, box) == (
-        "the backend on UDP 7222 bridges sequencer client 28, not 24")
-    holder[0] = PortHolder(pid=7, oscmix=False, client=None, serial=None)
-    assert profiles._unreachable(config, box) == (
-        "UDP 7222 is held by pid 7, not by an oscmix backend of this user")
-    holder[0] = None
-    assert profiles._unreachable(config, box) == (
-        "UDP 7222 is held by a process that cannot be identified, not by an "
-        "oscmix backend of this user")
-    bound[0] = False
-    assert profiles._unreachable(config, box) == (
-        "nothing is listening on UDP 7222, so the backend is not running")
+    monkeypatch.setattr(profiles, "resolve_device",
+                        lambda usb, name, serial, proc: seen.append(proc) or target[0])
+    assert profiles._target(Config(), reach=True) == target[0]
+    assert seen == [Path("/proc"), Path("/sys/bus/usb/devices")]
+    target[0] = Device(usb_id="2a39:3fd9", serial="24216011", client=None)
+    with pytest.raises(profiles._Refused, match="not visible to ALSA"):
+        profiles._target(Config(), reach=True)
     present[0] = False
-    assert profiles._unreachable(config, box) == "2a39:3fd9 is not connected"
+    with pytest.raises(profiles._Refused, match="not connected"):
+        profiles._target(Config(), reach=True)

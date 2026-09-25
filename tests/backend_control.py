@@ -31,6 +31,8 @@ from control_peer import (
     wait_for,
 )
 
+from oscmix_desk.backend import Control
+from oscmix_desk.errors import ReceivePortError, WriteFailed
 from oscmix_desk.osc import decode_osc, encode_osc, iter_osc_messages
 
 
@@ -46,6 +48,7 @@ def binary():
 def midi(binary, tmp_path):
     target = SimulatedMidi(binary, tmp_path / 'c.sock')
     try:
+        wait_for(lambda: target.path.exists())
         yield target
     finally:
         target.close()
@@ -334,3 +337,243 @@ def test_consumer_limit_is_bounded_and_recovers_after_close(midi, desk):
     finally:
         for peer in peers:
             peer.close()
+
+
+def test_desk_client_retains_origin_epoch_and_complete_bundle(midi, desk):
+    client = Control(midi.path, midi.child.pid)
+    try:
+        client.begin()
+        assert desk.request(BEGIN)[2] == BUSY
+        client.send([('/output/5/stereo', 'i', (1,)), ('/output/7/stereo', 'i', (1,))])
+        midi.inject((0x604, 1), (0x684, 1), (0x604, 0))
+        delivery = client.next_delivery(2)
+        assert delivery is not None
+        assert delivery.origin == DEVICE
+        assert delivery.epoch == desk.epoch
+        reports = [decode_osc(raw) for raw in iter_osc_messages(delivery.payload)]
+        assert reports[-2:] == [('/output/5/stereo', 'i', (0,)),
+                                ('/output/6/stereo', 'i', (0,))]
+        client.finish()
+        assert desk.request(BEGIN)[2] == OK
+    finally:
+        client.close()
+
+
+def test_desk_client_refresh_keeps_cache_provenance_and_discards_old_reports(midi, desk):
+    client = Control(midi.path, midi.child.pid)
+    try:
+        midi.inject((0x600, -300))
+        client.wait(0.1)
+        client.request_dump()
+        delivery = client.next_delivery(2)
+        assert delivery is not None
+        assert delivery.origin == DERIVED
+        assert all(path.startswith('/playback/') for path, _, _ in
+                   (decode_osc(raw) for raw in iter_osc_messages(delivery.payload)))
+        assert client.next_delivery(0.05) is None
+    finally:
+        client.close()
+
+
+def test_desk_client_wait_maintains_lease_without_extending_its_hard_limit(midi, desk):
+    client = Control(midi.path, midi.child.pid)
+    try:
+        client.begin()
+        client.wait(5.2)
+        assert desk.request(BEGIN)[2] == BUSY
+        client.send([('/output/5/volume', 'f', (-40,))])
+        client.finish()
+        wait_for(lambda: midi.registers() == [(0x600, 0xfe70)])
+    finally:
+        client.close()
+
+
+def test_desk_client_never_writes_without_lease(midi, desk):
+    client = Control(midi.path, midi.child.pid)
+    try:
+        with pytest.raises(WriteFailed) as failed:
+            client.send([('/output/5/volume', 'f', (-40,))])
+        assert failed.value.written == ()
+        assert failed.value.unwritten == ('/output/5/volume',)
+        assert midi.registers() == []
+    finally:
+        client.close()
+
+
+def test_desk_client_wrong_peer_is_refused_before_protocol_or_hardware(midi, desk):
+    with pytest.raises(OSError, match='peer does not match'):
+        Control(midi.path, os.getpid())
+    assert midi.registers() == []
+
+
+def test_desk_client_cancel_discards_observation_authority_and_releases_lease(midi, desk):
+    cancelled = [False]
+    client = Control(midi.path, midi.child.pid, should_stop=lambda: cancelled[0])
+    try:
+        client.begin()
+        midi.inject((0x600, -300))
+        client.wait(0.1)
+        cancelled[0] = True
+        with pytest.raises(ReceivePortError, match='cancelled'):
+            client.next_delivery(0.1)
+        # EOF is processed by the backend event loop, not synchronously by close().
+        wait_for(lambda: desk.request(BEGIN)[2] == OK)
+        assert midi.registers() == []
+    finally:
+        client.close()
+
+
+def test_desk_client_disconnect_reports_exact_completed_burst_prefix(midi, desk, monkeypatch):
+    client = Control(midi.path, midi.child.pid)
+    try:
+        client.begin()
+        original = client._acknowledgement
+        def stop_after_first_write(kind, request):
+            result = original(kind, request)
+            if kind == WRITE:
+                midi.child.terminate()
+                midi.child.wait(timeout=3)
+            return result
+        monkeypatch.setattr(client, '_acknowledgement', stop_after_first_write)
+        with pytest.raises(WriteFailed) as failed:
+            client.send([('/output/5/volume', 'f', (-40,)),
+                         ('/output/7/volume', 'f', (-30,))])
+        assert failed.value.written == ('/output/5/volume',)
+        assert failed.value.unwritten == ('/output/7/volume',)
+        wait_for(lambda: midi.registers())
+        assert midi.registers() == [(0x600, 0xfe70)]
+        with pytest.raises(ReceivePortError, match='no longer valid'):
+            client.finish()
+    finally:
+        client.close()
+
+
+def test_real_apply_drains_the_final_link_contradiction_before_matrix(midi, monkeypatch):
+    from oscmix_desk import routing
+    from oscmix_desk.model import Config, Route
+
+    client = Control(midi.path, midi.child.pid)
+    original = client.send
+    def with_device_response(messages):
+        original(messages)
+        midi.inject((0x604, 1), (0x684, 1), (0x604, 0))
+    monkeypatch.setattr(client, 'send', with_device_response)
+    monkeypatch.setattr(routing, 'LINK_ECHO_TIMEOUT', 0.1)
+    config = Config(routes=[Route('a', playback=(1, 2), output=(5, 6)),
+                            Route('b', playback=(1, 2), output=(7, 8))])
+    try:
+        client.begin()
+        with pytest.raises(WriteFailed, match='contradicted') as failure:
+            routing.apply_routing(config, client)
+        assert failure.value.written == (
+            '/playback/1/stereo', '/output/5/stereo', '/output/7/stereo')
+        assert failure.value.unwritten == ('/mix/5/playback/1', '/mix/7/playback/1')
+        assert all(register < 0x4000 for register, _ in midi.registers())
+        client.finish()
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize('volume', [None, -60, -300])
+@pytest.mark.parametrize('pinned', [False, True])
+def test_real_reconcile_keeps_remember_with_missing_matching_or_changed_reply(
+        midi, monkeypatch, volume, pinned):
+    from oscmix_desk import verify
+    from oscmix_desk.model import ChannelSetting, Config
+    from oscmix_desk.registers import PIN
+
+    client = Control(midi.path, midi.child.pid)
+    original = client.request_dump
+    def refresh():
+        original()
+        if volume is not None:
+            midi.inject((0x600, volume))
+    monkeypatch.setattr(client, 'request_dump', refresh)
+    monkeypatch.setattr(verify, 'VERIFY_TIMEOUT', 0.05)
+    config = Config(channels=[ChannelSetting('output', 5, 'volume', -6)],
+                    policies={('output', 'volume'): PIN} if pinned else {})
+    try:
+        client.begin()
+        assert verify.reconcile_now(config, 'real backend regression', client)
+        client.finish()
+        wait_for(lambda: midi.registers())
+        if pinned:
+            wait_for(lambda: (0x600, 0xffc4) in midi.registers())
+        volumes = [(reg, value) for reg, value in midi.registers() if reg == 0x600]
+        assert volumes == ([(0x600, 0xffc4)] if pinned else [])
+    finally:
+        client.close()
+
+
+def test_profile_holds_one_lease_through_readback_and_checks_end_before_marker(
+        midi, tmp_path, monkeypatch):
+    from oscmix_desk import profiles
+
+    path = tmp_path / 'routing.conf'
+    path.write_text('[output:5]\nvolume=-40\n')
+    (tmp_path / 'profiles').mkdir()
+    (tmp_path / 'profiles/new.conf').write_text('[output:5]\nvolume=-30\n')
+    (tmp_path / 'active-profile').write_text('previous\n')
+    client = Control(midi.path, midi.child.pid)
+    gui = midi.connect(GUI)
+    rival = midi.connect()
+    original = client.request_dump
+    def refresh():
+        assert rival.request(BEGIN)[2] == BUSY
+        assert gui.request(WRITE, payload=encode_osc('/output/5/volume', 'f', -20))[2] == BUSY
+        original()
+        midi.inject((0x600, -300))
+    monkeypatch.setattr(client, 'request_dump', refresh)
+    marked = []
+    persist = profiles.remember_active_profile
+    def remember(name, config_path):
+        assert name == 'new'
+        assert config_path == path
+        assert rival.request(BEGIN)[2] == OK
+        assert rival.request(END)[2] == OK
+        marked.append(name)
+        return persist(name, config_path)
+    monkeypatch.setattr(profiles, 'remember_active_profile', remember)
+    try:
+        outcome = profiles.switch_profile('new', path, backend=client)
+        assert outcome.state == 'applied-verified'
+        assert outcome.persisted
+        assert marked == ['new']
+        assert midi.registers() == [(0x600, 0xfed4), (0x3e04, 0x67cd)]
+    finally:
+        client.close()
+        gui.close()
+        rival.close()
+
+
+@pytest.mark.parametrize('failure_phase', ['request_dump', 'finish'])
+def test_profile_lost_backend_never_commits_marker_even_after_all_writes(
+        midi, tmp_path, monkeypatch, failure_phase):
+    from oscmix_desk import profiles
+
+    path = tmp_path / 'routing.conf'
+    path.write_text('[output:5]\nvolume=-40\n')
+    (tmp_path / 'profiles').mkdir()
+    (tmp_path / 'profiles/new.conf').write_text('[output:5]\nvolume=-30\n')
+    marker = tmp_path / 'active-profile'
+    marker.write_text('previous\n')
+    client = Control(midi.path, midi.child.pid)
+    original = getattr(client, failure_phase)
+    def lose_backend():
+        midi.child.terminate()
+        midi.child.wait(timeout=3)
+        return original()
+    monkeypatch.setattr(client, failure_phase, lose_backend)
+    try:
+        outcome = profiles.switch_profile('new', path, backend=client,
+                                          verify=failure_phase == 'request_dump')
+        assert outcome.state == 'applied-unverified'
+        assert not outcome.persisted
+        assert not outcome.read_back
+        assert outcome.unverified == ['/output/5/volume']
+        assert 'did not finish' in outcome.reason
+        assert marker.read_text() == 'previous\n'
+        wait_for(lambda: midi.registers())
+        assert midi.registers() == [(0x600, 0xfed4)]
+    finally:
+        client.close()

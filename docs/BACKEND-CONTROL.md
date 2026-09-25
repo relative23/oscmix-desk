@@ -94,4 +94,7 @@ and the same backend with anonymous simulated MIDI pipes. It requires
 and system Python's GI/AT-SPI packages. Run under Xvfb and a private
 `dbus-run-session` with a private runtime directory and clean environment.
 It changes only simulated output-volume registers. These software tests do
-not qualify the UCX II, installation targets, or the final desk client.
+not qualify the UCX II or installation targets. The same harness runs actual
+desk CLI profiles against the C backend and GTK, checking serialization through
+read-back and marker persistence, both process startup orders, backend loss
+and replacement. `--cli-only` selects those cases during development.

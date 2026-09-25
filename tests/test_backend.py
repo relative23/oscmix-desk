@@ -9,10 +9,11 @@ releases.
 """
 
 import json
-import socket
+import os
 
 import pytest
-from support import free_udp_port, repo_file
+from control_peer import HELLO, REFRESH, ScriptedControl
+from support import repo_file
 
 from oscmix_desk import backend, osc
 
@@ -53,8 +54,6 @@ def test_the_link_state_trait_is_why_the_barrier_exists():
     # The constants that exist only because of it. If the trait ever
     # flips while these remain, the workaround outlived its reason.
     assert constants.LINK_ECHO_TIMEOUT > 0
-    assert constants.LINK_SETTLE > 0
-    assert constants.LINK_SYNC_BLIND_DELAY > 0
 
 
 def test_the_unchanged_register_trait_is_why_the_echo_cannot_be_the_only_barrier():
@@ -76,96 +75,53 @@ def test_a_trait_table_is_a_frozen_value():
 # The seam itself.
 # --------------------------------------------------------------------------
 
-def test_a_burst_arrives_in_the_order_it_was_given(session_mod):
-    # The order is the caller's. The whole two-phase design is an
-    # ordering, so a backend that reordered or coalesced would be
-    # silently undoing it.
-    port = free_udp_port()
-    rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    rx.bind(("127.0.0.1", port))
-    rx.settimeout(2.0)
+def test_a_burst_arrives_in_the_order_it_was_given(tmp_path):
+    peer = ScriptedControl(tmp_path / "c.sock")
+    device = backend.Control(peer.path, os.getpid())
     try:
+        device.begin()
         messages = [("/output/%d/stereo" % n, "i", (1,)) for n in range(1, 8)]
-        backend.loopback(port, free_udp_port()).send(messages)
-        got = []
-        for _ in messages:
-            datagram, _addr = rx.recvfrom(65536)
-            got.append(osc.decode_osc(datagram)[0])
+        device.send(messages)
+        assert [osc.decode_osc(packet) for packet in peer.writes] == messages
+        device.finish()
     finally:
-        rx.close()
-    assert got == [m[0] for m in messages]
+        device.close()
+        peer.close()
 
 
-def test_a_taken_receive_port_is_none_rather_than_an_error():
-    # The normal desktop case: the mixer GUI holds it whenever its
-    # window is open. An exception here would turn "the user has the
-    # mixer open" into a failed start.
-    port = free_udp_port()
-    holder = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    holder.bind(("127.0.0.1", port))
+def test_a_timeout_yields_nothing_rather_than_raising(tmp_path):
+    peer = ScriptedControl(tmp_path / "c.sock")
+    device = backend.Control(peer.path, os.getpid(), reader=True)
     try:
-        assert backend.loopback(free_udp_port(), port).listen() is None
+        assert list(device.messages(0.05)) == []
     finally:
-        holder.close()
+        device.close()
+        peer.close()
 
 
-def test_a_free_receive_port_yields_a_listener():
-    device = backend.loopback(free_udp_port(), free_udp_port())
-    listener = device.listen()
-    assert listener is not None
-    listener.close()
-
-
-def test_the_listener_releases_the_port_it_held():
-    # A listener that leaked its socket would make the *next* verify
-    # pass see the port as taken and silently go blind.
-    port = free_udp_port()
-    device = backend.loopback(free_udp_port(), port)
-    first = device.listen()
-    assert first is not None
-    first.close()
-    second = device.listen()
-    assert second is not None, "the port was still held after close()"
-    second.close()
-
-
-def test_the_listener_works_as_a_context_manager():
-    port = free_udp_port()
-    device = backend.loopback(free_udp_port(), port)
-    with device.listen() as listener:
-        assert listener is not None
-    assert device.listen() is not None
-
-
-def test_a_timeout_yields_nothing_rather_than_raising():
-    device = backend.loopback(free_udp_port(), free_udp_port())
-    with device.listen() as listener:
-        assert list(listener.messages(0.05)) == []
-
-
-def test_a_malformed_datagram_is_skipped_not_raised(session_mod):
-    # This reads off a socket. One bad message must not end a dump that
-    # is otherwise confirming registers.
-    port = free_udp_port()
-    device = backend.loopback(free_udp_port(), port)
-    with device.listen() as listener:
-        tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        tx.sendto(b"\xff\xfe not osc at all \x00\x01", ("127.0.0.1", port))
-        tx.close()
-        assert list(listener.messages(0.5)) == []
-
-
-def test_a_dump_request_is_a_refresh(session_mod):
-    port = free_udp_port()
-    rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    rx.bind(("127.0.0.1", port))
-    rx.settimeout(2.0)
+def test_a_malformed_osc_delivery_does_not_hide_the_next_one(tmp_path):
+    valid = osc.encode_osc("/output/5/stereo", "i", 1)
+    peer = ScriptedControl(tmp_path / "c.sock", reports=[b"bad!", valid])
+    device = backend.Control(peer.path, os.getpid(), reader=True)
     try:
-        backend.loopback(port, free_udp_port()).request_dump()
-        datagram, _addr = rx.recvfrom(65536)
+        device.request_dump()
+        assert list(device.messages(0.5)) == []
+        assert list(device.messages(0.5)) == [("/output/5/stereo", "i", (1,))]
     finally:
-        rx.close()
-    assert osc.decode_osc(datagram)[0] == "/refresh"
+        device.close()
+        peer.close()
+
+
+def test_subscription_precedes_the_control_refresh_request(tmp_path):
+    peer = ScriptedControl(tmp_path / "c.sock")
+    device = backend.Control(peer.path, os.getpid(), reader=True)
+    try:
+        device.request_dump()
+        assert peer.requests == [HELLO, REFRESH]
+        assert peer.writes == []
+    finally:
+        device.close()
+        peer.close()
 
 
 def test_the_seam_is_the_only_place_that_opens_a_device_socket():

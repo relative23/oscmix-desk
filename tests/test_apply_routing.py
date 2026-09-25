@@ -8,179 +8,61 @@ echo is evaluated unlinked and never reaches the pair's right channel,
 which silences every even output.
 """
 
-import socket
-import threading
 import time
 
 import oracle
 import pytest
-from oscmix_fakes import DumpingOscmix, make_config, make_route
-from support import free_udp_port
+from backend_doubles import RecordingBackend
+from oscmix_fakes import make_config, make_route
 
-from oscmix_desk import osc, reconcile, routing
+from oscmix_desk import reconcile, routing
+from oscmix_desk.backend import OSCMIX
+from oscmix_desk.errors import ReceivePortError, WriteFailed
 from oscmix_desk.routing import LinkEcho
 
 
-class FakeOscmix(threading.Thread):
-    """oscmix + device, reduced to the stereo-link state machine.
+class EchoBackend(RecordingBackend):
+    """Link cache changes only after a delayed device report, never on send."""
 
-    ``echo_delay`` stands in for the MIDI round-trip: the link only
-    becomes effective once the echo has been sent back.
-    """
+    traits = OSCMIX
 
-    def __init__(self, session_mod, send_port, recv_port, echo_delay=0.05,
-                 echo=True):
-        super().__init__(daemon=True)
-        self.session_mod = session_mod
-        self.recv_port = recv_port
-        self.echo_delay = echo_delay
-        self.echo = echo
-        self.linked = set()          # output pairs oscmix considers linked
-        self.stereo_playback = set()
-        self.mix_writes = []         # (path, was_linked_when_written)
-        self.order = []              # every path, in arrival order
-        self.arrivals = []           # (path, monotonic) for timing assertions
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("127.0.0.1", send_port))
-        # 0.2 s, like the fakes in test_faults.py, and a timeout keeps
-        # the loop alive instead of ending it. At 3.0 s with `return`,
-        # stop() was only noticed when the next recvfrom expired, so
-        # every test here paid up to three seconds in join() -- time
-        # that asserted nothing, multiplied by every mutant these tests
-        # cover.
-        self.sock.settimeout(0.2)
-        self.stopping = threading.Event()
-        self.timers = []             # pending echo timers, cancelled on stop
+    def __init__(self, echo_delay=0.05, echo=True):
+        super().__init__()
+        self.echo_delay, self.echo = echo_delay, echo
+        self.linked = set()
+        self.pending = []
+        self.mix_writes = []
+        self.order = []
+        self.arrivals = []
 
-    def stop(self):
-        self.stopping.set()
-        # An echo timer that fires after teardown writes to a closed
-        # socket; cancelling here keeps the fake from outliving its test.
-        for timer in self.timers:
-            timer.cancel()
+    def send(self, messages):
+        for path, tags, args in messages:
+            self.sent.append((path, tags, args))
+            self.order.append(path)
+            self.arrivals.append((path, time.monotonic()))
+            if path.startswith('/output/') and path.endswith('/stereo') and self.echo:
+                self.pending.append((time.monotonic() + self.echo_delay, (path, tags, args)))
+            elif path.startswith('/mix/'):
+                output = int(path.split('/')[2])
+                self.mix_writes.append((path, output in self.linked))
 
-    def record(self, path):
-        self.order.append(path)
-        self.arrivals.append((path, time.monotonic()))
-        parts = path.split("/")
-        if path.startswith("/output/") and path.endswith("/stereo"):
-            channel = int(parts[2])
-            pair = channel - (channel - 1) % 2
-            if self.echo:
-                # The echo is what updates oscmix's state; it arrives
-                # only after the device round-trip.
-                timer = threading.Timer(self.echo_delay, self.send_link_echo,
-                                        [pair, path])
-                timer.daemon = True
-                self.timers.append(timer)
-                timer.start()
-        elif path.startswith("/playback/") and path.endswith("/stereo"):
-            # setinputstereo() updates oscmix's state synchronously.
-            self.stereo_playback.add(int(parts[2]))
-        elif path.startswith("/mix/"):
-            channel = int(parts[2])
-            pair = channel - (channel - 1) % 2
-            self.mix_writes.append((path, pair in self.linked))
-
-    def send_link_echo(self, pair, path):
-        if self.stopping.is_set():
-            return               # cancel() lost the race with the timer
-        self.linked.add(pair)
-        try:
-            self.sock.sendto(osc.encode_osc(path, "i", 1),
-                             ("127.0.0.1", self.recv_port))
-        except OSError:
-            pass                 # socket already closed by teardown
-
-    def run(self):
-        while not self.stopping.is_set():
-            try:
-                data, _ = self.sock.recvfrom(65536)
-            except socket.timeout:
-                continue
-            except OSError:
-                return
-            for message in osc.iter_osc_messages(data):
-                try:
-                    path, _tags, _args = osc.decode_osc(message)
-                except ValueError:
-                    continue
-                self.record(path)
+    def messages(self, timeout):
+        if not self.pending:
+            time.sleep(timeout)
+            return
+        time.sleep(min(timeout, max(0, self.pending[0][0] - time.monotonic())))
+        ready = [item for item in self.pending if item[0] <= time.monotonic()]
+        self.pending = [item for item in self.pending if item not in ready]
+        for _when, report in ready:
+            if report[2] == (1,):
+                self.linked.add(int(report[0].split('/')[2]))
+            yield report
 
 
 def run_apply(session_mod, routes, **kwargs):
-    send_port, recv_port = free_udp_port(), free_udp_port()
-    device = FakeOscmix(session_mod, send_port, recv_port, **kwargs)
-    device.start()
-    try:
-        session_mod.apply_routing(session_mod.Config(routes=list(routes)),
-                                  send_port, recv_port)
-        _drain(device)
-    finally:
-        device.stop()
-        device.join(timeout=3)
-        device.sock.close()
+    device = EchoBackend(**kwargs)
+    session_mod.apply_routing(session_mod.Config(routes=list(routes)), device)
     return device
-
-
-def _drain(device, quiet=0.25, limit=3.0):
-    """Wait until the fake has stopped receiving, before stopping it.
-
-    `apply_routing` sends the mix as its last act and returns; the fake's
-    thread checks `stopping` at the top of its loop, so calling stop()
-    immediately can end it with that datagram still unread. The
-    assertions then look at a device that never saw the write.
-
-    The race is real and is removed here regardless of what it has
-    caused. What is **not** established is that it caused the one
-    failure that prompted this:
-    `test_routing_is_applied_even_when_the_echo_never_arrives` failed
-    once during a full `make coverage`, and did not come back in 6
-    further full coverage runs, 40 plain repeats of this file without
-    the drain, or 30 instrumented repeats of it without the drain. Each
-    of those reproductions ran a lighter load than the full suite under
-    instrumentation, which is the condition that produced it, so they
-    narrow the possibilities without settling them.
-
-    Kept because waiting for quiet is what the *product* code does for
-    the same reason, and it costs a quarter of a second only while
-    something is still arriving -- not because it is known to be the
-    fix.
-    """
-    deadline = time.monotonic() + limit
-    seen = len(device.order)
-    last = time.monotonic()
-    while time.monotonic() < deadline:
-        time.sleep(0.02)
-        if len(device.order) != seen:
-            seen, last = len(device.order), time.monotonic()
-        elif time.monotonic() - last >= quiet:
-            return
-
-
-def test_device_fakes_avoid_private_thread_names(session_mod):
-    """The fakes share a namespace with threading.Thread's internals.
-
-    ``Thread._stop`` is a method on every version and 3.13 added
-    ``Thread._handle``; shadowing either breaks the thread machinery on
-    exactly the interpreters that define it. Both slipped through a green
-    local run, so the rule is now mechanical: these classes use no
-    single-underscore names at all.
-    """
-    inherited = set(vars(threading.Thread(daemon=True)))
-    for cls in (FakeOscmix, DumpingOscmix):
-        device = cls(session_mod, free_udp_port(), free_udp_port(),
-                     *([] if cls is FakeOscmix else [[]]))
-        try:
-            names = (set(vars(device)) - inherited) | {
-                n for n in vars(cls) if not n.startswith("__")}
-        finally:
-            device.sock.close()
-        private = sorted(n for n in names
-                         if n.startswith("_") and not n.startswith("__"))
-        assert private == [], (
-            "%s uses private names that may collide with threading.Thread: %s"
-            % (cls.__name__, private))
 
 
 def test_mix_is_written_only_after_the_device_confirmed_the_link(session_mod):
@@ -262,122 +144,46 @@ def test_routing_is_applied_even_when_the_echo_never_arrives(routing_mod, sessio
     assert [p for p, _ in device.mix_writes] == ["/mix/5/playback/1"]
 
 
-def test_falls_back_to_a_fixed_wait_when_the_port_is_taken(routing_mod, session_mod,
-                                                           monkeypatch):
-    # The mixer GUI holds the receive port; the echo is then unobservable
-    # and apply_routing waits blind instead of skipping the barrier.
-    # 0.3, not a token 0.05: the assertion below is a timing one and the
-    # fake's arrival stamps carry scheduling jitter. A wait that dwarfs
-    # the jitter is what makes "did it wait" answerable.
-    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.3)
-    send_port, recv_port = free_udp_port(), free_udp_port()
-    blocker = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    blocker.bind(("127.0.0.1", recv_port))
-    device = FakeOscmix(session_mod, send_port, recv_port, echo_delay=0.01)
-    device.start()
-    try:
-        session_mod.apply_routing(session_mod.Config(routes=[make_route(session_mod)]), send_port,
-                                  recv_port)
-    finally:
-        blocker.close()
-        device.stop()
-        device.join(timeout=3)
-        device.sock.close()
-    assert [p for p, _ in device.mix_writes] == ["/mix/5/playback/1"]
-
-    # Asserted on the gap the *product* controls, not on the fake's link
-    # state. That state is set by a `threading.Timer`, and a 10 ms timer
-    # measured here fires 1 ms late at the median, 12 ms at p95 and
-    # 440 ms at the worst of 400 trials, 11 of them past 40 ms. Under
-    # `make flake`, which runs the whole suite five times over, that
-    # starvation is routine and the proxy assertion failed. Raising
-    # LINK_SETTLE did not help, because the length of the wait was never
-    # the problem.
-    #
-    # What this test is about is that `apply_routing` waits LINK_SETTLE
-    # before the mix phase when the echo cannot be observed, and the
-    # fake sees that directly: the mix datagram arrives that much later
-    # than the link one.
-    when = dict(device.arrivals)
-    gap = when["/mix/5/playback/1"] - when["/output/5/stereo"]
-    assert gap >= 0.15, (
-        "mix arrived %.3f s after the link; a blind 0.3 s wait puts it "
-        "far beyond half that, and skipping the barrier puts it near "
-        "zero" % gap)
+def test_connection_failure_refuses_the_mix_instead_of_a_blind_wait(
+        recording_backend, monkeypatch):
+    def failed(_timeout):
+        raise ReceivePortError(104, 'backend disconnected')
+    monkeypatch.setattr(recording_backend, 'messages', failed)
+    from oscmix_desk.model import Config, Route
+    config = Config(routes=[Route('route', playback=(1, 2), output=(5, 6))])
+    with pytest.raises(WriteFailed, match='disconnected') as failure:
+        routing.apply_routing(config, recording_backend)
+    assert failure.value.written == ('/playback/1/stereo', '/output/5/stereo')
+    assert failure.value.unwritten == ('/mix/5/playback/1',)
+    assert not any(path.startswith('/mix/') for path, _, _ in recording_backend.sent)
 
 
-def test_await_link_echo_reports_port_unavailable(session_mod):
-    recv_port = free_udp_port()
-    blocker = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    blocker.bind(("127.0.0.1", recv_port))
-    try:
-        result = routing.await_link_echo({"/output/5/stereo": 1},
-                                             recv_port, timeout=0.1)
-    finally:
-        blocker.close()
-    assert result is LinkEcho.UNOBSERVABLE
-    assert not result, "truthy only when confirmed"
+def test_await_link_echo_propagates_receiver_failure(unbindable_backend):
+    with pytest.raises(ReceivePortError):
+        routing.await_link_echo({'/output/5/stereo': 1}, unbindable_backend, timeout=0.1)
 
 
-def test_await_link_echo_times_out_without_echo(session_mod):
-    assert routing.await_link_echo({"/output/5/stereo": 1},
-                                       free_udp_port(),
-                                       timeout=0.1) is LinkEcho.SILENT
+def test_await_link_echo_times_out_without_echo(silent_backend):
+    assert routing.await_link_echo({'/output/5/stereo': 1}, silent_backend,
+                                   timeout=0.01) is LinkEcho.SILENT
 
 
-def report_after(session_mod, recv_port, value, delay=0.1):
-    """Report a link value once await_link_echo has had time to bind.
-
-    Sending before the bind would drop the datagram, which makes a
-    "still waiting" assertion pass for the wrong reason.
-    """
-    def send():
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            sock.sendto(osc.encode_osc("/output/5/stereo", "i", value),
-                        ("127.0.0.1", recv_port))
-        finally:
-            sock.close()
-
-    timer = threading.Timer(delay, send)
-    timer.daemon = True
-    timer.start()
-    return timer
+@pytest.mark.parametrize('want', [0, 1])
+def test_await_link_echo_rejects_the_opposite_value(want):
+    backend = RecordingBackend(lambda _: [('/output/5/stereo', 'i', (1 - want,))])
+    assert routing.await_link_echo({'/output/5/stereo': want}, backend,
+                                   timeout=0.01) is LinkEcho.CONTRADICTED
 
 
-def test_await_link_echo_rejects_the_opposite_value(session_mod):
-    # A report of the value we are not waiting for is not a confirmation:
-    # an unlinked route waits for 0 and must ignore a stale 1, and the
-    # other way round.
-    for want, stale in ((1, 0), (0, 1)):
-        recv_port = free_udp_port()
-        timer = report_after(session_mod, recv_port, stale)
-        try:
-            assert routing.await_link_echo({"/output/5/stereo": want},
-                                               recv_port,
-                                               timeout=0.4) is LinkEcho.CONTRADICTED
-        finally:
-            timer.cancel()
+@pytest.mark.parametrize('want', [0, 1])
+def test_await_link_echo_accepts_either_link_value(want):
+    backend = RecordingBackend(lambda _: [('/output/5/stereo', 'i', (want,))])
+    assert routing.await_link_echo({'/output/5/stereo': want}, backend,
+                                   timeout=0.01) is LinkEcho.CONFIRMED
 
 
-def test_await_link_echo_accepts_either_link_value(session_mod):
-    # Symmetry with the above: the matching report does end the wait, so
-    # the rejection test cannot be passing merely because nothing arrived.
-    for want in (1, 0):
-        recv_port = free_udp_port()
-        timer = report_after(session_mod, recv_port, want)
-        try:
-            assert routing.await_link_echo({"/output/5/stereo": want},
-                                               recv_port,
-                                               timeout=2.0) is LinkEcho.CONFIRMED
-        finally:
-            timer.cancel()
-
-
-def test_await_link_echo_without_paths_is_immediate(session_mod):
-    echo = routing.await_link_echo({}, free_udp_port())
-    assert echo is LinkEcho.CONFIRMED
-    assert echo, "and `if await_link_echo(...)` still means confirmed"
+def test_await_link_echo_without_paths_is_immediate(unbindable_backend):
+    assert routing.await_link_echo({}, unbindable_backend) is LinkEcho.CONFIRMED
 
 
 def test_output_link_state_carries_the_expected_value(session_mod):
@@ -439,54 +245,37 @@ def test_a_backend_that_updates_link_state_on_write_needs_no_barrier(
     silent_backend.traits = backend_mod.Traits(
         reports_link_state_on_write=True, dumps_playback_matrix=False,
         reports_unchanged_registers=False)
-    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 3.0)
+    monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 3.0)
     config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
     started = time.monotonic()
-    session_mod.apply_routing(config, 7222, 8222, backend=silent_backend)
+    session_mod.apply_routing(config, silent_backend)
     assert time.monotonic() - started < 1.0, "the barrier ran anyway"
     paths = [p for p, _t, _a in silent_backend.sent]
     assert paths.index("/output/5/stereo") < paths.index("/mix/5/playback/1")
 
 
-@pytest.mark.parametrize(("echo", "slept", "said"), [
-    (LinkEcho.UNOBSERVABLE, [0.01],
-     "link echo unobservable (UDP 9123 in use); waiting 0.0s"),
-    (LinkEcho.SILENT, [],
-     ("no link change reported within 1.5s; mix matrix will be re-applied "
-      "after the register sync")),
-    (LinkEcho.CONFIRMED, [],
-     "channel pairs linked and confirmed by the device"),
+@pytest.mark.parametrize(("echo", "said"), [
+    (LinkEcho.SILENT, ("no link change reported within 1.5s; mix matrix will be "
+                       "re-applied after the register sync")),
+    (LinkEcho.CONFIRMED, "channel pairs linked and confirmed by the device"),
 ])
-def test_each_answer_of_the_echo_wait_has_its_own_consequence(
-        session_mod, silent_backend, routing_mod, monkeypatch, caplog,
-        echo, slept, said):
-    """The three were one `Optional[bool]` until 0.7.0, told apart by an
-    `is None` and a `not`; the mutation run swapped them and no test
-    noticed. Only an unobservable echo is waited out blind."""
-    waited = []
+def test_silence_and_confirmation_are_reported_distinctly(
+        session_mod, silent_backend, routing_mod, monkeypatch, caplog, echo, said):
     monkeypatch.setattr(routing_mod, "await_link_echo", lambda *a, **k: echo)
-    monkeypatch.setattr(routing_mod, "LINK_SETTLE", 0.01)
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 1.5)
-    monkeypatch.setattr(routing_mod, "wait_unless_stopped",
-                        lambda seconds, _stop: waited.append(seconds) or False)
     config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
     with caplog.at_level("INFO"):
-        routing_mod._cross_the_barrier(config, 9123, silent_backend)
-    assert waited == slept
+        routing_mod._cross_the_barrier(config, silent_backend)
     assert [r.getMessage() for r in caplog.records] == [said]
 
 
-def test_the_barrier_waits_for_the_echo_on_the_port_it_was_given(
+def test_barrier_borrows_the_operation_connection_and_timeout(
         session_mod, silent_backend, routing_mod, monkeypatch):
-    """Extracted from `apply_routing` in 0.6.11, and its call of the echo
-    wait was stubbed wherever it was reached: the receive port and the
-    timeout could be dropped from it in silence (survivors)."""
     asked = []
     monkeypatch.setattr(routing_mod, "await_link_echo",
-                        lambda *a, **k: asked.append((a, k))
-                        or LinkEcho.CONFIRMED)
+                        lambda *a, **k: asked.append((a, k)) or LinkEcho.CONFIRMED)
     config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
-    routing_mod._cross_the_barrier(config, 9123, silent_backend)
-    assert asked == [((routing_mod.output_link_state(config.routes), 9123,
+    routing_mod._cross_the_barrier(config, silent_backend)
+    assert asked == [((routing_mod.output_link_state(config.routes), silent_backend,
                        routing_mod.LINK_ECHO_TIMEOUT),
-                      {"backend": silent_backend, "should_stop": routing_mod.never_stop})]
+                      {"should_stop": routing_mod.never_stop})]

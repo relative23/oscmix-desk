@@ -15,6 +15,11 @@ from oscmix_desk import locking
 from oscmix_desk import reload as reload_mod
 
 
+@pytest.fixture(autouse=True)
+def backend_connection(monkeypatch, recording_backend):
+    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+
+
 def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
         tmp_path, monkeypatch, session_mod, caplog):
     """A switch is writing the device, so this reconcile is not.
@@ -81,7 +86,7 @@ def test_a_reconcile_hands_on_the_trigger_the_stop_check_and_its_phases(
                               session_mod.Config(), stop)
 
     assert len(seen) == 1
-    _config, trigger, should_stop = seen[0]
+    _config, trigger, _backend, should_stop = seen[0]
     assert trigger == "SIGHUP"
     assert should_stop() is False
     stop["stop"] = True
@@ -102,14 +107,9 @@ def test_the_config_path_falls_back_to_discovery(monkeypatch, session_mod):
     assert reload_mod._config_path(
         argparse.Namespace(config="given")) == "given"
 
-def test_a_reconcile_that_wrote_nothing_does_not_report_success(
+def test_an_incomplete_reconcile_does_not_report_success(
         tmp_path, monkeypatch, session_mod):
-    """The mixer GUI holds the receive port, so nothing is written.
-
-    `reconcile_now` refuses rather than writing blind (ADR 0013) and
-    says so by returning False. Until 0.6.6 the status line said
-    "reconciled" either way, which is what an operator reads.
-    """
+    """An operation that did not complete must not claim it reconciled."""
     import argparse
 
 
@@ -119,7 +119,7 @@ def test_a_reconcile_that_wrote_nothing_does_not_report_success(
     monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
     reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
-    assert re.fullmatch(r"STATUS=running; reconcile skipped at "
+    assert re.fullmatch(r"STATUS=running; reconcile incomplete at "
                         r"\d\d:\d\d:\d\d", notices[-1]), notices[-1]
 
 @pytest.mark.parametrize("cause", ["lock held", "config broken",

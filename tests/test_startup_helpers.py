@@ -6,6 +6,7 @@ real session loads the checked-out source and never a mutant (ADR 0005).
 """
 
 import time
+from pathlib import Path
 
 import pytest
 from session_doubles import RunningChild
@@ -33,17 +34,12 @@ class PollingChild:
 
 def test_a_strangers_port_is_not_backend_readiness(
         session_module, monkeypatch, tmp_path):
-    from test_process import fake_proc
-
-    proc = fake_proc(tmp_path, {"201": ("other", "other"),
-                                "202": ("oscmix", "oscmix")},
-                     listening_port=7301, owner="201")
-    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.01)
-    assert session_module._await_backend_port(
-        PollingChild(), session_module.Config(osc_port=7301), proc) is False
+    monkeypatch.setattr(session_module, "control_socket_owner", lambda *_: 201)
+    monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", .01)
+    assert session_module._await_backend_port(PollingChild(), tmp_path / "c", tmp_path) is False
 
 def test_a_failed_apply_releases_the_device_lock(
-        session_module, session_mod, monkeypatch, tmp_path):
+        session_module, session_mod, monkeypatch, tmp_path, recording_backend):
     from support import write_config
 
     from oscmix_desk.locking import take_device_lock
@@ -54,6 +50,7 @@ def test_a_failed_apply_releases_the_device_lock(
     def fail(*args, **kwargs):
         raise OSError("send failed")
 
+    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
     monkeypatch.setattr(session_module, "apply_routing", fail)
     with pytest.raises(OSError, match="send failed"):
         session_module._apply_and_verify(
@@ -64,30 +61,27 @@ def test_a_failed_apply_releases_the_device_lock(
 
 def test_the_port_wait_returns_as_soon_as_the_backend_listens(
         session_module, monkeypatch, caplog, tmp_path):
-    from oscmix_desk import Config
 
-    answers = iter([False, False, True])
+    answers = iter([None, None, 202])
     asked = []
 
     def listening(port, root):
         asked.append((port, root))
         return next(answers)
 
-    from test_process import fake_proc
-
-    proc = fake_proc(tmp_path, {"202": ("oscmix", "oscmix")},
-                     listening_port=7301, owner="202")
-    monkeypatch.setattr(session_module, "udp_port_listening", listening)
+    proc = tmp_path
+    endpoint = Path("/isolated/control")
+    monkeypatch.setattr(session_module, "control_socket_owner", listening)
     monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 5.0)
     child = PollingChild()
     started = time.monotonic()
     with caplog.at_level("INFO"):
-        session_module._await_backend_port(child, Config(osc_port=7301),
+        session_module._await_backend_port(child, Path("/isolated/control"),
                                            proc)
-    assert "listening on UDP 7301" in caplog.text
+    assert "listening at /isolated/control" in caplog.text
     # The configured port and the given /proc root, every time -- not
     # whatever a stub that ignores its arguments would accept.
-    assert asked == [(7301, proc)] * 3
+    assert asked == [(endpoint, proc)] * 3
     assert "not listening" not in caplog.text
     assert time.monotonic() - started < 2.0, "it waited out the timeout"
 
@@ -96,15 +90,14 @@ def test_the_port_wait_stops_when_the_backend_dies(session_module, monkeypatch,
     # A child that exited will never bind the port; waiting on would burn
     # the whole timeout for nothing and hide the exit behind a misleading
     # "not listening" warning.
-    from oscmix_desk import Config
 
-    monkeypatch.setattr(session_module, "udp_port_listening",
-                        lambda port, root: False)
+    monkeypatch.setattr(session_module, "control_socket_owner",
+                        lambda path, root: None)
     monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 5.0)
     child = PollingChild(exits_after=2)
     started = time.monotonic()
     with caplog.at_level("INFO"):
-        session_module._await_backend_port(child, Config(osc_port=7301),
+        session_module._await_backend_port(child, Path("/isolated/control"),
                                            tmp_path)
     assert time.monotonic() - started < 2.0
     assert "not listening" not in caplog.text
@@ -112,15 +105,14 @@ def test_the_port_wait_stops_when_the_backend_dies(session_module, monkeypatch,
 
 def test_the_port_wait_times_out_with_a_warning(session_module, monkeypatch,
                                                 caplog, tmp_path):
-    from oscmix_desk import Config
 
-    monkeypatch.setattr(session_module, "udp_port_listening",
-                        lambda port, root: False)
+    monkeypatch.setattr(session_module, "control_socket_owner",
+                        lambda path, root: None)
     monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", 0.3)
     with caplog.at_level("WARNING"):
-        session_module._await_backend_port(PollingChild(), Config(osc_port=7301),
+        session_module._await_backend_port(PollingChild(), Path("/isolated/control"),
                                            tmp_path)
-    assert "not listening on UDP 7301" in caplog.text
+    assert "did not bind /isolated/control" in caplog.text
 
 def _capture_signal_handlers(session_module, monkeypatch):
     installed = {}

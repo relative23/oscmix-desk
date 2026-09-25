@@ -194,3 +194,113 @@ class Peer:
     def drain(self):
         while True:
             self.receive()
+
+
+class ScriptedControl:
+    def __init__(self, path, *, handshake=None, refuse_write=0, lose_reply=0,
+                 begin_busy=False, refresh_busy=False, reports=(), echo=False,
+                 disconnect_after=None, close_after_dump=False):
+        self.path = path
+        self.reports = reports
+        self.echo = echo
+        self.disconnect_after = disconnect_after
+        self.close_after_dump = close_after_dump
+        self.sequence = 0
+        self.handshake = handshake
+        self.refuse_write = refuse_write
+        self.lose_reply = lose_reply
+        self.begin_busy = begin_busy
+        self.refresh_busy = refresh_busy
+        self.generation = 1
+        self.writes = []
+        self.order = []
+        self.requests = []
+        self.error = None
+        self.done = threading.Event()
+        self.listener = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        self.listener.bind(str(path))
+        self.listener.listen(1)
+        self.listener.settimeout(0.1)
+        self.peer = None
+        self.thread = threading.Thread(target=self.run)
+        self.thread.start()
+
+    def emit(self, kind, request=0, code=0, sequence=None, payload=b''):
+        self.peer.sendall(HEADER.pack(b'ODK1', kind, request, code,
+                                     self.generation if sequence is None else sequence) + payload)
+
+    def run(self):
+        try:
+            while not self.done.is_set():
+                try:
+                    self.peer, _ = self.listener.accept()
+                except socket.timeout:
+                    continue
+                self.peer.settimeout(0.1)
+                try:
+                    self.serve()
+                finally:
+                    self.peer.close()
+        except (ConnectionResetError, BrokenPipeError):
+            pass
+        except Exception as exc:
+            self.error = exc
+
+    def serve(self):
+        while not self.done.is_set():
+            try:
+                data = self.peer.recv(10000)
+            except socket.timeout:
+                continue
+            if not data:
+                return
+            magic, kind, request, _code, _token = HEADER.unpack_from(data)
+            assert magic == b'ODK1'
+            self.requests.append(kind)
+            code = OK
+            payload = b''
+            if kind == HELLO:
+                payload = (bytes(range(16)) + struct.pack('>II', os.getpid(), 1)
+                           + b'Fireface UCX II (00000000)\0')
+                if self.handshake is not None:
+                    payload = self.handshake
+            elif kind == BEGIN:
+                code = BUSY if self.begin_busy else OK
+                if code == OK:
+                    self.generation += 1
+            elif kind == END:
+                self.generation += 1
+                self.emit(EVENT)
+            elif kind == WRITE:
+                code = self.refuse_write
+                if not code:
+                    from oscmix_desk.osc import decode_osc
+                    self.writes.append(data[HEADER.size:])
+                    self.order.append(decode_osc(data[HEADER.size:])[0])
+            elif kind == REFRESH:
+                code = BUSY if self.refresh_busy else OK
+                if not code:
+                    self.order.append('/refresh')
+            if (kind == self.lose_reply or (kind == WRITE and self.order
+                                           and self.order[-1] == self.disconnect_after)):
+                return
+            self.emit(kind | REPLY, request, code, payload=payload)
+            if kind == REFRESH and code == OK:
+                for report in self.reports:
+                    self.sequence += 1
+                    self.emit(OBSERVATION, code=DEVICE, sequence=self.sequence, payload=report)
+                if self.close_after_dump:
+                    return
+            elif kind == WRITE and code == OK and self.echo:
+                self.sequence += 1
+                self.emit(OBSERVATION, code=DEVICE, sequence=self.sequence,
+                          payload=data[HEADER.size:])
+
+    def close(self):
+        self.done.set()
+        self.thread.join(timeout=3)
+        self.listener.close()
+        if self.peer is not None:
+            self.peer.close()
+        assert not self.thread.is_alive()
+        assert self.error is None, self.error

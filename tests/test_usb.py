@@ -57,7 +57,9 @@ def test_the_launcher_no_longer_duplicates_device_detection(launch_mod):
 
     assert launch_mod.backend_status is diagnostics.backend_status
     assert diagnostics.resolve_device is discovery.resolve_device
-    assert diagnostics.udp_port_listening is discovery.udp_port_listening
+    from oscmix_desk import process
+
+    assert diagnostics.control_holder is process.control_holder
 
 
 # --------------------------------------------------------------------------

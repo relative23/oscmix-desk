@@ -1,52 +1,31 @@
-"""The seam between this project and whatever speaks to the device.
+"""One checked connection to the backend that owns MIDI and all OSC writers.
 
-That is upstream oscmix over OSC on loopback. Six places used to
-open their own socket and know the address, which made the dependency on
-oscmix's *behaviour* invisible: it was spread through the control flow
-as timing constants and barriers, with nothing naming what they were
-working around.
-
-Two reasons this is worth a module beyond tidiness.
-
-**The workarounds get a name.** ``LINK_ECHO_TIMEOUT``, ``LINK_SETTLE``
-and ``LINK_SYNC_BLIND_DELAY`` exist for one upstream implementation
-detail -- ``setbool`` does not update oscmix's own view of the stereo
-flag, so a ``/mix`` write arriving before the device echo is evaluated
-against a stale value. That is a property of *this backend*, so it is
-declared as one (``Traits.reports_link_state_on_write``) rather than
-inferred from the shape of the code. When the patch offered as
-michaelforney/oscmix#31 lands and the pin moves, flipping that flag is
-the change; hunting for the barrier is not.
-
-**It keeps an option open.** The one worth keeping is not a competing
-mixer, it is an own *state path*: writing and reading the two dozen
-registers this project actually pins directly over SysEx while oscmix
-keeps the GUI and metering. That would remove the dual-writer problem
-and kill the cache race at the root. It is not worth doing while one
-device is modelled -- it
-means owning register decoding for devices nobody here can test -- and
-this is what makes it cheap to keep possible.
-
-The seam is deliberately narrow: send a burst, ask for a dump, listen.
-Everything about *when* stays with the caller. A backend that decided
-timing would just be the old control flow with an extra indirection.
+The versioned ODK1 envelope preserves delivery boundaries and provenance.
+Operation owners take the device file lock, connect, acquire the lease, and
+keep this connection through every phase, verification and repair. Helpers
+borrow it; they never reconnect or use a direct UDP path. A backend reply is
+processing acknowledgement, not device confirmation.
 """
 
 from __future__ import annotations
 
 import errno
+import os
 import socket
+import stat
 import struct
+import time
+from collections import deque
 from dataclasses import dataclass
-from types import TracebackType
-from typing import Iterable, Iterator, Optional, Type
+from pathlib import Path
+from typing import Callable, Deque, Iterable, Iterator, List, NoReturn, Optional, Tuple
 
+from .constants import CONTROL_ACK_TIMEOUT, CONTROL_ACQUIRE_TIMEOUT
+from .diagnostics import backend_status
+from .discovery import serial_in
 from .errors import ReceivePortError, WriteFailed
+from .model import Config
 from .osc import Message, decode_osc, encode_osc, iter_osc_messages
-
-#: Datagrams larger than this are not produced by anything upstream
-#: sends; the size is the socket read buffer, not a protocol limit.
-READ_SIZE = 65536
 
 
 @dataclass(frozen=True)
@@ -101,135 +80,360 @@ OSCMIX = Traits(
 )
 
 
-class Listener:
-    """A bound receive port, yielding decoded messages until it is done.
+CONTROL_HEADER = struct.Struct(">4sIIIQ")
+CONTROL_REPLY = 0x80000000
+CONTROL_PAYLOAD = 8192
+CONTROL_QUEUE_BYTES = 256 * 1024
+CONTROL_QUEUE_PACKETS = 4096
+CONTROL_HEARTBEAT = 2.0
 
-    Exists as an object because binding is the operation that can fail
-    in a way the caller must handle: the mixer GUI holds the receive
-    port whenever its window is open, and that is a normal state, not an
-    error. ``Backend.listen`` returns None for it, and raises
-    ``ReceivePortError`` for every other reason the port cannot be had.
+
+@dataclass(frozen=True)
+class Delivery:
+    """One complete OSC delivery and its actual backend origin.
+
+    Origin 1 is the MIDI register handler, 2 the command/cache handler and
+    4 metering. The register model still determines what can be confirmed.
+    Sequence numbers order deliveries on this connection, not device time.
     """
 
-    def __init__(self, sock: "socket.socket",
-                 port: Optional[int] = None) -> None:
-        self._sock = sock
-        self._port = port
-
-    def messages(self, timeout: float) -> Iterator[Message]:
-        """Decoded messages from one datagram, or nothing on timeout.
-
-        Malformed messages are skipped rather than raised on: this reads
-        off a socket, and one bad message must not end a dump that is
-        otherwise confirming registers.
-
-        A timeout is the normal way a wait ends. Any other socket error
-        is a ``ReceivePortError``: until 0.7.0 it read as "nothing
-        arrived" too, returned at once, and every reader then spun --
-        measured, 1.3 million reads in half a second -- until its window
-        closed and it reported silence from a backend that was never
-        asked (third outside review).
-        """
-        try:
-            self._sock.settimeout(timeout)
-            datagram, _ = self._sock.recvfrom(READ_SIZE)
-        except socket.timeout:
-            return
-        except OSError as exc:
-            raise ReceivePortError(
-                exc.errno, "cannot read the receive port%s: %s"
-                % ("" if self._port is None else " UDP %d" % self._port,
-                   exc.strerror or exc)) from exc
-        for raw in iter_osc_messages(datagram):
-            try:
-                path, tags, args = decode_osc(raw)
-            except (ValueError, struct.error):
-                continue
-            yield path, tags, args
-
-    def close(self) -> None:
-        self._sock.close()
-
-    def __enter__(self) -> "Listener":
-        return self
-
-    def __exit__(self, _kind: Optional[Type[BaseException]],
-                 _value: Optional[BaseException],
-                 _traceback: Optional[TracebackType]) -> None:
-        # The three arguments are the protocol's, not ours: a listener
-        # closes whether the block left cleanly or by exception.
-        self.close()
+    origin: int
+    sequence: int
+    epoch: bytes
+    payload: bytes
 
 
-class Backend:
-    """Where the registers go, and where the reports come back from."""
+class Control:
+    """One checked backend connection; never reconnects or replays a request.
+
+    The operation owner drives this object from one thread at a time.
+    Reading or waiting here maintains its lease. A caller must use wait()
+    instead of a long unserviced sleep while it owns an operation.
+    """
 
     traits = OSCMIX
 
-    def __init__(self, host: str, send_port: int, recv_port: int) -> None:
-        self.host = host
-        self.send_port = send_port
-        self.recv_port = recv_port
+    def __init__(self, path: Path, expected_pid: int, *,
+                 expected_uid: Optional[int] = None,
+                 expected_gid: Optional[int] = None,
+                 reader: bool = False,
+                 sources: int = 3,
+                 should_stop: Optional[Callable[[], bool]] = None) -> None:
+        if sources < 1 or sources > 7:
+            raise ValueError("observation sources must be a nonempty subset of 1, 2 and 4")
+        self._sources = sources
+        self.path = path
+        self.should_stop = should_stop
+        self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+        self._closed = False
+        self._request_id = 0
+        self._lease: Optional[int] = None
+        self._last_heartbeat = 0.0
+        self._generation = 0
+        self._last_sequence = 0
+        self._queue: Deque[Delivery] = deque()
+        self._queue_bytes = 0
+        self.epoch = b""
+        self.device_name = ""
+        self.pid = self.uid = self.gid = -1
+        try:
+            self._connect(expected_pid, expected_uid, expected_gid, reader)
+        except (OSError, ValueError, struct.error) as exc:
+            self.close()
+            if isinstance(exc, OSError):
+                raise
+            raise OSError(errno.EPROTO, "invalid backend handshake") from exc
+
+    def _connect(self, expected_pid: int, expected_uid: Optional[int],
+                 expected_gid: Optional[int], reader: bool) -> None:
+        if not stat.S_ISSOCK(self.path.lstat().st_mode):
+            raise OSError(errno.EPERM, "control endpoint is not a socket or is a symbolic link")
+        self._sock.settimeout(CONTROL_ACK_TIMEOUT)
+        self._sock.connect(str(self.path))
+        peer = self._sock.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED,
+                                     struct.calcsize("3i"))
+        self.pid, self.uid, self.gid = struct.unpack("3i", peer)
+        if (self.pid != expected_pid or (expected_uid is not None and self.uid != expected_uid)
+                or (expected_gid is not None and self.gid != expected_gid)):
+            raise OSError(errno.EPERM,
+                          "control socket peer does not match the checked backend")
+        code, generation, payload = self._request(1, code=3 if reader else 1,
+                                                   payload=struct.pack(">I", self._sources))
+        if (code or len(payload) < 25 or not payload.endswith(b"\0")
+                or b"\0" in payload[24:-1]):
+            raise OSError(errno.EPROTO, "invalid backend handshake")
+        pid, version = struct.unpack_from(">II", payload, 16)
+        if pid != self.pid or version != 1:
+            raise OSError(errno.EPROTO, "incompatible backend identity or protocol")
+        self.epoch = payload[:16]
+        self.device_name = payload[24:-1].decode("utf-8", "strict")
+        self._generation = generation
+
+    def close(self) -> None:
+        self._closed = True
+        self._lease = None
+        self._queue.clear()
+        self._queue_bytes = 0
+        self._sock.close()
+
+    def _check(self) -> None:
+        if self._closed:
+            raise ReceivePortError(errno.ENOTCONN, "backend connection is no longer valid")
+        if self.should_stop is not None and self.should_stop():
+            self.close()
+            raise ReceivePortError(errno.ECANCELED, "backend operation cancelled")
+
+    def _send_request(self, kind: int, code: int = 0,
+                      payload: bytes = b"", token: Optional[int] = None) -> int:
+        self._check()
+        if len(payload) > CONTROL_PAYLOAD or self._request_id == 0xffffffff:
+            self.close()
+            raise OSError(errno.EOVERFLOW, "control request exceeds protocol limits")
+        self._request_id += 1
+        packet = CONTROL_HEADER.pack(
+            b"ODK1", kind, self._request_id, code,
+            self._generation if token is None else token) + payload
+        try:
+            self._sock.settimeout(CONTROL_ACK_TIMEOUT)
+            sent = self._sock.send(packet)
+        except OSError:
+            self.close()
+            raise
+        if sent != len(packet):
+            self.close()
+            raise OSError(errno.EIO, "incomplete control request")
+        return self._request_id
+
+    def _receive(self, timeout: float) -> Optional[Tuple[int, int, int, int, bytes]]:
+        self._check()
+        try:
+            self._sock.settimeout(max(0.001, timeout))
+            packet, _ancillary, flags, _address = self._sock.recvmsg(
+                CONTROL_HEADER.size + CONTROL_PAYLOAD + 1)
+        except socket.timeout:
+            return None
+        except OSError as exc:
+            self.close()
+            raise ReceivePortError(exc.errno, "backend receive failed: %s" % exc) from exc
+        if not packet:
+            self.close()
+            raise ReceivePortError(errno.ECONNRESET, "backend disconnected; observations invalid")
+        if (len(packet) < CONTROL_HEADER.size
+                or len(packet) > CONTROL_HEADER.size + CONTROL_PAYLOAD
+                or flags & (socket.MSG_TRUNC | socket.MSG_CTRUNC)):
+            self._protocol_error("invalid control packet size")
+        magic, kind, request, code, sequence = CONTROL_HEADER.unpack_from(packet)
+        if magic != b"ODK1":
+            self._protocol_error("incompatible control framing")
+        return kind, request, code, sequence, packet[CONTROL_HEADER.size:]
+
+    def _protocol_error(self, reason: str) -> NoReturn:
+        self.close()
+        raise ReceivePortError(errno.EPROTO, reason)
+
+    def _event(self, frame: Tuple[int, int, int, int, bytes]) -> None:
+        kind, request, code, sequence, payload = frame
+        if request:
+            self._protocol_error("unexpected control reply")
+        if kind == 16:
+            if payload or code not in (0, 1) or sequence < self._generation:
+                self._protocol_error("invalid lease event")
+            if self._lease is not None and (sequence != self._lease or code != 1):
+                self._protocol_error("backend operation lease changed unexpectedly")
+            self._generation = sequence
+        elif kind == 18:
+            if payload or code not in (0, 1):
+                self._protocol_error("invalid refresh-window event")
+        elif kind == 17:
+            if (code not in (1, 2, 4) or not code & self._sources
+                    or not payload or len(payload) % 4
+                    or sequence <= self._last_sequence or not self.epoch):
+                self._protocol_error("invalid observation origin, order or delivery")
+            self._last_sequence = sequence
+            size = CONTROL_HEADER.size + len(payload)
+            if (len(self._queue) >= CONTROL_QUEUE_PACKETS
+                    or self._queue_bytes + size > CONTROL_QUEUE_BYTES):
+                self.close()
+                raise ReceivePortError(errno.ENOBUFS, "backend observation queue overflowed")
+            self._queue.append(Delivery(code, sequence, self.epoch, payload))
+            self._queue_bytes += size
+        else:
+            self._protocol_error("unexpected backend event")
+
+    def _acknowledgement(self, kind: int, request: int) -> Tuple[int, int, bytes]:
+        deadline = time.monotonic() + CONTROL_ACK_TIMEOUT
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                self.close()
+                raise ReceivePortError(errno.ETIMEDOUT, "backend acknowledgement timed out")
+            frame = self._receive(min(remaining, 0.25))
+            if frame is None:
+                continue
+            received_kind, number, code, sequence, payload = frame
+            if received_kind & CONTROL_REPLY:
+                if received_kind != kind | CONTROL_REPLY or number != request:
+                    self._protocol_error("unexpected backend acknowledgement")
+                if kind != 1 and (payload or code not in (0, 1, 2, 6)):
+                    self._protocol_error("invalid backend acknowledgement")
+                return code, sequence, payload
+            self._event(frame)
+
+    def _request(self, kind: int, code: int = 0, payload: bytes = b"",
+                 token: Optional[int] = None) -> Tuple[int, int, bytes]:
+        request = self._send_request(kind, code, payload, token)
+        return self._acknowledgement(kind, request)
+
+    def _discard(self) -> None:
+        self._queue.clear()
+        self._queue_bytes = 0
+
+    def begin(self, timeout: float = CONTROL_ACQUIRE_TIMEOUT) -> None:
+        if self._lease is not None:
+            raise OSError(errno.EALREADY, "this connection already owns an operation")
+        deadline = time.monotonic() + timeout
+        while True:
+            code, generation, _ = self._request(2)
+            self._discard()  # no observation window precedes this lease's receipt boundary
+            if code == 0:
+                self._lease = generation
+                self._generation = generation
+                self._last_heartbeat = time.monotonic()
+                return
+            if code != 1 or time.monotonic() >= deadline:
+                raise OSError(errno.EBUSY, "another client holds the backend operation lease")
+            self.wait(min(0.1, max(0.0, deadline - time.monotonic())))
+
+    def heartbeat(self) -> None:
+        self._check()
+        if (self._lease is not None
+                and time.monotonic() - self._last_heartbeat >= CONTROL_HEARTBEAT):
+            code, generation, _ = self._request(4, token=self._lease)
+            if code or generation != self._lease:
+                self._protocol_error("backend operation lease lost")
+            self._last_heartbeat = time.monotonic()
+
+    def finish(self) -> None:
+        """Check release acknowledgement before committing a successful marker."""
+        self._check()
+        if self._lease is None:
+            raise OSError(errno.EPERM, "no backend operation lease to finish")
+        token, self._lease = self._lease, None
+        code, generation, _ = self._request(3, token=token)
+        if code or generation <= token:
+            self._protocol_error("backend operation did not finish")
+        self._generation = generation
+
+    def wait(self, seconds: float) -> None:
+        deadline = time.monotonic() + seconds
+        while True:
+            self.heartbeat()
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return
+            frame = self._receive(min(0.25, remaining))
+            if frame is not None:
+                self._event(frame)
+
+    def next_delivery(self, timeout: float) -> Optional[Delivery]:
+        deadline = time.monotonic() + timeout
+        while True:
+            self.heartbeat()
+            if self._queue:
+                result = self._queue.popleft()
+                self._queue_bytes -= CONTROL_HEADER.size + len(result.payload)
+                return result
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            frame = self._receive(min(remaining, 0.25))
+            if frame is not None:
+                self._event(frame)
+
+    def messages(self, timeout: float) -> Iterator[Message]:
+        """Decode one complete device-origin delivery, excluding cached echoes.
+
+        Callers finish the delivery before selecting writes. A skipped
+        backend-derived packet is not a missing device value and cannot
+        revoke or confirm one; it simply supplies no hardware evidence.
+        """
+        delivery = self.next_delivery(timeout)
+        if delivery is None or delivery.origin != 1:
+            return
+        for raw in iter_osc_messages(delivery.payload):
+            try:
+                yield decode_osc(raw)
+            except (ValueError, struct.error):
+                continue
+
+    def request_dump(self, timeout: float = 12.0) -> None:
+        deadline = time.monotonic() + timeout
+        while True:
+            self.heartbeat()
+            code, _generation, _ = self._request(6, token=self._lease)
+            self._discard()
+            if code == 0:
+                return
+            if code != 1 or time.monotonic() >= deadline:
+                raise ReceivePortError(errno.EBUSY, "no fresh backend refresh window available")
+            self.wait(min(0.1, max(0.0, deadline - time.monotonic())))
 
     def send(self, messages: Iterable[Message]) -> None:
-        """Put a burst of registers on the wire, in the order given.
-
-        One socket for the burst: the order is the caller's, and this
-        must not reorder or coalesce it. A socket error part of the way is
-        a ``WriteFailed`` naming what had gone out and what had not.
-        """
         burst = list(messages)
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        except OSError as exc:
-            raise WriteFailed(exc, [], [m[0] for m in burst]) from exc
-        try:
-            for index, (path, tags, args) in enumerate(burst):
-                try:
-                    sock.sendto(encode_osc(path, tags, *args),
-                                (self.host, self.send_port))
-                except OSError as exc:
-                    # How far it came is the caller's to report: until
-                    # 0.7.0 the bare OSError said only that something
-                    # failed, and a switch let it out as a traceback.
-                    paths = [message[0] for message in burst]
-                    raise WriteFailed(exc, paths[:index],
-                                      paths[index:]) from exc
-        finally:
-            sock.close()
-
-    def request_dump(self) -> None:
-        """Ask the backend to report its entire register state."""
-        self.send([("/refresh", "", ())])
-
-    def listen(self) -> Optional[Listener]:
-        """Bind the receive port, or None when something else holds it.
-
-        None is EADDRINUSE and nothing else: the mixer GUI has the port,
-        which is a normal state every caller has an answer for. Any other
-        failure -- EACCES for a port below 1024, a socket that cannot be
-        had -- is a ``ReceivePortError`` carrying the real reason, where
-        it used to be reported as a busy port (0.6.11).
-
-        No ``SO_REUSEADDR`` on purpose: a bind that succeeded alongside
-        the mixer GUI would split the backend's datagrams between both
-        readers and produce quietly wrong numbers on both sides.
-        """
-        sock: Optional[socket.socket] = None
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.bind((self.host, self.recv_port))
-        except OSError as exc:
-            if sock is not None:
-                sock.close()
-            if exc.errno == errno.EADDRINUSE:
-                return None
-            raise ReceivePortError(
-                exc.errno, "cannot bind the receive port UDP %d: %s"
-                % (self.recv_port, exc.strerror or exc)) from exc
-        return Listener(sock, self.recv_port)
+        paths = [message[0] for message in burst]
+        written: List[str] = []
+        if self._lease is None:
+            raise WriteFailed(OSError(errno.EPERM, "writes require the complete operation lease"),
+                              [], paths)
+        for index, (path, tags, args) in enumerate(burst):
+            submitted = False
+            try:
+                self.heartbeat()
+                request = self._send_request(5, payload=encode_osc(path, tags, *args),
+                                             token=self._lease)
+                submitted = True
+                code, generation, _ = self._acknowledgement(5, request)
+                if code == 0 and generation != self._lease:
+                    self._protocol_error("backend lease changed during write")
+            except OSError as exc:
+                if submitted:
+                    written.append(path)  # acknowledgement lost: may have reached hardware
+                raise WriteFailed(exc, written, paths[index + int(submitted):]) from exc
+            if code:  # a definite refusal before processing
+                raise WriteFailed(OSError(errno.EBUSY if code == 1 else errno.EPROTO,
+                                  "backend refused write to %s (code %d)" % (path, code)),
+                                  written, paths[index:])
+            written.append(path)
 
 
-def loopback(send_port: int, recv_port: int) -> Backend:
-    """The backend this project actually talks to."""
-    return Backend("127.0.0.1", send_port, recv_port)
+def connect_backend(config: Config, config_path: Optional[Path] = None, *,
+                    reader: bool = False,
+                    sources: int = 3,
+                    should_stop: Optional[Callable[[], bool]] = None,
+                    expected_pid: Optional[int] = None) -> Control:
+    """Pin a read-only identity check to the actual kernel peer connection.
+
+    Connecting never acquires writing permission. The operation takes its
+    device file lock first, then calls begin() on this checked connection.
+    Neither an old UDP listener nor an unidentifiable bridge is a fallback.
+    """
+    proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
+    before = backend_status(config, proc_root, config_path)
+    if (before.state != "ready" or before.pid is None or before.endpoint is None
+            or before.device is None):
+        raise OSError(errno.ENOTCONN, before.detail)
+    if expected_pid is not None and before.pid != expected_pid:
+        raise OSError(errno.EPERM, "control endpoint is not owned by the started backend")
+    connection = Control(Path(before.endpoint), before.pid,
+                         expected_uid=before.uid, expected_gid=before.gid,
+                         reader=reader, sources=sources, should_stop=should_stop)
+    try:
+        unchanged = (serial_in(connection.device_name) == before.device.serial
+                     and backend_status(config, proc_root, config_path) == before)
+    except BaseException:
+        connection.close()
+        raise
+    if not unchanged:
+        connection.close()
+        raise OSError(errno.EPERM, "backend or device identity changed while connecting")
+    return connection

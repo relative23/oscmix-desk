@@ -37,6 +37,7 @@ class FakeChild:
     """A backend that is already finished."""
 
     def __init__(self, returncode=0):
+        self.pid = 202
         self.returncode = returncode
         self.terminated = False
 

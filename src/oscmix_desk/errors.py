@@ -57,11 +57,9 @@ class WriteFailed(OSError):
     "the desk is somewhere between two configs", which is the one thing a
     person at that desk needs to know (ADR 0027).
 
-    An OSError, so every handler that already stands down when the
-    backend cannot be reached applies to it unchanged: a start fails and
-    is retried, a verifier and a reconcile log it and stand down. Only a
-    switch reads the two lists, because only a switch has to say what it
-    did.
+    All operation logs include these lists. A profile result also exposes
+    them as structured fields. Neither submission nor the backend's ACK
+    establishes that the hardware applied the value.
     """
 
     def __init__(self, cause: OSError, written: "Sequence[str]",
@@ -69,3 +67,8 @@ class WriteFailed(OSError):
         super().__init__(cause.errno, cause.strerror or str(cause))
         self.written = tuple(written)
         self.unwritten = tuple(unwritten)
+
+    def __str__(self) -> str:
+        return ("%s; sent (hardware unconfirmed): %s; pending: %s"
+                % (super().__str__(), ", ".join(self.written) or "none",
+                   ", ".join(self.unwritten) or "none"))

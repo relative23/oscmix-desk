@@ -46,99 +46,81 @@ def fake_proc(tmp_path, entries, listening_port=None, owner=None):
     return root
 
 
-def test_nothing_is_signalled_when_the_port_is_free(process_mod, tmp_path,
-                                                    monkeypatch):
-    # No stale backend can be holding a port nobody is listening on.
-    killed = []
-    monkeypatch.setattr(process_mod.os, "kill",
-                        lambda pid, sig: killed.append(pid))
-    proc = fake_proc(tmp_path, {"200": ("oscmix", "/usr/bin/oscmix")})
-    process_mod._cleanup_stale_backend(7222, proc)
-    assert killed == []
+def stale_target(endpoint):
+    from oscmix_desk.discovery import Device
+
+    config, path, proc = endpoint
+    return path, Device(config.usb_id, config.serial, 24), proc
 
 
-def test_an_unknown_holder_is_reported_not_killed(process_mod, tmp_path,
-                                                  monkeypatch, caplog):
-    # Someone else has the port. Killing whatever we can find would be
-    # worse than failing to bind.
-    killed = []
-    monkeypatch.setattr(process_mod.os, "kill",
-                        lambda pid, sig: killed.append(pid))
-    proc = fake_proc(tmp_path, {"200": ("sshd", "/usr/sbin/sshd")},
-                     listening_port=7222, owner="200")
-    with caplog.at_level("WARNING"):
-        process_mod._cleanup_stale_backend(7222, proc)
-    assert killed == []
-    assert "not an oscmix of this user" in caplog.text
-
-
-def test_an_oscmix_that_does_not_hold_the_port_is_left_alone(
-        process_mod, tmp_path, monkeypatch, caplog):
-    """The scenario a name-only match gets wrong.
-
-    Something else holds the port, and a perfectly legitimate oscmix of
-    the same user is driving another interface. Until 0.6.6 the cleanup
-    terminated that one, and left the actual holder running.
-    """
-    signalled = []
+def test_nothing_is_signalled_when_the_endpoint_is_absent(process_mod, endpoint, monkeypatch):
+    path, device, proc = stale_target(endpoint)
+    path.unlink()
     monkeypatch.setattr(process_mod, "_terminate",
-                        lambda pid, still_stale: signalled.append(pid) or True)
-    proc = fake_proc(tmp_path, {"200": ("sshd", "/usr/sbin/sshd"),
-                                "201": ("oscmix", "/home/u/.local/bin/oscmix")},
-                     listening_port=7222, owner="200")
-    with caplog.at_level("WARNING"):
-        process_mod._cleanup_stale_backend(7222, proc)
-    assert signalled == [], "the other oscmix never had this port"
-    assert "not an oscmix of this user" in caplog.text
+                        lambda *_: pytest.fail("absent endpoint signalled"))
+    assert process_mod._cleanup_stale_backend(path, device, proc) is None
 
 
-def test_a_holder_that_cannot_be_identified_is_left_alone(
-        process_mod, tmp_path, monkeypatch, caplog):
-    # No fd links to read: nobody can be shown to hold the port, so
-    # nobody is signalled, and the start fails on the port wait instead.
-    signalled = []
+@pytest.mark.parametrize("change", ["stranger", "different-box", "unreadable-owner",
+                                    "unreadable-table", "symlink", "file", "other-user"])
+def test_uncertain_or_unrelated_endpoint_is_never_signalled(
+        process_mod, endpoint, monkeypatch, change):
+    path, device, proc = stale_target(endpoint)
     monkeypatch.setattr(process_mod, "_terminate",
-                        lambda pid, still_stale: signalled.append(pid) or True)
-    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
-                     listening_port=7222)
-    with caplog.at_level("WARNING"):
-        process_mod._cleanup_stale_backend(7222, proc)
-    assert signalled == []
-    assert "cannot be identified" in caplog.text
+                        lambda *_: pytest.fail("unrelated PID signalled"))
+    if change == "stranger":
+        (proc / "101/exe").unlink()
+        (proc / "101/exe").symlink_to("/usr/bin/another")
+    elif change == "different-box":
+        (proc / "102/cmdline").write_bytes(b"alsaseqio\0-x\0" + b"25:1\0oscmix\0")
+    elif change == "unreadable-owner":
+        (proc / "101/fd/3").unlink()
+    elif change == "unreadable-table":
+        (proc / "net/unix").write_text("broken")
+    elif change in ("symlink", "file"):
+        path.unlink()
+        if change == "symlink":
+            path.symlink_to(proc)
+        else:
+            path.touch()
+    else:
+        uid = os.getuid()
+        monkeypatch.setattr(process_mod.os, "getuid", lambda: uid + 1)
+    process_mod._cleanup_stale_backend(path, device, proc)
 
 
-def test_a_stale_backend_is_terminated(process_mod, tmp_path, monkeypatch):
+def test_a_stale_backend_is_terminated(process_mod, endpoint, monkeypatch):
+    path, device, proc = stale_target(endpoint)
     signalled = []
-    monkeypatch.setattr(process_mod, "_terminate",
-                        lambda pid, still_stale: signalled.append((pid, signal.SIGTERM))
-                        or True)
+    monkeypatch.setattr(process_mod, "_terminate", lambda pid, check:
+                        signalled.append((pid, check())) or True)
     monkeypatch.setattr(process_mod.time, "sleep", lambda _s: None)
-    proc = fake_proc(tmp_path, {"201": ("oscmix", "/home/u/.local/bin/oscmix")},
-                     listening_port=7222, owner="201")
-    assert process_mod._cleanup_stale_backend(7222, proc) is None, \
-        "signalled, so the start goes on"
-    assert signalled == [(201, signal.SIGTERM)]
+    assert process_mod._cleanup_stale_backend(path, device, proc) is None
+    assert signalled == [(101, True)]
 
 
-@pytest.mark.parametrize("change", ["executable", "port", "session", "none"])
-def test_the_identity_is_rechecked_after_pidfd_open(
-        process_mod, tmp_path, monkeypatch, change):
-    """A pidfd only closes the reuse window after it has been opened."""
-    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
-                     listening_port=7222, owner="201")
+@pytest.mark.parametrize("change",
+                         ["executable", "endpoint", "session", "bridge", "serial", "none"])
+def test_the_identity_is_rechecked_after_pidfd_open(process_mod, endpoint, monkeypatch, change):
+    path, device, proc = stale_target(endpoint)
     signalled, closed = [], []
 
     def replaced_before_open(pid):
-        assert pid == 201
+        assert pid == 101
         if change == "executable":
-            (proc / "201" / "comm").write_text("unrelated\n")
-            (proc / "201" / "cmdline").write_bytes(b"unrelated\0")
-        elif change == "port":
-            (proc / "net" / "udp").write_text("")
+            (proc / "101/exe").unlink()
+            (proc / "101/exe").symlink_to("/usr/bin/another")
+        elif change == "endpoint":
+            (proc / "net/unix").write_text("Num RefCount Protocol Flags Type St Inode Path\n")
         elif change == "session":
             (proc / "200").mkdir()
-            (proc / "200" / "cmdline").write_bytes(b"oscmix-session\0")
-            (proc / "201" / "stat").write_text("201 (oscmix) S 200 0 0\n")
+            (proc / "200/cmdline").write_bytes(b"oscmix-session\0")
+            (proc / "101/stat").write_text("101 (oscmix) S 200 0 0\n")
+        elif change == "bridge":
+            (proc / "102/cmdline").write_bytes(b"alsaseqio\0-x\0" + b"25:1\0oscmix\0")
+        elif change == "serial":
+            clients = proc / "asound/seq/clients"
+            clients.write_text(clients.read_text().replace("24216011", "99887766"))
         return 999
 
     monkeypatch.setattr(process_mod.os, "pidfd_open", replaced_before_open, raising=False)
@@ -146,26 +128,20 @@ def test_the_identity_is_rechecked_after_pidfd_open(
                         lambda fd, sig: signalled.append((fd, sig)), raising=False)
     monkeypatch.setattr(process_mod.os, "close", closed.append)
     monkeypatch.setattr(process_mod.time, "sleep", lambda seconds: None)
-    assert process_mod._cleanup_stale_backend(7222, proc) == (
-        None if change == "none" else 201)
+    expected = None if change == "none" else 101
+    assert process_mod._cleanup_stale_backend(path, device, proc) == expected
     assert signalled == ([(999, signal.SIGTERM)] if change == "none" else [])
     assert closed == [999]
 
 
-def test_a_vanished_process_does_not_raise(process_mod, tmp_path, monkeypatch):
-    # Between listing /proc and signalling, the process may exit. That is
-    # the normal case, not an error.
+def test_a_vanished_process_does_not_raise(process_mod, endpoint, monkeypatch):
     def gone(pid):
         raise ProcessLookupError(pid)
 
     monkeypatch.setattr(process_mod.os, "pidfd_open", gone, raising=False)
-    monkeypatch.setattr(process_mod.os, "kill",
-                        lambda pid, sig: (_ for _ in ()).throw(
-                            ProcessLookupError(pid)))
+    monkeypatch.setattr(process_mod.os, "kill", lambda *_: pytest.fail("kill by numeric PID"))
     monkeypatch.setattr(process_mod.time, "sleep", lambda _s: None)
-    proc = fake_proc(tmp_path, {"202": ("oscmix", "oscmix")},
-                     listening_port=7222, owner="202")
-    process_mod._cleanup_stale_backend(7222, proc)
+    assert process_mod._cleanup_stale_backend(*stale_target(endpoint)) is None
 
 
 def test_termination_uses_a_pidfd_so_pid_reuse_cannot_bite(process_mod,
@@ -190,7 +166,7 @@ def test_termination_uses_a_pidfd_so_pid_reuse_cannot_bite(process_mod,
 
 
 def test_without_a_pidfd_nothing_is_signalled_and_the_start_says_so(
-        process_mod, tmp_path, monkeypatch, caplog):
+        process_mod, endpoint, monkeypatch, caplog):
     """Blocked by seccomp, or a system without it. It fell back to
     `os.kill` until 0.7.0 -- the race by number that the pidfd exists to
     avoid -- and took that fallback for a process that had merely exited
@@ -209,9 +185,7 @@ def test_without_a_pidfd_nothing_is_signalled_and_the_start_says_so(
         assert process_mod._terminate(4321, lambda: True) is False
     assert "the stale oscmix (pid 4321) was not signalled" in caplog.text
     assert "Operation not permitted" in caplog.text
-    proc = fake_proc(tmp_path, {"202": ("oscmix", "oscmix")},
-                     listening_port=7222, owner="202")
-    assert process_mod._cleanup_stale_backend(7222, proc) == 202
+    assert process_mod._cleanup_stale_backend(*stale_target(endpoint)) == 101
     assert killed == [], "no kill by number, and no settle for nothing"
 
 
@@ -500,58 +474,36 @@ def test_systemctl_output_is_stdout_on_success_and_none_otherwise(
 # Resolving the holder of the port (ADR 0021).
 # --------------------------------------------------------------------------
 
-def test_the_owner_is_unknown_when_no_process_holds_the_inode(process_mod,
-                                                              tmp_path):
-    # The port is listed, but no fd anywhere points at its socket. That
-    # is "cannot be told", not "nobody", and the caller must not guess.
-    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
-                     listening_port=7222)
-    assert process_mod.socket_owner(7222, proc) is None
+def test_the_owner_is_unknown_when_no_process_holds_the_inode(process_mod, endpoint):
+    _config, path, proc = endpoint
+    (proc / "101/fd/3").unlink()
+    assert process_mod.control_socket_owner(path, proc) is None
 
 
-def test_the_owner_is_unknown_when_the_port_is_not_listed(process_mod,
-                                                          tmp_path):
-    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")}, owner="201")
-    assert process_mod.socket_owner(7222, proc) is None
+def test_the_owner_is_unknown_when_the_endpoint_is_not_listed(process_mod, endpoint):
+    _config, path, proc = endpoint
+    (proc / "net/unix").write_text("Num RefCount Protocol Flags Type St Inode Path\n")
+    assert process_mod.control_socket_owner(path, proc) is None
 
 
-def test_a_process_whose_handles_cannot_be_read_is_skipped(process_mod,
-                                                           tmp_path):
-    """Another user's process, or one that exited during the scan.
-
-    Both raise on the fd directory, and both mean "not this one" rather
-    than "give up": the holder may still be further down the list.
-    """
-    proc = fake_proc(tmp_path, {"200": ("sshd", "/usr/sbin/sshd"),
-                                "201": ("oscmix", "oscmix")},
-                     listening_port=7222, owner="201")
-    (proc / "200" / "fd").chmod(0o000)
-    try:
-        assert process_mod.socket_owner(7222, proc) == 201
-    finally:
-        (proc / "200" / "fd").chmod(0o755)
+def test_a_process_whose_handles_cannot_be_read_is_skipped(process_mod, endpoint):
+    _config, path, proc = endpoint
+    (proc / "100").mkdir()
+    assert process_mod.control_socket_owner(path, proc) == 101
 
 
-def test_a_handle_that_cannot_be_read_is_skipped(process_mod, tmp_path,
-                                                 monkeypatch):
-    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
-                     listening_port=7222, owner="201")
+def test_a_handle_that_cannot_be_read_is_skipped(process_mod, endpoint, monkeypatch):
+    _config, path, proc = endpoint
 
     def refuse(_path):
         raise OSError("gone")
 
     monkeypatch.setattr(process_mod.os, "readlink", refuse)
-    assert process_mod.socket_owner(7222, proc) is None
+    assert process_mod.control_socket_owner(path, proc) is None
 
 
-def test_a_link_to_another_socket_is_not_ownership(process_mod, tmp_path):
-    """The prefix and the inode have to hold together.
-
-    With either half alone, the first process that has any socket open
-    is named as the holder of the port -- and this function decides who
-    gets SIGTERM.
-    """
-    proc = fake_proc(tmp_path, {"201": ("oscmix", "oscmix")},
-                     listening_port=7222)
-    os.symlink("socket:[999]", proc / "201" / "fd" / "4")
-    assert process_mod.socket_owner(7222, proc) is None
+def test_a_link_to_another_socket_is_not_ownership(process_mod, endpoint):
+    _config, path, proc = endpoint
+    (proc / "101/fd/3").unlink()
+    (proc / "101/fd/4").symlink_to("socket:[999]")
+    assert process_mod.control_socket_owner(path, proc) is None

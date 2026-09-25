@@ -13,7 +13,7 @@ from typing import Optional
 from .config import load_config
 from .constants import SERVICE_UNIT
 from .desktop import inspect_desktop
-from .diagnostics import backend_status, port_state, service_start_problem, service_status
+from .diagnostics import BackendStatus, backend_status, service_start_problem, service_status
 from .discovery import resolve_binary
 from .errors import ConfigError
 from .model import Config
@@ -52,11 +52,11 @@ def systemctl_user(*verb: str) -> int:
         return 1
 
 
-def ensure_backend(config: Config, path: Optional[Path], proc_root: Path) -> None:
+def ensure_backend(config: Config, path: Optional[Path], proc_root: Path) -> BackendStatus:
     """Reuse a matching manual/service backend; otherwise start only an enabled desk."""
-    status = backend_status(config, proc_root)
+    status = backend_status(config, proc_root, path)
     if status.state == "ready":
-        return
+        return status
     if status.state != "absent":
         raise OSError(status.detail)
     if status.device is None or status.device.client is None:
@@ -70,9 +70,9 @@ def ensure_backend(config: Config, path: Optional[Path], proc_root: Path) -> Non
         raise OSError("could not start %s; inspect its user journal" % SERVICE)
     deadline = time.monotonic() + BACKEND_WAIT
     while True:
-        status = backend_status(config, proc_root)
+        status = backend_status(config, proc_root, path)
         if status.state == "ready":
-            return
+            return status
         if status.state != "absent" or time.monotonic() >= deadline:
             raise OSError("backend did not become ready: " + status.detail)
         time.sleep(0.25)
@@ -89,20 +89,20 @@ def _launch(proc_root: Path) -> None:
     gtk = resolve_gtk_binary()
     if gtk is None:
         raise OSError("oscmix-gtk is not installed; install the GTK companion")
-    desktop = inspect_desktop(config, gtk)
+    desktop = inspect_desktop(gtk)
     if desktop.problem:
         raise OSError(desktop.problem)
     if MAINTENANCE_FILE.exists() or GTK_MAINTENANCE_FILE.exists():
         raise OSError("package maintenance is incomplete; finish package repair first")
-    ensure_backend(config, path, proc_root)
-    if port_state(config.osc_recv_port, proc_root) != "free":
-        raise OSError("UDP %d is occupied by a read-back or another mixer; "
-                      "wait for verification to finish or close the other mixer, "
-                      "then retry" % config.osc_recv_port)
-    # The port observation is not a reservation; upstream owns its
-    # receiver. No persistent GSettings are rewritten by this launcher.
+    status = ensure_backend(config, path, proc_root)
+    if (status.pid is None or status.endpoint is None or status.device is None
+            or not status.device.serial):
+        raise OSError("backend identity is incomplete")
+    environment = dict(os.environ, OSCMIX_CONTROL_SOCKET=status.endpoint,
+                       OSCMIX_BACKEND_PID=str(status.pid),
+                       OSCMIX_DEVICE_SERIAL=status.device.serial)
     try:
-        os.execv(gtk, [gtk])  # noqa: S606 -- replace launcher with the checked GUI
+        os.execve(gtk, [gtk], environment)  # noqa: S606 -- GTK checks kernel peer before HELLO
     except OSError as exc:
         raise OSError("could not execute %s: %s" % (gtk, exc)) from exc
 

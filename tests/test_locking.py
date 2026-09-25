@@ -128,7 +128,11 @@ def test_the_lock_lives_in_the_runtime_directory(tmp_path, monkeypatch):
     path = desk(tmp_path, tracking=TRACKING)
     assert locking.device_lock_path(path, "2a39-3fd9-24216011") == \
         runtime / "oscmix-desk" / "2a39-3fd9-24216011.lock"
-    assert (runtime / "oscmix-desk").is_dir(), "and it is created"
+    assert not (runtime / "oscmix-desk").exists(), "path selection is read-only"
+    lock = locking.take_device_lock(path, "2a39-3fd9-24216011")
+    assert lock is not None
+    assert (runtime / "oscmix-desk").is_dir(), "the writer creates its directory"
+    lock.release()
 
 def test_without_a_runtime_directory_the_lock_stays_beside_the_config(
         tmp_path, monkeypatch):
@@ -175,17 +179,19 @@ def test_without_a_runtime_directory_the_config_path_is_the_lock(
     # And with no config either there is nothing to contend over.
     assert locking.take_device_lock(None, "2a39-3fd9-24216011") is not None
 
-def test_a_runtime_directory_that_cannot_be_made_falls_back_and_says_so(
+def test_an_unusable_runtime_refuses_without_selecting_another_lock(
         tmp_path, monkeypatch, caplog):
-    # A file where the directory should be: mkdir raises, and the lock
-    # has to land beside the config rather than nowhere.
+    # All clients select the same path, even when one cannot create it.
+    # Falling back on permission failure would bypass another holder.
     blocker = tmp_path / "not-a-dir"
     blocker.write_text("")
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(blocker))
     path = desk(tmp_path, tracking=TRACKING)
     with caplog.at_level("WARNING"):
-        where = locking.device_lock_path(path, "2a39-3fd9-24216011")
-    assert where == tmp_path / "active-profile.lock"
+        lock = locking.take_device_lock(path, "2a39-3fd9-24216011")
+    assert lock is None
+    assert not (tmp_path / "active-profile.lock").exists()
+    assert "cannot create the device runtime directory" in caplog.text
     assert str(blocker / "oscmix-desk") in caplog.text, \
         "the warning names the directory it could not use"
 

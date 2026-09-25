@@ -66,7 +66,8 @@ def test_missing_mono_links_cannot_be_silently_assumed():
 
 def test_command_keeps_the_omissions_next_to_the_export(monkeypatch, capsys):
     seen = dict(stereo(), **{"/mix/5/input/1": (-6., 50)})
-    monkeypatch.setattr(reads, "_read_device", lambda _config: seen)
+    monkeypatch.setattr(reads, "_read_device",
+                        lambda _config, _path: reads.DeviceRead(seen, "00000000", "epoch"))
     assert reads._dump_config(Config()) == 0
     text = capsys.readouterr().out
     assert "INCOMPLETE EXPORT" in text
