@@ -167,6 +167,23 @@ def run_session(args, env):
     )
 
 
+def test_reload_while_discovering_an_absent_device_does_not_kill_the_session(tmp_path):
+    env, _, _ = make_env(tmp_path, with_client=False, with_usb=False)
+    log = tmp_path / 'discover.log'
+    with log.open('w') as stderr:
+        child = subprocess.Popen([sys.executable, str(SESSION_BIN), '--timeout', '3'],
+                                 env=env, stdout=subprocess.DEVNULL, stderr=stderr)
+        try:
+            assert wait_for_line(log, "waiting for 'Fireface UCX II'")
+            child.send_signal(signal.SIGHUP)
+            assert child.wait(timeout=6) == 0
+        finally:
+            if child.poll() is None:
+                child.terminate()
+                child.wait(timeout=5)
+    assert 'not connected; nothing to do' in log.read_text()
+
+
 def wait_for(predicate, timeout=10.0):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:

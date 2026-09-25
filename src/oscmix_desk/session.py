@@ -434,6 +434,12 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     proc_root = Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
     sysfs_usb = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
 
+    # Native supervisors can reload while the interface is still absent.
+    # Keep that request for the ordinary post-start reconciliation point;
+    # the default SIGHUP action would kill the discovery process instead.
+    reload_requested = {"reload": False}
+    if not args.dry_run:
+        _install_reload_handler(reload_requested)
     interface, code = _find_client(args, config, proc_root, sysfs_usb)
     if interface is None or interface.client is None:
         if args.dry_run and code != EXIT_CONFIG:
@@ -461,9 +467,7 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
         return EXIT_FAILURE
 
     stop_requested = {"stop": False}
-    reload_requested = {"reload": False}
     _install_stop_handlers(child, stop_requested)
-    _install_reload_handler(reload_requested)
     if not _await_backend_port(child, endpoint, proc_root) \
             and usb_device_present(config.usb_id, sysfs_usb):
         # The port never came up while the device is still there.
