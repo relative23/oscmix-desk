@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "created": "2026-09-25T02:06:41.428479+00:00",
+  "primary_fingerprint": "3C2F6FF8D8E2DFB4A048D23E87552FB27943AE1F",
+  "signing_fingerprint": "3816B9E1EAA0A36A5251CDE8571F4D4F8E1E000B",
+  "algorithm": "RSA4096",
+  "signature_digest": "SHA256",
+  "uid": "oscmix-desk package repository (relative23/oscmix-desk)",
+  "public_armor_sha256": "dc7564127fad76111eff963d693e54bd9d4edfc26275f270ee3049a6e1fe5abf",
+  "endpoint": "https://relative23.github.io/oscmix-desk/",
+  "primary_expiry": "2031-09-24T02:06:31+00:00",
+  "signing_expiry": "2027-09-25T02:06:35+00:00"
+}

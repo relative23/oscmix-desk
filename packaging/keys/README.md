@@ -1,0 +1,39 @@
+# Repository signing identity
+
+The 0.8.0 repository is being prepared; no published package channel is
+qualified yet. `oscmix-desk-archive.asc` is the public OpenPGP certificate
+for the project-owned endpoint `https://relative23.github.io/oscmix-desk/`.
+`archive-key.json` records its fingerprints, expiration and file hash.
+
+- Certification key: `3C2F6FF8D8E2DFB4A048D23E87552FB27943AE1F`.
+- Initial signing subkey: `3816B9E1EAA0A36A5251CDE8571F4D4F8E1E000B`.
+- RSA 4096; repository signatures use SHA-256. Certification expires after
+  five years, the first signing subkey after one year.
+
+The protected local signing keyring contains only the signing subkey's
+private material. The primary secret, encrypted recovery exports and
+revocation certificate have separate storage outside the project. The
+bootstrap storage is local; this is not a claim that an offline backup has
+already been made. Neither private material nor passphrases belong in a
+source checkout, build artifact, log, public CI secret dump or Pages tree.
+A local detached signature was verified with the exported public key using
+`gpgv`; APT/RPM client qualification remains a separate release gate.
+
+Rotation uses the certification key to add a new signing subkey and publish
+the updated certificate before signing repository metadata with that subkey.
+Retain the old public subkey and signed snapshots for rollback; do not delete
+old signatures or change an existing snapshot in place. A compromised signing
+subkey must be revoked using the certification key and replaced. A compromised
+certification key requires a new trust anchor with independently verified
+fingerprint; an unauthenticated repository cannot bootstrap its own replacement.
+Expiration, wrong keys, revoked/rotated subkeys and altered metadata/packages
+must be tested with each actual package manager before publication.
+
+Use repository-scoped APT `Signed-By` configuration and the corresponding
+explicit RPM repository key configuration. Never disable package or metadata
+signature checks to complete an upgrade. The final installation instructions
+will name qualified channels after their actual publication tests.
+
+The key separation follows GnuPG's
+[secret-subkey export contract](https://gnupg.org/documentation/manuals/gnupg/Operational-GPG-Commands.html)
+and [key-management interface](https://gnupg.org/documentation/manuals/gnupg/OpenPGP-Key-Management.html).
