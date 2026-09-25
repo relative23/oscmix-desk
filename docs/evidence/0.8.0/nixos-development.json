@@ -1,0 +1,338 @@
+{
+  "schema": 1,
+  "scope": "development package and absent-device VM lifecycle; not final release qualification",
+  "nixos": "26.05.10529.c508844df6c2 (Yarara)",
+  "kernel": "6.18.53",
+  "architecture": "x86_64",
+  "systemd": "systemd 260 (260.4)",
+  "python": "Python 3.13.15",
+  "glibc": "ldd (GNU libc) 2.42",
+  "compiler": "15.3.0",
+  "lifecycle": {
+    "schema": 1,
+    "scope": "development, actual NixOS, no audio hardware",
+    "shadowing_user_unit_refused": true,
+    "installed_inactive": true,
+    "explicit_activation_fenced": true,
+    "running_maintenance_refused": true,
+    "process": {
+      "pid": 8991,
+      "argv": [
+        "/nix/store/9r02ykx9y35lf4gk6gc30gnag1y8ncp7-python3-3.13.15/bin/python3",
+        "/nix/store/i3khr2y6h5m6fdr2dmy7pcmakp7flc0q-oscmix-desk-0.7.3/libexec/oscmix-session"
+      ],
+      "uid": 12510,
+      "groups": [
+        "17",
+        "100"
+      ],
+      "package": "/nix/store/i3khr2y6h5m6fdr2dmy7pcmakp7flc0q-oscmix-desk-0.7.3"
+    },
+    "crash_restarts": [
+      {
+        "before": 8991,
+        "after": 9028,
+        "seconds": 3.277
+      },
+      {
+        "before": 9028,
+        "after": 9060,
+        "seconds": 3.034
+      },
+      {
+        "before": 9060,
+        "after": 9092,
+        "seconds": 3.27
+      }
+    ],
+    "user_state": {
+      "/home/tester/.config/oscmix/routing.conf": {
+        "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+        "uid": 12510,
+        "gid": 100
+      },
+      "/home/tester/.config/oscmix/profiles/qa-state.conf": {
+        "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+        "uid": 12510,
+        "gid": 100
+      },
+      "/home/tester/.config/oscmix/active-profile": {
+        "sha256": "df43eb0a3af4839eda15dd85ca851c01490ac850b9a9ba33fd84a1ad3c2f7716",
+        "uid": 12510,
+        "gid": 100
+      }
+    },
+    "core_generation": "/nix/store/fq59wzl562lw53b982cvzcdmkrc32rbm-nixos-system-oscmix-nixos-qa-26.05.10529.c508844df6c2",
+    "boot": "55574782-e90b-4754-b1ae-876b4575ccbf",
+    "phase": "passed",
+    "reboot": "dbf5c237-4bff-46b8-a2c1-0dfcdc25b86c",
+    "maintenance_survived_reboot": true,
+    "gtk_generation": {
+      "pid": 826,
+      "argv": [
+        "/nix/store/9r02ykx9y35lf4gk6gc30gnag1y8ncp7-python3-3.13.15/bin/python3",
+        "/nix/store/2p2w82c4jxj6bigsl72fa0fx6ialarq5-oscmix-desk-0.7.3/libexec/oscmix-session"
+      ],
+      "uid": 12510,
+      "groups": [
+        "17",
+        "100"
+      ],
+      "package": "/nix/store/2p2w82c4jxj6bigsl72fa0fx6ialarq5-oscmix-desk-0.7.3"
+    },
+    "rollback_generation": {
+      "pid": 1047,
+      "argv": [
+        "/nix/store/9r02ykx9y35lf4gk6gc30gnag1y8ncp7-python3-3.13.15/bin/python3",
+        "/nix/store/i3khr2y6h5m6fdr2dmy7pcmakp7flc0q-oscmix-desk-0.7.3/libexec/oscmix-session"
+      ],
+      "uid": 12510,
+      "groups": [
+        "17",
+        "100"
+      ],
+      "package": "/nix/store/i3khr2y6h5m6fdr2dmy7pcmakp7flc0q-oscmix-desk-0.7.3"
+    },
+    "foreign_user_activation_refused": true,
+    "stop_seconds": 0.005,
+    "reload_kept_stopped": true,
+    "disable_refused_start": true,
+    "removal_preserved_user_state": true
+  },
+  "definitions": {
+    "packaging/nix/default.nix": "a2dc0bfab7f82a66448d4c39311bc7ff954d4e37b55e7e1d7a1f4d4308fc1d25",
+    "packaging/nix/module.nix": "25cfe38ccc156de3211e45c8447fa726d8f3a1931d5bbdb9feda403b99755d8b",
+    "packaging/nix/package.nix": "807ce2d93da61dbd59f6d1453a9381ab7ff5e1e980a6a46cd8d5b955c638cb3d",
+    "tests/nixos_lifecycle.py": "50b3c6495ba6c2d20114b628c9ca308d753c3b9f01d36e48211fd8f28772a8aa"
+  },
+  "packages": {
+    "core": {
+      "store": "/nix/store/i3khr2y6h5m6fdr2dmy7pcmakp7flc0q-oscmix-desk-0.7.3",
+      "derivation": "/nix/store/c8mpdl07q0vk231xin9vxf7hzr8z82dz-oscmix-desk-0.7.3.drv",
+      "nar_hash": "sha256:0yyjcimj8x053i5j3l87jm7964dm1jxb5wiifxlr4z5icg0hxgax",
+      "source_store": "/nix/store/l9y5hpr15i43d0nlh6f1sibssc0q0gn3-source",
+      "executables": {
+        "oscmix": {
+          "sha256": "7da4f1646649954fe2781a48704aabe7c164f3861731fdcc42abbb995a97b54d"
+        },
+        "alsaseqio": {
+          "sha256": "37f8028b7f3aa5d10d62454d352812d5e160301bc8cb4b052ff956844e4caedb"
+        },
+        "oscmix-session": {
+          "sha256": "bb5165ae47344cf5642a62053e15091b915d3d5bb4540ef5a4fc5002f3d500fa",
+          "wrapped_sha256": "ce5e2d9d92c76d3d439fff76276d79955bf1ea61a771f29670c786aa532f29bb"
+        },
+        "oscmix-launch": {
+          "sha256": "deadea0585e44e7d74b9159377871f76516d1049b141228980cc81e7a89023a7",
+          "wrapped_sha256": "6b742a0d593aa6b1091411d5de735328754ef98b3d39e9856a6d40f3b98bd1ff"
+        }
+      }
+    },
+    "gtk": {
+      "store": "/nix/store/2p2w82c4jxj6bigsl72fa0fx6ialarq5-oscmix-desk-0.7.3",
+      "derivation": "/nix/store/xr5m5jv164jia023v6jzrr8p1snmsggr-oscmix-desk-0.7.3.drv",
+      "nar_hash": "sha256:1w23vjnv83b0fn7y1qzq0prbr09q8nb3i80ach2al8c5h7bbmmhr",
+      "source_store": "/nix/store/l9y5hpr15i43d0nlh6f1sibssc0q0gn3-source",
+      "executables": {
+        "oscmix": {
+          "sha256": "7da4f1646649954fe2781a48704aabe7c164f3861731fdcc42abbb995a97b54d"
+        },
+        "alsaseqio": {
+          "sha256": "37f8028b7f3aa5d10d62454d352812d5e160301bc8cb4b052ff956844e4caedb"
+        },
+        "oscmix-gtk": {
+          "sha256": "5ba8475bdf637d23573133e56de4e7d3677b8fa94aff2e7946e6a7db3d7eb3af",
+          "wrapped_sha256": "08f630f1577047304b074ee54e067061cb7fb740ad3e76d225a696ba1aef2316"
+        },
+        "oscmix-session": {
+          "sha256": "7d80dd61ba11a637805c4f9aff26a58daa56d93b2d4ce5896103e42ad772520f",
+          "wrapped_sha256": "ce5e2d9d92c76d3d439fff76276d79955bf1ea61a771f29670c786aa532f29bb"
+        },
+        "oscmix-launch": {
+          "sha256": "e6373cb7ba164a0cb8e00284943f4291b1a8bbd4750db05286b607fd38e5678a",
+          "wrapped_sha256": "6b742a0d593aa6b1091411d5de735328754ef98b3d39e9856a6d40f3b98bd1ff"
+        }
+      }
+    }
+  },
+  "recorded_utc": "2026-09-25",
+  "runtime_version": "0.7.3 (development toward 0.8.0)",
+  "baseline_source_commit": "ee2ae89",
+  "image": {
+    "name": "nixos-minimal-26.05.10529.c508844df6c2-x86_64-linux.iso",
+    "sha256": "b73414ec814fcceb11543fe92c4f5366b72ede61894d2dc4e0b2694fa71ae8e6",
+    "verification": "checksum from the official HTTPS release index"
+  },
+  "nixpkgs_commit": "c508844df6c28fa6dabc1b6af70f3ccbd65c5201",
+  "backend": {
+    "schema": 1,
+    "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+    "protocol": "ODK1",
+    "patches": [
+      {
+        "file": "0003-coordinated-backend-and-gtk.patch",
+        "sha256": "2375fae9b29a231754a84c2adbc8ea57c1e188e742b0938740494ca60e50f9c3"
+      },
+      {
+        "file": "0004-require-complete-input-mix-observations.patch",
+        "sha256": "98009d8e98bc1c1ee355fc86790909511cbf72c986c21d256eca4c60b8204dce"
+      },
+      {
+        "file": "0005-identify-the-exact-backend-and-gtk-build.patch",
+        "sha256": "3933324f9a89ae98b038dc727a114d70f49a4f1738366140481224009513a562"
+      }
+    ],
+    "series_sha256": "1e33bf492112fd70caf47149437424705e3830729b646275da738b910a1c68a5",
+    "source_sha256": {
+      ".builds/alpine.yml": "0ec7d7ca5bd7b0f47b810a9bbd95e9608212669eb2fe8ff15ffbce447ffccfdc",
+      ".builds/debian-oldstable.yml": "3fdda4e212ecaf932b7e9c94704ed999e30e2c68d326f5d7eb6fc91712ba0867",
+      ".builds/debian.yml": "c1a4ba076395a5ab277489897ad6953a327b0f675213244030e407528dcb38d4",
+      ".builds/freebsd.yml": "1708f8a4366d4fb8aa0a3709443887a36b39b4a81e4fa70236cfc0c9d450af4d",
+      ".builds/netbsd.yml": "f88f8f270e04edab130dfd37d7a2cc8c3d3f1959c62a0d90d666cb4e21154997",
+      ".builds/openbsd.yml": "eb0ef4ebb793e9ec74074c18653f0ebf33655ab7e7b27d4598da0e09b8a5c48e",
+      ".gitignore": "db651ec6d079cf6313df08a0b3ffdaeedfdd5e172c62c62ae890fcfd6d1b7ed5",
+      "LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+      "Makefile": "e05f0148cbd4d144e109e3793cd72ea398fae9b8949e9bbd813f77f0acda4855",
+      "README.md": "0c6046caf99088d83f56d24d2af34c3454a8fc045381b7e1a5175bbae88a98be",
+      "alsarawio.c": "16f47d4a4f1af6f6aeb322b70eb6e1c2c6db26e5ad719747c93abf080a3e1d19",
+      "alsaseqio.c": "d9fe40dcd2edd21a1153a9b95aad064104079c19cbf0a82dbcb2026bdfb3d48e",
+      "arg.h": "7460c1b1ea9b2333ffc930fb7fd5216dbcbfee12ce03dfc0b7c9c38e5782c400",
+      "base64.c": "07a96e11a6a09347abf34432c101574d815e494b06d6c9dd90c0e49a1f3a571c",
+      "base64.h": "0603ffc525ae497797de1705d81d2e890bbac96f5f57fbdf6a4c60ee28528594",
+      "control.c": "57a594064f7fd2b531e2c35a2ce8904a45bbd14a623133254058ac634ac196a7",
+      "control.h": "d61ff3fcabe5127b0af5c598614d057be1c66ea2612988ea2c0263e6cbe539d6",
+      "desk-build-id.h": "30b0cb670502efeaf861ba906bc34336f53e23caf60fcb105a76fefa73904f8f",
+      "desk-build.h": "2aed67c9558f4b9cff240c834f8ee8aed3571d383caf6bfb1f99e14d0c4edd9f",
+      "device.h": "cefab65647f509d32cf207c62555731a75ce25b0e2fd98d4049b4f7de87160d5",
+      "device_ff802.c": "321592401d608ba833a8d548a78a9c21a3e4e5451874dd14d120162b5114eb05",
+      "device_ffucxii.c": "9f45153d422c690cb7bd2aa5e74f7e8c225fea33165f0e2779063646bd9ad552",
+      "doc/ff802-cc-desc.txt": "11535afd833577ac7b79de5d3caf5778af9da6767ed1ad5f83b25cad4b7cac25",
+      "doc/ff802-usb-desc.txt": "c316701c217bda25e38846698f21b5b8a1495b8b9afa67f8b86040db5ac59602",
+      "doc/oscmix.1": "cea079df3dd8d0eb1403a52c3167ee6c1964e2a6b4bf6869694b84c6e384bd93",
+      "doc/ucx2-cc-desc.txt": "9de15f6c225d1d08f5f4ec401a19bf122e2261e32afd677be441ae95eba97d4c",
+      "doc/ucx2-usb-desc.txt": "43a342ccfa13e15f641f975ef78b569a43e34c8dba4ac5570e2254c2ce677d3c",
+      "doc/ufx+-cc-desc.txt": "c7f7b0a54efdd816b7a6b8f6e27712604cb1f5722bdcb8822424c0e64e23eaf1",
+      "doc/ufx2-cc-desc.txt": "f78bb2fa94b66e0cbd43b24637e72ab61a97dff957115576a0cd55b97dbfb805",
+      "gtk/Makefile": "cb14447531fddb839a86dde5290ae849194f571e8c97d60858f37348928409cf",
+      "gtk/channel.c": "62ff7e2b9ac6fb8d21fabd2a7c8cac8854730ebbd8a1d29afe99ed18ac70ff42",
+      "gtk/channel.h": "a7d6acab5182e2b14716a3f2071ad331a39414599e52f8bbe56250f5d56dd0bb",
+      "gtk/channel.ui": "3cf02460919554f45d3324499c045046d9424ce9a25bb20301e06d87ee6ed6a1",
+      "gtk/eq-highpass.svg": "5dae3ce9261bfd3863300be9c10f632a63b9c65345831eeba9bed7c7319da839",
+      "gtk/eq-highshelf.svg": "d21d525e9cfcc0381f7cf0b4bc1519c01e5c45a51d7c352374582bdc51a15d7f",
+      "gtk/eq-lowpass.svg": "f3d5b3881db48c99d8fbfd5c2795a7932bba5d0c2c370f85e3dd742c9b7bd695",
+      "gtk/eq-lowshelf.svg": "ece982e350d19bc335a0f5dcfc06092f999b37c3aadd8cc73bd65e46a3790a95",
+      "gtk/eq-peak.svg": "4294f43542a6b18ae810fa903bbab91e0198af715d76b4f9ebdfa80610f959a7",
+      "gtk/eqplot.c": "fbaf44662428020b66983625d4a39543cd4e6cccc6d57bc66e794bf82a9e015e",
+      "gtk/eqplot.h": "f8c323cfc457d633f69aee388f2537dc522594b1a40fcdf028e9502ee600150b",
+      "gtk/main.c": "dcaf201e20c29987bc177bcbc0485bd861a53f87ea4824181cde85b89d0b332c",
+      "gtk/mixer.c": "bf81eeb7d8cc91e141132e27d0f6d59ef750e20653d1f50a80d50a625bddea2b",
+      "gtk/mixer.h": "eb57fe763713567cc1320a1d680ea08aeb71fd57456acbeeacd30f792fe1e929",
+      "gtk/oscmix.css": "0f95609765f9f0f3041f0c2f17f906c2be10edd1aa1a7a8dcdf1fdfcf375f45e",
+      "gtk/oscmix.gschema.xml": "258b7c7786aa936ee4e616b6856ba1bb0fb39064a4d708d0d28496a9088a46f1",
+      "gtk/oscmix.ui": "29d56fd0f1db457ae48bf8d1d01cbd48be6e909bec58fc67fdff3084b3ed3c51",
+      "gtk/resources.xml": "8a6c02a80631c3fa1b59602da94692ba10b12c168f78b96aaae90cc218c647a5",
+      "gtk/scaleentry.c": "6531e3ffb0a426bbc7d14ce88056a384e2a24415af8b16308cc4d9b905f7edf3",
+      "gtk/scaleentry.h": "eb9351341d4ba4780128f2fc6d4713b4b7dbd2ac7d0285a44d30cdb444a66c9e",
+      "gtk/scaleentry.ui": "4f884c44c71e439f71876244878a24e5c3d40be3cd287c762af1d47cb726d402",
+      "http.c": "f745d9bb9845b804fc61c8f496348866e66d9807501c1cf4e9dabf15eb1f4b91",
+      "http.h": "3c0f8c56b49d32aa419295e99d6666ac9d550fc5d7130c4f526a8a919ec929e3",
+      "intpack.h": "56163c9813cd2a7d6e690e0767a43f507d4f9e0fc39621081605475b0bc2061c",
+      "main.c": "4abf3e77a44e62d1780aa2c96b37f4795390efd6229766eb4eee6bfb32bca899",
+      "osc.c": "a46e0510779f0d30a7ab4b25a9cf39f3e27ba1a16d36ad3376de4929c0c4b5bf",
+      "osc.h": "1b7158db71127268b638083490caed403490bb0a8124345f3fbfd3a0ef4da510",
+      "oscmix.c": "e83449a767e7cb9d05f6ceb93b97b249358c32f62f37894cc419df2c3da834f2",
+      "oscmix.h": "011ce8df15e8e72a07ffe934ec85a3fff2ba56b0abe3094910fe01395767b727",
+      "sha1.c": "0660b2bc9f1a9b3a8a4ae92e06423b697db7d2591e6f3e0038e21e637bfdc304",
+      "sha1.h": "3741931a923c157f8b583fb2e4cb4dedf8b8b0642fa61a3a3e9b7de1dc3ebf30",
+      "socket.c": "970ec9bc0e9f6dc4c75656101962f85a4b0a6e3d0a0261c9d1603db0dbb04716",
+      "socket.h": "7671327e5092b0b76ee617203b1cc3aff3b749ae943259f22899ac1b996c6c2a",
+      "sysex.c": "adf1e9115b54bd240d544dbd16546f44fe9bd8bb26a62b0e9a24a17aea4b96df",
+      "sysex.h": "086d7c66e3f8315e56901fcfbce33d315af6ea08a8161cdbd278debf824403c6",
+      "tools/cleanup-midi-gadget.sh": "d47f533c6ccd0fc9fb4ff1d742f61eacf98350a2ebe6f5b3c8938e89aaf48762",
+      "tools/mididump.lua": "db0c479b9e5c732c304d429c1d4b947f3866da1484589394ac0dd90b16937975",
+      "tools/parity.c": "ed44c5cbf8ade68b4743453ac2a41d93a47547fd45a985c9558324dfe9015ca2",
+      "tools/pico_usb2uart_cap_rme.ino": "829382382b3dbf10643c3b172f0c8fee429333708b1f5c297aaba8d3b2556a0b",
+      "tools/regtool.c": "8ea5ca72e62656553304b8b66849799e65797fbafd3f92d70088a722340a7241",
+      "tools/rme.lua": "262dec9545b25d14e9fdc004084eb9d495d798004393fa77e596ac7361136648",
+      "tools/setup-midi-gadget.sh": "12f720486d04a992070e03e040270dd2265b38f02330c38ddbf1695df0b5c6cc",
+      "tools/usbdesc.c": "7b2eef8a2449fde1f7ebecc68fee2d50ed5eb02d7f02fcb1f4f68df20d046beb",
+      "tools/vol.lua": "4f6293ae8e57ab576ed335220e7a3152b0dca759860313c4b3ef65a56f07f49d",
+      "util.c": "bc085dc6d6a8e6fecd91ff9fab72ce74378e95cf2463bd3e849f2b6e80559bda",
+      "util.h": "449b38fc81854ca959240ea9a3b0b6e63dac62ae227d259e27831dda5eee978f",
+      "web/Makefile": "54feec7202fe72da216e8d29888084d1dd27c4110f3cc4a532cee6f12e13d415",
+      "web/index.html": "d8295bcf1b354c382ae76b642158bc7602b7c4ab050015c352eb3ffecdbed646",
+      "web/oscmix.imports": "aa9be15838c612eb29e4cbe51a358995f257a7ac35fbc5081dbd5a2f79c39eb7",
+      "web/oscmix.js": "ed637a312faeb29fab0d62e9f5c3ab332d09eb754075678f886c38c7b3fbd8cd",
+      "web/style.css": "78930c9b29b87e999964c903b40d39dc4168283fde0142326bee44004e6488a2",
+      "web/wasm.c": "8c113707ab79fd228f483a056bfcc6173c86e4c97ade98eca39b6a4da10e40ed",
+      "wsdgram.c": "d524b520dcc684ba4a392d35cacff9f122d5304e137d099ba7212c6b6abc6e01"
+    }
+  },
+  "payload_source_sha256": {
+    "LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+    "bin/oscmix-launch": "d60fd70d7e612c86859d7a0fec2408e569c504221f4767241ad7329c18590dc4",
+    "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8",
+    "config/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+    "desktop/oscmix-gtk.desktop": "b8d7e27b35fea73dca3d3afac9fb60432cbef22537c0323a58ab0f8d36aa2829",
+    "desktop/oscmix.svg": "ecff5ed906055396ab787f472ce61aa26cf440389bbb55c7bf308addbd59a6d6",
+    "packaging/package-guard": "16ac826446090410cdaed0ed3ad1d9363c59a923a14994e6807f4f8e2dd9c94a",
+    "patches/0003-coordinated-backend-and-gtk.patch": "2375fae9b29a231754a84c2adbc8ea57c1e188e742b0938740494ca60e50f9c3",
+    "patches/0004-require-complete-input-mix-observations.patch": "98009d8e98bc1c1ee355fc86790909511cbf72c986c21d256eca4c60b8204dce",
+    "patches/0005-identify-the-exact-backend-and-gtk-build.patch": "3933324f9a89ae98b038dc727a114d70f49a4f1738366140481224009513a562",
+    "patches/backend-series.json": "1e33bf492112fd70caf47149437424705e3830729b646275da738b910a1c68a5",
+    "scripts/install-payload.sh": "ad7f892ed6e20c6f60744562e8d2480ec8d4d062a3d533fd350ef7f41037091d",
+    "scripts/prepare-backend.py": "837cea0cd577d812324cf2771741ba8e922453875d84352cf2bc62bf7a938e0b",
+    "src/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+    "src/oscmix_desk/backend.py": "5e08f170ef72bdd7b7bb1379b698b1a678027406ecea892fa056259785d9aa54",
+    "src/oscmix_desk/cli.py": "5ddf986b8274c9b7745410604d89d8f9308392cf7cc9c4efbb394b4319f1ae46",
+    "src/oscmix_desk/config.py": "9dd1b55f03233474915a790691ae8085d764c3d0bda3e5bcdffeeaeb600787a3",
+    "src/oscmix_desk/constants.py": "b0a5bf2d056bbda84ca7fb2c5d37d27cf844869a9a6bfa1aa8e3d5deea21f3bc",
+    "src/oscmix_desk/desktop.py": "2cf7d6b1665a1a61e2b77eca89bf85e68aca823e3e8bb1f6784297c138deb428",
+    "src/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+    "src/oscmix_desk/diagnostics.py": "b2be35ba4dcfebd577faef4e18c7801e06985dfb86674905a1c94d21ad8c8aed",
+    "src/oscmix_desk/discovery.py": "b3f3b5cefa55e9bc853c6805e0c01c63f7e0329c1952c57244974ac40b1af572",
+    "src/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+    "src/oscmix_desk/errors.py": "df98d31dee020c0b77c95fc061c4a35f677f917377806bf47c4a78d746432a23",
+    "src/oscmix_desk/hostservice.py": "198aaaabc66abb9f8405e7a238c4af6465e08c7ea80c7c5eb896dae0bf70c25a",
+    "src/oscmix_desk/launcher.py": "2067c25676c997dfaf520ea31fe87fe638c07c66148d21f3316492144242426e",
+    "src/oscmix_desk/locking.py": "c04680861453c2b0ee7439533a15463964e19b24c1b40246cf209962d757f52d",
+    "src/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+    "src/oscmix_desk/marker.py": "73de5498024b39ffe8ceff824695dd0804a4bc3cd6915d526777636677bcf507",
+    "src/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+    "src/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+    "src/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+    "src/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+    "src/oscmix_desk/observation.py": "1a768440f79ec50589bc1952758a8d386e66f2ddc899ff2bc1f55c2491ddaa2f",
+    "src/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+    "src/oscmix_desk/outcome.py": "105b295c21fbbfdfdc6a193b9b309e6be67c1d8fcc6c0c7813b66c4124b74210",
+    "src/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+    "src/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+    "src/oscmix_desk/preview.py": "14a1d5b84403847384b8321ee8fbeef0cd13afefe48b917b01e40163bfa549a2",
+    "src/oscmix_desk/process.py": "254d1910b676cede7274cca26554fce9b3aaedb5b4c5521d17384276593941ca",
+    "src/oscmix_desk/profiles.py": "c9ce348eced7ede6ed6fce32d01c8ce215fd7ace603493fcb3693c77812b1a66",
+    "src/oscmix_desk/reads.py": "cd6860d830cdc605ecf14c1b5a20c8c1511825f1334b47daeb95605a908f8b98",
+    "src/oscmix_desk/reconcile.py": "4d2bfbe25a4b535b57421d4d8aeb8d5268738be1793406fdf926a49b426ace8a",
+    "src/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+    "src/oscmix_desk/reload.py": "7d0f4c46d4c1093d4cd0da7b5d8e03fb91f93cc6a5ba5f9ba0e67adc59ed9f03",
+    "src/oscmix_desk/routing.py": "9037c2c4202c1e1788e153a628a3ee351568e9ff135517110babd911e237c44e",
+    "src/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+    "src/oscmix_desk/session.py": "d8cd70e0135b3fd6566b9e0fa9402c6ae39455e796a94cb1cb0f28ec9c41f5b7",
+    "src/oscmix_desk/status.py": "8c4b5d217a5dfca27155d1270e5e898685c8c9a36944adc3c993c975324f1aab",
+    "src/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+    "src/oscmix_desk/verify.py": "525716bdee474a977c7e9e559b72e60b1f422ed8815c1418f61ff7bfd266bf72",
+    "systemd/oscmix.service": "cfd47437c909cb5e26a089d9b16c2ea84e44d84fe8e39c3182e9eb47dea14b08"
+  },
+  "repeat_builds": {
+    "core": "passed: separate nix-build --check reproduced the complete output",
+    "gtk": "passed: separate nix-build --check reproduced the complete output",
+    "correction": "Disable build-time .pyc writes; timestamp-based caches caused the prior repeat to differ."
+  },
+  "excluded": [
+    "hardware I/O",
+    "physical hotplug",
+    "suspend/resume",
+    "final 0.8.0 candidate",
+    "historical 0.7.3 package migration",
+    "actual GTK desktop lifecycle"
+  ]
+}

@@ -7,7 +7,7 @@ The latest interim `make check` passes 2134 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
-backend/GTK build passes 60 preparation/protocol tests and the actual GTK
+backend/GTK build passes 65 preparation/protocol tests and the actual GTK
 fader, lease, start-order, disconnect and identity checks with simulated MIDI.
 Actual desk CLI processes and GTK also pass a combined simulated-MIDI test:
 two profiles serialize through read-back, GTK cannot write during the operation,
@@ -25,8 +25,14 @@ root-owned registration, shared locks and persistent maintenance. Real Alpine
 3.24.2/musl and Void/glibc VMs pass the first absent-device lifecycle checks:
 reload during discovery, three crash/restart cycles each, maintenance across a
 reboot, source/adapter replacement, stop/disable/removal and preserved user state.
-These development checks do not close the remaining device-I/O, concurrency,
-suspend or final-candidate VM gates. Final hardware,
+The NixOS package and opt-in module use the common payload and user service.
+Both package variants reproduce their complete outputs in separate check builds.
+A real NixOS 26.05 VM passes inactive installation, explicit activation, selected
+user identity, crash/restart, maintenance across reboot, actual generation rollback
+and removal with user state preserved; the
+[development record](evidence/0.8.0/nixos-development.json) identifies the tested
+definitions and payload. These development checks do not close the remaining
+device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
 All proposed 0.7.4 corrections are included; there is no separate 0.7.4 milestone.
 
@@ -46,8 +52,8 @@ This is a portability goal, not a claim that every distribution, init
 system, architecture or sample rate has already been tested.
 
 oscmix-desk owns declarative state, lifecycle and verification. Upstream
-[oscmix](https://github.com/michaelforney/oscmix) owns the device protocol
-and provides the existing live mixer. The standard-library core and its
+[oscmix](https://github.com/michaelforney/oscmix) provides the device-protocol
+implementation and the existing live mixer. The standard-library core and its
 hardware guarantees remain the foundation for easier installation and
 an optional desktop companion.
 

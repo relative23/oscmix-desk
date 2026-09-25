@@ -40,3 +40,7 @@ silences half the outputs.
 | [0027](0027-a-write-that-fails-part-of-the-way-is-a-state.md) | A write that fails part of the way is a state, with both lists |
 | [0028](0028-mixer-replies-and-writer-coordination.md) | Reply distribution and writer coordination are separate contracts |
 | [0029](0029-revocable-observations.md) | Observe a complete delivery before authorizing dependent writes |
+| [0030](0030-backend-owned-control.md) | One backend owns reply windows and operation-wide writer leases |
+| [0031](0031-complete-input-mix-observations.md) | Compound input-mix observations require every hardware dependency |
+| [0032](0032-native-host-supervision.md) | OpenRC/runit supervise the selected user under persistent maintenance |
+| [0033](0033-nixos-generations.md) | NixOS uses one immutable payload and the common user service |

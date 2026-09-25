@@ -47,6 +47,13 @@ stop/disable during maintenance overrides automatic restart. To return to a
 version predating these adapters, disable and remove the host integration before
 installing that version, and use its supported foreground or systemd workflow.
 
+NixOS uses its [generation-based maintenance procedure](../packaging/nix/README.md#generation-changes-and-recovery).
+Stop the mixers and set the persistent package fence before switching the
+package, GTK variant or activation settings. The fence survives an interrupted
+switch and reboot. An actual NixOS rollback restores the previous immutable
+payload and integration while retaining user configuration, profiles and marker.
+Keep the module imported until its disabled/removal transition has completed.
+
 The remaining 0.8.0 integration and qualification work is tracked in the
 [release plan](plans/0.8.0-reliability-integration.md); this section is not a
 claim that the development version is ready to install.

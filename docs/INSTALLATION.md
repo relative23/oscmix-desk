@@ -174,6 +174,20 @@ reboot with maintenance left open. It refuses a non-qualification host, another
 runtime account or a connected RME USB device. This covers native supervision
 and state retention, not physical-device routing or the remaining VM fault cases.
 
+## NixOS (0.8.0 development)
+
+The [Nix package and module](../packaging/nix/README.md) build the common payload
+in one immutable store output, with or without the matching upstream GTK mixer.
+`services.oscmix-desk.enable` installs integration for a selected normal user;
+the separate `activate` setting defaults to false. Configuration, profiles and
+the marker remain writable user files. The module uses the existing systemd
+user service, shared lock rules and persistent package-maintenance fence.
+
+Follow that guide for generation switches, reboot, rollback and removal.
+`tests/nixos_lifecycle.py` checks these operations in two phases around an
+actual VM reboot. Development VM checks do not replace the final 0.8.0 software,
+device-I/O and release qualification.
+
 ## Native packages
 
 Use a package built for your distribution release and architecture. The

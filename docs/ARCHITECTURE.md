@@ -275,6 +275,16 @@ monitoring check report healthy silence while the backend is down.
 
 ## Installed files
 
+NixOS uses the same runtime and upstream patch series in one immutable store
+output, built through the common preparation and payload functions. Its opt-in
+module adapts the existing systemd user unit, udev rules and shared lock directory.
+Deployment identity lives in a generation-owned file; the ordinary persistent
+package fence protects changes of that identity. Configuration, profiles and
+marker stay in the user's writable configuration directory. No additional
+runtime manager or protocol implementation is introduced (ADR 0033).
+
+The source-installation layout is:
+
 ```
 ~/.local/bin/oscmix                  backend (built from upstream)
 ~/.local/bin/oscmix-gtk              GTK mixer (built from upstream)
