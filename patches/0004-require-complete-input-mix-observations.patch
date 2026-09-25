@@ -1,0 +1,108 @@
+diff --git a/oscmix.c b/oscmix.c
+index 22e47ba..c5218a2 100644
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -50,13 +50,16 @@ struct node {
+ 
+ struct input {
+ 	bool stereo;
++	bool stereo_observed;
+ 	bool mute;
+ 	int width;
+ };
+ 
+ struct output {
+ 	bool stereo;
++	bool stereo_observed;
+ 	float *mix;
++	unsigned char *mix_observed;
+ };
+ 
+ struct durecfile {
+@@ -95,6 +98,23 @@ static struct {
+ static void oscsend(const char *addr, const char *type, ...);
+ static void oscsendenum(const char *addr, int val, const char *const names[], const int *vals, size_t len);
+ 
++/* out->mix is also changed by commands. Only complete device observations
++ * since the last command/refresh may substantiate a compound mix report. */
++static void
++resetmixobservations(bool links)
++{
++	size_t i;
++
++	for (i = 0; i < device->outputslen; ++i) {
++		memset(outputs[i].mix_observed, 0, device->inputslen);
++		if (links)
++			outputs[i].stereo_observed = false;
++	}
++	if (links)
++		for (i = 0; i < device->inputslen; ++i)
++			inputs[i].stereo_observed = false;
++}
++
+ static void
+ dump(const char *name, const void *ptr, size_t len)
+ {
+@@ -390,8 +410,11 @@ newinputstereo(struct context *ctx, int val)
+ 
+ 	assert((unsigned)ctx->param.in < device->inputslen);
+ 	in = &inputs[ctx->param.in & ~1];
++	if (in->stereo != (val != 0))
++		resetmixobservations(false);
+ 	in[0].stereo = val;
+ 	in[1].stereo = val;
++	in[0].stereo_observed = in[1].stereo_observed = true;
+ 	snprintf(ctx->addr, ctx->addrend - ctx->addr, "/input/%d/stereo", (int)(in - inputs) + 1);
+ 	oscsend(ctx->addr, ",i", val != 0);
+ 	snprintf(ctx->addr, ctx->addrend - ctx->addr, "/input/%d/stereo", (int)(in - inputs) + 2);
+@@ -405,8 +428,11 @@ newoutputstereo(struct context *ctx, int val)
+ 
+ 	assert((unsigned)ctx->param.out < device->outputslen);
+ 	out = &outputs[ctx->param.out & ~1];
++	if (out->stereo != (val != 0))
++		resetmixobservations(false);
+ 	out[0].stereo = val;
+ 	out[1].stereo = val;
++	out[0].stereo_observed = out[1].stereo_observed = true;
+ 	snprintf(ctx->addr, ctx->addrend - ctx->addr, "/output/%d/stereo", (int)(out - outputs + 1));
+ 	oscsend(ctx->addr, ",i", val != 0);
+ 	snprintf(ctx->addr, ctx->addrend - ctx->addr, "/output/%d/stereo", (int)(out - outputs + 2));
+@@ -760,6 +786,7 @@ newmix(struct context *ctx, int val)
+ 	if ((out - outputs) & 1 && out->stereo)
+ 		return;
+ 	ispan = val & 0x8000;
++	out->mix_observed[in - inputs] |= ispan ? 2 : 1;
+ 	val = ((val & 0x7fff) ^ 0x4000) - 0x4000;
+ 	calclevel(out, in, 0, &level);
+ 	if (ispan) {
+@@ -780,6 +807,12 @@ newmix(struct context *ctx, int val)
+ 		calclevel(out, in, 1, &level);
+ 		in->width = level.width;
+ 	}
++	/* Do not substitute a cached desired half or stereo partner for a
++	 * missing register. Suppression preserves the enclosing OSC bundle. */
++	if (!out->stereo_observed || !in->stereo_observed
++	 || out->mix_observed[in - inputs] != 3
++	 || (in->stereo && out->mix_observed[in - inputs + 1] != 3))
++		return;
+ 	snprintf(ctx->addr, ctx->addrend - ctx->addr, "/mix/%d/input/%d", (int)(out - outputs) + 1, (int)(in - inputs) + 1);
+ 	oscsend(ctx->addr, ",fi", level.vol > 0 ? 20.f * log10f(level.vol) : -INFINITY, level.pan);
+ }
+@@ -1382,6 +1415,7 @@ handleosc(const unsigned char *buf, size_t len)
+ 		return -1;
+ 	}
+ 	++msg.type;
++	resetmixobservations(true);
+ 
+ 	ctx.pattern = pattern;
+ 	ctx.param.in = ctx.param.out = -1;
+@@ -1693,7 +1727,8 @@ init(const char *port)
+ 		inputs[device->inputslen + i].stereo = true;
+ 		out = &outputs[i];
+ 		out->mix = calloc(device->inputslen + device->outputslen, sizeof *out->mix);
+-		if (!out->mix) {
++		out->mix_observed = calloc(device->inputslen, sizeof *out->mix_observed);
++		if (!out->mix || !out->mix_observed) {
+ 			perror(NULL);
+ 			return -1;
+ 		}

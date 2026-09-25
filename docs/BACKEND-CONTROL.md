@@ -61,7 +61,10 @@ when the backend becomes free. Readers cannot write or acquire leases.
 Origin describes the backend path producing the report. It does not add
 hardware generation tags, atomic snapshots or capabilities absent from the
 register model. Computed fields still require their dependencies to be
-qualified. A cached playback stereo flag is never hardware confirmation
+qualified. Input-mix reports are suppressed until their level, pan, links and
+required stereo partner have been observed since the last command/refresh;
+see [ADR 0031](decisions/0031-complete-input-mix-observations.md).
+A cached playback stereo flag is never hardware confirmation
 merely because it arrived over this connection.
 
 A refresh reply precedes its window-start event and resulting reports.

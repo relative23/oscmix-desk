@@ -109,6 +109,35 @@ def test_refresh_cache_is_never_labelled_as_hardware(desk, midi):
     assert midi.registers().count((0x3e04, 0x67cd)) == 1
 
 
+def test_input_mix_needs_fresh_level_and_pan_not_a_previous_desired_value(midi, desk):
+    assert desk.request(BEGIN)[2] == OK
+    assert desk.request(WRITE, payload=encode_osc('/mix/5/input/1', 'fi', -6, 0))[2] == OK
+    # Link reports are fresh. Only the pan arrives for the matrix: its
+    # volume in out->mix is still the previously sent -6 dB, not read-back.
+    midi.inject((0x0002, 0), (0x604, 0), (0x2100, 0x8000))
+    packet = desk.observation()
+    assert not any(path.startswith('/mix/') for path, _, _ in messages(packet))
+    # An independent device level now completes the compound observation.
+    midi.inject((0x2100, (-300) & 0x7fff))
+    assert messages(desk.observation()) == [('/mix/5/input/1', 'fi', (-30.0, 0))]
+    # Another command must not let that old device half confirm its new
+    # desired half. A new pair of reports is required after a write.
+    assert desk.request(WRITE, payload=encode_osc('/mix/5/input/1', 'fi', -12, 0))[2] == OK
+    midi.inject((0x0002, 0), (0x604, 0), (0x2100, 0x8000))
+    assert not any(path.startswith('/mix/') for path, _, _ in messages(desk.observation()))
+
+
+def test_linked_input_mix_waits_for_both_physical_members(midi, desk):
+    midi.inject((0x0002, 1), (0x604, 0),
+                (0x2100, (-360) & 0x7fff), (0x2100, 0x8000))
+    assert not any(path.startswith('/mix/') for path, _, _ in messages(desk.observation()))
+    midi.inject((0x2101, (-360) & 0x7fff), (0x2101, 0x8000))
+    report = messages(desk.observation())[-1]
+    assert report[:2] == ('/mix/5/input/1', 'fi')
+    assert report[2][0] == pytest.approx(-29.9794, abs=.0001)
+    assert report[2][1] == 0
+
+
 def test_operation_blocks_gui_and_second_desk_until_explicit_release(midi, desk):
     gui, second = midi.connect(GUI), midi.connect(DESK)
     command = encode_osc('/output/5/volume', 'f', -40)
