@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "kind": "N3 capability investigation, not a complete routing qualification",
+  "taken": "2026-09-25T02:11:02.734558+00:00",
+  "backend": {
+    "pid": 3681595,
+    "epoch": "abd1a93a0548c863bc877345f0b28480",
+    "device": "Fireface UCX II (24216011) Port",
+    "sha256": "afd9ad03729b3504b8dab0673eb261a1ef10acc9a079141488282312a2ac668e",
+    "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+    "series_sha256": "4fdfc66d2007fe2975cf4fe0996e3062f658baea9d205cc63446e041c9edbfd5",
+    "protocol": "ODK1",
+    "matches_local_build": true
+  },
+  "device": {
+    "usb_id": "2a39:3fd9",
+    "serial": "24216011",
+    "client": 24
+  },
+  "firmware": {
+    "usb_revision": "3.01",
+    "dsp_version": 36
+  },
+  "independent_client_write": {
+    "role": "GUI",
+    "path": "/mix/5/playback/5",
+    "args": [
+      -54.0,
+      0
+    ],
+    "processed": true,
+    "hardware_confirmation": false,
+    "restore_declaration": [
+      0.0,
+      0
+    ]
+  },
+  "observations": [
+    {
+      "case": "before independent write",
+      "seconds": 11,
+      "device_paths": 2237,
+      "playback_matrix_paths": [],
+      "backend_only_playback_flags": 20
+    },
+    {
+      "case": "after independent write",
+      "seconds": 11,
+      "device_paths": 2236,
+      "playback_matrix_paths": [],
+      "backend_only_playback_flags": 20
+    }
+  ],
+  "unknown_registers": {
+    "2FC0": 2
+  },
+  "restoration": {
+    "readable_registers": 2252,
+    "differences": [],
+    "known_playback_route": "declared 0 dB reapplied by installed 0.7.3; not hardware read-back"
+  },
+  "source_contract": {
+    "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+    "refresh": "setrefresh sends register 0x3e04 = 0x67cd",
+    "targeted_read": "no individual register-read request in the pinned backend",
+    "matrix_reports": "regtoctl maps physical-input logical registers 0x2000..0x24ff only",
+    "playback_writes": "MIX_LEVEL writes physical coefficients at 0x4000 + output*64 + 0x20 + playback",
+    "cache": "refresh emits playback stereo from backend inputs[]; origin DERIVED"
+  },
+  "conclusion": "No supported fresh playback-matrix read or individual register query was found on this backend/protocol path. This does not prove that undocumented firmware commands cannot exist.",
+  "scope_decision": "Maintainer explicitly retains genuine playback-matrix read-back as a 0.8.0 release gate; further investigation and implementation required.",
+  "private_record_sha256": "e8a3c96d6c2ee6f83f018a7efa39517cebfa819f7c37217f7e6dcf421905cf5e"
+}

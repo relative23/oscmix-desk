@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 from support import repo_file
+from test_install_sh import backend_identity_stub
 
 from oscmix_desk import __version__
 
@@ -15,9 +16,10 @@ def test_stage_runs_and_does_not_activate_a_new_desk(tmp_path):
     backend.mkdir()
     for name in ('oscmix', 'alsaseqio'):
         binary = backend / name
-        binary.write_text('#!/bin/sh\nexit 0\n')
+        binary.write_text(backend_identity_stub())
         binary.chmod(0o755)
     (backend / 'LICENSE').write_text('backend license fixture\n')
+    (backend / '.oscmix-desk-source.json').write_text('{"fixture": true}\n')
     stage = tmp_path / 'stage'
     result = subprocess.run(['bash', str(project / 'scripts/stage-install.sh'),
                              '--destdir', str(stage), '--backend', str(backend)],
@@ -51,9 +53,10 @@ def test_companion_owns_no_core_file_and_no_activation_files(tmp_path):
     backend = tmp_path / 'backend'
     (backend / 'gtk').mkdir(parents=True)
     for name in ('oscmix', 'alsaseqio', 'gtk/oscmix-gtk'):
-        (backend / name).write_text('#!/bin/sh\nexit 0\n')
+        (backend / name).write_text(backend_identity_stub())
         (backend / name).chmod(0o755)
     (backend / 'LICENSE').write_text('backend license\n')
+    (backend / '.oscmix-desk-source.json').write_text('{"fixture": true}\n')
     (backend / 'gtk/oscmix.gschema.xml').write_text('<schemalist/>\n')
     stages = [tmp_path / name for name in ('core', 'gtk')]
     for stage, options in zip(stages, [[], ['--gtk-only']]):

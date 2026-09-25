@@ -1,5 +1,6 @@
 """First activation, upgrade state and systemd-free source installation."""
 
+import pytest
 from test_install_sh import make_fake_home, plug_in, run, session_home_stub
 
 from oscmix_desk.constants import __version__
@@ -118,3 +119,15 @@ def test_unknown_manager_identity_never_permits_enable(tmp_path):
     result = run('install.sh', ['--no-build', '--enable'], env)
     assert result.returncode != 0
     assert 'enable --quiet' not in log.read_text()
+
+
+@pytest.mark.parametrize('tool', ['oscmix', 'alsaseqio', 'oscmix-gtk'])
+def test_no_build_refuses_an_old_or_mismatched_component_before_installing(tmp_path, tool):
+    home, env, log = make_fake_home(tmp_path)
+    (home / '.local/bin' / tool).write_text('#!/bin/sh\necho ODK1\n')
+    result = run('install.sh', ['--no-build', '--no-udev'], env)
+    assert result.returncode != 0
+    assert 'exact coordinated backend series' in result.stdout
+    assert not (home / '.local/lib/oscmix-desk').exists()
+    assert not (home / '.local/bin/oscmix-session').exists()
+    assert ' stop ' not in log.read_text()

@@ -66,6 +66,8 @@ def prepare(upstream, destination, series):
         for options in (['--check'], []):
             subprocess.run(['git', 'apply', *options, path], cwd=destination,
                            env=environment, check=True)
+    (destination / 'desk-build-id.h').write_text(
+        '#define OSCMIX_DESK_BUILD_ID "' + record['series_sha256'] + '"\n')
     record['source_sha256'] = {
         str(path.relative_to(destination)): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(destination.rglob('*')) if path.is_file()}
@@ -73,16 +75,43 @@ def prepare(upstream, destination, series):
     return record
 
 
+def verify_binaries(paths, series):
+    """Identify the complete series before installation, without opening hardware."""
+    expected = series_record(series)['series_sha256']
+    result = {}
+    for path in paths:
+        for option, value in (('--control-version', 'ODK1'), ('--desk-build-id', expected)):
+            output = subprocess.run([str(path.resolve()), option], capture_output=True,
+                                    text=True, timeout=10, check=False)
+            if output.returncode or output.stdout.strip() != value:
+                raise ValueError(str(path)
+                                 + ' is not from the required coordinated backend series')
+        result[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return {'protocol': 'ODK1', 'series_sha256': expected, 'binaries': result}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--upstream', type=Path, required=True,
+    parser.add_argument('--upstream', type=Path,
                         help='local git checkout containing the pinned upstream commit')
-    parser.add_argument('--destination', type=Path, required=True, help='new or empty directory')
+    parser.add_argument('--destination', type=Path, help='new or empty directory')
+    parser.add_argument('--verify', type=Path, nargs='+', metavar='BINARY',
+                        help='check installed/built executables instead of preparing source')
     parser.add_argument('--series', type=Path, default=ROOT / 'patches/backend-series.json')
     args = parser.parse_args()
-    record = prepare(args.upstream, args.destination, args.series)
-    print(json.dumps({key: record[key] for key in ('upstream', 'protocol', 'series_sha256')}))
+    if args.verify:
+        if args.upstream or args.destination:
+            parser.error('--verify cannot be combined with preparation paths')
+        print(json.dumps(verify_binaries(args.verify, args.series)))
+    else:
+        if not args.upstream or not args.destination:
+            parser.error('preparation requires --upstream and --destination')
+        record = prepare(args.upstream, args.destination, args.series)
+        print(json.dumps({key: record[key] for key in ('upstream', 'protocol', 'series_sha256')}))
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        raise SystemExit('backend preparation/check failed: ' + str(exc)) from exc

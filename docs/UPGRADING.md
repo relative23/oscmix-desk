@@ -25,6 +25,19 @@ Receive failures, cancellation and known wrong links stop dependent writes;
 the reported sent/pending paths do not imply an automatic hardware rollback.
 Explicit profile verification remains strict even for REMEMBER values.
 
+Upgrade the Python runtime, backend, ALSA bridge and installed GTK companion
+together. 0.8.0 uses the versioned ODK1 backend control path and rejects the
+old UDP-only backend. The source installer applies the exact recorded patch
+series and checks every component's build identifier before replacement;
+`--no-build` cannot upgrade a 0.7.3 backend. The upstream base commit alone
+does not identify the patched build. Close GTK before upgrading or rolling
+back; a disconnected client never replays old writes into a new backend.
+
+For a software rollback, restore the complete 0.7.3 installation or its exact
+core/GTK package pair, then restart deliberately with the preserved desk.
+Hardware values that changed after the backup are not restored by a package
+rollback. Preserve readable state and known declared playback routes separately.
+
 The remaining 0.8.0 integration and qualification work is tracked in the
 [release plan](plans/0.8.0-reliability-integration.md); this section is not a
 claim that the development version is ready to install.

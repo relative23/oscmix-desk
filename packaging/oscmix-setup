@@ -40,7 +40,7 @@ def legacy_files(home, config, data):
               ('oscmix-session', 'oscmix-launch', 'oscmix', 'alsaseqio', 'oscmix-gtk')]
     paths += [data / relative for relative in
               ('applications/oscmix-gtk.desktop', 'icons/hicolor/scalable/apps/oscmix.svg',
-               'glib-2.0/schemas/oscmix.gschema.xml')]
+               'glib-2.0/schemas/oscmix.gschema.xml', 'oscmix-desk/backend-source.json')]
     return [path for path in paths if path.exists() or path.is_symlink()]
 
 

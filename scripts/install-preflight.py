@@ -2,6 +2,7 @@
 """Read-only prerequisite report for a per-user source installation."""
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -32,6 +33,7 @@ def package_hint():
                           'alsa-devel util-linux diffutils'),
         'arch': 'pacman -S --needed python git base-devel alsa-lib util-linux',
         'alpine': 'apk add python3 bash git build-base pkgconf alsa-lib-dev util-linux coreutils',
+        'void': 'xbps-install -S python3 bash git base-devel pkg-config alsa-lib-devel util-linux',
     }
     return names.get('PRETTY_NAME', family or 'unknown Linux'), commands.get(family)
 
@@ -70,9 +72,13 @@ def main():
     source = (root / 'src/oscmix_desk/constants.py').read_text()
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]+)', source, re.MULTILINE)
     print('INFO    candidate: ' + (version[1] if version else 'unknown') + ' at ' + str(root))
-    print('INFO    backend pin: ' + re.search(
+    default_pin = re.search(
         r'^OSCMIX_REF="\$\{OSCMIX_REF:-([^}]+)',
-        (root / 'install.sh').read_text(), re.MULTILINE)[1])
+        (root / 'install.sh').read_text(), re.MULTILINE)[1]
+    series = json.loads((root / 'patches/backend-series.json').read_text())
+    print('INFO    backend pin: ' + series['upstream'])
+    check((os.environ.get('OSCMIX_REF') or default_pin) == series['upstream'],
+          'backend ref matches the required versioned patch series')
     check(not Path('/usr/lib/oscmix-desk/package-guard').exists(),
           'source installation must not shadow a native package; '
           'use its package manager to upgrade, or remove it before switching to source')
@@ -81,7 +87,7 @@ def main():
     tools = ['flock', 'install', 'mktemp', 'sed', 'cmp']
     if not args.no_build:
         check(writable_parent(root / 'build'), 'writable backend build directory')
-        tools += ['git', 'make', 'cc', 'pkg-config']
+        tools += ['git', 'make', 'cc', 'pkg-config', 'tar']
     for tool in tools:
         check(shutil.which(tool) is not None, 'command: ' + tool)
     if not args.no_build:
@@ -94,12 +100,32 @@ def main():
                 check(shutil.which(tool) is not None, 'optional GTK build command: ' + tool)
         else:
             print('INFO    GTK 3 headers absent; the headless backend can still be built')
+            search = (home / '.local/bin', Path('/usr/local/bin'), Path('/usr/bin'))
+            gtk_installed = next((p / 'oscmix-gtk' for p in search
+                                  if (p / 'oscmix-gtk').is_file()), None)
+            if gtk_installed is not None:
+                compatible = command([sys.executable, str(root / 'scripts/prepare-backend.py'),
+                                      '--verify', str(gtk_installed)])
+                check(compatible is not None and compatible.returncode == 0,
+                      'existing GTK needs the same backend series; install GTK development '
+                      'files to upgrade the pair')
     else:
-        for tool in ('oscmix', 'alsaseqio'):
+        binaries = []
+        for tool in ('oscmix', 'alsaseqio', 'oscmix-gtk'):
             search = (home / '.local/bin', Path('/usr/local/bin'), Path('/usr/bin'))
             found = next((p / tool for p in search
                           if os.access(str(p / tool), os.X_OK) and (p / tool).is_file()), None)
-            check(found is not None, 'existing backend: ' + str(found or tool))
+            if tool != 'oscmix-gtk' or found is not None:
+                check(found is not None, 'existing backend: ' + str(found or tool))
+            if found is not None:
+                binaries.append(str(found))
+        if binaries:
+            compatible = command([sys.executable, str(root / 'scripts/prepare-backend.py'),
+                                  '--verify', *binaries])
+            check(compatible is not None and compatible.returncode == 0,
+                  'existing core/GTK binaries match this exact coordinated backend series')
+            if compatible is not None and compatible.returncode:
+                print(compatible.stderr.strip())
     config = Path(os.environ.get('XDG_CONFIG_HOME', ''))
     if not config.is_absolute():
         config = home / '.config'

@@ -99,6 +99,7 @@ rm -f "$UNIT_DIR/oscmix.service" \
       "$BIN_DIR/alsaseqio" \
       "$DATA_DIR/applications/oscmix-gtk.desktop" \
       "$DATA_DIR/icons/hicolor/scalable/apps/oscmix.svg" \
+      "$DATA_DIR/oscmix-desk/backend-source.json" \
       "$DATA_DIR/glib-2.0/schemas/oscmix.gschema.xml"
 if [ -d "$DATA_DIR/glib-2.0/schemas" ]; then
     glib-compile-schemas "$DATA_DIR/glib-2.0/schemas" 2>/dev/null || true

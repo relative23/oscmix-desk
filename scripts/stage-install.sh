@@ -38,6 +38,12 @@ if [ "$WITH_GTK" = yes ]; then
         exit 2
     fi
 fi
+BINARIES=("$BACKEND/oscmix" "$BACKEND/alsaseqio")
+[ "$WITH_GTK" != yes ] || BINARIES+=("$BACKEND/gtk/oscmix-gtk")
+python3 "$PROJECT_DIR/scripts/prepare-backend.py" --verify "${BINARIES[@]}"
+[ -f "$BACKEND/.oscmix-desk-source.json" ] || {
+    echo "backend source provenance is missing" >&2; exit 2;
+}
 install_file() { install -D -m "$1" "$2" "$3"; }
 # shellcheck source=scripts/install-payload.sh
 source "$PROJECT_DIR/scripts/install-payload.sh"

@@ -5,6 +5,7 @@ PATH, so no real service, udev rule, or user file is touched. The build
 step is skipped (--no-build) with fake oscmix binaries pre-installed.
 """
 
+import hashlib
 import os
 import shlex
 import shutil
@@ -43,7 +44,7 @@ def make_fake_home(tmp_path):
     bin_dir.mkdir(parents=True)
     for tool in ("oscmix", "alsaseqio", "oscmix-gtk"):
         fake = bin_dir / tool
-        fake.write_text("#!/bin/sh\nexit 0\n")
+        fake.write_text(backend_identity_stub())
         fake.chmod(0o755)
 
     stub_bin = tmp_path / "stub-bin"
@@ -80,6 +81,13 @@ def make_fake_home(tmp_path):
     (tmp_path / "system").mkdir(exist_ok=True)
     (tmp_path / "no-usb").mkdir(exist_ok=True)
     return home, env, log
+
+
+def backend_identity_stub():
+    """A simulated binary from this exact series, with no hardware entry point."""
+    digest = hashlib.sha256(repo_file('patches/backend-series.json').read_bytes()).hexdigest()
+    return ('#!/bin/sh\ncase "$1" in\n--control-version) echo ODK1 ;;\n'
+            '--desk-build-id) echo ' + digest + ' ;;\n*) exit 0 ;;\nesac\n')
 
 
 def plug_in(tmp_path, env):
@@ -217,6 +225,9 @@ def test_an_installer_killed_during_activation_can_be_rerun(tmp_path):
 def test_uninstall_removes_files_but_keeps_config(tmp_path):
     home, env, _ = make_fake_home(tmp_path)
     assert run("install.sh", ["--no-build", "--no-udev"], env).returncode == 0
+    provenance = home / ".local/share/oscmix-desk/backend-source.json"
+    provenance.parent.mkdir(parents=True)
+    provenance.write_text('{}\n')
 
     result = run("uninstall.sh", [], env)
     assert result.returncode == 0, result.stderr
@@ -225,6 +236,7 @@ def test_uninstall_removes_files_but_keeps_config(tmp_path):
         assert not (bin_dir / script).exists()
     assert not (home / ".config" / "systemd" / "user"
                 / "oscmix.service").exists()
+    assert not provenance.exists()
     # User configuration survives a plain uninstall.
     assert (home / ".config" / "oscmix" / "routing.conf").is_file()
 

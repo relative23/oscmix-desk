@@ -33,6 +33,9 @@ def test_migration_and_return_preserve_custom_payload_and_desk(setup, tmp_path):
     unit = config / 'systemd/user/oscmix.service'
     unit.parent.mkdir(parents=True)
     unit.write_text('custom local service\n')
+    provenance = data / 'oscmix-desk/backend-source.json'
+    provenance.parent.mkdir(parents=True)
+    provenance.write_text('{"source": "previous backend"}\n')
     desk = config / 'oscmix'
     desk.mkdir()
     preserved = {desk / 'routing.conf': 'custom desk\n',
@@ -44,10 +47,12 @@ def test_migration_and_return_preserve_custom_payload_and_desk(setup, tmp_path):
     backup = next((tmp_path / 'state/oscmix-desk').glob('source-install-*'))
     assert not package.exists()
     assert not unit.exists()
+    assert not provenance.exists()
     assert all(path.read_text() == value for path, value in preserved.items())
     setup.restore(backup, home, config)
     assert (package / 'custom.py').read_text() == 'custom local module\n'
     assert unit.read_text() == 'custom local service\n'
+    assert provenance.read_text() == '{"source": "previous backend"}\n'
     assert all(path.read_text() == value for path, value in preserved.items())
 
 

@@ -1,7 +1,8 @@
 # Installation and package recovery
 
-These instructions describe 0.7.3. Use the instructions for the version
-you downloaded; 0.7.0/0.7.1 installers do not have the `--check`,
+These instructions are being updated for 0.8.0; qualification remains open
+in the [release plan](plans/0.8.0-reliability-integration.md). Use the instructions
+for the version you downloaded; 0.7.0/0.7.1 installers do not have the `--check`,
 `--manual`, `--enable` or `oscmix-setup` interface.
 
 The common runtime needs Python 3.9 or newer and the pinned `oscmix` C
@@ -26,6 +27,23 @@ backend revision, installed version, permissions and available service
 integration. An absent interface does not prevent offline installation.
 Package-manager hints cover the tested distribution families; other systems
 receive the required capabilities without guessed package names.
+
+The installer prepares the exact upstream commit and hash-checked patches
+from `patches/backend-series.json` in a fresh build directory. An existing
+`build/oscmix` checkout supplies Git objects; its working files are preserved.
+Backend, ALSA bridge and optional GTK companion identify the same exact patch
+series before installation. `--no-build` accepts only that series, including
+any installed GTK companion. An unmodified upstream or 0.7.3 executable is
+incompatible. Build all three together when upgrading; install GTK headers
+if an existing companion also needs replacement. Changing `OSCMIX_REF` alone
+cannot bypass this contract.
+
+The source record is installed at
+`$XDG_DATA_HOME/oscmix-desk/backend-source.json` (normally under
+`~/.local/share`), or `/usr/share/oscmix-desk/backend-source.json` for native
+packages. Each binary's `--desk-build-id` prints the series digest without
+opening ALSA, a device or a display. This identity check is not a hardware
+measurement or a signature on the executable.
 
 Review `~/.config/oscmix/routing.conf`, or the corresponding absolute
 `XDG_CONFIG_HOME` path. Choose your device and routes deliberately. The first

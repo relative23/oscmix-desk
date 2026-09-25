@@ -3,8 +3,8 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The coordinated runtime's interim `make check` passes 2060 tests (two empty
-parameter sets skipped); a separate coverage run passes the 97% ratchet.
+The latest interim `make check` passes 2073 tests (two empty parameter sets
+skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
 backend/GTK build passes 60 preparation/protocol tests and the actual GTK
@@ -13,8 +13,14 @@ Actual desk CLI processes and GTK also pass a combined simulated-MIDI test:
 two profiles serialize through read-back, GTK cannot write during the operation,
 and backend loss preserves the marker without replay after restart. Measurement
 tools now use the same checked connection and record exact build provenance.
-These are interim software checks; hardware and installation qualification
-remain open.
+Development UCX II measurements now distinguish device reports from cached
+playback flags and withhold incomplete compound input-mix reports. The
+[capability probe](evidence/0.8.0/backend-capabilities.json) found no supported
+targeted read or playback-matrix read-back. The maintainer explicitly retains
+genuine playback read-back as a release condition; N3 remains open. Readable state and known declared routes were restored after each
+probe. Source/native staging now checks the exact backend/bridge/GTK patch
+series, and the project signing certificate is prepared. Final hardware,
+installation, service/VM and repository qualification remain open.
 All proposed 0.7.4 corrections are included; there is no separate 0.7.4 milestone.
 
 Latest published release: **0.7.3**. Its implementation, qualification and

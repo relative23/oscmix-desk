@@ -19,11 +19,9 @@ esac
 
 OSCMIX_REPO="${OSCMIX_REPO:-https://github.com/michaelforney/oscmix}"
 # Pinned to a commit, not a branch. oscmix is the component that actually
-# talks to the hardware, and every measurement this project publishes was
-# taken against this revision -- building "whatever master was that day"
-# would make the word "verified" meaningless, and this clone-and-compile
-# is the only path here that executes code from the network.
-# Override to track upstream: OSCMIX_REF=master ./install.sh
+# talks to the hardware. Measurements name this upstream revision AND
+# the versioned patch series; a changed series needs its own qualification.
+# The manifest must pin the same commit; unqualified ref overrides are refused.
 OSCMIX_REF="${OSCMIX_REF:-f2fdd5ec78338848754aad32cc07f3440de63395}"
 USB_VENDOR="2a39"
 USB_PRODUCT="3fd9"
@@ -83,7 +81,7 @@ options:
 
 environment:
   OSCMIX_REPO  oscmix git repository (default: upstream on GitHub)
-  OSCMIX_REF   git ref to build (default: the commit this release pins)
+  OSCMIX_REF   must match the full commit in patches/backend-series.json
 EOF
 }
 
@@ -207,49 +205,24 @@ if [ "$DO_BUILD" = 1 ]; then
         warn "(Debian/Ubuntu: libgtk-3-dev, Fedora: gtk3-devel, Arch: gtk3)"
     fi
 
-    if [ -d "$BUILD_DIR/.git" ]; then
-        info "updating oscmix source in $BUILD_DIR"
-        git -C "$BUILD_DIR" fetch --quiet origin "$OSCMIX_REF" 2>/dev/null \
-            || git -C "$BUILD_DIR" fetch --quiet origin
-        git -C "$BUILD_DIR" checkout --quiet "$OSCMIX_REF" 2>/dev/null \
-            || git -C "$BUILD_DIR" checkout --quiet FETCH_HEAD
-    else
-        info "cloning $OSCMIX_REPO ($OSCMIX_REF)"
-        mkdir -p "$BUILD_DIR"
-        # `git clone --depth 1 --branch` accepts a branch or a tag but
-        # not a commit, and the pinned default ref is a commit. init +
-        # fetch does take one, so the shallow clone the pin cost us is
-        # back: one commit instead of upstream's full history.
-        #
-        # Servers may refuse to serve an arbitrary SHA
-        # (uploadpack.allowReachableSHA1InWant); GitHub does not, but a
-        # mirror might, so a failed shallow fetch falls back to a full
-        # clone rather than aborting the install.
-        git -C "$BUILD_DIR" init --quiet
-        git -C "$BUILD_DIR" remote add origin "$OSCMIX_REPO"
-        if git -C "$BUILD_DIR" fetch --quiet --depth 1 origin "$OSCMIX_REF"; then
-            git -C "$BUILD_DIR" checkout --quiet FETCH_HEAD
-        else
-            warn "shallow fetch of $OSCMIX_REF failed; falling back to a full clone"
-            git -C "$BUILD_DIR" fetch --quiet origin
-            git -C "$BUILD_DIR" checkout --quiet "$OSCMIX_REF"
-        fi
+    # Keep an existing upstream checkout untouched, including local work.
+    # Only its object database is used; compilation takes a fresh archive
+    # with the required, hash-checked backend/GTK patch series applied.
+    UPSTREAM_DIR="$BUILD_DIR"
+    if [ ! -d "$UPSTREAM_DIR/.git" ]; then
+        [ ! -e "$UPSTREAM_DIR" ] || fail "upstream path exists without a git checkout: $UPSTREAM_DIR"
+        mkdir -p "$UPSTREAM_DIR"
+        git -C "$UPSTREAM_DIR" init --quiet
     fi
-
-    # State what was actually built. If the ref was a full SHA, the
-    # checkout must have landed on exactly it -- a silent fallback to
-    # master is the failure this pin exists to prevent.
-    OSCMIX_BUILT_SHA="$(git -C "$BUILD_DIR" rev-parse HEAD)"
-    case "$OSCMIX_REF" in
-        [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*)
-            if [ ${#OSCMIX_REF} -eq 40 ] && [ "$OSCMIX_BUILT_SHA" != "$OSCMIX_REF" ]; then
-                fail "oscmix checkout is $OSCMIX_BUILT_SHA, expected $OSCMIX_REF"
-            fi
-            ;;
-    esac
-    info "building oscmix at $OSCMIX_BUILT_SHA"
-    git -C "$BUILD_DIR" diff --quiet HEAD -- \
-        || fail "backend checkout has local source changes; preserve them in another checkout before installing"
+    if ! git -C "$UPSTREAM_DIR" cat-file -e "$OSCMIX_REF^{commit}" 2>/dev/null; then
+        info "fetching pinned oscmix source from $OSCMIX_REPO"
+        git -C "$UPSTREAM_DIR" fetch --quiet --depth 1 "$OSCMIX_REPO" "$OSCMIX_REF" \
+            || git -C "$UPSTREAM_DIR" fetch --quiet "$OSCMIX_REPO"
+    fi
+    BUILD_DIR="$(mktemp -d "$PROJECT_DIR/build/coordinated.XXXXXX")"
+    python3 "$PROJECT_DIR/scripts/prepare-backend.py" \
+        --upstream "$UPSTREAM_DIR" --destination "$BUILD_DIR"
+    info "prepared exact coordinated backend source at $BUILD_DIR"
 
     info "building oscmix ($GTK_FLAG)"
     # Build the transports this product actually installs. Upstream's
@@ -261,15 +234,11 @@ if [ "$DO_BUILD" = 1 ]; then
     # Otherwise that make defaults to c99, absent on e.g. openSUSE Leap 16.
     make -C "$BUILD_DIR" "CC=${CC:-cc -std=c11}" "$GTK_FLAG" "${BUILD_TARGETS[@]}" >/dev/null
 
+    BUILT_BINARIES=("$BUILD_DIR/oscmix" "$BUILD_DIR/alsaseqio")
+    [ "$GTK_FLAG" != GTK=y ] || BUILT_BINARIES+=("$BUILD_DIR/gtk/oscmix-gtk")
+    python3 "$PROJECT_DIR/scripts/prepare-backend.py" --verify "${BUILT_BINARIES[@]}"
 else
-    info "skipping build (--no-build); checking for existing binaries"
-    for tool in oscmix alsaseqio; do
-        found=0
-        for dir in "$BIN_DIR" /usr/local/bin /usr/bin; do
-            [ -x "$dir/$tool" ] && found=1 && break
-        done
-        [ "$found" = 1 ] || fail "$tool not found; run without --no-build"
-    done
+    info "skipping build (--no-build); preflight checked the installed backend series"
 fi
 
 # Prepare the complete Python package before stopping the service or

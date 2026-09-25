@@ -56,6 +56,9 @@ def metadata(root, development):
                     (root / 'install.sh').read_text(), re.MULTILINE)[1]
     if not re.fullmatch(r'[a-f0-9]{40}', pin):
         raise ValueError('the backend pin must be a full commit SHA')
+    series = root / 'patches/backend-series.json'
+    if json.loads(series.read_text())['upstream'] != pin:
+        raise ValueError('installer and backend series pin differ')
     try:
         commit, dirty, epoch = git_metadata(root)
     except (ValueError, subprocess.CalledProcessError):
@@ -64,19 +67,22 @@ def metadata(root, development):
         raise ValueError('release packages require a clean source tree; '
                          'use --development for qualification')
     return {'version': version, 'source_commit': commit, 'dirty': dirty,
-            'development': development, 'backend_commit': pin, 'source_date_epoch': epoch}
+            'development': development, 'backend_commit': pin, 'source_date_epoch': epoch,
+            'backend_series_sha256': hashlib.sha256(series.read_bytes()).hexdigest(),
+            'backend_protocol': 'ODK1'}
 
 
-def build_backend(source, pin, work, gtk):
-    archive = work / 'backend.tar'
-    run(['git', '-C', source, 'archive', '--format=tar', '--prefix=oscmix/',
-         '--output=' + str(archive), pin])
-    run(['tar', '-xf', archive, '-C', work])
+def build_backend(root, source, work, gtk):
     backend = work / 'oscmix'
+    run([sys.executable, root / 'scripts/prepare-backend.py',
+         '--upstream', source, '--destination', backend])
     command = ['make', '-C', backend, 'CC=' + os.environ.get('CC', 'cc -std=c11'),
                'GTK=' + ('y' if gtk else 'n'),
                'oscmix', 'alsaseqio', *(['gtk'] if gtk else [])]
     transcript = run(command)
+    run([sys.executable, root / 'scripts/prepare-backend.py', '--verify',
+         backend / 'oscmix', backend / 'alsaseqio',
+         *([backend / 'gtk/oscmix-gtk'] if gtk else [])])
     return backend, transcript
 
 
@@ -224,7 +230,7 @@ def main():
             run(['tar', '-xf', archive, '-C', work])
             root = work / 'project'
         backend, transcript = build_backend(
-            args.backend_source.resolve(), record['backend_commit'], work, args.with_gtk)
+            root, args.backend_source.resolve(), work, args.with_gtk)
         record['format'] = args.format
         record['build_flags'] = {key: os.environ.get(key) for key in
                                  ('CC', 'CFLAGS', 'CPPFLAGS', 'LDFLAGS')}

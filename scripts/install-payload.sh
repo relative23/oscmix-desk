@@ -22,6 +22,8 @@ payload_backend() {
     local backend="$1" bin_dir="$2" data_dir="$3" with_gtk="${4:-yes}"
     install_file 755 "$backend/oscmix" "$bin_dir/oscmix"
     install_file 755 "$backend/alsaseqio" "$bin_dir/alsaseqio"
+    install_file 644 "$backend/.oscmix-desk-source.json" \
+        "$data_dir/oscmix-desk/backend-source.json"
     if [ "$with_gtk" = yes ] && [ -x "$backend/gtk/oscmix-gtk" ]; then
         payload_gtk "$backend" "$bin_dir" "$data_dir"
     fi

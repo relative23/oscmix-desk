@@ -42,7 +42,9 @@ def test_preparation_archives_pinned_source_and_records_patched_files(preparatio
     result = builder.prepare(upstream, destination, manifest)
     assert (upstream / 'value').read_text() == 'private unfinished work\n'
     assert (destination / 'value').read_text() == 'coordinated\n'
+    header = '#define OSCMIX_DESK_BUILD_ID "' + result['series_sha256'] + '"\n'
     assert result['source_sha256'] == {
+        'desk-build-id.h': hashlib.sha256(header.encode()).hexdigest(),
         'value': hashlib.sha256(b'coordinated\n').hexdigest()}
     assert json.loads((destination / '.oscmix-desk-source.json').read_text()) == result
 
@@ -79,3 +81,13 @@ def test_incompatible_or_ambiguous_series_is_rejected(preparation, change, reaso
     manifest.write_text(json.dumps(record))
     with pytest.raises(ValueError, match=reason):
         builder.series_record(manifest)
+
+
+@pytest.mark.parametrize('identity', ['ODK1', 'old-series', 'empty'])
+def test_incompatible_existing_binary_never_qualifies(preparation, tmp_path, identity):
+    builder, _upstream, _patch, manifest = preparation
+    executable = tmp_path / 'oscmix'
+    executable.write_text('#!/bin/sh\nprintf "%s\\n"\n' % identity)
+    executable.chmod(0o755)
+    with pytest.raises(ValueError, match='required coordinated backend series'):
+        builder.verify_binaries([executable], manifest)

@@ -1,0 +1,90 @@
+diff --git a/alsaseqio.c b/alsaseqio.c
+index c1e67e4..332c568 100644
+--- a/alsaseqio.c
++++ b/alsaseqio.c
+@@ -6,6 +6,7 @@
+ #include <unistd.h>
+ #include <alsa/asoundlib.h>
+ #include "arg.h"
++#include "desk-build.h"
+ 
+ #define LEN(a) (sizeof (a) / sizeof *(a))
+ 
+@@ -74,6 +75,8 @@ main(int argc, char *argv[])
+ 	int rfd[2], wfd[2];
+ 	unsigned char *pos, buf[1024];
+ 
++	if (desk_build_query(argc, argv))
++		return 0;
+ 	ARGBEGIN {
+ 	case 'x':
+ 		exclusive = 1;
+diff --git a/desk-build.h b/desk-build.h
+new file mode 100644
+index 0000000..1156f8e
+--- /dev/null
++++ b/desk-build.h
+@@ -0,0 +1,18 @@
++#include <stdio.h>
++#include <string.h>
++#include "desk-build-id.h"
++
++/* Available before MIDI descriptors, ALSA, a display or a session is opened. */
++static int
++desk_build_query(int argc, char *argv[])
++{
++	if (argc != 2)
++		return 0;
++	if (strcmp(argv[1], "--control-version") == 0)
++		puts("ODK1");
++	else if (strcmp(argv[1], "--desk-build-id") == 0)
++		puts(OSCMIX_DESK_BUILD_ID);
++	else
++		return 0;
++	return 1;
++}
+diff --git a/gtk/main.c b/gtk/main.c
+index cc7df14..e571462 100644
+--- a/gtk/main.c
++++ b/gtk/main.c
+@@ -6,6 +6,7 @@
+ #include "mixer.h"
+ #include "scaleentry.h"
+ #include "../osc.h"
++#include "../desk-build.h"
+ 
+ static const char *const input_names[] = {
+ 	"Mic/Line 1",
+@@ -628,10 +629,8 @@ main(int argc, char *argv[])
+ 	GtkApplication *app;
+ 	int ret;
+ 
+-	if (argc == 2 && g_str_equal(argv[1], "--control-version")) {
+-		g_print("ODK1\n");
++	if (desk_build_query(argc, argv))
+ 		return 0;
+-	}
+ 
+ 	app = gtk_application_new(NULL,
+ #if GLIB_CHECK_VERSION(2, 74, 0)
+diff --git a/main.c b/main.c
+index 3b4ca76..1c8f092 100644
+--- a/main.c
++++ b/main.c
+@@ -17,6 +17,7 @@
+ #include "socket.h"
+ #include "util.h"
+ #include "control.h"
++#include "desk-build.h"
+ 
+ extern int dflag;
+ static int lflag;
+@@ -180,6 +181,8 @@ main(int argc, char *argv[])
+ 	nfds_t nfds;
+ 	const char *port;
+ 
++	if (desk_build_query(argc, argv))
++		return 0;
+ 	if (fcntl(6, F_GETFD) < 0)
+ 		fatal("fcntl 6:");
+ 	if (fcntl(7, F_GETFD) < 0)
