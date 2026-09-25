@@ -5,7 +5,7 @@
   "patches": [
     {
       "file": "0003-coordinated-backend-and-gtk.patch",
-      "sha256": "5c5a36826371c488d09cf22bf87161be7409914ffb2efb1151353f7d7fc0209c"
+      "sha256": "2375fae9b29a231754a84c2adbc8ea57c1e188e742b0938740494ca60e50f9c3"
     }
   ]
 }
