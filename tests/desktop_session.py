@@ -90,10 +90,11 @@ def session(args):
                 time.sleep(2)
                 assert children[-1].poll() is None, 'Plasma shell failed'
             result = subprocess.run([
-                sys.executable, 'tests/gtk_lifecycle.py', '--gtk', '/usr/bin/oscmix-gtk',
-                '--schema', '/usr/share/glib-2.0/schemas/oscmix.gschema.xml',
+                sys.executable, 'tests/gtk_control.py', '--backend', '/usr/bin/oscmix',
+                '--gtk', '/usr/bin/oscmix-gtk', '--session', '/usr/bin/oscmix-session',
+                '--launcher', '/usr/bin/oscmix-launch',
                 '--output', str(root / 'gtk')], env=env, capture_output=True,
-                text=True, timeout=90)
+                text=True, timeout=180)
             (root / 'gtk-transcript.log').write_text(result.stdout + result.stderr)
             assert result.returncode == 0, result.stdout + result.stderr
         finally:

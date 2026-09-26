@@ -71,7 +71,7 @@ def fader(value):
     return None
 
 
-def open_gtk(args, midi, name, pid=None, serial="00000000", path=None):
+def open_gtk(args, midi, name, pid=None, serial="00000000", path=None, launch_env=None):
     env = dict(os.environ, OSCMIX_CONTROL_SOCKET=str(path or midi.path),
                OSCMIX_DEVICE_SERIAL=serial,
                OSCMIX_BACKEND_PID=str(midi.child.pid if pid is None else pid),
@@ -81,9 +81,16 @@ def open_gtk(args, midi, name, pid=None, serial="00000000", path=None):
                XDG_DATA_HOME=str(args.output / 'data'), HOME=str(args.output / 'home'))
     env.pop('NO_AT_BRIDGE', None)
     env.pop('GTK_USE_PORTAL', None)
+    command = [str(args.gtk.resolve())]
+    if launch_env is not None:
+        env.update(launch_env)
+        # The launcher must derive these from the exact backend identity;
+        # do not pass the direct GTK probe's already selected endpoint.
+        for key in ('OSCMIX_CONTROL_SOCKET', 'OSCMIX_BACKEND_PID', 'OSCMIX_DEVICE_SERIAL'):
+            env.pop(key, None)
+        command = [str(args.launcher.resolve())]
     log = (args.output / (name + '.log')).open('w')
-    child = subprocess.Popen([str(args.gtk.resolve())], env=env, stdout=log,
-                             stderr=subprocess.STDOUT)
+    child = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT)
     return child, log
 
 
@@ -254,13 +261,14 @@ def exercise_cli(args):
     env = dict(os.environ, OSCMIX_LOCK_DIR=str(shared), OSCMIX_SYSFS_USB=str(usb.parent),
                OSCMIX_SYSTEM_CONFIG=str(root / 'absent'), OSCMIX_CONFIG=str(config),
                OSCMIX_SEQ_DEV=str(root / 'no-sequencer'),
+               OSCMIX_BIN_GTK=str(args.gtk.resolve()), OSCMIX_NO_NOTIFY='1',
                PATH=str(guard) + ':/usr/bin:/bin', XDG_CONFIG_HOME=str(root / 'config'))
     env.pop('NOTIFY_SOCKET', None)
     processes = []
 
     def profile(name):
         handle = (root / ('profile-%s-%d.log' % (name, len(processes)))).open('w+')
-        child = subprocess.Popen([sys.executable, str(ROOT / 'bin/oscmix-session'),
+        child = subprocess.Popen([str(args.session.resolve()),
                                   '--config', str(config), '--profile', name],
                                  env=env, stdout=handle, stderr=subprocess.STDOUT)
         processes.append((child, handle))
@@ -295,7 +303,7 @@ def exercise_cli(args):
     midi = SimulatedMidi(args.backend.resolve(), endpoint)
     advertise(midi, 1)
     observer = midi.connect()
-    child, log = open_gtk(args, midi, 'cli-gui-first')
+    child, log = open_gtk(args, midi, 'cli-gui-first', launch_env=env)
     try:
         wait_for(lambda: (0x3e04, 0x67cd) in midi.registers(), timeout=30)
         midi.inject((0x600, -330), (0x3065, 5))
@@ -351,7 +359,7 @@ def exercise_cli(args):
         # Reverse startup order, now with the production desk client maintaining its lease.
         first = profile('a')
         wait_for(lambda: (0x600, 0xfed4) in midi.registers())
-        child, log = open_gtk(args, midi, 'cli-desk-first')
+        child, log = open_gtk(args, midi, 'cli-desk-first', launch_env=env)
         wait_for(lambda: label('Desk is applying settings; controls are read-only'), timeout=8)
         wait_for(lambda: (0x3e04, 0x67cd) in midi.registers())
         midi.inject((0x600, -300))
@@ -361,7 +369,8 @@ def exercise_cli(args):
         wait_for(lambda: label('Connected'), timeout=12)
         return {'desk_cli_and_gtk': 'two CLI profiles serialized through hardware reports; '
                 'GTK inhibited without replay; marker retained on backend loss; '
-                'new epoch and both actual process startup orders checked'}
+                'new epoch and both actual process startup orders checked',
+                'session': str(args.session.resolve()), 'launcher': str(args.launcher.resolve())}
     finally:
         for process, handle in processes:
             if process.poll() is None:
@@ -379,6 +388,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--backend', type=Path, required=True)
     parser.add_argument('--gtk', type=Path, required=True)
+    parser.add_argument('--session', type=Path, default=ROOT / 'bin/oscmix-session')
+    parser.add_argument('--launcher', type=Path, default=ROOT / 'bin/oscmix-launch')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--cli-only', action='store_true', help='run only the combined CLI case')
     args = parser.parse_args()
@@ -395,6 +406,10 @@ def main():
                         prop, '<true>'], check=True, capture_output=True)
     result = {} if args.cli_only else exercise(args)
     result.update(exercise_cli(args))
+    result.update(ok=True, backend=str(args.backend.resolve()), gtk=str(args.gtk.resolve()),
+                  transport='ODK1 with simulated MIDI; no ALSA, USB or PCM',
+                  display_backend=os.environ.get('GDK_BACKEND'),
+                  desktop=os.environ.get('XDG_CURRENT_DESKTOP'))
     (args.output / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result))
 

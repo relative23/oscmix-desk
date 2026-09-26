@@ -64,7 +64,7 @@ jobs:
           from pathlib import Path
           root = Path('build/native-artifacts')
           output = Path('build/release')
-          for target in ('ubuntu2404', 'fedora44', 'opensuse16', 'arch'):
+          for target in ('debian13', 'ubuntu2404', 'ubuntu2604', 'fedora44', 'opensuse16', 'arch'):
               package = root / ('native-' + target) / 'package'
               assert package.is_dir(), 'Missing qualified package: ' + target
               files = sorted(package.iterdir())

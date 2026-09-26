@@ -18,15 +18,16 @@ from pathlib import Path
 APT = ('apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y '
        'python3 python3-venv git gcc make pkg-config libasound2-dev util-linux '
        'ca-certificates bash procps')
+APT_NATIVE = ('apt-get update && DEBIAN_FRONTEND=noninteractive '
+              'apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
+              'libglib2.0-bin xvfb xauth dbus-x11 python3-gi '
+              'gir1.2-atspi-2.0 at-spi2-core')
 TARGETS = {
-    'debian13': ('debian:13', APT, None, ''),
+    'debian13': ('debian:13', APT, 'deb', APT_NATIVE),
     'ubuntu2404': ('ubuntu:24.04', APT, 'deb',
-                   ('apt-get update && DEBIAN_FRONTEND=noninteractive '
-                    'apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
-                    'libglib2.0-bin xvfb xauth dbus-x11 python3-gi '
-                    'gir1.2-atspi-2.0 at-spi2-core gnome-shell plasma-workspace kwin-wayland '
+                   (APT_NATIVE + ' gnome-shell plasma-workspace kwin-wayland '
                     'xfce4-session xfwm4 xfce4-panel xfdesktop4 x11-utils mesa-utils')),
-    'ubuntu2604': ('ubuntu:26.04', APT, None, ''),
+    'ubuntu2604': ('ubuntu:26.04', APT, 'deb', APT_NATIVE),
     'fedora44': ('fedora:44',
                  ('dnf install -y python3 python3-pip git gcc make pkgconf-pkg-config '
                   'alsa-lib-devel util-linux diffutils ca-certificates bash '
@@ -167,7 +168,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target', required=True, choices=TARGETS)
     parser.add_argument('--native', action='store_true')
-    parser.add_argument('--previous-tag', default='v0.7.2',
+    parser.add_argument('--previous-tag', default='v0.7.3',
                         help='released core version for actual native upgrade/rollback')
     parser.add_argument('--development', action='store_true',
                         help='mark test packages as development versions')
@@ -175,7 +176,7 @@ def main():
                         help='new output directory; never overwrites earlier evidence')
     args = parser.parse_args()
     if not re.fullmatch(r'v\d+\.\d+\.\d+', args.previous_tag):
-        parser.error('--previous-tag must be a version tag such as v0.7.2')
+        parser.error('--previous-tag must be a version tag such as v0.7.3')
     args.output = args.output.resolve()
     try:
         result = qualify(args, Path(__file__).resolve().parent.parent)

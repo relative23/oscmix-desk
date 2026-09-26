@@ -199,11 +199,13 @@ sandbox cannot own it. The guide includes audio-group provisioning and removal.
 ## Native packages
 
 Use a package built for your distribution release and architecture. The
-qualified targets are Ubuntu 24.04 DEB, Fedora 44 RPM,
+published 0.7.3 targets are Ubuntu 24.04 DEB, Fedora 44 RPM,
 openSUSE Leap 16 RPM and Arch on x86_64. A Fedora RPM is not an openSUSE
 binary, and a new Ubuntu binary is not implicitly compatible with an older
 Ubuntu libc. A published artifact must carry its checksum and authenticated
-build provenance; no package repository or embedded updater is introduced.
+build provenance. The 0.8.0 development matrix adds Debian 13 and Ubuntu 26.04
+DEB checks; these and the signed APT/RPM channels still require qualification
+before publication. The product has no embedded updater.
 
 Use the native package manager (`apt install ./...deb`, `dnf install
 ./...rpm`, `zypper install ./...rpm`, or `pacman -U ./...pkg.tar.zst`). The
@@ -346,17 +348,21 @@ source/backend revisions and result. The Docker context contains a Git bundle,
 not the host home or local Git configuration. Containers have no sound devices,
 host service bus or runtime network access. Native checks build twice, verify
 identical artifacts and exercise the actual package manager's transitions.
-Native checks also launch the installed GTK executable against an isolated
-fake backend/display and exercise real previous-version upgrade/rollback.
+Native checks also launch the installed GTK, launcher and desk CLI against
+the installed C backend with anonymous simulated MIDI pipes and a private
+display/bus. They check shared observations, exclusion over the whole desk
+operation, disconnect and both startup orders, then exercise actual
+previous-version upgrade/rollback. Every native target runs this test on Xvfb;
+Ubuntu 24.04 additionally retains nested GNOME/KDE Wayland and Xfce/X11 sessions.
 For 0.7.3, nested GNOME and KDE Wayland sessions and Xfce/X11 also pass
 the receive-port contention and close/read-back/reopen checks;
 [desktop evidence](evidence/0.7.3/desktop-integration.json) records the actual
 compositor versions, software rendering and fresh received labels.
-`--previous-tag` selects that baseline (0.7.2 for this release).
+`--previous-tag` selects the transition baseline (now 0.7.3 for 0.8.0 development).
 They do not replace VM or hardware qualification.
 
 The [distribution workflow](../.github/workflows/distributions.yml) runs this
-same path for the seven source targets and four native targets. Release runs
+same path for seven source targets and six native targets. Release runs
 require the tag to match the source version, generate GitHub attestations and
 attach only qualified artifacts. Development runs label their packages and
 do not publish them as releases. Verify downloaded provenance with

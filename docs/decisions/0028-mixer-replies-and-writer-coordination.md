@@ -1,6 +1,7 @@
 # 0028 -- Reply distribution and writer coordination are separate contracts
 
-**Status:** accepted for 0.7.3; simultaneous read-back remains a future change.
+**Status:** accepted for 0.7.3; superseded in 0.8.0 by
+[ADR 0030](0030-backend-owned-control.md).
 
 ## Context and evidence
 
@@ -10,13 +11,18 @@ without reuse and does not check the bind result. Two receivers on the
 same port cannot both be assumed to receive a complete stream. Different
 port numbers alone do not make the backend send to both consumers.
 
-`tests/gtk_lifecycle.py` uses the real GTK executable, private settings,
+The 0.7.3 `tests/gtk_lifecycle.py` used the real GTK executable, private settings,
 an isolated display/bus and a simulated UDP backend. An accessible GTK
 sample-rate label demonstrates actual receipt. GUI-first operation makes
 desk's read-back unavailable; a selective reconcile sends nothing, while
 an explicit profile switch reports applied/unverified. Closing GTK permits
 a deliberate reconcile that preserves a differing REMEMBER fader. Desk-first
 operation is refused by the launcher until the receiver is released.
+
+The 0.8.0 package and desktop checks use `tests/gtk_control.py` with the
+coordinated C backend and simulated MIDI. They check simultaneous observations,
+whole-operation writer exclusion and both startup orders through the installed
+launcher and CLI. The former UDP harness is retained in the 0.7.3 history.
 
 ## Decision for this release
 

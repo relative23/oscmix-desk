@@ -16,8 +16,8 @@ FENCE = Path('/var/lib/oscmix-desk/package-update')
 GTK_FENCE = FENCE.with_name('gtk-package-update')
 
 
-def run(args, expected=0):
-    result = subprocess.run(args, capture_output=True, text=True, timeout=120)
+def run(args, expected=0, timeout=120):
+    result = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
     item = dict(command=[str(arg) for arg in args], exit=result.returncode,
                 stdout=result.stdout, stderr=result.stderr)
     print(json.dumps(item), flush=True)
@@ -119,10 +119,11 @@ verify_files(first)
 install(gtk)
 run(['runuser', '-u', 'tester', '--', 'env', 'OSCMIX_QUALIFY_DESKTOP=1', 'GDK_BACKEND=x11',
      'XDG_CURRENT_DESKTOP=Xvfb', 'xvfb-run', '-a', 'dbus-run-session', '--',
-     '/usr/bin/python3', 'tests/gtk_lifecycle.py', '--gtk', '/usr/bin/oscmix-gtk',
-     '--schema', '/usr/share/glib-2.0/schemas/oscmix.gschema.xml',
-     '--output', '/work/build/qualification/desktop'])
-if 'ID=ubuntu' in Path('/etc/os-release').read_text():
+     '/usr/bin/python3', 'tests/gtk_control.py', '--backend', '/usr/bin/oscmix',
+     '--gtk', '/usr/bin/oscmix-gtk', '--session', '/usr/bin/oscmix-session',
+     '--launcher', '/usr/bin/oscmix-launch',
+     '--output', '/work/build/qualification/desktop'], timeout=180)
+if 'VERSION_ID="24.04"' in Path('/etc/os-release').read_text():
     # A nested shell still needs a system bus, even though this disposable
     # container has no systemd service manager or hardware devices.
     Path('/run/dbus').mkdir(exist_ok=True)
@@ -144,7 +145,7 @@ if 'ID=ubuntu' in Path('/etc/os-release').read_text():
                 run(['runuser', '-u', 'tester', '--', 'env', 'OSCMIX_QUALIFY_DESKTOP=1',
                      'xvfb-run', '-a', 'dbus-run-session', '--', '/usr/bin/python3',
                      'tests/desktop_session.py', '--desktop', desktop,
-                     '--output', '/work/build/qualification/desktop-' + desktop])
+                     '--output', '/work/build/qualification/desktop-' + desktop], timeout=210)
         finally:
             logind.terminate()
             logind.wait(timeout=10)

@@ -37,6 +37,10 @@ installation, activation, three crash/restart cycles, four deployment reboots,
 package-revision upgrade, actual rollback, removal and preserved user state.
 The [Silverblue development record](evidence/0.8.0/silverblue-development.json)
 also identifies the pending-deployment recovery and ordinary Fedora DNF checks.
+Native qualification now uses the coordinated C/GTK integration test, including
+the actual launcher and CLI. Its local simulated-MIDI run passes; the Debian 13
+and Ubuntu 26.04 native recipes are prepared for their first package-manager
+runs. They are not yet qualified or published.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
