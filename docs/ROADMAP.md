@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2165 tests (two empty parameter sets
+The latest interim `make check` passes 2193 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -25,6 +25,10 @@ root-owned registration, shared locks and persistent maintenance. Real Alpine
 3.24.2/musl and Void/glibc VMs pass the first absent-device lifecycle checks:
 reload during discovery, three crash/restart cycles each, maintenance across a
 reboot, source/adapter replacement, stop/disable/removal and preserved user state.
+An additional [real-VM startup regression](evidence/0.8.0/native-reload-development.json)
+reproduced premature SIGHUP termination through all three reload entry points.
+They now share a pinned-process readiness check; both VMs pass refusal before
+handler installation and successful reload of the same child afterwards.
 The NixOS package and opt-in module use the common payload and user service.
 Both package variants reproduce their complete outputs in separate check builds.
 A real NixOS 26.05 VM passes inactive installation, explicit activation, selected

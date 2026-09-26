@@ -135,6 +135,13 @@ running desk process does not certify connected or verified hardware.
 The GTK launcher reuses a matching running session; it cannot enable a host
 service implicitly. A profile switch signals only the identified desk process.
 
+Use `sudo oscmix-service reload` when the caller needs a synchronous result.
+Reload pins the identified child and waits up to five seconds for its SIGHUP
+handler; an unready or replaced child is left unsignalled and the command fails.
+OpenRC's `rc-service oscmix-desk reload` uses the same check. Runit's `sv hup`
+only queues its control hook; a later refusal is logged with tag `oscmix-desk`
+and does not fall back to an unguarded signal.
+
 OpenRC sends output to the host syslog with tag `oscmix-desk`. Runit's `svlogd`
 rotates files in `/var/log/oscmix-desk`. If the host already supplies
 `/etc/zzz.d/resume` or `/etc/elogind/system-sleep`, registration adds the matching
@@ -173,6 +180,12 @@ check for the disposable qualification VMs. Its two phases surround a real
 reboot with maintenance left open. It refuses a non-qualification host, another
 runtime account or a connected RME USB device. This covers native supervision
 and state retention, not physical-device routing or the remaining VM fault cases.
+`tests/native_reload_startup.py --output /root/early-reload.json` separately
+holds the registered child before handler installation and checks all reload
+entry points, followed by successful reload after resuming the same child.
+It has the same disposable-VM, user and absent-device restrictions and leaves
+the service stopped. The [development record](evidence/0.8.0/native-reload-development.json)
+records the reproduced failure and corrected Alpine/Void results.
 
 ## NixOS (0.8.0 development)
 

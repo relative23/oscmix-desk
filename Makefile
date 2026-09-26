@@ -1,7 +1,7 @@
 PYTHON ?= python3
 SCRIPTS = bin/oscmix-session bin/oscmix-launch
 PACKAGE = src/oscmix_desk
-SHELL_SCRIPTS = install.sh uninstall.sh scripts/verify-unit.sh scripts/install-payload.sh scripts/stage-install.sh packaging/oscmix-desk.install systemd/system-sleep/oscmix service/openrc/oscmix-desk service/runit/run service/runit/finish service/runit/log-run service/resume
+SHELL_SCRIPTS = install.sh uninstall.sh scripts/verify-unit.sh scripts/install-payload.sh scripts/stage-install.sh packaging/oscmix-desk.install systemd/system-sleep/oscmix service/openrc/oscmix-desk service/runit/run service/runit/finish service/runit/log-run service/runit/hup service/resume
 # Repeats for the flakiness gate. The suite binds real UDP sockets and
 # runs background threads, so a single green run proves little.
 REPEAT ?= 5

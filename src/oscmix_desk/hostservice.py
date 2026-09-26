@@ -12,6 +12,8 @@ import os
 import re
 import signal
 import stat
+import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
@@ -23,6 +25,7 @@ MAINTENANCE_FILES = (("service", "service-update"), ("core", "package-update"),
 SUPERVISOR_PID = Path("/run/oscmix-desk-supervisor.pid")
 RUNIT_SERVICE = Path("/var/service/oscmix-desk")
 OPENRC_ENABLED = Path("/etc/runlevels/default/oscmix-desk")
+RELOAD_READY_TIMEOUT = 5.0
 
 
 @dataclass(frozen=True)
@@ -150,15 +153,26 @@ def main_pid(service: HostService, proc_root: Path) -> Optional[int]:
 
 
 def reload(service: HostService, proc_root: Path) -> str:
-    """Signal only the identified unprivileged desk supervisor, pinned by pidfd."""
+    """Signal the pinned desk only after its Python SIGHUP handler is installed."""
     pid = main_pid(service, proc_root)
     if pid is None:
         return "not running"
     fd = None
     try:
         fd = os.pidfd_open(pid)
-        if main_pid(service, proc_root) != pid or not _matches(pid, service, proc_root):
-            return "failed"
+        deadline = time.monotonic() + RELOAD_READY_TIMEOUT
+        while True:
+            if main_pid(service, proc_root) != pid or not _matches(pid, service, proc_root):
+                return "failed"
+            state = (proc_root / str(pid) / "status").read_text()
+            caught = re.search(r"^SigCgt:\s+([0-9a-fA-F]+)$", state, re.MULTILINE)
+            if caught is None:
+                return "failed"
+            if int(caught[1], 16) & (1 << (signal.SIGHUP - 1)):
+                break
+            if time.monotonic() >= deadline:
+                return "failed"
+            time.sleep(0.02)
         signal.pidfd_send_signal(fd, signal.SIGHUP)
     except (OSError, AttributeError):
         return "failed"
@@ -197,3 +211,26 @@ def maintenance_problem() -> Optional[str]:
             return "cannot establish installation maintenance state: " + str(exc)
         return "installation maintenance incomplete: " + str(STATE / name)
     return None
+
+
+def request_native_reload() -> int:
+    """Entry point for the root-installed copy, invoked as the registered user."""
+    try:
+        service = registered()
+        if (service is None or service.uid != os.getuid() or maintenance_problem()
+                or not (STATE / "service-allowed").is_file()):
+            problem = "native reload is not allowed by the service registration"
+        else:
+            result = reload(service, Path("/proc"))
+            problem = ("" if result == "reloaded" else
+                       "native reload " + result + "; no SIGHUP sent")
+    except OSError as exc:
+        problem = str(exc)
+    if problem:
+        print(problem, file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(request_native_reload())

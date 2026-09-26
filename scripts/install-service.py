@@ -25,6 +25,7 @@ from pathlib import Path
 REGISTRATION = Path('/etc/oscmix-desk/service.json')
 STATE = Path('/var/lib/oscmix-desk')
 RUNNER = Path('/usr/local/libexec/oscmix-desk/run-session')
+RELOADER = Path('/usr/local/libexec/oscmix-desk/reload-session.py')
 ADMIN = Path('/usr/local/sbin/oscmix-service')
 OPENRC = Path('/etc/init.d/oscmix-desk')
 RUNIT = Path('/etc/sv/oscmix-desk')
@@ -67,7 +68,7 @@ def registration():
     return value
 
 
-def as_user(record, arguments):
+def as_user(record, arguments, *, check=True):
     account = pwd.getpwnam(record['user'])
     if account.pw_uid == 0 or account.pw_uid != record['uid']:
         raise ValueError('registered user identity changed')
@@ -75,7 +76,7 @@ def as_user(record, arguments):
                XDG_CONFIG_HOME=str(Path(record['config']).parent.parent),
                XDG_DATA_HOME=str(Path(record['home']) / '.local/share'),
                PATH='/usr/local/bin:/usr/bin:/bin', LANG='C.UTF-8')
-    return run(arguments, env=env, cwd=record['home'], user=account.pw_uid,
+    return run(arguments, check=check, env=env, cwd=record['home'], user=account.pw_uid,
                group=account.pw_gid, extra_groups=os.getgrouplist(account.pw_name, account.pw_gid))
 
 
@@ -115,9 +116,13 @@ def installation_lock(record):
 
 
 def native(record, action, *, check=True):
+    if action == 'reload':
+        # Share the runtime's identity/readiness/pidfd decision. No root
+        # process imports user-controlled code or sends a blind SIGHUP.
+        return as_user(record, ['python3', RELOADER], check=check)
     if record['manager'] == 'openrc':
         return run(['rc-service', 'oscmix-desk', action], check=check)
-    verb = dict(start='up', stop='down', reload='hup', status='status')[action]
+    verb = dict(start='up', stop='down', status='status')[action]
     # The configured directory is also addressable while disabled. runsv only
     # exists after explicit enable adds it to the active runsvdir.
     return run(['sv', '-w', '20', verb, RUNIT], check=check)
@@ -168,6 +173,10 @@ def install_files(record):
     record['installed'] = False
     atomic(REGISTRATION, json.dumps(record, indent=2) + '\n')
     atomic(RUNNER, (SOURCE / 'service/run-session').read_text(), 0o755)
+    # This stdlib-only leaf is copied from its single canonical source.
+    # It runs as the registered user, independent of Python's import timing
+    # in the child and of the user's selected entry-point layout.
+    atomic(RELOADER, (SOURCE / 'src/oscmix_desk/hostservice.py').read_text())
     atomic(ADMIN, Path(__file__).read_text(), 0o755)
     if record['manager'] == 'openrc':
         template = (SOURCE / 'service/openrc/oscmix-desk').read_text()
@@ -177,6 +186,7 @@ def install_files(record):
         atomic(RUNIT / 'run', (SOURCE / 'service/runit/run').read_text().replace(
             '@GROUPS@', groups), 0o755)
         atomic(RUNIT / 'finish', (SOURCE / 'service/runit/finish').read_text(), 0o755)
+        atomic(RUNIT / 'control/h', (SOURCE / 'service/runit/hup').read_text(), 0o755)
         atomic(RUNIT / 'log/run', (SOURCE / 'service/runit/log-run').read_text(), 0o755)
         # runsv defaults to 0700 here. Expose its 0644 pid/status metadata;
         # control/ok FIFOs remain root-only. Runtime status never opens them.
@@ -216,7 +226,7 @@ def install(args):
                 previous.get(key) != value for key, value in record.items()):
             raise ValueError('a host desk is already registered; use maintenance for upgrades')
     else:
-        for path in (RUNNER, ADMIN, OPENRC if args.manager == 'openrc' else RUNIT):
+        for path in (RUNNER, RELOADER, ADMIN, OPENRC if args.manager == 'openrc' else RUNIT):
             if path.exists() or path.is_symlink():
                 raise ValueError('refusing to overwrite an unregistered service file: '
                                  + str(path))
@@ -337,6 +347,7 @@ def lifecycle(action, record):
                 path.unlink(missing_ok=True)
         REGISTRATION.unlink()
         RUNNER.unlink()
+        RELOADER.unlink(missing_ok=True)
         ADMIN.unlink()
         allowed.unlink(missing_ok=True)
         fence.unlink(missing_ok=True)

@@ -1,0 +1,9 @@
+#!/bin/sh
+# A nonzero exit would make runsv fall back to sending a blind SIGHUP.
+# Handle the request here even when the registered child is not ready.
+# `oscmix-service reload` reports synchronous failures to its caller;
+# `sv hup` only enqueues this control command, so its failure is logged.
+if ! /usr/local/sbin/oscmix-service reload; then
+    logger -t oscmix-desk "native reload refused; no SIGHUP sent"
+fi
+exit 0

@@ -35,7 +35,7 @@ def native(tmp_path, monkeypatch):
     (entry / 'environ').write_bytes(b'HOME=' + os.fsencode(service.home)
                                   + b'\0OSCMIX_SERVICE_MANAGER=runit\0')
     (entry / 'cwd').symlink_to(service.home)
-    (entry / 'status').write_text('PPid:\t12\n')
+    (entry / 'status').write_text('PPid:\t12\nSigCgt:\t0000000000000001\n')
     parent = proc / '12'
     parent.mkdir()
     (parent / 'cmdline').write_bytes(b'runsv\0oscmix-desk\0')
@@ -98,6 +98,73 @@ def test_reload_revalidates_after_pinning_pid_and_closes_on_replacement(native, 
     monkeypatch.setattr(os, 'close', calls.append)
     assert hostservice.reload(service, proc) == 'failed'
     assert calls == [39]
+
+
+@pytest.mark.parametrize('status', ['SigCgt:\t0', 'SigCgt:\t2', 'SigCgt:\tbroken', '', None])
+def test_reload_cannot_kill_a_python_process_before_its_handler_exists(
+        native, monkeypatch, status):
+    service, proc, entry = native
+    if status is None:
+        (entry / 'status').unlink()
+    else:
+        (entry / 'status').write_text('PPid:\t12\n' + status + '\n')
+    # The supervisor identity is tested separately; pin this real startup
+    # condition without hiding a missing/malformed signal-mask read.
+    monkeypatch.setattr(hostservice, 'main_pid', lambda *_: 1234)
+    clock = iter((0.0, hostservice.RELOAD_READY_TIMEOUT + 1))
+    monkeypatch.setattr(hostservice.time, 'monotonic', lambda: next(clock))
+    closed = []
+    monkeypatch.setattr(os, 'pidfd_open', lambda _: 39)
+    monkeypatch.setattr(os, 'close', closed.append)
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda *_: pytest.fail('premature SIGHUP'))
+    assert hostservice.reload(service, proc) == 'failed'
+    assert closed == [39]
+
+
+def test_reload_waits_for_handler_without_changing_the_pinned_process(native, monkeypatch):
+    service, proc, entry = native
+    (entry / 'status').write_text('PPid:\t12\nSigCgt:\t0\n')
+    calls = []
+    monkeypatch.setattr(os, 'pidfd_open', lambda pid: calls.append(('open', pid)) or 39)
+    monkeypatch.setattr(os, 'close', lambda fd: calls.append(('close', fd)))
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda fd, sig: calls.append((fd, sig)))
+
+    def finish_importing(_):
+        assert calls == [('open', 1234)]
+        (entry / 'status').write_text('PPid:\t12\nSigCgt:\t1\n')
+
+    monkeypatch.setattr(hostservice.time, 'sleep', finish_importing)
+    assert hostservice.reload(service, proc) == 'reloaded'
+    assert calls == [('open', 1234), (39, signal.SIGHUP), ('close', 39)]
+
+
+@pytest.mark.parametrize('condition', ['absent', 'other-user', 'disabled', 'maintenance',
+                                      'unreadable', 'failed', 'not running', 'reloaded'])
+def test_native_adapter_uses_registration_activation_and_shared_reload(
+        native, monkeypatch, tmp_path, capsys, condition):
+    service, _, _ = native
+    monkeypatch.setattr(hostservice, 'STATE', tmp_path)
+    if condition != 'disabled':
+        (tmp_path / 'service-allowed').touch()
+    if condition == 'maintenance':
+        (tmp_path / 'service-update').touch()
+    if condition == 'other-user':
+        service = replace(service, uid=service.uid + 1)
+
+    def registration():
+        if condition == 'unreadable':
+            raise OSError('registration unreadable')
+        return None if condition == 'absent' else service
+
+    monkeypatch.setattr(hostservice, 'registered', registration)
+    calls = []
+    monkeypatch.setattr(hostservice, 'reload',
+                        lambda chosen, proc: calls.append((chosen, proc)) or condition)
+    assert hostservice.request_native_reload() == (0 if condition == 'reloaded' else 1)
+    assert bool(calls) == (condition in ('failed', 'not running', 'reloaded'))
+    if calls:
+        assert calls == [(service, Path('/proc'))]
+    assert bool(capsys.readouterr().err) is (condition != 'reloaded')
 
 
 def test_unknown_native_manager_state_is_not_inactive(native, monkeypatch):

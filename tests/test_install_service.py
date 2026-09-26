@@ -15,7 +15,7 @@ def admin(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location('install_service', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    for name in ('REGISTRATION', 'RUNNER', 'ADMIN', 'OPENRC', 'RUNIT', 'ACTIVE',
+    for name in ('REGISTRATION', 'RUNNER', 'RELOADER', 'ADMIN', 'OPENRC', 'RUNIT', 'ACTIVE',
                  'OPENRC_ENABLED', 'STATE', 'RUNIT_LOG'):
         monkeypatch.setattr(module, name, tmp_path / name.lower())
     monkeypatch.setattr(module, 'RESUME_HOOKS', (tmp_path / 'hooks/resume',))
@@ -28,7 +28,7 @@ def admin(tmp_path, monkeypatch):
                   home=str(home), config=str(home / '.config/oscmix/routing.conf'),
                   command=str(home / '.local/bin/oscmix-session'), installed=True)
     calls = []
-    state = dict(active=True)
+    state = dict(active=True, control=module.native)
 
     def native(_record, action, *, check=True):
         calls.append(action)
@@ -42,6 +42,19 @@ def admin(tmp_path, monkeypatch):
     module.OPENRC_ENABLED.touch()
     (module.STATE / 'service-allowed').touch()
     return module, record, calls, state
+
+
+@pytest.mark.parametrize('manager', ['openrc', 'runit'])
+def test_native_reload_uses_one_unprivileged_readiness_aware_signal_path(
+        admin, monkeypatch, manager):
+    module, record, _, state = admin
+    record['manager'] = manager
+    calls = []
+    monkeypatch.setattr(module, 'run', lambda *_a, **_kw: pytest.fail('blind supervisor signal'))
+    monkeypatch.setattr(module, 'as_user',
+                        lambda chosen, command, **kw: calls.append((chosen, command, kw)))
+    state['control'](record, 'reload', check=False)
+    assert calls == [(record, ['python3', module.RELOADER], {'check': False})]
 
 
 def test_maintenance_preserves_activation_across_repeated_begin(admin):

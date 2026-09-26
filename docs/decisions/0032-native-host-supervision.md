@@ -24,8 +24,12 @@ wait, then exits; supervision tries again. This supplies boot and hotplug
 behavior without a second discovery daemon or udev command runner. Reload sends
 SIGHUP to the desk process alone. The runtime resolves that process through the
 native supervisor and checks its UID, exact command, configuration and manager
-context. User-initiated reload uses a pidfd and revalidation; it never signals
-the ALSA bridge or backend. OpenRC's root-owned PID file and root supervisor
+context. Every supported reload uses the same pidfd, revalidation and readiness
+check. A matching Python argv can appear before its SIGHUP handler is installed;
+signalling that child would terminate it. The pinned child must show a caught
+SIGHUP in `/proc/PID/status` within five seconds. Missing identity/status, a
+replacement child or an expired deadline refuses the request without signalling.
+The check never signals the ALSA bridge or backend. OpenRC's root-owned PID file and root supervisor
 command identify the parent without reading its protected `/proc/.../exe`
 link. The final child must still belong to the registered audio user and match
 the full command/context. Status only reads identity and manager metadata.
@@ -35,6 +39,18 @@ root `runsv` for this service. The runtime does not run `sv status`, which needs
 write access to runit's liveness FIFO even for a status request.
 An enabled but administratively stopped system service requires an explicit
 administrator start; the GTK launcher does not obtain privilege implicitly.
+
+The administrator adapter installs a byte-identical copy of the stdlib-only
+`hostservice.py` leaf and executes it as the registered user. It does not import
+user-controlled code as root or duplicate the runtime's signal decision.
+OpenRC's reload action and runit's `control/h` call that same adapter. Runit's
+hook must exit successfully even after refusal: a nonzero hook exit makes
+`runsv` fall back to a bare SIGHUP. It logs refusal instead. Consequently,
+`sv hup` acknowledges queueing only; `oscmix-service reload` is the synchronous
+interface that reports readiness/identity failure to its caller. The real-VM
+[startup regression record](../evidence/0.8.0/native-reload-development.json)
+covers all three entry points with the child held before handler installation,
+and successful reload of that same child after startup resumes.
 
 `oscmix-service maintenance-begin` records active/enabled state in a persistent
 root-owned fence before stopping. Source installation must observe a confirmed

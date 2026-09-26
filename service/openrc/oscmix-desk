@@ -29,6 +29,6 @@ start_pre() {
 
 reload() {
     ebegin "Requesting selective reconciliation in the desk supervisor"
-    supervise-daemon "$RC_SVCNAME" --signal HUP --pidfile "$pidfile"
+    /usr/local/sbin/oscmix-service reload
     eend $?
 }
