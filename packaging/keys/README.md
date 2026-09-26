@@ -18,16 +18,19 @@ already been made. A standard tar/OpenPGP encrypted recovery archive has now
 been restored locally in isolated temporary keyrings: the recovered primary
 certified a disposable test subkey, and the recovered release subkey signed a
 verified challenge while its primary secret remained unavailable. The original
-keyrings were not modified. Two separate offline copies and independent
-passphrase custody are still unconfirmed.
+keyrings were not modified. An offline copy and independent passphrase custody
+are still unconfirmed.
 
-For maintainable custody, keep two encrypted copies on separately stored offline
-media, the passphrase in an independently recoverable password manager with a
-separate protected emergency copy, and a short restore procedure with the full
-fingerprints. Include the revocation certificate inside the encrypted archive;
-possession of that certificate can invalidate the key. Refresh both copies after
-each key change and restore-test at least yearly. Move the primary secret fully
-offline only after those copies and passphrase recovery are verified.
+Before publishing the signed channels, verify one encrypted copy outside the
+signing computer and separate passphrase recovery. An existing USB stick is
+sufficient; copying the archive does not require formatting it. A second copy
+stored elsewhere is recommended additional protection, not a release condition.
+Keep the passphrase in an independently recoverable password manager and a
+protected emergency copy, with a short restore procedure and full fingerprints.
+Include the revocation certificate inside the encrypted archive; possession of
+that certificate can invalidate the key. Refresh the backup after each key change
+and restore-test at least yearly. Move the primary secret fully offline only
+after the backup and passphrase recovery are verified.
 
 Neither private material nor passphrases belong in a
 source checkout, build artifact, log, public CI secret dump or Pages tree.
