@@ -206,10 +206,43 @@ def test_publication_time_must_advance_before_copying_old_content(builder, tmp_p
     previous = tmp_path / 'previous'
     previous.mkdir()
     (previous / 'repository.json').write_text(json.dumps(dict(
-        target='debian13', development=True, snapshot='first', epoch=100)))
+        schema=1, files={}, target='debian13', development=True, snapshot='first', epoch=100)))
     (previous / 'repository.json.asc').touch()
     args = SimpleNamespace(previous=previous, output=tmp_path / 'new', target='debian13',
                            development=True, snapshot='second', epoch=epoch)
     with pytest.raises(ValueError, match='epoch must be later'):
         builder.restore_previous(args, SimpleNamespace(verify=lambda *_: None))
     assert not args.output.exists()
+
+
+def test_previous_snapshot_is_fully_checked_before_any_file_is_copied(builder, tmp_path):
+    previous = tmp_path / 'previous'
+    previous.mkdir()
+    (previous / 'first').write_bytes(b'valid')
+    (previous / 'second').write_bytes(b'modified')
+    (previous / 'repository.json').write_text(json.dumps(dict(
+        schema=1, files={'first': builder.sha(previous / 'first'), 'second': '0' * 64},
+        target='debian13', development=True, snapshot='first', epoch=100)))
+    (previous / 'repository.json.asc').touch()
+    args = SimpleNamespace(previous=previous, output=tmp_path / 'new', target='debian13',
+                           development=True, snapshot='second', epoch=101)
+    with pytest.raises(ValueError, match='altered file: second'):
+        builder.restore_previous(args, SimpleNamespace(verify=lambda *_: None))
+    assert not args.output.exists()
+
+
+@pytest.mark.parametrize('record', [None, [], {}, dict(schema=2, files={}),
+                                   dict(schema=1, files=[])])
+def test_unknown_snapshot_format_cannot_be_reused(builder, tmp_path, record):
+    (tmp_path / 'repository.json').write_text(json.dumps(record))
+    (tmp_path / 'repository.json.asc').touch()
+    with pytest.raises(ValueError, match='unknown or incomplete'):
+        builder.read_snapshot(tmp_path, SimpleNamespace(verify=lambda *_: None))
+
+
+@pytest.mark.parametrize('digest', [None, [], 'not-a-sha256'])
+def test_invalid_snapshot_digest_cannot_be_reused(builder, tmp_path, digest):
+    (tmp_path / 'repository.json').write_text(json.dumps(dict(schema=1, files={'file': digest})))
+    (tmp_path / 'repository.json.asc').touch()
+    with pytest.raises(ValueError, match='missing or altered file'):
+        builder.read_snapshot(tmp_path, SimpleNamespace(verify=lambda *_: None))

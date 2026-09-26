@@ -52,36 +52,50 @@ def relative_file(root, name):
     return file
 
 
-class Signer:
-    def __init__(self, args, temporary):
-        self.args = args
-        armor = args.public_key.read_text()
+def rpm_payload_identity(package):
+    identity = run(['rpm', '-qp', '--queryformat',
+                    '%{SHA256HEADER}\n%{PAYLOADDIGEST}\n', package])
+    if not re.fullmatch(r'[0-9a-f]{64}\n[0-9a-f]{64,128}\n', identity):
+        raise ValueError('RPM lacks a strong immutable-header or payload digest')
+    return identity
+
+
+def verify_rpm(package, public_key, database):
+    if not database.exists():
+        database.mkdir()
+        run(['rpm', '--dbpath', database, '--import', public_key])
+    checked = run(['rpmkeys', '--dbpath', database, '--checksig', '--verbose', package])
+    if not re.search(r'Signature.*: OK', checked, re.IGNORECASE):
+        raise ValueError('RPM has no verified package signature')
+
+
+def validate_pair(core, gtk):
+    for field in ('package_version', 'source_commit', 'backend_commit', 'backend_protocol',
+                  'backend_series_sha256', 'development', 'dirty'):
+        # Authenticated historical 0.7.3 packages predate the ODK1 series fields.
+        if core.get(field) != gtk.get(field):
+            raise ValueError('core/GTK build identities differ: ' + field)
+
+
+class Verifier:
+    """Public-only verification shared by staging and publication."""
+
+    def __init__(self, public_key, temporary):
+        armor = public_key.read_text()
         if (not armor.startswith('-----BEGIN PGP PUBLIC KEY BLOCK-----\n')
                 or 'PRIVATE KEY' in armor):
             raise ValueError('--public-key must contain only a public OpenPGP certificate')
         self.keyring = temporary / 'public.gpg'
         self.verify_home = temporary / 'verify'
         self.verify_home.mkdir(mode=0o700)
-        self.environment = dict(os.environ, GNUPGHOME=str(args.gnupghome))
         run(['gpg', '--batch', '--no-options', '--homedir', self.verify_home,
-             '--output', self.keyring, '--dearmor', args.public_key])
+             '--output', self.keyring, '--dearmor', public_key])
         listing = run(['gpg', '--batch', '--no-options', '--homedir', self.verify_home,
-                       '--with-colons', '--show-keys', args.public_key])
+                       '--with-colons', '--show-keys', public_key])
         if any(line.startswith(('sec:', 'ssb:')) for line in listing.splitlines()):
             raise ValueError('public certificate contains private key packets')
-        fingerprints = {line.split(':')[9] for line in listing.splitlines()
-                        if line.startswith('fpr:')}
-        if args.signing_key not in fingerprints:
-            raise ValueError('signing fingerprint is absent from the public certificate')
-        self.rpm_db = temporary / 'rpmdb'
-
-    def sign(self, source, destination, clearsign=False):
-        run(['gpg', '--batch', '--no-options', '--yes', '--homedir', self.args.gnupghome,
-             '--pinentry-mode', 'loopback', '--passphrase-file', self.args.passphrase_file,
-             '--digest-algo', 'SHA256', '--local-user', self.args.signing_key + '!',
-             '--armor', '--output', destination,
-             '--clearsign' if clearsign else '--detach-sign', source])
-        self.verify(destination, None if clearsign else source)
+        self.fingerprints = {line.split(':')[9] for line in listing.splitlines()
+                             if line.startswith('fpr:')}
 
     def verify(self, signature, source=None):
         status = run(['gpgv', '--homedir', self.verify_home, '--keyring', self.keyring,
@@ -96,16 +110,28 @@ class Signer:
                                                  'BADSIG', 'ERRSIG', 'NO_PUBKEY'))):
             raise ValueError('missing current, unrevoked signature: ' + str(signature))
 
+
+class Signer(Verifier):
+    def __init__(self, args, temporary):
+        super().__init__(args.public_key, temporary)
+        self.args = args
+        self.environment = dict(os.environ, GNUPGHOME=str(args.gnupghome))
+        if args.signing_key not in self.fingerprints:
+            raise ValueError('signing fingerprint is absent from the public certificate')
+        self.rpm_db = temporary / 'rpmdb'
+
+    def sign(self, source, destination, clearsign=False):
+        run(['gpg', '--batch', '--no-options', '--yes', '--homedir', self.args.gnupghome,
+             '--pinentry-mode', 'loopback', '--passphrase-file', self.args.passphrase_file,
+             '--digest-algo', 'SHA256', '--local-user', self.args.signing_key + '!',
+             '--armor', '--output', destination,
+             '--clearsign' if clearsign else '--detach-sign', source])
+        self.verify(destination, None if clearsign else source)
+
     def rpm(self, package):
         # A temporary RPM database imports only the selected public certificate.
         # The signing operation must preserve the immutable header and payload.
-        if not self.rpm_db.exists():
-            self.rpm_db.mkdir()
-            run(['rpm', '--dbpath', self.rpm_db, '--import', self.args.public_key])
-        query = ['rpm', '-qp', '--queryformat', '%{SHA256HEADER}\n%{PAYLOADDIGEST}\n', package]
-        before = run(query)
-        if not re.fullmatch(r'[0-9a-f]{64}\n[0-9a-f]{64,128}\n', before):
-            raise ValueError('RPM lacks a strong immutable-header or payload digest')
+        before = rpm_payload_identity(package)
         passphrase = str(self.args.passphrase_file)
         if '%' in passphrase or '\n' in passphrase:
             raise ValueError('passphrase path cannot contain RPM macro syntax or newlines')
@@ -113,11 +139,9 @@ class Signer:
              '--define', '_gpg_digest_algo sha256', '--define',
              '_gpg_sign_cmd_extra_args --batch --pinentry-mode loopback --passphrase-file '
              + shlex.quote(passphrase), '--addsign', package], env=self.environment)
-        if run(query) != before:
+        if rpm_payload_identity(package) != before:
             raise ValueError('RPM signing changed the immutable header or payload')
-        checked = run(['rpmkeys', '--dbpath', self.rpm_db, '--checksig', '--verbose', package])
-        if not re.search(r'Signature.*: OK', checked, re.IGNORECASE):
-            raise ValueError('RPM has no verified package signature')
+        verify_rpm(package, self.args.public_key, self.rpm_db)
 
 
 def read_packages(directory, target, development, commit):
@@ -167,20 +191,30 @@ def read_packages(directory, target, development, commit):
             {'core', 'gtk'}, {'repository'}, {'core', 'gtk', 'repository'}):
         raise ValueError('updates require a complete core/GTK pair or the repository client')
     pair = [record for _, _, record in packages if record['component'] in ('core', 'gtk')]
-    for field in ('package_version', 'source_commit', 'backend_commit', 'backend_protocol',
-                  'backend_series_sha256', 'development', 'dirty'):
-        # Authenticated historical 0.7.3 packages predate the ODK1 series fields.
-        if pair and pair[0].get(field) != pair[1].get(field):
-            raise ValueError('core/GTK build identities differ: ' + field)
+    if pair:
+        validate_pair(*pair)
     return packages
+
+
+def read_snapshot(directory, signer):
+    """Authenticate every listed file before a snapshot can be reused or served."""
+    manifest = relative_file(directory, MANIFEST)
+    signer.verify(relative_file(directory, MANIFEST + '.asc'), manifest)
+    record = json.loads(manifest.read_text())
+    if (not isinstance(record, dict) or record.get('schema') != 1
+            or not isinstance(record.get('files'), dict)):
+        raise ValueError('unknown or incomplete repository manifest')
+    for name, digest in record['files'].items():
+        if (not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
+                or sha(relative_file(directory, name)) != digest):
+            raise ValueError('repository has a missing or altered file: ' + name)
+    return record
 
 
 def restore_previous(args, signer):
     if args.previous is None:
         return []
-    manifest = relative_file(args.previous, MANIFEST)
-    signer.verify(relative_file(args.previous, MANIFEST + '.asc'), manifest)
-    previous = json.loads(manifest.read_text())
+    previous = read_snapshot(args.previous, signer)
     if previous['target'] != args.target or previous['development'] != args.development:
         raise ValueError('previous repository belongs to another channel')
     if previous['snapshot'] == args.snapshot:
@@ -189,10 +223,8 @@ def restore_previous(args, signer):
         raise ValueError('new repository epoch must be later than the previous publication')
     if args.packages is None and previous['source_commit'] != args.expected_commit:
         raise ValueError('metadata renewal cannot change the package source identity')
-    for name, digest in previous['files'].items():
+    for name in previous['files']:
         source = relative_file(args.previous, name)
-        if sha(source) != digest:
-            raise ValueError('previous repository has a missing or altered file: ' + name)
         destination = args.output / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
