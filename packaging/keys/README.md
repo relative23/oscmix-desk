@@ -13,20 +13,22 @@ for the project-owned endpoint `https://relative23.github.io/oscmix-desk/`.
 The protected local signing keyring contains only the signing subkey's
 private material. The primary secret, encrypted recovery exports and
 revocation certificate have separate storage outside the project. The
-bootstrap storage is local; this is not a claim that an offline backup has
-already been made. A standard tar/OpenPGP encrypted recovery archive has now
-been restored locally in isolated temporary keyrings: the recovered primary
+bootstrap keyrings remain local. A standard tar/OpenPGP encrypted recovery archive
+has been copied to removable media, read back after unmounting and remounting,
+and restored in isolated temporary keyrings: the recovered primary
 certified a disposable test subkey, and the recovered release subkey signed a
 verified challenge while its primary secret remained unavailable. The original
-keyrings were not modified. An offline copy and independent passphrase custody
-are still unconfirmed.
+keyrings were not modified. The medium was safely unmounted and powered off.
+Physical removal and independent passphrase custody are still unconfirmed.
 
 Before publishing the signed channels, verify one encrypted copy outside the
 signing computer and separate passphrase recovery. An existing USB stick is
 sufficient; copying the archive does not require formatting it. A second copy
 stored elsewhere is recommended additional protection, not a release condition.
-Keep the passphrase in an independently recoverable password manager and a
-protected emergency copy, with a short restore procedure and full fingerprints.
+Keep the passphrase separately in an independently recoverable password manager
+or a checked paper record stored securely away from the recovery medium. A
+password manager is not required. Retain a short restore procedure and full
+fingerprints; a further protected emergency copy is recommended.
 Include the revocation certificate inside the encrypted archive; possession of
 that certificate can invalidate the key. Refresh the backup after each key change
 and restore-test at least yearly. Move the primary secret fully offline only

@@ -69,11 +69,15 @@ packaged subkey rotation, revoked-key cache invalidation, rollback with retained
 revocations, killed helper updates and recovery, and preserved administrator edits.
 APT also passes refusal and recovery with its native lists lock held. See the
 [bootstrap record](evidence/0.8.0/repository-bootstrap-development.json). Inclusion
-of the third package in native release bundles and signed indexes is now wired
-for qualification, including independent helper updates retaining the existing
-core/GTK pair. Actual checks of that new path, offline key custody and final HTTPS
-qualification remain open. An encrypted key archive has passed a local restore
-test of both certification and signing roles; the offline media are still pending.
+of the third package in native release bundles and signed indexes now passes all
+six native and five repository matrices, including independent helper updates
+retaining the authenticated core/GTK pair. The
+[bundle/index record](evidence/0.8.0/repository-native-bundles-development.json)
+identifies those development inputs and results. An encrypted key archive copied
+to removable media was read after remounting and both key roles were successfully
+restored in isolated temporary keyrings. Physical removal and separate passphrase
+custody still await confirmation; publication and final HTTPS qualification remain
+open.
 The subscription helper refuses installation/activation on OSTree hosts before
 modifying trust or sources. A [limited actual-Silverblue guard check](evidence/0.8.0/repository-ostree-development.json)
 passes; status and disabling/removing a previous subscription remain available.

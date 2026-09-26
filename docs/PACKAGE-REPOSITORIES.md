@@ -77,8 +77,8 @@ expires after 30 days by default. Renew it before expiry; do not tell clients to
 disable `Check-Valid-Until`. Explicit downgrade uses a retained package version
 from the current authenticated index. The
 [public-key record](../packaging/keys/README.md) describes custody, expiry and
-subkey rotation. Offline custody, final native-bundle/index integration and
-published HTTPS key-lifecycle qualification remain release gates.
+subkey rotation. Confirmed offline custody, final-candidate native-bundle/index
+qualification and published HTTPS key-lifecycle qualification remain release gates.
 
 Native clients do not all enforce the same current-key policy. Development tests
 found actual expired/revoked-signature acceptance; [ADR 0036](decisions/0036-repository-client-verification.md)
@@ -95,8 +95,12 @@ certificate. It has no core/GTK dependency, creates no enabled package source
 and starts no mixer. The build interface is
 `scripts/build-package.py --repository-client-only --format deb|rpm --output DIR`;
 release builds require a clean committed tree. Native DEB/RPM builds and release
-collection now require this third package. The updated bundle/index path still
-needs its actual native qualification before publication.
+collection now require this third package. The
+[bundle/index development record](evidence/0.8.0/repository-native-bundles-development.json)
+records all six native and five repository matrices, including repeat-build
+equality, independent client updates retaining the existing pair, restrictive
+installation umasks and APT lists-lock contention. These are development packages;
+the final release candidate and published HTTPS channels still need qualification.
 
 After authenticating and installing the native bootstrap artifact, its explicit
 subscription interface is:
