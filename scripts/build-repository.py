@@ -84,8 +84,15 @@ class Signer:
     def verify(self, signature, source=None):
         status = run(['gpgv', '--homedir', self.verify_home, '--keyring', self.keyring,
                       '--status-fd', '1', signature, *([source] if source else [])])
-        if '[GNUPG:] VALIDSIG ' not in status:
-            raise ValueError('missing valid signature: ' + str(signature))
+        codes = [line.split()[1] for line in status.splitlines()
+                 if line.startswith('[GNUPG:] ') and len(line.split()) >= 2]
+        # gpgv can return success and VALIDSIG for expired or revoked keys.
+        # GOODSIG is replaced by EXPKEYSIG/REVKEYSIG in those cases. A plain
+        # KEYEXPIRED may refer to another, unused subkey in the certificate.
+        if (codes.count('VALIDSIG') != 1 or codes.count('GOODSIG') != 1
+                or any(code in codes for code in ('EXPSIG', 'EXPKEYSIG', 'REVKEYSIG',
+                                                 'BADSIG', 'ERRSIG', 'NO_PUBKEY'))):
+            raise ValueError('missing current, unrevoked signature: ' + str(signature))
 
     def rpm(self, package):
         # A temporary RPM database imports only the selected public certificate.

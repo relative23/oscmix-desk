@@ -63,6 +63,44 @@ def test_public_armor_cannot_disguise_secret_key_packets(
         builder.Signer(args, tmp_path)
 
 
+@pytest.mark.parametrize('status', ['EXPKEYSIG', 'REVKEYSIG', 'EXPSIG',
+                                   'BADSIG', 'ERRSIG', 'NO_PUBKEY'])
+def test_cryptographically_valid_signature_does_not_override_key_failure(
+        builder, tmp_path, monkeypatch, status):
+    signer = builder.Signer.__new__(builder.Signer)
+    signer.verify_home = tmp_path
+    signer.keyring = tmp_path / 'public.gpg'
+    # Even adding one good signature cannot hide another failed signer.
+    output = '[GNUPG:] GOODSIG good signer\n[GNUPG:] VALIDSIG fingerprint\n'
+    output += '[GNUPG:] ' + status + ' failed signer\n'
+    monkeypatch.setattr(builder, 'run', lambda *_: output)
+    with pytest.raises(ValueError, match='current, unrevoked signature'):
+        signer.verify(tmp_path / 'signature.asc', tmp_path / 'repository.json')
+
+
+def test_unrelated_expired_subkey_does_not_reject_a_current_signature(
+        builder, tmp_path, monkeypatch):
+    signer = builder.Signer.__new__(builder.Signer)
+    signer.verify_home = tmp_path
+    signer.keyring = tmp_path / 'public.gpg'
+    output = ('[GNUPG:] KEYEXPIRED 100\n[GNUPG:] GOODSIG current signer\n'
+              '[GNUPG:] VALIDSIG fingerprint\n')
+    monkeypatch.setattr(builder, 'run', lambda *_: output)
+    signer.verify(tmp_path / 'signature.asc', tmp_path / 'repository.json')
+
+
+@pytest.mark.parametrize('codes', [('VALIDSIG',), ('GOODSIG',),
+                                  ('GOODSIG', 'VALIDSIG', 'GOODSIG', 'VALIDSIG')])
+def test_staging_requires_one_complete_signature_result(builder, tmp_path, monkeypatch, codes):
+    signer = builder.Signer.__new__(builder.Signer)
+    signer.verify_home = tmp_path
+    signer.keyring = tmp_path / 'public.gpg'
+    monkeypatch.setattr(builder, 'run',
+                        lambda *_: ''.join('[GNUPG:] ' + code + ' value\n' for code in codes))
+    with pytest.raises(ValueError, match='current, unrevoked signature'):
+        signer.verify(tmp_path / 'signature.asc', tmp_path / 'repository.json')
+
+
 @pytest.mark.parametrize('source', ['previous', 'packages', 'gnupghome'])
 def test_staging_cannot_write_inside_an_input_or_keyring(builder, tmp_path, source):
     container = tmp_path / 'protected'
