@@ -21,7 +21,7 @@ APT = ('apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y '
 APT_NATIVE = ('apt-get update && DEBIAN_FRONTEND=noninteractive '
               'apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
               'libglib2.0-bin xvfb xauth dbus-x11 python3-gi '
-              'gir1.2-atspi-2.0 at-spi2-core')
+              'gir1.2-atspi-2.0 at-spi2-core gnupg gpgv')
 TARGETS = {
     'debian13': ('debian:13', APT, 'deb', APT_NATIVE),
     'ubuntu2404': ('ubuntu:24.04', APT, 'deb',
@@ -34,13 +34,13 @@ TARGETS = {
                   'shadow-utils procps-ng'),
                  'rpm', ('dnf install -y rpm-build systemd gtk3-devel '
                          'xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon '
-                         'python3-gobject at-spi2-core')),
+                         'python3-gobject at-spi2-core gnupg2 gcc-c++ libdnf5-devel')),
     'opensuse16': ('opensuse/leap:16.0',
                    ('zypper --non-interactive install python3 python3-pip git gcc make pkg-config '
                     'alsa-devel util-linux diffutils ca-certificates bash shadow procps'),
                    'rpm', ('zypper --non-interactive install rpm-build systemd gtk3-devel '
                            'xorg-x11-server-Xvfb xvfb-run xauth dbus-1-x11 python3-gobject '
-                           'typelib-1_0-Atspi-2_0')),
+                           'typelib-1_0-Atspi-2_0 gnupg')),
     'arch': ('archlinux:base',
              ('pacman -Syu --noconfirm python python-pip git gcc make pkgconf alsa-lib util-linux '
               'diffutils ca-certificates bash shadow procps-ng'),

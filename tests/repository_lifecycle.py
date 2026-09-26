@@ -17,6 +17,8 @@ import threading
 import time
 from pathlib import Path
 
+from repository_client_setup import CERTIFICATE, trust
+
 FENCE = Path('/var/lib/oscmix-desk/package-update')
 GTK_FENCE = FENCE.with_name('gtk-package-update')
 
@@ -47,6 +49,9 @@ class Client:
                 '[oscmix-test]\nname=oscmix-desk isolated qualification\nbaseurl=' + url
                 + '\nenabled=1\nautorefresh=1\ngpgcheck=1\nrepo_gpgcheck=1\npkg_gpgcheck=1\n'
                 'skip_if_unavailable=0\ngpgkey=file://' + str(key) + '\n')
+            if self.kind == 'zypper' and key == CERTIFICATE:
+                with (repos / 'channel.repo').open('a') as definition:
+                    definition.write('repo_sigcheck_plugin=oscmix-desk\n')
             self.run(['rpm', '--import', str(key)])
             self.command = (['dnf', '-y', '--setopt=reposdir=' + str(repos),
                              '--setopt=cachedir=' + str(output / 'cache')]
@@ -190,7 +195,8 @@ def exercise(args):
         served.unlink()
         served.symlink_to(path, target_is_directory=True)
 
-    client = Client(args.target, args.output, 'http://127.0.0.1:%d/' % server.server_port, trusted)
+    key = trust(trusted) if args.strict else trusted
+    client = Client(args.target, args.output, 'http://127.0.0.1:%d/' % server.server_port, key)
     result = {}
     try:
         # Altered authenticated metadata must not be accepted, even on the
@@ -291,6 +297,8 @@ def main():
                         choices=['debian13', 'ubuntu2404', 'ubuntu2604', 'fedora44', 'opensuse16'])
     parser.add_argument('--fixtures', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--strict', action='store_true',
+                        help='qualify installed extra verification')
     args = parser.parse_args()
     if not Path('/.dockerenv').is_file() or os.getuid() != 0:
         raise RuntimeError('requires a disposable root container without host devices or state')

@@ -103,6 +103,9 @@ jobs:
           options=()
           if [ "$RELEASE_BUILD" != true ]; then options+=(--development); fi
           python3 scripts/qualify-distribution.py --target "$TARGET" --native "${options[@]}" --output build/native
+      - name: Exercise signed repositories and current-key verification
+        if: matrix.target != 'arch'
+        run: python3 scripts/qualify-repositories.py --native-result build/native --output build/native/repository
       - name: Attest the release package, recipe and manifest
         id: provenance
         if: inputs.release_build

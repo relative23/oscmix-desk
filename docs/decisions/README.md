@@ -46,3 +46,4 @@ silences half the outputs.
 | [0033](0033-nixos-generations.md) | NixOS uses one immutable payload and the common user service |
 | [0034](0034-rpm-ostree-maintenance.md) | RPM deployment composition cannot own live-host maintenance |
 | [0035](0035-signed-repository-snapshots.md) | Stage complete signed repositories and retain referenced content |
+| [0036](0036-repository-client-verification.md) | Native metadata hooks enforce the project's current signing-key policy |

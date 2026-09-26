@@ -67,8 +67,18 @@ expires after 30 days by default. Renew it before expiry; do not tell clients to
 disable `Check-Valid-Until`. Explicit downgrade uses a retained package version
 from the current authenticated index. The
 [public-key record](../packaging/keys/README.md) describes custody, expiry and
-subkey rotation. Offline custody and actual wrong/expired/rotated/revoked-key
-client qualification remain release gates.
+subkey rotation. Offline custody, the packaged client integration and published
+HTTPS key-lifecycle qualification remain release gates.
+
+Native clients do not all enforce the same current-key policy. Development tests
+found actual expired/revoked-signature acceptance; [ADR 0036](decisions/0036-repository-client-verification.md)
+records the additional repository-scoped verification. The APT adapter retains
+the selected native gpgv/sqv verifier, the libdnf5 plugin checks the loaded
+repository's actual cache, and zypper selects a mandatory signature plugin. They
+share a local-file verifier and use the installed project certificate. Other
+repositories keep their native verification behavior. These components still
+need their own packaged bootstrap, certificate-update/cache invalidation and
+removal qualification before the channel is offered for installation.
 
 ## Client and failure qualification
 
@@ -97,8 +107,20 @@ package. Finish only when the package manager succeeds, the installed files matc
 the chosen pair and both applicable maintenance markers have cleared. Never delete
 a marker to make a failed installation start.
 
-The loopback checks do not qualify TLS/HTTPS publication, key lifecycle, final
-payloads or device activation. Publishing must follow the full release gates,
+`scripts/qualify-repositories.py` creates public fixtures with disposable keys in
+an isolated tmpfs, then runs both lifecycle and key checks in the actual native
+client. It copies only explicitly selected public files into containers. The
+test private keys are destroyed with their temporary signing environment, and
+neither host credentials nor the production signing key enter these tests.
+`--native-only` is an explicitly labelled diagnostic control, never a release
+gate. CI uses the strict path. The [client development record](evidence/0.8.0/repository-client-development.json)
+includes wrong/expired/revoked/rotated keys, unsigned or wrongly signed RPMs,
+missing-verifier recovery, invalid trust configuration and unaffected unrelated
+repositories. Installation of those hooks is currently a development fixture,
+not the production bootstrap.
+
+The loopback checks do not qualify TLS/HTTPS publication, the installed key-update
+lifecycle, final payloads or device activation. Publishing must follow the full release gates,
 retain complete immutable snapshots and verify downloads with all five actual
 clients. A partially generated directory or a successful `gpgv` invocation alone
 does not satisfy N6. The publication workflow and final subscription instructions

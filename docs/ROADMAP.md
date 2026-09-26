@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2193 tests (two empty parameter sets
+The latest interim `make check` passes 2213 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -56,7 +56,16 @@ using a disposable certificate and loopback HTTP. This includes killed transacti
 full recovery and a conditional-GET regression for changed indexes. The
 [repository development record](evidence/0.8.0/signed-repository-development.json)
 identifies the exact generator, fixtures, snapshots and managers. Production-key
-lifecycle, CI/publication integration and published HTTPS checks remain open.
+lifecycle and published HTTPS checks remain open. A subsequent key matrix found
+native acceptance of expired/revoked signatures; those checks remained failing.
+The approved [repository-scoped client hooks](decisions/0036-repository-client-verification.md)
+now pass all five development client matrices, including current-key policy,
+missing-verifier recovery and unaffected unrelated repositories. A same-version
+DNF5 5.4.5 control still fails without the hook. The
+[client record](evidence/0.8.0/repository-client-development.json) identifies the
+exact sources and images. CI now invokes the strict repository matrix; packaged
+bootstrap, certificate-update/cache invalidation and final HTTPS qualification
+remain open.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
