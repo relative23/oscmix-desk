@@ -81,6 +81,12 @@ def dockerfile(target, pin, commit, native, development, previous):
                      + ' --with-gtk'
                      + ' --package-revision ' + str(revision)
                      + (' --development' if development else '') + '\n')
+            if kind != 'arch':
+                text += ('RUN python3 scripts/build-package.py --format ' + kind
+                         + ' --repository-client-only --build-dir /tmp/oscmix-build'
+                         + ' --output /work/build/qualification/' + directory
+                         + ' --package-revision ' + str(revision)
+                         + (' --development' if development else '') + '\n')
         text += ('RUN git worktree add --detach /tmp/previous-source ' + previous + ' && '
                  'python3 /tmp/previous-source/scripts/build-package.py --format ' + kind
                  + ' --backend-source /work/build/oscmix --build-dir /tmp/previous-build'

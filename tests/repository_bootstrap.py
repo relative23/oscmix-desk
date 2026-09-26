@@ -164,7 +164,11 @@ def exercise(args):
         second = build('second', 2, 'rotated')
         assert first.read_bytes() == repeated.read_bytes(), 'bootstrap package not reproducible'
         passed('repeat-build')
-        client.run(client.local_install(first))
+        original_umask = os.umask(0o077)
+        try:
+            client.run(client.local_install(first))
+        finally:
+            os.umask(original_umask)
         assert client.status()['enabled'] is False
         assert not FENCE.exists()
         assert not client.source.exists()
@@ -177,6 +181,7 @@ def exercise(args):
         client.install()
         check_installed(repositories / 'first', 1)
         passed('explicit-enable-and-native-install')
+        passed('restrictive-install-umask')
 
         # Upgrade the actual helper package, including its embedded next
         # certificate, then use normal native commands with no test key copies.

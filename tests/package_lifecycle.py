@@ -26,10 +26,11 @@ def run(args, expected=0, timeout=120):
     return result
 
 
-def artifact(directory, gtk=False):
+def artifact(directory, component='core'):
     suffix = {'deb': '*.deb', 'rpm': '*.rpm', 'arch': '*.pkg.tar.zst'}[kind]
     paths = [path for path in Path('/work/build/qualification', directory).glob(suffix)
-             if path.name.startswith('oscmix-desk-gtk') is gtk]
+             if json.loads(path.with_suffix(path.suffix + '.json').read_text())
+             .get('component', 'core') == component]
     assert len(paths) == 1, paths
     return paths[0]
 
@@ -75,10 +76,16 @@ def verify_files(package):
 
 previous = artifact('previous')
 first, repeated, second = [artifact(name) for name in ('package', 'repeated', 'upgraded')]
-gtk, gtk_repeated, gtk_second = [artifact(name, True)
+gtk, gtk_repeated, gtk_second = [artifact(name, 'gtk')
                                 for name in ('package', 'repeated', 'upgraded')]
 assert not payload(first).keys() & payload(gtk).keys(), 'core and GTK own the same file'
-for a, b in ((first, repeated), (gtk, gtk_repeated)):
+build_pairs = [(first, repeated), (gtk, gtk_repeated)]
+if kind != 'arch':
+    client_first, client_repeated, client_second = [artifact(name, 'repository')
+                                                   for name in ('package', 'repeated', 'upgraded')]
+    assert not payload(client_first).keys() & (payload(first).keys() | payload(gtk).keys())
+    build_pairs.append((client_first, client_repeated))
+for a, b in build_pairs:
     equal = sha(a) == sha(b)
     print(json.dumps(dict(reproducible=equal, artifact=a.name,
                           first=sha(a), repeated=sha(b))), flush=True)
@@ -202,5 +209,17 @@ assert not GTK_FENCE.exists()
 assert all(path.read_text() == content for path, content in preserved.items())
 remaining = list(Path('/usr/lib/oscmix-desk').rglob('*'))
 assert not any(path.is_file() for path in remaining), remaining
+if kind != 'arch':
+    for package in (client_first, client_second, client_first):
+        install(package)
+        verify_files(package)
+        status = json.loads(run(['/usr/bin/oscmix-repository', 'status']).stdout)
+        assert status['enabled'] is False
+        assert status['maintenance'] is False
+        assert status['native_key_pending'] is False
+        assert not Path('/usr/bin/oscmix-session').exists()
+    remove('oscmix-desk-repository')
+    assert not Path('/usr/bin/oscmix-repository').exists()
+    assert all(path.read_text() == content for path, content in preserved.items())
 print(json.dumps(dict(lifecycle='passed', reproducible=True, companion=True,
                       actual_previous_version=previous.name)), flush=True)

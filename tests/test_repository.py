@@ -149,7 +149,7 @@ def test_invalid_pair_is_refused_before_signing(builder, pair, problem, monkeypa
         return 'Package: oscmix-desk-gtk\nVersion: 0.8.0-1\nArchitecture: amd64\n'
     monkeypatch.setattr(builder, 'run', header)
     with pytest.raises(ValueError, match=r'distribution|digest|development'):
-        builder.read_pair(pair, 'debian13', False, 'a' * 40)
+        builder.read_packages(pair, 'debian13', False, 'a' * 40)
 
 
 def test_gtk_requires_an_exact_core_version_before_pair_is_accepted(builder, pair, monkeypatch):
@@ -159,7 +159,46 @@ def test_gtk_requires_an_exact_core_version_before_pair_is_accepted(builder, pai
         return 'Package: oscmix-desk-gtk\nVersion: 0.8.0-1\nArchitecture: amd64\n'
     monkeypatch.setattr(builder, 'run', header)
     with pytest.raises(ValueError, match='exact core package version'):
-        builder.read_pair(pair, 'debian13', False, 'a' * 40)
+        builder.read_packages(pair, 'debian13', False, 'a' * 40)
+
+
+def test_repository_client_update_does_not_require_rebuilding_the_backend(
+        builder, pair, monkeypatch):
+    source = pair / 'oscmix-desk.deb.json'
+    record = json.loads(source.read_text())
+    for path in pair.iterdir():
+        path.unlink()
+    record.update(component='repository', package_name='oscmix-desk-repository',
+                  artifact='oscmix-desk-repository.deb', package_version='0.8.0-2')
+    for field in list(record):
+        if field.startswith('backend_'):
+            del record[field]
+    package = pair / record['artifact']
+    package.write_bytes(b'repository-client')
+    record['sha256'] = hashlib.sha256(package.read_bytes()).hexdigest()
+    package.with_suffix('.deb.json').write_text(json.dumps(record))
+
+    def header(command, **kwargs):
+        if command[-1] == 'Depends':
+            return 'python3, gnupg, gpgv, apt, python3-apt\n'
+        return 'Package: oscmix-desk-repository\nVersion: 0.8.0-2\nArchitecture: amd64\n'
+
+    monkeypatch.setattr(builder, 'run', header)
+    packages = builder.read_packages(pair, 'debian13', False, 'a' * 40)
+    assert len(packages) == 1
+    assert packages[0][2]['component'] == 'repository'
+
+
+def test_initial_repository_requires_the_packaged_subscription(builder, tmp_path, monkeypatch):
+    args = SimpleNamespace(output=tmp_path / 'out', packages=tmp_path / 'input', previous=None,
+                           gnupghome=tmp_path / 'keyring', target='debian13',
+                           development=True, expected_commit='a' * 40)
+    monkeypatch.setattr(builder, 'read_packages',
+                        lambda *_: [(None, None, dict(component='core')),
+                                    (None, None, dict(component='gtk'))])
+    with pytest.raises(ValueError, match='initial repository requires'):
+        builder.build(args)
+    assert not args.output.exists()
 
 
 @pytest.mark.parametrize('epoch', [99, 100])

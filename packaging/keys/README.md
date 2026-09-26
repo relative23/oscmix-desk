@@ -14,7 +14,22 @@ The protected local signing keyring contains only the signing subkey's
 private material. The primary secret, encrypted recovery exports and
 revocation certificate have separate storage outside the project. The
 bootstrap storage is local; this is not a claim that an offline backup has
-already been made. Neither private material nor passphrases belong in a
+already been made. A standard tar/OpenPGP encrypted recovery archive has now
+been restored locally in isolated temporary keyrings: the recovered primary
+certified a disposable test subkey, and the recovered release subkey signed a
+verified challenge while its primary secret remained unavailable. The original
+keyrings were not modified. Two separate offline copies and independent
+passphrase custody are still unconfirmed.
+
+For maintainable custody, keep two encrypted copies on separately stored offline
+media, the passphrase in an independently recoverable password manager with a
+separate protected emergency copy, and a short restore procedure with the full
+fingerprints. Include the revocation certificate inside the encrypted archive;
+possession of that certificate can invalidate the key. Refresh both copies after
+each key change and restore-test at least yearly. Move the primary secret fully
+offline only after those copies and passphrase recovery are verified.
+
+Neither private material nor passphrases belong in a
 source checkout, build artifact, log, public CI secret dump or Pages tree.
 A local detached signature was verified with the exported public key using
 `gpgv`; APT/RPM client qualification remains a separate release gate.

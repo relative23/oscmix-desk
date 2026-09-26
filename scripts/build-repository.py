@@ -28,6 +28,8 @@ TARGETS = {
     'opensuse16': ('opensuse-leap16.0', 'rpm', 'x86_64'),
 }
 MANIFEST = 'repository.json'
+PACKAGE_NAMES = {'core': 'oscmix-desk', 'gtk': 'oscmix-desk-gtk',
+                 'repository': 'oscmix-desk-repository'}
 
 
 def run(command, **kwargs):
@@ -118,12 +120,12 @@ class Signer:
             raise ValueError('RPM has no verified package signature')
 
 
-def read_pair(directory, target, development, commit):
+def read_packages(directory, target, development, commit):
     os_target, kind, architecture = TARGETS[target]
     manifests = sorted(directory.glob('*.' + kind + '.json'))
-    if len(manifests) != 2:
-        raise ValueError('expected one core and one GTK manifest in ' + str(directory))
-    pair = []
+    if not 1 <= len(manifests) <= 3:
+        raise ValueError('expected one manifest per native package component in ' + str(directory))
+    packages = []
     for manifest in manifests:
         record = json.loads(manifest.read_text())
         artifact = relative_file(directory, record['artifact'])
@@ -138,8 +140,8 @@ def read_pair(directory, target, development, commit):
             raise ValueError('package source differs from the expected commit')
         if not development and (record['development'] or record['dirty']):
             raise ValueError('development or dirty package cannot enter a release repository')
-        if record['component'] not in ('core', 'gtk') or record['package_name'] != (
-                'oscmix-desk-gtk' if record['component'] == 'gtk' else 'oscmix-desk'):
+        if (record['component'] not in PACKAGE_NAMES
+                or record['package_name'] != PACKAGE_NAMES[record['component']]):
             raise ValueError('unexpected package component')
         if kind == 'deb':
             identity = run(['dpkg-deb', '-f', artifact, 'Package', 'Version', 'Architecture'])
@@ -159,15 +161,18 @@ def read_pair(directory, target, development, commit):
         dependencies = dependency.strip().split(', ') if kind == 'deb' else dependency.splitlines()
         if record['component'] == 'gtk' and exact not in dependencies:
             raise ValueError('GTK does not require the exact core package version')
-        pair.append((artifact, manifest, record))
-    if {record['component'] for _, _, record in pair} != {'core', 'gtk'}:
-        raise ValueError('missing core/GTK pair')
+        packages.append((artifact, manifest, record))
+    components = {record['component'] for _, _, record in packages}
+    if len(components) != len(packages) or components not in (
+            {'core', 'gtk'}, {'repository'}, {'core', 'gtk', 'repository'}):
+        raise ValueError('updates require a complete core/GTK pair or the repository client')
+    pair = [record for _, _, record in packages if record['component'] in ('core', 'gtk')]
     for field in ('package_version', 'source_commit', 'backend_commit', 'backend_protocol',
                   'backend_series_sha256', 'development', 'dirty'):
         # Authenticated historical 0.7.3 packages predate the ODK1 series fields.
-        if pair[0][2].get(field) != pair[1][2].get(field):
+        if pair and pair[0].get(field) != pair[1].get(field):
             raise ValueError('core/GTK build identities differ: ' + field)
-    return pair
+    return packages
 
 
 def restore_previous(args, signer):
@@ -235,14 +240,21 @@ def build(args):
     for source in (args.previous, args.packages, args.gnupghome):
         if source is not None and output.is_relative_to(source.resolve()):
             raise ValueError('staging output must be outside inputs and the private keyring')
-    pair = (read_pair(args.packages, args.target, args.development, args.expected_commit)
-            if args.packages else [])
+    packages = (read_packages(args.packages, args.target, args.development, args.expected_commit)
+                if args.packages else [])
+    if (args.previous is None
+            and {row['component'] for _, _, row in packages} != set(PACKAGE_NAMES)):
+        raise ValueError('an initial repository requires core, GTK and repository client packages')
     args.output.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory(prefix='oscmix-sign-') as temporary:
         scratch = Path(temporary)
         signer = Signer(args, scratch)
         records = restore_previous(args, signer)
-        for artifact, manifest, record in pair:
+        available = {item['name'] for item in records} | {
+            record['package_name'] for _, _, record in packages}
+        if not set(PACKAGE_NAMES.values()) <= available:
+            raise ValueError('repository snapshot would lack a required package component')
+        for artifact, manifest, record in packages:
             identity = record['package_name'], record['package_version']
             if any((item['name'], item['version']) == identity for item in records):
                 raise ValueError('version already published; increase the package revision')

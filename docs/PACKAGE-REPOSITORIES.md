@@ -23,7 +23,11 @@ key is not needed for a normal publication.
 Authenticate the native build artifacts and their manifests first, using the
 release workflow's attestations. The generator checks their hashes, actual native
 package headers, target distribution/architecture, expected source commit and
-exact core/GTK relationship. A checksum is an integrity check, not independent
+exact core/GTK relationship. An initial channel requires the core, GTK and
+repository-client package. Later authenticated snapshots can update that client
+alone while retaining the previous core/GTK pair, or add a complete new pair.
+This keeps certificate maintenance independent of a mixer/backend rebuild.
+A checksum is an integrity check, not independent
 build authentication. Release staging rejects development or dirty packages;
 `--development` is reserved for unpublished qualification fixtures.
 
@@ -84,8 +88,9 @@ The separate `oscmix-desk-repository` DEB/RPM installs the helpers and a public
 certificate. It has no core/GTK dependency, creates no enabled package source
 and starts no mixer. The build interface is
 `scripts/build-package.py --repository-client-only --format deb|rpm --output DIR`;
-release builds require a clean committed tree. The final native release bundles
-and signed channels still need to include this third package before publication.
+release builds require a clean committed tree. Native DEB/RPM builds and release
+collection now require this third package. The updated bundle/index path still
+needs its actual native qualification before publication.
 
 After authenticating and installing the native bootstrap artifact, its explicit
 subscription interface is:

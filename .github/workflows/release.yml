@@ -71,8 +71,9 @@ jobs:
               assert len(files) >= 4, 'Incomplete package assets: ' + target
               manifests = [json.loads(path.read_text()) for path in files
                            if path.name.endswith(('.deb.json', '.rpm.json', '.zst.json'))]
-              assert {row['component'] for row in manifests} == {'core', 'gtk'}, target
-              assert len(manifests) == 2, 'Expected one core and one GTK manifest'
+              components = {'core', 'gtk'} if target == 'arch' else {'core', 'gtk', 'repository'}
+              assert {row['component'] for row in manifests} == components, target
+              assert len(manifests) == len(components), 'Expected one manifest per component'
               for row in manifests:
                   assert (package / row['artifact']).is_file(), row['artifact']
               subprocess.run(['sha256sum', '--check', 'SHA256SUMS-' + target],

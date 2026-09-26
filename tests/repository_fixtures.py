@@ -157,14 +157,32 @@ def exercise(args, temporary):
             BUILDER.build(options)
         first = json.loads((output / 'first/repository.json').read_text())
         second = json.loads((output / 'second/repository.json').read_text())
-        assert len(first['packages']) == 2
-        assert len(second['packages']) == 4
+        assert len(first['packages']) == 3
+        assert len(second['packages']) == 6
         for package in first['packages']:
             assert package in second['packages']
             assert BUILDER.sha(output / 'second' / package['path']) == package['sha256']
         for path, digest in first['files'].items():
             if '/by-hash/' in path or (path.startswith('repodata/') and path.endswith('.gz')):
                 assert BUILDER.sha(output / 'second' / path) == digest, path
+
+        # A certificate/helper update must not force a new mixer/backend build.
+        # The previously authenticated exact core/GTK pair stays in this branch.
+        with tempfile.TemporaryDirectory(prefix='oscmix-client-update-') as temporary:
+            client_input = Path(temporary)
+            for manifest in (inputs / 'upgraded').glob('*.' + kind + '.json'):
+                record = json.loads(manifest.read_text())
+                if record['component'] == 'repository':
+                    shutil.copyfile(manifest, client_input / manifest.name)
+                    shutil.copyfile(BUILDER.relative_file(inputs / 'upgraded', record['artifact']),
+                                    client_input / record['artifact'])
+            options = arguments(target, inputs, output / 'client-only', 'client-only', trusted,
+                                certificates / 'original.asc', output / 'first', client_input)
+            client_update = BUILDER.build(options)
+        assert len(client_update['packages']) == 4
+        assert all(item in client_update['packages'] for item in first['packages'])
+        added = [item for item in client_update['packages'] if item not in first['packages']]
+        assert [item['name'] for item in added] == ['oscmix-desk-repository']
 
         for name, key, epoch in [('wrong-key', foreign, None),
                                   ('expired-key', expired, past + 3600)]:

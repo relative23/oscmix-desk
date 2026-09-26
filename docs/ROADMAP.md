@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2219 tests (two empty parameter sets
+The latest interim `make check` passes 2221 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -69,8 +69,11 @@ packaged subkey rotation, revoked-key cache invalidation, rollback with retained
 revocations, killed helper updates and recovery, and preserved administrator edits.
 APT also passes refusal and recovery with its native lists lock held. See the
 [bootstrap record](evidence/0.8.0/repository-bootstrap-development.json). Inclusion
-of the third package in native release bundles and signed indexes, offline key
-custody and final HTTPS qualification remain open.
+of the third package in native release bundles and signed indexes is now wired
+for qualification, including independent helper updates retaining the existing
+core/GTK pair. Actual checks of that new path, offline key custody and final HTTPS
+qualification remain open. An encrypted key archive has passed a local restore
+test of both certification and signing roles; the offline media are still pending.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
