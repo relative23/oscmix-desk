@@ -88,6 +88,64 @@ repository's actual cache, and zypper selects a mandatory signature plugin. They
 share a local-file verifier and use the installed project certificate. Other
 repositories keep their native verification behavior.
 
+## Preparing the complete publication input
+
+`scripts/prepare-repository-site.py` assembles all five signed channels in one
+archive. It uses only the selected public certificate. The input directory must
+contain exactly the five target directories, each with its complete signed file
+index, native packages and original build manifests. All channels must name the
+selected source commit and snapshot. Unlisted files, incomplete version pairs,
+development payloads in release mode, links and unexpected metadata paths are
+refused. The output archive is deterministic, is never replaced, and receives
+its final name only after its actual archived contents pass verification.
+
+```sh
+python3 scripts/prepare-repository-site.py stage \
+  --channels /staging/channels --snapshot "$snapshot_id" \
+  --expected-commit "$release_commit" \
+  --public-key packaging/keys/oscmix-desk-archive.asc \
+  --output "/staging/oscmix-repositories-$snapshot_id.tar.gz"
+
+python3 scripts/prepare-repository-site.py verify \
+  --archive "/staging/oscmix-repositories-$snapshot_id.tar.gz" \
+  --sha256 "$archive_sha256" --snapshot "$snapshot_id" \
+  --expected-commit "$release_commit" \
+  --public-key packaging/keys/oscmix-desk-archive.asc \
+  --output /staging/verified-site
+```
+
+Select `archive_sha256` from the reviewed local staging result. An unauthenticated
+checksum downloaded beside an archive does not establish its origin. Verification
+requires a new output directory and checks every channel before exposing that
+directory. Archives are limited to 50,000 regular files and 900 MiB of file
+contents; links, special files, duplicate entries and escaping paths are rejected.
+Hitting a limit requires an explicit retention decision, not silently deleting
+packages still referenced by published metadata.
+
+Release-mode `verify` additionally requires a GitHub CLI with attestation support.
+It authenticates each original build manifest against this project's release
+workflow, the exact release tag and source commit, excluding self-hosted runners.
+DEBs must retain their attested build digest. For each signed RPM it retrieves
+the original release artifact, checks its digest against the attested manifest,
+compares the immutable-header and payload digests, and verifies the signed RPM
+with an isolated RPM database containing only the selected project certificate.
+A missing or failed attestation prevents creation of the verified site.
+
+For offline verification, `--release-inputs DIR` supplies
+`DIR/vVERSION/attestation.jsonl` and the original unsigned RPM files for every
+retained release. `--trusted-root FILE` supplies a previously authenticated
+`gh attestation trusted-root` export. Neither path contains signing secrets.
+`--development` is solely for unpublished fixtures; its archives carry that
+designation and cannot pass release-mode verification.
+
+The [publication-input record](evidence/0.8.0/repository-publication-input-development.json)
+includes a fresh full-site exercise with disposable signatures and a separate
+fresh provenance probe against the six published 0.7.3 DEB/RPM artifacts. It covers
+wrong source identity, changed manifests/DEBs/original RPMs, a validly signed but
+different RPM payload and an unsigned RPM with otherwise matching content.
+These checks do not qualify 0.8.0 payloads, Pages deployment, the final signed-output
+attestation or HTTPS publication; those remain mandatory before release.
+
 ## Subscription package
 
 The separate `oscmix-desk-repository` DEB/RPM installs the helpers and a public

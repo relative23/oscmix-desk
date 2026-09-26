@@ -26,6 +26,17 @@ unchanged. The original unsigned build manifest is retained; the signed reposito
 manifest maps its original checksum to the signed RPM's checksum and location.
 The release workflow must attest the final signed output as well as its inputs.
 
+`scripts/prepare-repository-site.py` now prepares one complete public archive and
+verifies it before making a deployment directory available. It shares public-key,
+snapshot, pair and RPM checks with the channel generator. Release verification
+also authenticates every original build manifest for the exact repository,
+release workflow, tag and source commit. Signed RPMs are compared with their
+authenticated original release artifacts and checked in an isolated RPM database.
+Retained historical packages receive the same provenance checks as new packages.
+The tool neither signs nor deploys and cannot replace an existing snapshot archive.
+Public site assembly and verification are implemented; actual deployment and the
+final signed-output attestation remain open.
+
 An authenticated previous repository supplies old packages and metadata. All its
 listed file digests are checked before reuse. Package versions cannot be replaced
 with new bytes; a new package revision is required. Package payload paths include

@@ -78,6 +78,13 @@ to removable media was read after remounting and both key roles were successfull
 restored in isolated temporary keyrings. Physical removal and separate passphrase
 custody still await confirmation; publication and final HTTPS qualification remain
 open.
+Complete-site preparation now verifies all five signed channels before exposing
+an archive or deployment directory. Release-mode verification also authenticates
+the original build manifests and checks signed RPMs against their original
+attested content. A [fresh development record](evidence/0.8.0/repository-publication-input-development.json)
+covers full-site assembly, renewal/rotation and a separate provenance probe using
+actual published 0.7.3 inputs. Pages deployment, final signed-output attestation,
+published HTTPS and final 0.8.0 payloads remain unqualified.
 The subscription helper refuses installation/activation on OSTree hosts before
 modifying trust or sources. A [limited actual-Silverblue guard check](evidence/0.8.0/repository-ostree-development.json)
 passes; status and disabling/removing a previous subscription remain available.
