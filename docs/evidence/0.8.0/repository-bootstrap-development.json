@@ -1,0 +1,565 @@
+{
+  "schema": 1,
+  "date_utc": "2026-09-26",
+  "qualification": "development native repository bootstrap and client checks",
+  "source_base": "6da81c20fcc444d1205eae485a4950a53eb0303f",
+  "hardware": false,
+  "published_https": false,
+  "production_signing_key_used": false,
+  "targets": {
+    "debian13": {
+      "source_commit": "154efe869c2c7ed640e5f5adeefdf2420655f21d",
+      "native_image": "sha256:eb9e854c74ae6d47acbbcf534d0f793981374007ac6aa702b7deccf0a59c7a28",
+      "client_image": "sha256:68cdea64a061e625838269b77e3c1f20b7de12f0f502b6e7cdf2040a9a0d6f7a",
+      "tools_image": "sha256:e01dc2335c78a4521c2928cfd2441a3daa32ce962fce22ed19ec035e1a1cd5c5",
+      "scripts": {
+        "scripts/qualify-repositories.py": "6d6f4e877f914f7da8726aa90c28c621408122fc9e3285c1f7ae7cb72357751e",
+        "scripts/build-repository.py": "e4f7f79936eac62421ea46e72193de43a82b2ab6f7118737aa0caa65a617fa3c",
+        "tests/repository_fixtures.py": "20d883205091f1ab13b7ab9d45c351597b776c2b0517bae760fbdd1c5573b589",
+        "tests/repository_lifecycle.py": "f1d6578dc7a7bf5c573ddc3060d8558dc7139092cccc2662b4e9a7cbec9de3a3",
+        "tests/repository_keys.py": "6121f27c531594c37638ca772c0aa3a8770c1731de683e3eaea0887fdb1b6f20",
+        "tests/repository_client_setup.py": "252d74164ca1a2951d5c0a4da8c53459cb9bbd221f74cec130a39b6d2f4fc182",
+        "packaging/repository/Dockerfile": "b0ada5fbca17db7e1f3cd3c686e34924383f475d3b9fcc87735e083422c073ac",
+        "packaging/repository/Client.Dockerfile": "2c6184d6f6aba205448e62278fa65bad1c42f074af50ee91de5e0f4f16fdfc17",
+        "packaging/repository/verify.py": "5f0b8daeda6cabf8d614835e3c17b7765b7a084d03de64d36d769b8640ac050b",
+        "packaging/repository/apt-method.py": "398346006c3426d79e9de0e7831099cc489ac80e4a62874d00ad9b2130ffb7cb",
+        "packaging/repository/zypp-sigcheck.py": "0947c4c9bc13fd47aa0421a251f0822776869b662528166a35a0d2185086c66a",
+        "packaging/repository/dnf.cpp": "e54db212515ee0dd6ec2245fc24ff18ce5efd7a6813f1ef5adb8ee59bd3b5015",
+        "scripts/build-package.py": "080404c0127a9820d9a52b1ffcba35e4e15a3fece05442decb45fec3d8f96ced",
+        "scripts/package_repository_client.py": "790c2c830d07e654f37e7b93ac0c8d0bf9aca033ff69c593956dc0234d25c7bd",
+        "scripts/package_formats.py": "5e812601ab70305bd6c36192a5e3fa292785dcc0b64feab102c1afcd9a9a0e5f",
+        "scripts/package_gtk.py": "5fb8f4df30beaa29764babaed4f9fbf66ec84825937083791fa4d53c8642eeaa",
+        "tests/repository_bootstrap.py": "4d18b67adba465e8a054fe2249799695aed3130d06220c176c6fd347e15206ab",
+        "packaging/repository/configure.py": "f3f9f74b0423a25e156e45851cde4ca6b4cc542e2bb25ae98429132e036ed8cd"
+      },
+      "seconds": 47.44,
+      "manager_version": [
+        "apt 3.0.3 (amd64)"
+      ],
+      "bootstrap_checks": {
+        "repeat-build": true,
+        "install-without-subscription-or-mixer": true,
+        "explicit-enable-and-native-install": true,
+        "packaged-subkey-rotation": true,
+        "revocation-invalidates-native-cache": true,
+        "busy-native-apt-lock-refusal-and-recovery": true,
+        "helper-rollback-retains-revocation": true,
+        "actual-interrupted-helper-upgrade-and-repair": true,
+        "incomplete-payload-refusal-and-reinstallation": true,
+        "modified-definition-preserved-and-disabled": true,
+        "disable-remove-and-unrelated-source-preservation": true
+      },
+      "key_checks": {
+        "baseline": "installed exact pair with initial certificate",
+        "wrong-key": "passed",
+        "expired-key": "passed",
+        "expired-new-signature": "passed",
+        "unknown-subkey": "passed",
+        "rotation": "passed",
+        "revoked-key": "passed",
+        "other-repository": "passed",
+        "missing-verifier": "passed",
+        "wrong-trust-configuration": "passed"
+      },
+      "lifecycle_checks": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "debian13",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false
+      },
+      "bootstrap_artifacts": {
+        "first": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_debian13.deb",
+          "sha256": "b91d17443e6be5bc478495dd952c81142fcb2bd39f78b33a5c42aeb7f9b9f33e",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-1"
+        },
+        "repeated": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_debian13.deb",
+          "sha256": "b91d17443e6be5bc478495dd952c81142fcb2bd39f78b33a5c42aeb7f9b9f33e",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-1"
+        },
+        "second": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-2_amd64_debian13.deb",
+          "sha256": "3bd6854e5234127b63abd5c3345fbf32c52b4a82e7e62ce301b6bcdafbbf0bfb",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-2"
+        }
+      },
+      "records_sha256": {
+        "result.json": "3c5f42ed2523aefd553aa17df5770ab153342978bdea2747864a309b4d804ec6",
+        "bootstrap/result.json": "d7a003105a769ac647b9fac51166b4953c4ef5494961fd0d8e74ece64f9ba906",
+        "bootstrap/commands.jsonl": "9d3b255b410b5c3bec557994948b69ddba68e92ac23c1fda6e9e6904d35d1d4b",
+        "bootstrap/interrupted.log": "66a948629e6fe72e3f9e0f9248d7d0ec547d46024766c426d44fbbfe5ee68a64",
+        "bootstrap/http.json": "24eb1b961e6094be09ea6e86b243a988c0c825faffeef3c2856689f12ecf1102",
+        "keys/result.json": "4f61890b9f6962fc42302da97661f351e6db17afba91d37a92e13b6a7c709ef8",
+        "lifecycle/result.json": "f192f4df0039064eace3826298739eb68f8caf4bc38a896a42b5c99061787d9c",
+        "fixtures/fixture.json": "601f309be93c80d130d203f0328d8b485d96928a16e1e845c9d351c27b1df364"
+      }
+    },
+    "ubuntu2404": {
+      "source_commit": "154efe869c2c7ed640e5f5adeefdf2420655f21d",
+      "native_image": "sha256:504a070b829bb4fd1fda11f778c2bbe576025324254f90fac490df526fc2370a",
+      "client_image": "sha256:ddcdc0e486fd1601014d31a924b6d7588ab200f835e62e6ded24bcca1c569536",
+      "tools_image": "sha256:e01dc2335c78a4521c2928cfd2441a3daa32ce962fce22ed19ec035e1a1cd5c5",
+      "scripts": {
+        "scripts/qualify-repositories.py": "6d6f4e877f914f7da8726aa90c28c621408122fc9e3285c1f7ae7cb72357751e",
+        "scripts/build-repository.py": "e4f7f79936eac62421ea46e72193de43a82b2ab6f7118737aa0caa65a617fa3c",
+        "tests/repository_fixtures.py": "20d883205091f1ab13b7ab9d45c351597b776c2b0517bae760fbdd1c5573b589",
+        "tests/repository_lifecycle.py": "f1d6578dc7a7bf5c573ddc3060d8558dc7139092cccc2662b4e9a7cbec9de3a3",
+        "tests/repository_keys.py": "6121f27c531594c37638ca772c0aa3a8770c1731de683e3eaea0887fdb1b6f20",
+        "tests/repository_client_setup.py": "252d74164ca1a2951d5c0a4da8c53459cb9bbd221f74cec130a39b6d2f4fc182",
+        "packaging/repository/Dockerfile": "b0ada5fbca17db7e1f3cd3c686e34924383f475d3b9fcc87735e083422c073ac",
+        "packaging/repository/Client.Dockerfile": "2c6184d6f6aba205448e62278fa65bad1c42f074af50ee91de5e0f4f16fdfc17",
+        "packaging/repository/verify.py": "5f0b8daeda6cabf8d614835e3c17b7765b7a084d03de64d36d769b8640ac050b",
+        "packaging/repository/apt-method.py": "398346006c3426d79e9de0e7831099cc489ac80e4a62874d00ad9b2130ffb7cb",
+        "packaging/repository/zypp-sigcheck.py": "0947c4c9bc13fd47aa0421a251f0822776869b662528166a35a0d2185086c66a",
+        "packaging/repository/dnf.cpp": "e54db212515ee0dd6ec2245fc24ff18ce5efd7a6813f1ef5adb8ee59bd3b5015",
+        "scripts/build-package.py": "080404c0127a9820d9a52b1ffcba35e4e15a3fece05442decb45fec3d8f96ced",
+        "scripts/package_repository_client.py": "790c2c830d07e654f37e7b93ac0c8d0bf9aca033ff69c593956dc0234d25c7bd",
+        "scripts/package_formats.py": "5e812601ab70305bd6c36192a5e3fa292785dcc0b64feab102c1afcd9a9a0e5f",
+        "scripts/package_gtk.py": "5fb8f4df30beaa29764babaed4f9fbf66ec84825937083791fa4d53c8642eeaa",
+        "tests/repository_bootstrap.py": "4d18b67adba465e8a054fe2249799695aed3130d06220c176c6fd347e15206ab",
+        "packaging/repository/configure.py": "f3f9f74b0423a25e156e45851cde4ca6b4cc542e2bb25ae98429132e036ed8cd"
+      },
+      "seconds": 51.76,
+      "manager_version": [
+        "apt 2.8.3 (amd64)"
+      ],
+      "bootstrap_checks": {
+        "repeat-build": true,
+        "install-without-subscription-or-mixer": true,
+        "explicit-enable-and-native-install": true,
+        "packaged-subkey-rotation": true,
+        "revocation-invalidates-native-cache": true,
+        "busy-native-apt-lock-refusal-and-recovery": true,
+        "helper-rollback-retains-revocation": true,
+        "actual-interrupted-helper-upgrade-and-repair": true,
+        "incomplete-payload-refusal-and-reinstallation": true,
+        "modified-definition-preserved-and-disabled": true,
+        "disable-remove-and-unrelated-source-preservation": true
+      },
+      "key_checks": {
+        "baseline": "installed exact pair with initial certificate",
+        "wrong-key": "passed",
+        "expired-key": "passed",
+        "expired-new-signature": "passed",
+        "unknown-subkey": "passed",
+        "rotation": "passed",
+        "revoked-key": "passed",
+        "other-repository": "passed",
+        "missing-verifier": "passed",
+        "wrong-trust-configuration": "passed"
+      },
+      "lifecycle_checks": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "ubuntu2404",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false
+      },
+      "bootstrap_artifacts": {
+        "first": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "7716eb3932c6d23d67dd110e17ee8183c09d1eeee6411a9ba5fdcea0410d1e19",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-1"
+        },
+        "repeated": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "7716eb3932c6d23d67dd110e17ee8183c09d1eeee6411a9ba5fdcea0410d1e19",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-1"
+        },
+        "second": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-2_amd64_ubuntu24.04.deb",
+          "sha256": "2b02fc20b0bafe1de1d8e1849ac6cef42de9774bd0208705f2a111d3172b08af",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-2"
+        }
+      },
+      "records_sha256": {
+        "result.json": "4751f9b196255014776d3e9a537c4cea3fa1036a6fc9b7472b2b70cf3b47c88a",
+        "bootstrap/result.json": "e1bb1b2a0e2ed23e954c5d94aea2aea50b89974544e36ebf4bf08ef96990413e",
+        "bootstrap/commands.jsonl": "80ff9c3628ee4d134bc5cc83e1490e86831307fe62dac3889efe49f55f8c1343",
+        "bootstrap/interrupted.log": "40ee1a36e1f58ce93afe4bc1b1a93bdc5deb7429423672a3b887eaa351c1d998",
+        "bootstrap/http.json": "affb3be6b75fe67a5d97e7cd5633e1dcef9598ba626d8d74d2e11d2a9ffe720c",
+        "keys/result.json": "9aeb4c0e4b48149d5e22359b0625d82dd0b9a2575ba9d40770a6db944b898ae4",
+        "lifecycle/result.json": "35099d8bd7ddd7d02f07fc924bcec416961e80c1be0d185b2ff8d22e2a26cbc5",
+        "fixtures/fixture.json": "aaee4130ed7b6dc5bb45deca9cd5e6c2b7434c52b65f9188c502fd5400469420"
+      }
+    },
+    "ubuntu2604": {
+      "source_commit": "154efe869c2c7ed640e5f5adeefdf2420655f21d",
+      "native_image": "sha256:a7835ddc5e1e83a46552fa59604076ed2fdceffc30ead8dae35c383b3f481a49",
+      "client_image": "sha256:d4ea05a9c011ee9785b85c22ab24ad085e7ea64ced93e3d228ddea05c86f03be",
+      "tools_image": "sha256:e01dc2335c78a4521c2928cfd2441a3daa32ce962fce22ed19ec035e1a1cd5c5",
+      "scripts": {
+        "scripts/qualify-repositories.py": "6d6f4e877f914f7da8726aa90c28c621408122fc9e3285c1f7ae7cb72357751e",
+        "scripts/build-repository.py": "e4f7f79936eac62421ea46e72193de43a82b2ab6f7118737aa0caa65a617fa3c",
+        "tests/repository_fixtures.py": "20d883205091f1ab13b7ab9d45c351597b776c2b0517bae760fbdd1c5573b589",
+        "tests/repository_lifecycle.py": "f1d6578dc7a7bf5c573ddc3060d8558dc7139092cccc2662b4e9a7cbec9de3a3",
+        "tests/repository_keys.py": "6121f27c531594c37638ca772c0aa3a8770c1731de683e3eaea0887fdb1b6f20",
+        "tests/repository_client_setup.py": "252d74164ca1a2951d5c0a4da8c53459cb9bbd221f74cec130a39b6d2f4fc182",
+        "packaging/repository/Dockerfile": "b0ada5fbca17db7e1f3cd3c686e34924383f475d3b9fcc87735e083422c073ac",
+        "packaging/repository/Client.Dockerfile": "2c6184d6f6aba205448e62278fa65bad1c42f074af50ee91de5e0f4f16fdfc17",
+        "packaging/repository/verify.py": "5f0b8daeda6cabf8d614835e3c17b7765b7a084d03de64d36d769b8640ac050b",
+        "packaging/repository/apt-method.py": "398346006c3426d79e9de0e7831099cc489ac80e4a62874d00ad9b2130ffb7cb",
+        "packaging/repository/zypp-sigcheck.py": "0947c4c9bc13fd47aa0421a251f0822776869b662528166a35a0d2185086c66a",
+        "packaging/repository/dnf.cpp": "e54db212515ee0dd6ec2245fc24ff18ce5efd7a6813f1ef5adb8ee59bd3b5015",
+        "scripts/build-package.py": "080404c0127a9820d9a52b1ffcba35e4e15a3fece05442decb45fec3d8f96ced",
+        "scripts/package_repository_client.py": "790c2c830d07e654f37e7b93ac0c8d0bf9aca033ff69c593956dc0234d25c7bd",
+        "scripts/package_formats.py": "5e812601ab70305bd6c36192a5e3fa292785dcc0b64feab102c1afcd9a9a0e5f",
+        "scripts/package_gtk.py": "5fb8f4df30beaa29764babaed4f9fbf66ec84825937083791fa4d53c8642eeaa",
+        "tests/repository_bootstrap.py": "4d18b67adba465e8a054fe2249799695aed3130d06220c176c6fd347e15206ab",
+        "packaging/repository/configure.py": "f3f9f74b0423a25e156e45851cde4ca6b4cc542e2bb25ae98429132e036ed8cd"
+      },
+      "seconds": 48.14,
+      "manager_version": [
+        "apt 3.2.0 (amd64)"
+      ],
+      "bootstrap_checks": {
+        "repeat-build": true,
+        "install-without-subscription-or-mixer": true,
+        "explicit-enable-and-native-install": true,
+        "packaged-subkey-rotation": true,
+        "revocation-invalidates-native-cache": true,
+        "busy-native-apt-lock-refusal-and-recovery": true,
+        "helper-rollback-retains-revocation": true,
+        "actual-interrupted-helper-upgrade-and-repair": true,
+        "incomplete-payload-refusal-and-reinstallation": true,
+        "modified-definition-preserved-and-disabled": true,
+        "disable-remove-and-unrelated-source-preservation": true
+      },
+      "key_checks": {
+        "baseline": "installed exact pair with initial certificate",
+        "wrong-key": "passed",
+        "expired-key": "passed",
+        "expired-new-signature": "passed",
+        "unknown-subkey": "passed",
+        "rotation": "passed",
+        "revoked-key": "passed",
+        "other-repository": "passed",
+        "missing-verifier": "passed",
+        "wrong-trust-configuration": "passed"
+      },
+      "lifecycle_checks": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "ubuntu2604",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false
+      },
+      "bootstrap_artifacts": {
+        "first": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "sha256": "7e496d0426c23f665ec060775b6234c4a05566ab6347e8c7016e8740505c450a",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-1"
+        },
+        "repeated": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "sha256": "7e496d0426c23f665ec060775b6234c4a05566ab6347e8c7016e8740505c450a",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-1"
+        },
+        "second": {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-2_amd64_ubuntu26.04.deb",
+          "sha256": "3f12eb8b61d85984473fb122ee47883d4d17c2731a8b637d99c100b55d0f4f2f",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3~dev-2"
+        }
+      },
+      "records_sha256": {
+        "result.json": "cedd54720477ee6b779990bff9ea2bdff1cd57a68033687b71d7412b80c44a20",
+        "bootstrap/result.json": "4a4fa6eb0fbf44f34fa82e0bddbd4c4a07d3394a21eab3d5570226c956d9d201",
+        "bootstrap/commands.jsonl": "949f5d5085b65f384a06c6f7a14f89f711ea2fbd0bb75844d1125e99ce4f3b6a",
+        "bootstrap/interrupted.log": "cfc5fd8b9dc5ea1ac8b8a0e5d721417a078923471f69cf66325da5f1391b8126",
+        "bootstrap/http.json": "cd9557865881538da178ae7167d34a360deb9607a4c54e4524617304f16c7073",
+        "keys/result.json": "10f509fc8bcd0e07513f30ba78765ec3dbd496e9fb8857294d5006655113962c",
+        "lifecycle/result.json": "7cb809bc3853d1904ec3c896fa924360ece06794e2cedfaf7cc5238eeda49676",
+        "fixtures/fixture.json": "e6332e0a4046d64240d2c09f9a03e5324a0a647ae100c95bbd77c157c7044afd"
+      }
+    },
+    "fedora44": {
+      "source_commit": "154efe869c2c7ed640e5f5adeefdf2420655f21d",
+      "native_image": "sha256:e3b232847c021ea1d1c9cd8183d13f370584e9f6d2cd2f7cd31580c1abf57a2e",
+      "client_image": "sha256:7ec0d80df8fffc39b0e14223b2bf7b1df4ce5b727c274414e2b2329875f26727",
+      "tools_image": "sha256:e01dc2335c78a4521c2928cfd2441a3daa32ce962fce22ed19ec035e1a1cd5c5",
+      "scripts": {
+        "scripts/qualify-repositories.py": "6d6f4e877f914f7da8726aa90c28c621408122fc9e3285c1f7ae7cb72357751e",
+        "scripts/build-repository.py": "e4f7f79936eac62421ea46e72193de43a82b2ab6f7118737aa0caa65a617fa3c",
+        "tests/repository_fixtures.py": "20d883205091f1ab13b7ab9d45c351597b776c2b0517bae760fbdd1c5573b589",
+        "tests/repository_lifecycle.py": "f1d6578dc7a7bf5c573ddc3060d8558dc7139092cccc2662b4e9a7cbec9de3a3",
+        "tests/repository_keys.py": "6121f27c531594c37638ca772c0aa3a8770c1731de683e3eaea0887fdb1b6f20",
+        "tests/repository_client_setup.py": "252d74164ca1a2951d5c0a4da8c53459cb9bbd221f74cec130a39b6d2f4fc182",
+        "packaging/repository/Dockerfile": "b0ada5fbca17db7e1f3cd3c686e34924383f475d3b9fcc87735e083422c073ac",
+        "packaging/repository/Client.Dockerfile": "2c6184d6f6aba205448e62278fa65bad1c42f074af50ee91de5e0f4f16fdfc17",
+        "packaging/repository/verify.py": "5f0b8daeda6cabf8d614835e3c17b7765b7a084d03de64d36d769b8640ac050b",
+        "packaging/repository/apt-method.py": "398346006c3426d79e9de0e7831099cc489ac80e4a62874d00ad9b2130ffb7cb",
+        "packaging/repository/zypp-sigcheck.py": "0947c4c9bc13fd47aa0421a251f0822776869b662528166a35a0d2185086c66a",
+        "packaging/repository/dnf.cpp": "e54db212515ee0dd6ec2245fc24ff18ce5efd7a6813f1ef5adb8ee59bd3b5015",
+        "scripts/build-package.py": "080404c0127a9820d9a52b1ffcba35e4e15a3fece05442decb45fec3d8f96ced",
+        "scripts/package_repository_client.py": "790c2c830d07e654f37e7b93ac0c8d0bf9aca033ff69c593956dc0234d25c7bd",
+        "scripts/package_formats.py": "5e812601ab70305bd6c36192a5e3fa292785dcc0b64feab102c1afcd9a9a0e5f",
+        "scripts/package_gtk.py": "5fb8f4df30beaa29764babaed4f9fbf66ec84825937083791fa4d53c8642eeaa",
+        "tests/repository_bootstrap.py": "f859c6e00b94060fd9fcf83c425bf5bdfb20878f362c4b7c53987fcf7976d1e2",
+        "packaging/repository/configure.py": "f3f9f74b0423a25e156e45851cde4ca6b4cc542e2bb25ae98429132e036ed8cd"
+      },
+      "seconds": 36.49,
+      "manager_version": [
+        "dnf5 version 5.4.5.0",
+        "dnf5 plugin API version 2.0",
+        "libdnf5 version 5.4.5.0",
+        "libdnf5 plugin API version 2.2"
+      ],
+      "bootstrap_checks": {
+        "repeat-build": true,
+        "install-without-subscription-or-mixer": true,
+        "explicit-enable-and-native-install": true,
+        "packaged-subkey-rotation": true,
+        "revocation-invalidates-native-cache": true,
+        "helper-rollback-retains-revocation": true,
+        "actual-interrupted-helper-upgrade-and-repair": true,
+        "incomplete-payload-refusal-and-reinstallation": true,
+        "modified-definition-preserved-and-disabled": true,
+        "disable-remove-and-unrelated-source-preservation": true
+      },
+      "key_checks": {
+        "baseline": "installed exact pair with initial certificate",
+        "wrong-key": "passed",
+        "expired-key": "passed",
+        "expired-new-signature": "passed",
+        "unknown-subkey": "passed",
+        "wrong-package-key": "passed",
+        "unsigned-package": "passed",
+        "rotation": "passed",
+        "revoked-key": "passed",
+        "other-repository": "passed",
+        "missing-verifier": "passed",
+        "wrong-trust-configuration": "passed"
+      },
+      "lifecycle_checks": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "fedora44",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false
+      },
+      "bootstrap_artifacts": {
+        "first": {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "d8f5ba3c9b9b14069426c077a1890f76358a8f82ab0543879612f650af717ddb",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3-0.dev.1"
+        },
+        "repeated": {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "d8f5ba3c9b9b14069426c077a1890f76358a8f82ab0543879612f650af717ddb",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3-0.dev.1"
+        },
+        "second": {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.2.x86_64_fedora44.rpm",
+          "sha256": "5e35e450b5427067952c98d81363efdae2bacc6a7d28dd5cb7cb12bc0d350b8f",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3-0.dev.2"
+        }
+      },
+      "records_sha256": {
+        "result.json": "120e917ebb303a90ca52f292b292f758b0dad4ff701a8ae9baa164327ac52131",
+        "bootstrap/result.json": "cae0af4b7f8d30584c86b8f1a931c6787ab53f355f65c3cc6545e06d3d7a28bc",
+        "bootstrap/commands.jsonl": "937fb9086d65258338bdafe55a528f37474c7d58e59f56f260d737dd81efcb06",
+        "bootstrap/interrupted.log": "416a216d15e775861d1854fadb6ebb68943d1c9aee631d8e855e7ff7321dbbd3",
+        "bootstrap/http.json": "9ebac653e42fc159196527b22987c27848d676722b951fcc541d558144747f39",
+        "keys/result.json": "8140c4d33bb49cbd041b837300d89ec79f742e68fce93b731bf2f3cb76abfab2",
+        "lifecycle/result.json": "f2677f9ddca30077027c75a61e7e7311ba6043b65f3dccec6276186d049fa50a",
+        "fixtures/fixture.json": "4cdbaa1324e543257dce655f32a7231c9310a2b7326e75275dac44b08e0283c0"
+      }
+    },
+    "opensuse16": {
+      "source_commit": "154efe869c2c7ed640e5f5adeefdf2420655f21d",
+      "native_image": "sha256:ad9980d09a8ac436ae21de4327b8285c87568fd041e79abf5ce5bf08c6a18e40",
+      "client_image": "sha256:ad9980d09a8ac436ae21de4327b8285c87568fd041e79abf5ce5bf08c6a18e40",
+      "tools_image": "sha256:e01dc2335c78a4521c2928cfd2441a3daa32ce962fce22ed19ec035e1a1cd5c5",
+      "scripts": {
+        "scripts/qualify-repositories.py": "6d6f4e877f914f7da8726aa90c28c621408122fc9e3285c1f7ae7cb72357751e",
+        "scripts/build-repository.py": "e4f7f79936eac62421ea46e72193de43a82b2ab6f7118737aa0caa65a617fa3c",
+        "tests/repository_fixtures.py": "20d883205091f1ab13b7ab9d45c351597b776c2b0517bae760fbdd1c5573b589",
+        "tests/repository_lifecycle.py": "f1d6578dc7a7bf5c573ddc3060d8558dc7139092cccc2662b4e9a7cbec9de3a3",
+        "tests/repository_keys.py": "6121f27c531594c37638ca772c0aa3a8770c1731de683e3eaea0887fdb1b6f20",
+        "tests/repository_client_setup.py": "252d74164ca1a2951d5c0a4da8c53459cb9bbd221f74cec130a39b6d2f4fc182",
+        "packaging/repository/Dockerfile": "b0ada5fbca17db7e1f3cd3c686e34924383f475d3b9fcc87735e083422c073ac",
+        "packaging/repository/Client.Dockerfile": "2c6184d6f6aba205448e62278fa65bad1c42f074af50ee91de5e0f4f16fdfc17",
+        "packaging/repository/verify.py": "5f0b8daeda6cabf8d614835e3c17b7765b7a084d03de64d36d769b8640ac050b",
+        "packaging/repository/apt-method.py": "398346006c3426d79e9de0e7831099cc489ac80e4a62874d00ad9b2130ffb7cb",
+        "packaging/repository/zypp-sigcheck.py": "0947c4c9bc13fd47aa0421a251f0822776869b662528166a35a0d2185086c66a",
+        "packaging/repository/dnf.cpp": "e54db212515ee0dd6ec2245fc24ff18ce5efd7a6813f1ef5adb8ee59bd3b5015",
+        "scripts/build-package.py": "080404c0127a9820d9a52b1ffcba35e4e15a3fece05442decb45fec3d8f96ced",
+        "scripts/package_repository_client.py": "790c2c830d07e654f37e7b93ac0c8d0bf9aca033ff69c593956dc0234d25c7bd",
+        "scripts/package_formats.py": "5e812601ab70305bd6c36192a5e3fa292785dcc0b64feab102c1afcd9a9a0e5f",
+        "scripts/package_gtk.py": "5fb8f4df30beaa29764babaed4f9fbf66ec84825937083791fa4d53c8642eeaa",
+        "tests/repository_bootstrap.py": "f859c6e00b94060fd9fcf83c425bf5bdfb20878f362c4b7c53987fcf7976d1e2",
+        "packaging/repository/configure.py": "f3f9f74b0423a25e156e45851cde4ca6b4cc542e2bb25ae98429132e036ed8cd"
+      },
+      "seconds": 31.17,
+      "manager_version": [
+        "zypper 1.14.101"
+      ],
+      "bootstrap_checks": {
+        "repeat-build": true,
+        "install-without-subscription-or-mixer": true,
+        "explicit-enable-and-native-install": true,
+        "packaged-subkey-rotation": true,
+        "revocation-invalidates-native-cache": true,
+        "helper-rollback-retains-revocation": true,
+        "actual-interrupted-helper-upgrade-and-repair": true,
+        "incomplete-payload-refusal-and-reinstallation": true,
+        "modified-definition-preserved-and-disabled": true,
+        "disable-remove-and-unrelated-source-preservation": true
+      },
+      "key_checks": {
+        "baseline": "installed exact pair with initial certificate",
+        "wrong-key": "passed",
+        "expired-key": "passed",
+        "expired-new-signature": "passed",
+        "unknown-subkey": "passed",
+        "wrong-package-key": "passed",
+        "unsigned-package": "passed",
+        "rotation": "passed",
+        "revoked-key": "passed",
+        "other-repository": "passed",
+        "missing-verifier": "passed",
+        "wrong-trust-configuration": "passed"
+      },
+      "lifecycle_checks": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "opensuse16",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false
+      },
+      "bootstrap_artifacts": {
+        "first": {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "8be5e516db0de610f1fa8bc5f54015d399fb123ffb2ea393754a2c7fa68493a8",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3-0.dev.1"
+        },
+        "repeated": {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "8be5e516db0de610f1fa8bc5f54015d399fb123ffb2ea393754a2c7fa68493a8",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3-0.dev.1"
+        },
+        "second": {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.2.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "fb8b0f2ef556de6fc00f38df9e34bd6cf4d104dccc58aa24d6179ff2429691cc",
+          "source_commit": null,
+          "dirty": true,
+          "development": true,
+          "package_version": "0.7.3-0.dev.2"
+        }
+      },
+      "records_sha256": {
+        "result.json": "7276df9d19a172c51a086cff634380ff817cb0f8194f16a4985539a919561fea",
+        "bootstrap/result.json": "6db174d4b47fd5e3dfe835f123d095a6816674e42b513adce4ce4ee1cd572cd2",
+        "bootstrap/commands.jsonl": "5ed5e803a6c264c9d7eaee3f9ab0a520913d6041b0672189f9646f8f8f659642",
+        "bootstrap/interrupted.log": "d216e537c15a38f19a34af3780b522acf075ac2d5d68b808f9c25099326f2f24",
+        "bootstrap/http.json": "4d0afbd1d2366abc01196e595ade27fe5fb04c7ce7d66f770f1ae0f03b228f81",
+        "keys/result.json": "76cb52e88773c1408114c60a8200e4addc8bd41c58b5e368aa33aaf342038536",
+        "lifecycle/result.json": "6f6f74bff7bb8cca0b7ac5a2822ee46459bb0ecb06dd2931b564f8fe8f75418a",
+        "fixtures/fixture.json": "9287f95276c9cab749a0fa0c779194000c0331bc7be66df53a4245aca65f60e8"
+      }
+    }
+  },
+  "software_check": {
+    "command": "make check PYTHON=.venv/bin/python",
+    "passed": 2219,
+    "skipped": 2,
+    "pytest_seconds": 127.51,
+    "log_sha256": "fe22406b1bf40b6bd5f113b4fcc4478bdbb162bb3d185e86d1efb530c6bc1d88"
+  },
+  "limits": [
+    "Bootstrap packages use disposable public certificates and loopback URLs. They are real native development packages, not production signed release assets.",
+    "Core/GTK fixtures still come from source 154efe869c2c7ed640e5f5adeefdf2420655f21d and carry development revisions of runtime 0.7.3. The final release transition remains open.",
+    "The separate strict key matrix also retains its development hook installer; the bootstrap checks separately exercise the actual packaged installation interface.",
+    "Native release bundle and signed-index inclusion of the third repository package, durable offline key custody, published HTTPS and final source qualification remain open.",
+    "No host installation, service activation or hardware I/O was performed."
+  ]
+}

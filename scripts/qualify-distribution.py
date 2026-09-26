@@ -21,7 +21,7 @@ APT = ('apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y '
 APT_NATIVE = ('apt-get update && DEBIAN_FRONTEND=noninteractive '
               'apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
               'libglib2.0-bin xvfb xauth dbus-x11 python3-gi '
-              'gir1.2-atspi-2.0 at-spi2-core gnupg gpgv')
+              'gir1.2-atspi-2.0 at-spi2-core gnupg gpgv python3-apt')
 TARGETS = {
     'debian13': ('debian:13', APT, 'deb', APT_NATIVE),
     'ubuntu2404': ('ubuntu:24.04', APT, 'deb',

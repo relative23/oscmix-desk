@@ -16,6 +16,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = ('debian13', 'ubuntu2404', 'ubuntu2604', 'fedora44', 'opensuse16')
+BOOTSTRAP_FILES = ('scripts/build-package.py', 'scripts/package_repository_client.py',
+                   'scripts/package_formats.py', 'scripts/package_gtk.py',
+                   'tests/repository_bootstrap.py', 'tests/repository_client_setup.py',
+                   'tests/repository_lifecycle.py', 'packaging/repository/configure.py',
+                   'packaging/repository/verify.py', 'packaging/repository/apt-method.py',
+                   'packaging/repository/zypp-sigcheck.py', 'packaging/repository/dnf.cpp')
 
 
 def qualify(args):
@@ -34,7 +40,8 @@ def qualify(args):
                      'tests/repository_keys.py', 'tests/repository_client_setup.py',
                      'packaging/repository/Dockerfile', 'packaging/repository/Client.Dockerfile',
                      'packaging/repository/verify.py', 'packaging/repository/apt-method.py',
-                     'packaging/repository/zypp-sigcheck.py', 'packaging/repository/dnf.cpp')}
+                     'packaging/repository/zypp-sigcheck.py', 'packaging/repository/dnf.cpp',
+                     *BOOTSTRAP_FILES)}
     started = time.monotonic()
     with (args.output / 'qualification.log').open('w') as log:
         def run(*command, capture=False, timeout=600, check=True):
@@ -95,6 +102,21 @@ def qualify(args):
                 '--target', target, '--inputs', '/work/inputs',
                 '--output', '/work/public-fixtures')
             run('docker', 'cp', tools + ':/work/public-fixtures', args.output / 'fixtures')
+            if not args.native_only:
+                bootstrap = create(result['client_image'])
+                run('docker', 'exec', bootstrap, 'mkdir', '-p', '/work/packaging/repository',
+                    '/work/packaging/keys')
+                for name in BOOTSTRAP_FILES:
+                    run('docker', 'cp', ROOT / name, bootstrap + ':/work/' + name)
+                run('docker', 'cp', args.output / 'fixtures', bootstrap + ':/work/public-fixtures')
+                exit_code = run('docker', 'exec', bootstrap, 'python3',
+                                '/work/tests/repository_bootstrap.py', '--target', target,
+                                '--fixtures', '/work/public-fixtures',
+                                '--output', '/work/bootstrap-result', check=False)
+                run('docker', 'cp', bootstrap + ':/work/bootstrap-result',
+                    args.output / 'bootstrap')
+                if exit_code:
+                    raise ValueError('native bootstrap qualification failed')  # noqa: TRY301
             run('docker', 'cp', args.output / 'fixtures', client + ':/work/repository-fixtures')
             for name in ('repository_lifecycle.py', 'repository_keys.py',
                          'repository_client_setup.py'):

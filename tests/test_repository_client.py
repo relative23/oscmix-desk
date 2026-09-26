@@ -2,6 +2,7 @@
 
 import importlib.util
 import io
+import json
 import sys
 from pathlib import Path
 
@@ -87,3 +88,84 @@ def test_apt_frame_preserves_bytes_and_bounds_truncated_or_large_input(apt):
         apt.frame(io.BytesIO(content[:-1]))
     with pytest.raises(ValueError, match='oversized'):
         apt.frame(io.BytesIO(b'x' * (apt.MAX_FRAME + 1)))
+
+
+@pytest.mark.parametrize('kind', ['file', 'directory', 'dangling-symlink'])
+def test_unfinished_client_replacement_blocks_verification_first(
+        verifier, monkeypatch, tmp_path, kind):
+    fence = tmp_path / 'update.json'
+    if kind == 'file':
+        fence.write_text('interrupted, even if incomplete JSON')
+    elif kind == 'directory':
+        fence.mkdir()
+    else:
+        fence.symlink_to(tmp_path / 'absent')
+    monkeypatch.setattr(verifier, 'FENCE', fence)
+    monkeypatch.setattr(verifier, 'trusted_file',
+                        lambda *_: pytest.fail('maintenance read trust or metadata'))
+    with pytest.raises(ValueError, match='maintenance'):
+        verifier.verify(tmp_path / 'InRelease')
+
+
+@pytest.fixture
+def subscription(monkeypatch, tmp_path):
+    module = load('configure')
+    # Native root ownership is exercised in the disposable real-manager tests.
+    # Here inject only the filesystem boundary to fault individual journal steps.
+    monkeypatch.setattr(module, 'root_path', lambda path, **_: path)
+    monkeypatch.setattr(module, 'FENCE', tmp_path / 'update.json')
+    monkeypatch.setattr(module, 'REGISTRATION', tmp_path / 'state.json')
+    monkeypatch.setattr(module, 'SOURCES', {'apt': tmp_path / 'project.sources'})
+    monkeypatch.setattr(module, 'HOOKS', {'apt': tmp_path / 'method.conf'})
+    return module
+
+
+def test_interrupted_definition_removal_keeps_the_fence_and_unowned_file(subscription):
+    source = subscription.SOURCES['apt']
+    source.write_text('registered project source')
+    foreign = subscription.HOOKS['apt']
+    foreign.write_text('unregistered administrator configuration')
+    record = dict(schema=1, enabled=True,
+                  files={str(source): subscription.sha(source.read_bytes())})
+    subscription.write_json(subscription.REGISTRATION, record)
+    with pytest.raises(ValueError, match='unregistered'):
+        subscription.begin(record)
+    assert not source.exists()
+    assert foreign.read_text() == 'unregistered administrator configuration'
+    assert subscription.FENCE.exists()
+    assert subscription.registration() == record
+
+
+def test_modified_owned_definition_is_preserved_and_stays_disabled(subscription):
+    source = subscription.SOURCES['apt']
+    source.write_text('administrator change')
+    record = dict(schema=1, enabled=True, files={str(source): subscription.sha(b'original')})
+    subscription.begin(record)
+    assert not source.exists()
+    backups = list(source.parent.glob(source.name + '.saved-*'))
+    assert len(backups) == 1
+    assert backups[0].read_text() == 'administrator change'
+    assert subscription.registration()['enabled'] is False
+    assert subscription.FENCE.exists()
+
+
+def test_definition_ownership_survives_an_interrupted_first_subscription(
+        subscription, monkeypatch):
+    source = subscription.SOURCES['apt']
+    record = subscription.registration()
+    atomic = subscription.atomic
+
+    def failed(path, data):
+        if path == source:
+            raise OSError('simulated full filesystem')
+        atomic(path, data)
+
+    monkeypatch.setattr(subscription, 'atomic', failed)
+    with pytest.raises(OSError, match='full filesystem'):
+        subscription.define(record, source, 'source definition')
+    assert not source.exists()
+    assert json.loads(subscription.REGISTRATION.read_text())['files'] == {
+        str(source): subscription.sha(b'source definition')}
+    monkeypatch.setattr(subscription, 'atomic', atomic)
+    subscription.define(subscription.registration(), source, 'source definition')
+    assert source.read_text() == 'source definition'

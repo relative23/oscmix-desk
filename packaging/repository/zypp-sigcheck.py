@@ -6,9 +6,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from verify import verify
+from verify import ENVIRONMENT, verify
 
-MAX_FRAME = 65536
+MAX_FRAME = 4 * 1024 * 1024
+PENDING = Path('/var/lib/oscmix-desk-repository/native-key.json')
+
+
+def pending_key():
+    return PENDING.exists() or PENDING.is_symlink()
 
 
 def read_frame():
@@ -40,6 +45,9 @@ def main():
     command, headers = read_frame()
     if command != 'PLUGINBEGIN' or headers.get('version') != '0':
         raise ValueError('unsupported libzypp signature-check protocol')
+    if pending_key():
+        raise ValueError('native project key update is incomplete; '
+                         'repair with oscmix-repository enable as administrator')
     answer('PLUGINSETUP', 'sig_extension:.asc\n')
     while True:
         command, headers = read_frame()
@@ -56,9 +64,29 @@ def main():
             answer('ACK')
 
 
+def commit():
+    # RPM key imports cannot occur in an RPM scriptlet. libzypp's commit-end
+    # notification follows that transaction; it changes only an explicitly
+    # pending project certificate, never keys downloaded from a repository.
+    while True:
+        command, _headers = read_frame()
+        if command not in ('PLUGINBEGIN', 'COMMITBEGIN', 'COMMITEND', 'PLUGINEND', '_DISCONNECT'):
+            raise ValueError('unexpected libzypp commit command')
+        if command in ('COMMITEND', 'PLUGINEND') and pending_key():
+            subprocess.run(['/usr/bin/python3', '-I',
+                            '/usr/lib/oscmix-desk-repository/configure.py', 'native-key-sync'],
+                           check=True, capture_output=True, timeout=45, env=ENVIRONMENT)
+        answer('ACK')
+        if command in ('PLUGINEND', '_DISCONNECT'):
+            return
+
+
 if __name__ == '__main__':
     try:
-        main()
+        if Path(sys.argv[0]).name == 'oscmix-desk-key-update':
+            commit()
+        else:
+            main()
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print('oscmix-desk libzypp integration: ' + str(error), file=sys.stderr)
         sys.exit(1)

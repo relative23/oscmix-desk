@@ -17,6 +17,7 @@ import tempfile
 from pathlib import Path
 
 from package_formats import arch, guard, installed_metadata, rpm
+from package_repository_client import build as repository_client
 
 
 def run(args, cwd=None):
@@ -203,17 +204,23 @@ esac
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--format', choices=['deb', 'rpm', 'arch'], required=True)
-    parser.add_argument('--backend-source', type=Path, required=True,
+    parser.add_argument('--backend-source', type=Path,
                         help='local oscmix git checkout containing the pinned commit')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--development', action='store_true')
     parser.add_argument('--with-gtk', action='store_true',
                         help='build the core and a separate, exactly dependent GTK companion')
+    parser.add_argument('--repository-client-only', action='store_true',
+                        help='build only the opt-in APT/RPM subscription integration')
     parser.add_argument('--package-revision', type=int, default=1)
     parser.add_argument('--build-dir', type=Path,
                         help='unused absolute scratch path, removed afterward; '
                              'use the same path in clean Arch build environments')
     args = parser.parse_args()
+    if not args.repository_client_only and args.backend_source is None:
+        parser.error('--backend-source is required for core/GTK packages')
+    if args.repository_client_only and (args.with_gtk or args.format == 'arch'):
+        parser.error('--repository-client-only cannot build GTK or Arch packages')
     root = Path(__file__).resolve().parents[1]
     record = metadata(root, args.development)
     if args.package_revision < 1:
@@ -229,6 +236,11 @@ def main():
                  '--output=' + str(archive), record['source_commit']])
             run(['tar', '-xf', archive, '-C', work])
             root = work / 'project'
+        if args.repository_client_only:
+            artifact = repository_client(root, work, args.output.resolve(), record,
+                                         args.format, packaged_hashes)
+            print('Built ' + str(artifact))
+            return
         backend, transcript = build_backend(
             root, args.backend_source.resolve(), work, args.with_gtk)
         record['format'] = args.format

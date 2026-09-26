@@ -67,8 +67,8 @@ expires after 30 days by default. Renew it before expiry; do not tell clients to
 disable `Check-Valid-Until`. Explicit downgrade uses a retained package version
 from the current authenticated index. The
 [public-key record](../packaging/keys/README.md) describes custody, expiry and
-subkey rotation. Offline custody, the packaged client integration and published
-HTTPS key-lifecycle qualification remain release gates.
+subkey rotation. Offline custody, final native-bundle/index integration and
+published HTTPS key-lifecycle qualification remain release gates.
 
 Native clients do not all enforce the same current-key policy. Development tests
 found actual expired/revoked-signature acceptance; [ADR 0036](decisions/0036-repository-client-verification.md)
@@ -76,9 +76,58 @@ records the additional repository-scoped verification. The APT adapter retains
 the selected native gpgv/sqv verifier, the libdnf5 plugin checks the loaded
 repository's actual cache, and zypper selects a mandatory signature plugin. They
 share a local-file verifier and use the installed project certificate. Other
-repositories keep their native verification behavior. These components still
-need their own packaged bootstrap, certificate-update/cache invalidation and
-removal qualification before the channel is offered for installation.
+repositories keep their native verification behavior.
+
+## Subscription package
+
+The separate `oscmix-desk-repository` DEB/RPM installs the helpers and a public
+certificate. It has no core/GTK dependency, creates no enabled package source
+and starts no mixer. The build interface is
+`scripts/build-package.py --repository-client-only --format deb|rpm --output DIR`;
+release builds require a clean committed tree. The final native release bundles
+and signed channels still need to include this third package before publication.
+
+After authenticating and installing the native bootstrap artifact, its explicit
+subscription interface is:
+
+```sh
+oscmix-repository status
+sudo oscmix-repository enable
+sudo oscmix-repository disable
+```
+
+Status is read-only JSON. `enabled` records the selected subscription;
+`maintenance` and `native_key_pending` identify unfinished installation/trust
+work. Enable validates the installed helper files and creates only the selected
+distribution's source and hook configuration. A modified owned definition is
+saved beside it and left disabled during package maintenance. Unregistered files
+are refused. Disable/removal leave public certificate/registration state available
+for recovery; they do not change user routing, profiles or service activation.
+
+An installed helper update can carry a new signing subkey. Updating the same
+primary certificate merges existing revocations, including during rollback.
+For a separately authenticated certificate, `sudo oscmix-repository refresh-key
+--certificate /path/to/public.asc --fingerprint FULL_PRIMARY_FINGERPRINT` requires
+the complete primary fingerprint. A different primary requires independent
+authentication of that fingerprint; the old package source cannot authorize its
+own replacement trust anchor.
+
+APT invalidates only the project's list files under the native lists lock. A busy
+lock times out with maintenance active. RPM definitions receive a new identity
+when their certificate changes. On openSUSE, the native zypper commit-end hook
+completes a pending project key import after RPM releases its database lock.
+Use zypper for the supported RPM subscription upgrade path. Direct low-level RPM
+replacement can leave `native_key_pending` set; the mandatory signature hook then
+refuses the channel until `sudo oscmix-repository enable` completes the checked
+repair outside the RPM transaction. No global automatic key acceptance is enabled.
+
+If installation was interrupted or a helper file is incomplete, reinstall the
+authenticated native bootstrap package using the package manager. Do not remove
+the journal or bypass signature checks. Complete recovery requires intact
+installed helper hashes and both unfinished-work fields false; then verify a
+normal native repository refresh. These development interfaces are exercised by
+the [bootstrap record](evidence/0.8.0/repository-bootstrap-development.json);
+qualified public download instructions still await the final release.
 
 ## Client and failure qualification
 
@@ -116,11 +165,18 @@ neither host credentials nor the production signing key enter these tests.
 gate. CI uses the strict path. The [client development record](evidence/0.8.0/repository-client-development.json)
 includes wrong/expired/revoked/rotated keys, unsigned or wrongly signed RPMs,
 missing-verifier recovery, invalid trust configuration and unaffected unrelated
-repositories. Installation of those hooks is currently a development fixture,
-not the production bootstrap.
+repositories. Those individual hook-fault tests retain their development installer.
+The same command now separately runs `tests/repository_bootstrap.py` in another
+disposable native container. It builds actual client DEBs/RPMs twice, installs
+them through the native managers, and checks opt-in activation, packaged subkey
+rotation, revoked-key cache invalidation, rollback preserving revocations, a killed
+helper update, repair of damaged installed files, retained administrator edits
+and removal. APT also checks actual lists-lock contention and recovery. Bootstrap
+fixtures contain disposable certificates and loopback URLs; their local unsigned
+RPM installation is explicitly separate from signed channel authentication.
 
-The loopback checks do not qualify TLS/HTTPS publication, the installed key-update
-lifecycle, final payloads or device activation. Publishing must follow the full release gates,
+The loopback checks do not qualify TLS/HTTPS publication, final payloads or device
+activation. Publishing must follow the full release gates,
 retain complete immutable snapshots and verify downloads with all five actual
 clients. A partially generated directory or a successful `gpgv` invocation alone
 does not satisfy N6. The publication workflow and final subscription instructions

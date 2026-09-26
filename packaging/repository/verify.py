@@ -19,6 +19,7 @@ CONFIG = Path('/etc/oscmix-desk/repository.json')
 CERTIFICATE = Path('/usr/share/keyrings/oscmix-desk-repository.asc')
 ENVIRONMENT = {'PATH': '/usr/bin:/bin:/usr/sbin:/sbin', 'LC_ALL': 'C'}
 MAX_METADATA = 10 * 1024 * 1024
+FENCE = Path('/var/lib/oscmix-desk-repository/update.json')
 
 
 def trusted_file(path):
@@ -54,6 +55,12 @@ def signature_status(status, primary, now):
 
 
 def verify(signature, source=None):
+    try:
+        FENCE.lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        raise ValueError('repository client installation maintenance is incomplete')
     config = json.loads(trusted_file(CONFIG))
     primary = config.get('primary', '')
     if config.get('schema') != 1 or not re.fullmatch(r'[0-9A-F]{40}', primary):

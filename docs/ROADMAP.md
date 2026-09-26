@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2213 tests (two empty parameter sets
+The latest interim `make check` passes 2219 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -63,9 +63,14 @@ now pass all five development client matrices, including current-key policy,
 missing-verifier recovery and unaffected unrelated repositories. A same-version
 DNF5 5.4.5 control still fails without the hook. The
 [client record](evidence/0.8.0/repository-client-development.json) identifies the
-exact sources and images. CI now invokes the strict repository matrix; packaged
-bootstrap, certificate-update/cache invalidation and final HTTPS qualification
-remain open.
+exact sources and images. CI now invokes the strict repository matrix, including
+the actual separate bootstrap package. All five targets pass opt-in activation,
+packaged subkey rotation, revoked-key cache invalidation, rollback with retained
+revocations, killed helper updates and recovery, and preserved administrator edits.
+APT also passes refusal and recovery with its native lists lock held. See the
+[bootstrap record](evidence/0.8.0/repository-bootstrap-development.json). Inclusion
+of the third package in native release bundles and signed indexes, offline key
+custody and final HTTPS qualification remain open.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
