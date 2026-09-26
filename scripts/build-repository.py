@@ -65,6 +65,8 @@ class Signer:
              '--output', self.keyring, '--dearmor', args.public_key])
         listing = run(['gpg', '--batch', '--no-options', '--homedir', self.verify_home,
                        '--with-colons', '--show-keys', args.public_key])
+        if any(line.startswith(('sec:', 'ssb:')) for line in listing.splitlines()):
+            raise ValueError('public certificate contains private key packets')
         fingerprints = {line.split(':')[9] for line in listing.splitlines()
                         if line.startswith('fpr:')}
         if args.signing_key not in fingerprints:

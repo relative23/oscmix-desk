@@ -49,7 +49,9 @@ behavior across APT, DNF and zypper before those checks pass.
 The chosen signing fingerprint and certificate are explicit inputs. Only a public
 OpenPGP certificate may enter the output. The signing keyring and passphrase file
 remain outside staging; commands receive the passphrase filename, never its contents
-in argv or logs. The project certificate and custody/rotation rules are recorded in
+in argv or logs. GnuPG's parsed packet listing must contain no secret key/subkey:
+changing a secret export's armor label to PUBLIC does not make it a public certificate.
+The project certificate and custody/rotation rules are recorded in
 [the key documentation](../../packaging/keys/README.md).
 
 ## Qualification

@@ -50,6 +50,19 @@ def test_private_key_cannot_be_copied_into_public_repository(builder, tmp_path, 
         builder.Signer(SimpleNamespace(public_key=private), tmp_path)
 
 
+@pytest.mark.parametrize('secret_kind', ['sec', 'ssb'])
+def test_public_armor_cannot_disguise_secret_key_packets(
+        builder, tmp_path, monkeypatch, secret_kind):
+    public = tmp_path / 'disguised.asc'
+    public.write_text('-----BEGIN PGP PUBLIC KEY BLOCK-----\nencoded packets\n')
+    args = SimpleNamespace(public_key=public, gnupghome=tmp_path / 'key', signing_key='A' * 40)
+    listing = secret_kind + ':unknown:key:fields\nfpr:::::::::' + args.signing_key + ':\n'
+    monkeypatch.setattr(builder, 'run',
+                        lambda command, **_: listing if '--show-keys' in command else '')
+    with pytest.raises(ValueError, match='private key packets'):
+        builder.Signer(args, tmp_path)
+
+
 @pytest.mark.parametrize('source', ['previous', 'packages', 'gnupghome'])
 def test_staging_cannot_write_inside_an_input_or_keyring(builder, tmp_path, source):
     container = tmp_path / 'protected'
