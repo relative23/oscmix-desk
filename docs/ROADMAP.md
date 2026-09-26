@@ -38,9 +38,15 @@ package-revision upgrade, actual rollback, removal and preserved user state.
 The [Silverblue development record](evidence/0.8.0/silverblue-development.json)
 also identifies the pending-deployment recovery and ordinary Fedora DNF checks.
 Native qualification now uses the coordinated C/GTK integration test, including
-the actual launcher and CLI. Its local simulated-MIDI run passes; the Debian 13
-and Ubuntu 26.04 native recipes are prepared for their first package-manager
-runs. They are not yet qualified or published.
+the actual launcher and CLI. All six native development targets pass, including
+the new Debian 13 and Ubuntu 26.04 DEBs. Core/GTK repeat builds are byte-identical;
+actual dpkg/rpm/pacman transitions, matching-version refusal, source migration,
+maintenance and retained user files pass. Ubuntu 24.04 also passes nested GNOME,
+KDE and Xfce with the coordinated mixer. The
+[native development record](evidence/0.8.0/native-development.json) identifies
+the sources, images, package hashes, installed payload and desktop results.
+These packages remain unpublished development builds; signed repository clients
+and final 0.7.3-to-0.8.0 transitions have separate gates.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.

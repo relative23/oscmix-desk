@@ -204,8 +204,10 @@ openSUSE Leap 16 RPM and Arch on x86_64. A Fedora RPM is not an openSUSE
 binary, and a new Ubuntu binary is not implicitly compatible with an older
 Ubuntu libc. A published artifact must carry its checksum and authenticated
 build provenance. The 0.8.0 development matrix adds Debian 13 and Ubuntu 26.04
-DEB checks; these and the signed APT/RPM channels still require qualification
-before publication. The product has no embedded updater.
+DEBs; all six targets now pass their
+[development package checks](evidence/0.8.0/native-development.json).
+Final-candidate checks and signed APT/RPM qualification remain required before
+publication. The product has no embedded updater.
 
 Use the native package manager (`apt install ./...deb`, `dnf install
 ./...rpm`, `zypper install ./...rpm`, or `pacman -U ./...pkg.tar.zst`). The
