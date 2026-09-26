@@ -15,6 +15,7 @@ FENCE = Path('/var/lib/oscmix-desk/package-update')
 GTK_FENCE = Path('/var/lib/oscmix-desk/gtk-package-update')
 BACKUPS = Path('/var/lib/oscmix-desk/legacy-system')
 CACHE = Path('/usr/lib/oscmix-desk/oscmix_desk/__pycache__')
+OSTREE_BOOTED = Path('/run/ostree-booted')
 SYSTEM_FILES = (
     '/usr/lib/systemd/system-sleep/oscmix', '/usr/lib/tmpfiles.d/oscmix-desk.conf',
     '/usr/bin/oscmix', '/usr/bin/alsaseqio', '/usr/bin/oscmix-gtk',
@@ -104,10 +105,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['check', 'install', 'remove', 'finish'])
     parser.add_argument('--component', choices=['core', 'gtk'], default='core')
+    parser.add_argument('--rpm-scriptlet', action='store_true',
+                        help='RPM hook: leave live maintenance to the operator on rpm-ostree')
     args = parser.parse_args()
     fence = GTK_FENCE if args.component == 'gtk' else FENCE
     if os.getuid() != 0:
         parser.error('package maintenance runs as root')
+    # rpm-ostree builds a new deployment in a private PID namespace with
+    # read-only /var. It supplies both this marker and SYSTEMD_OFFLINE=1.
+    # That context cannot inspect live mixers or own the host's fence.
+    # Explicit operator calls on the booted host still run ordinary checks.
+    if (args.rpm_scriptlet and OSTREE_BOOTED.exists()
+            and os.environ.get('SYSTEMD_OFFLINE') == '1'):
+        return 0
     try:
         if args.action == 'check':
             require_stopped()

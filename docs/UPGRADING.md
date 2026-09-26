@@ -54,6 +54,11 @@ switch and reboot. An actual NixOS rollback restores the previous immutable
 payload and integration while retaining user configuration, profiles and marker.
 Keep the module imported until its disabled/removal transition has completed.
 
+On Fedora Silverblue, follow the [deployment maintenance procedure](SILVERBLUE.md#upgrade-interruption-and-rollback).
+Run the common guard on the booted host before replacement or rollback. Leave
+the fence in place through the reboot and check the selected deployment before
+finishing maintenance. The RPM composition hooks do not clear that host fence.
+
 The remaining 0.8.0 integration and qualification work is tracked in the
 [release plan](plans/0.8.0-reliability-integration.md); this section is not a
 claim that the development version is ready to install.

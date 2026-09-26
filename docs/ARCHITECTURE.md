@@ -283,6 +283,12 @@ package fence protects changes of that identity. Configuration, profiles and
 marker stay in the user's writable configuration directory. No additional
 runtime manager or protocol implementation is introduced (ADR 0033).
 
+Silverblue layers the ordinary Fedora RPM pair into its immutable deployment.
+The common systemd user service and setup opt-in remain the runtime interface.
+Its RPM composition sandbox defers package-maintenance hooks; the operator uses
+the common guard on the booted host before deployment changes and finishes the
+persistent fence only after checking the new booted payload (ADR 0034).
+
 The source-installation layout is:
 
 ```

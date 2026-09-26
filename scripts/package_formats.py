@@ -21,9 +21,11 @@ def target_name(record):
     return values['ID'].strip('"') + values.get('VERSION_ID', '').strip('"')
 
 
-def guard(root, action, gtk=False):
+def guard(root, action, gtk=False, rpm_scriptlet=False):
     source = (root / 'packaging/package-guard').read_text()
     arguments = [action, '--component', 'gtk' if gtk else 'core']
+    if rpm_scriptlet:
+        arguments.append('--rpm-scriptlet')
     return source.replace('args = parser.parse_args()',
                           'args = parser.parse_args(' + repr(arguments) + ')')
 
@@ -84,10 +86,14 @@ PYTHON_GUARD
 fi
 
 %postun
-if [ "$1" -eq 0 ]; then rm -f /var/lib/oscmix-desk/package-update; fi
+if [ "$1" -eq 0 ]; then
+/usr/bin/python3 -I <<'PYTHON_GUARD'
+@FINISH_GUARD@
+PYTHON_GUARD
+fi
 
 %posttrans
-/usr/lib/oscmix-desk/package-guard finish
+/usr/lib/oscmix-desk/package-guard finish --rpm-scriptlet
 
 %files
 %defattr(-,root,root)
@@ -106,9 +112,9 @@ if [ "$1" -eq 0 ]; then rm -f /var/lib/oscmix-desk/package-update; fi
         spec = RPM_SPEC
     substitutions = {
         'VERSION': record['version'], 'RELEASE': release,
-        'INSTALL_GUARD': guard(root, 'install', gtk).replace('%', '%%'),
-        'REMOVE_GUARD': guard(root, 'remove', gtk).replace('%', '%%'),
-        'FINISH_GUARD': guard(root, 'finish', gtk).replace('%', '%%'),
+        'INSTALL_GUARD': guard(root, 'install', gtk, rpm_scriptlet=True).replace('%', '%%'),
+        'REMOVE_GUARD': guard(root, 'remove', gtk, rpm_scriptlet=True).replace('%', '%%'),
+        'FINISH_GUARD': guard(root, 'finish', gtk, rpm_scriptlet=True).replace('%', '%%'),
         'GTK_SCHEMA': ('glib-compile-schemas /usr/share/glib-2.0/schemas || exit 1'
                        if gtk else ''),
         'GTK_FILES': ('/usr/share/applications/oscmix-gtk.desktop\n'

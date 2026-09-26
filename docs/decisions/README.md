@@ -44,3 +44,4 @@ silences half the outputs.
 | [0031](0031-complete-input-mix-observations.md) | Compound input-mix observations require every hardware dependency |
 | [0032](0032-native-host-supervision.md) | OpenRC/runit supervise the selected user under persistent maintenance |
 | [0033](0033-nixos-generations.md) | NixOS uses one immutable payload and the common user service |
+| [0034](0034-rpm-ostree-maintenance.md) | RPM deployment composition cannot own live-host maintenance |

@@ -1,0 +1,403 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-09-26",
+  "scope": "Development Fedora RPM layering and absent-device Silverblue VM lifecycle; not final release qualification",
+  "runtime_version": "0.7.3 (development toward 0.8.0)",
+  "image": {
+    "name": "Fedora-Silverblue-ostree-x86_64-44-1.7.iso",
+    "sha256": "9ccec9b075a0a4358a7209b2667156aaeeec3a6a3c8d71cada45b57fca9b4682",
+    "checksum_signer": "36F612DCF27F7D1A48A835E4DBFCF71C6D9F90A6"
+  },
+  "platform": {
+    "os_release": "NAME=\"Fedora Linux\"\nVERSION=\"44.1.7 (Silverblue)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44.1.7 (Silverblue)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://silverblue.fedoraproject.org\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora-silverblue/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://github.com/fedora-silverblue/issue-tracker/issues\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Silverblue\"\nVARIANT_ID=silverblue\nOSTREE_VERSION='44.1.7'\n",
+    "kernel": "6.19.10-300.fc44.x86_64",
+    "architecture": "x86_64",
+    "systemd": "systemd 259 (259.5-1.fc44)",
+    "python": "Python 3.14.3",
+    "glibc": "ldd (GNU libc) 2.43",
+    "rpm_ostree": "rpm-ostree:\n Version: '2026.1'\n Git: c044f6163dbf7aa3dbddf301eddda3b38e81916a\n Features:\n  - rust\n  - compose\n  - container\n  - fedora-integration",
+    "selinux": "Enforcing"
+  },
+  "definitions": {
+    "tests/silverblue_lifecycle.py": "63cae7a563cd72bfcc7e56008871f8d28317d299c3c3399b2295a5672cd50f9c",
+    "packaging/package-guard": "876bfc4751ee6ff0085eef6eee9dedb43a4940c1a8854fe6901735dc3c8746d7",
+    "patches/backend-series.json": "1e33bf492112fd70caf47149437424705e3830729b646275da738b910a1c68a5",
+    "scripts/package_formats.py": "5e812601ab70305bd6c36192a5e3fa292785dcc0b64feab102c1afcd9a9a0e5f",
+    "scripts/package_gtk.py": "5fb8f4df30beaa29764babaed4f9fbf66ec84825937083791fa4d53c8642eeaa"
+  },
+  "packages": [
+    {
+      "artifact": "oscmix-desk-0.7.3-0.dev.2.x86_64_fedora44.rpm",
+      "sha256": "6bfa00072f87cd2e71bd6a1c1589b71ae9e337dc9db63f7b2ce0fecc2608ec80",
+      "component": "core",
+      "package_version": "0.7.3-0.dev.2",
+      "source_commit": "d1e0cfa8900e216e16b0e786759fee5b829c8096",
+      "dirty": true,
+      "development": true,
+      "compiler": "cc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+      "build_flags": {
+        "CC": "cc -std=c11",
+        "CFLAGS": null,
+        "CPPFLAGS": null,
+        "LDFLAGS": null
+      },
+      "backend_series_sha256": "1e33bf492112fd70caf47149437424705e3830729b646275da738b910a1c68a5",
+      "payload": {
+        "usr/bin/alsaseqio": "b3fdb0b1e418e277f05b84cee00862eb452e25c72c9fa4b18b67e06b871a8097",
+        "usr/bin/oscmix": "6346990326bc59584a8263469998128ee28cfe8c91ed135dac1049b6244c252d",
+        "usr/bin/oscmix-launch": "aac248a7949ed86d263801579bb23f5fd19128298036ffe9920482b30ea28082",
+        "usr/bin/oscmix-session": "072eeb8fff972a1b3864790785b2186285ebd2bb9eb7b21155bf286314a287de",
+        "usr/bin/oscmix-setup": "01fd1a9c25ddd792fe66f676d41922b1ad69c86f5d4147c136c6f18601f0e76f",
+        "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+        "usr/lib/oscmix-desk/oscmix_desk/backend.py": "5e08f170ef72bdd7b7bb1379b698b1a678027406ecea892fa056259785d9aa54",
+        "usr/lib/oscmix-desk/oscmix_desk/cli.py": "5ddf986b8274c9b7745410604d89d8f9308392cf7cc9c4efbb394b4319f1ae46",
+        "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd1b55f03233474915a790691ae8085d764c3d0bda3e5bcdffeeaeb600787a3",
+        "usr/lib/oscmix-desk/oscmix_desk/constants.py": "b0a5bf2d056bbda84ca7fb2c5d37d27cf844869a9a6bfa1aa8e3d5deea21f3bc",
+        "usr/lib/oscmix-desk/oscmix_desk/desktop.py": "2cf7d6b1665a1a61e2b77eca89bf85e68aca823e3e8bb1f6784297c138deb428",
+        "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+        "usr/lib/oscmix-desk/oscmix_desk/diagnostics.py": "b2be35ba4dcfebd577faef4e18c7801e06985dfb86674905a1c94d21ad8c8aed",
+        "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "b3f3b5cefa55e9bc853c6805e0c01c63f7e0329c1952c57244974ac40b1af572",
+        "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+        "usr/lib/oscmix-desk/oscmix_desk/errors.py": "df98d31dee020c0b77c95fc061c4a35f677f917377806bf47c4a78d746432a23",
+        "usr/lib/oscmix-desk/oscmix_desk/hostservice.py": "198aaaabc66abb9f8405e7a238c4af6465e08c7ea80c7c5eb896dae0bf70c25a",
+        "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "2067c25676c997dfaf520ea31fe87fe638c07c66148d21f3316492144242426e",
+        "usr/lib/oscmix-desk/oscmix_desk/locking.py": "c04680861453c2b0ee7439533a15463964e19b24c1b40246cf209962d757f52d",
+        "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+        "usr/lib/oscmix-desk/oscmix_desk/marker.py": "73de5498024b39ffe8ceff824695dd0804a4bc3cd6915d526777636677bcf507",
+        "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+        "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+        "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+        "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+        "usr/lib/oscmix-desk/oscmix_desk/observation.py": "1a768440f79ec50589bc1952758a8d386e66f2ddc899ff2bc1f55c2491ddaa2f",
+        "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+        "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "105b295c21fbbfdfdc6a193b9b309e6be67c1d8fcc6c0c7813b66c4124b74210",
+        "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+        "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+        "usr/lib/oscmix-desk/oscmix_desk/preview.py": "14a1d5b84403847384b8321ee8fbeef0cd13afefe48b917b01e40163bfa549a2",
+        "usr/lib/oscmix-desk/oscmix_desk/process.py": "254d1910b676cede7274cca26554fce9b3aaedb5b4c5521d17384276593941ca",
+        "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "c9ce348eced7ede6ed6fce32d01c8ce215fd7ace603493fcb3693c77812b1a66",
+        "usr/lib/oscmix-desk/oscmix_desk/reads.py": "cd6860d830cdc605ecf14c1b5a20c8c1511825f1334b47daeb95605a908f8b98",
+        "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "4d2bfbe25a4b535b57421d4d8aeb8d5268738be1793406fdf926a49b426ace8a",
+        "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+        "usr/lib/oscmix-desk/oscmix_desk/reload.py": "7d0f4c46d4c1093d4cd0da7b5d8e03fb91f93cc6a5ba5f9ba0e67adc59ed9f03",
+        "usr/lib/oscmix-desk/oscmix_desk/routing.py": "9037c2c4202c1e1788e153a628a3ee351568e9ff135517110babd911e237c44e",
+        "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+        "usr/lib/oscmix-desk/oscmix_desk/session.py": "d8cd70e0135b3fd6566b9e0fa9402c6ae39455e796a94cb1cb0f28ec9c41f5b7",
+        "usr/lib/oscmix-desk/oscmix_desk/status.py": "8c4b5d217a5dfca27155d1270e5e898685c8c9a36944adc3c993c975324f1aab",
+        "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+        "usr/lib/oscmix-desk/oscmix_desk/verify.py": "525716bdee474a977c7e9e559b72e60b1f422ed8815c1418f61ff7bfd266bf72",
+        "usr/lib/oscmix-desk/package-guard": "876bfc4751ee6ff0085eef6eee9dedb43a4940c1a8854fe6901735dc3c8746d7",
+        "usr/lib/systemd/system-sleep/oscmix": "8037c4d5c7700fcf5855dce5d263085ff56c52042421c81acad2bbf97c056b4a",
+        "usr/lib/systemd/user/oscmix.service": "ed6628eb7cc5edf16f0a53d87d990c0246fff0a438e286374993dbb5617dffa0",
+        "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+        "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+        "usr/share/doc/oscmix-desk/INSTALLATION.md": "bcb5f3c8830070245c205ab229df40fd670bfaaf125621e1365267e6766b9034",
+        "usr/share/doc/oscmix-desk/README.md": "8b2b012bfdd9732578aceb190b01ebdb5a01a3e9dd3b2bd342bf6198209eb547",
+        "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+        "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+        "usr/share/oscmix-desk/backend-source.json": "408ab45b4794651eeae612b91634704ace48e13150faa25ba3fbb214bf0bacfd",
+        "usr/share/oscmix-desk/package.json": "59c078c688ee79243f9103f7ae67fba4ad463211c8e468fd08b33e1856d355c9",
+        "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+      }
+    },
+    {
+      "artifact": "oscmix-desk-gtk-0.7.3-0.dev.2.x86_64_fedora44.rpm",
+      "sha256": "92a870c34fdc2f7a8efada7f4fbdd508688983b4d96b7fa4868a79f795981769",
+      "component": "gtk",
+      "package_version": "0.7.3-0.dev.2",
+      "source_commit": "d1e0cfa8900e216e16b0e786759fee5b829c8096",
+      "dirty": true,
+      "development": true,
+      "compiler": "cc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+      "build_flags": {
+        "CC": "cc -std=c11",
+        "CFLAGS": null,
+        "CPPFLAGS": null,
+        "LDFLAGS": null
+      },
+      "backend_series_sha256": "1e33bf492112fd70caf47149437424705e3830729b646275da738b910a1c68a5",
+      "payload": {
+        "usr/bin/oscmix-gtk": "9e677f4b0fe90a5ae267b76f7f649e499863a8723d6e08695efcb88fa371d7cd",
+        "usr/share/applications/oscmix-gtk.desktop": "368cbde8634428140b5601894eef6dab910f01ad4b688a443f0f30fb853232f3",
+        "usr/share/glib-2.0/schemas/oscmix.gschema.xml": "258b7c7786aa936ee4e616b6856ba1bb0fb39064a4d708d0d28496a9088a46f1",
+        "usr/share/icons/hicolor/scalable/apps/oscmix.svg": "ecff5ed906055396ab787f472ce61aa26cf440389bbb55c7bf308addbd59a6d6",
+        "usr/share/licenses/oscmix-desk-gtk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+        "usr/share/licenses/oscmix-desk-gtk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+        "usr/share/oscmix-desk/gtk-package.json": "85b4732f6a84ddb88a1e1ecba892fa5d597df25587c1496b05eca05e645bdd62"
+      }
+    },
+    {
+      "artifact": "oscmix-desk-0.7.3-0.dev.3.x86_64_fedora44.rpm",
+      "sha256": "f454ff03096c79697b10d6d8056c1c4b65fac5a1c258285f290e03397f73bf29",
+      "component": "core",
+      "package_version": "0.7.3-0.dev.3",
+      "source_commit": "d1e0cfa8900e216e16b0e786759fee5b829c8096",
+      "dirty": true,
+      "development": true,
+      "compiler": "cc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+      "build_flags": {
+        "CC": "cc -std=c11",
+        "CFLAGS": null,
+        "CPPFLAGS": null,
+        "LDFLAGS": null
+      },
+      "backend_series_sha256": "1e33bf492112fd70caf47149437424705e3830729b646275da738b910a1c68a5",
+      "payload": {
+        "usr/bin/alsaseqio": "b3fdb0b1e418e277f05b84cee00862eb452e25c72c9fa4b18b67e06b871a8097",
+        "usr/bin/oscmix": "6346990326bc59584a8263469998128ee28cfe8c91ed135dac1049b6244c252d",
+        "usr/bin/oscmix-launch": "aac248a7949ed86d263801579bb23f5fd19128298036ffe9920482b30ea28082",
+        "usr/bin/oscmix-session": "072eeb8fff972a1b3864790785b2186285ebd2bb9eb7b21155bf286314a287de",
+        "usr/bin/oscmix-setup": "01fd1a9c25ddd792fe66f676d41922b1ad69c86f5d4147c136c6f18601f0e76f",
+        "usr/lib/oscmix-desk/oscmix_desk/__init__.py": "6af45788cf2aec3d2451bd0c3b070cfa94416524a19ff8623b7356c81522b979",
+        "usr/lib/oscmix-desk/oscmix_desk/backend.py": "5e08f170ef72bdd7b7bb1379b698b1a678027406ecea892fa056259785d9aa54",
+        "usr/lib/oscmix-desk/oscmix_desk/cli.py": "5ddf986b8274c9b7745410604d89d8f9308392cf7cc9c4efbb394b4319f1ae46",
+        "usr/lib/oscmix-desk/oscmix_desk/config.py": "9dd1b55f03233474915a790691ae8085d764c3d0bda3e5bcdffeeaeb600787a3",
+        "usr/lib/oscmix-desk/oscmix_desk/constants.py": "b0a5bf2d056bbda84ca7fb2c5d37d27cf844869a9a6bfa1aa8e3d5deea21f3bc",
+        "usr/lib/oscmix-desk/oscmix_desk/desktop.py": "2cf7d6b1665a1a61e2b77eca89bf85e68aca823e3e8bb1f6784297c138deb428",
+        "usr/lib/oscmix-desk/oscmix_desk/devices.py": "fdc79f09c828252a7e7bba7c1ba369f0760de8f1d79b6175e2b468470c341318",
+        "usr/lib/oscmix-desk/oscmix_desk/diagnostics.py": "b2be35ba4dcfebd577faef4e18c7801e06985dfb86674905a1c94d21ad8c8aed",
+        "usr/lib/oscmix-desk/oscmix_desk/discovery.py": "b3f3b5cefa55e9bc853c6805e0c01c63f7e0329c1952c57244974ac40b1af572",
+        "usr/lib/oscmix-desk/oscmix_desk/dump.py": "1ffbba7e979ae41cc17a484e635d0bb48c03b9aff269ffb231637c0960f47699",
+        "usr/lib/oscmix-desk/oscmix_desk/errors.py": "df98d31dee020c0b77c95fc061c4a35f677f917377806bf47c4a78d746432a23",
+        "usr/lib/oscmix-desk/oscmix_desk/hostservice.py": "198aaaabc66abb9f8405e7a238c4af6465e08c7ea80c7c5eb896dae0bf70c25a",
+        "usr/lib/oscmix-desk/oscmix_desk/launcher.py": "2067c25676c997dfaf520ea31fe87fe638c07c66148d21f3316492144242426e",
+        "usr/lib/oscmix-desk/oscmix_desk/locking.py": "c04680861453c2b0ee7439533a15463964e19b24c1b40246cf209962d757f52d",
+        "usr/lib/oscmix-desk/oscmix_desk/log.py": "84da3aee01fb81a105fefe6f0d4fb7a86b62e5de3c72a6faeb7c10ddfdd097b5",
+        "usr/lib/oscmix-desk/oscmix_desk/marker.py": "73de5498024b39ffe8ceff824695dd0804a4bc3cd6915d526777636677bcf507",
+        "usr/lib/oscmix-desk/oscmix_desk/model.py": "27f156d46d7dd7f256b89cb4d80372c2211163193d72ed36a7a0e223782ed760",
+        "usr/lib/oscmix-desk/oscmix_desk/notices.py": "cf7ded87be4f9035880b1019a9854ef4164401ac937bfdb8e1ce7a8e29c7c893",
+        "usr/lib/oscmix-desk/oscmix_desk/notify.py": "70d31d0a6637bfc06856d65a83b2a4e3f6f82c5522ff4e330e7b2bd92d9ed226",
+        "usr/lib/oscmix-desk/oscmix_desk/numeric.py": "f182c0f8c883a58aa43fd8401a0b57ce07985df6fc7db4a91a0f134395144ab9",
+        "usr/lib/oscmix-desk/oscmix_desk/observation.py": "1a768440f79ec50589bc1952758a8d386e66f2ddc899ff2bc1f55c2491ddaa2f",
+        "usr/lib/oscmix-desk/oscmix_desk/osc.py": "d1fb909dda002743d52622e93eb98ab2950fe2fffafefabb02c72e756954ff3c",
+        "usr/lib/oscmix-desk/oscmix_desk/outcome.py": "105b295c21fbbfdfdc6a193b9b309e6be67c1d8fcc6c0c7813b66c4124b74210",
+        "usr/lib/oscmix-desk/oscmix_desk/paths.py": "d7b274fdd389ea602054275b0b4cc2ff3fb9a097e2e5ee22dd7ed83190893211",
+        "usr/lib/oscmix-desk/oscmix_desk/pipewire.py": "54065eef882bfc35b5fc1992981e88f548f4cfb9e970f03430f2ce3ec929806f",
+        "usr/lib/oscmix-desk/oscmix_desk/preview.py": "14a1d5b84403847384b8321ee8fbeef0cd13afefe48b917b01e40163bfa549a2",
+        "usr/lib/oscmix-desk/oscmix_desk/process.py": "254d1910b676cede7274cca26554fce9b3aaedb5b4c5521d17384276593941ca",
+        "usr/lib/oscmix-desk/oscmix_desk/profiles.py": "c9ce348eced7ede6ed6fce32d01c8ce215fd7ace603493fcb3693c77812b1a66",
+        "usr/lib/oscmix-desk/oscmix_desk/reads.py": "cd6860d830cdc605ecf14c1b5a20c8c1511825f1334b47daeb95605a908f8b98",
+        "usr/lib/oscmix-desk/oscmix_desk/reconcile.py": "4d2bfbe25a4b535b57421d4d8aeb8d5268738be1793406fdf926a49b426ace8a",
+        "usr/lib/oscmix-desk/oscmix_desk/registers.py": "1b2e1128dd501fd7b1187f0f6ee8eb135840b0e33556b3be032d7fa7a2fefa5b",
+        "usr/lib/oscmix-desk/oscmix_desk/reload.py": "7d0f4c46d4c1093d4cd0da7b5d8e03fb91f93cc6a5ba5f9ba0e67adc59ed9f03",
+        "usr/lib/oscmix-desk/oscmix_desk/routing.py": "9037c2c4202c1e1788e153a628a3ee351568e9ff135517110babd911e237c44e",
+        "usr/lib/oscmix-desk/oscmix_desk/sections.py": "59b87e2d0830dbf36100e2d3a73363898aa9db755577fc1c1a74a7354ea3149c",
+        "usr/lib/oscmix-desk/oscmix_desk/session.py": "d8cd70e0135b3fd6566b9e0fa9402c6ae39455e796a94cb1cb0f28ec9c41f5b7",
+        "usr/lib/oscmix-desk/oscmix_desk/status.py": "8c4b5d217a5dfca27155d1270e5e898685c8c9a36944adc3c993c975324f1aab",
+        "usr/lib/oscmix-desk/oscmix_desk/streams.py": "9e5f3781b9468c4d5678877ef1cc76f1dbda0115a75eaae7e9a97a120930bd2e",
+        "usr/lib/oscmix-desk/oscmix_desk/verify.py": "525716bdee474a977c7e9e559b72e60b1f422ed8815c1418f61ff7bfd266bf72",
+        "usr/lib/oscmix-desk/package-guard": "876bfc4751ee6ff0085eef6eee9dedb43a4940c1a8854fe6901735dc3c8746d7",
+        "usr/lib/systemd/system-sleep/oscmix": "8037c4d5c7700fcf5855dce5d263085ff56c52042421c81acad2bbf97c056b4a",
+        "usr/lib/systemd/user/oscmix.service": "ed6628eb7cc5edf16f0a53d87d990c0246fff0a438e286374993dbb5617dffa0",
+        "usr/lib/tmpfiles.d/oscmix-desk.conf": "897cf9745ed41b028f4b9e347b089e0520877969d435fa4b0b9daae4a7223bec",
+        "usr/lib/udev/rules.d/90-rme-fireface.rules": "92493956fb2ecdf8ad63f13ea748002a548d291fe5921f08034c17ce54f4218d",
+        "usr/share/doc/oscmix-desk/INSTALLATION.md": "bcb5f3c8830070245c205ab229df40fd670bfaaf125621e1365267e6766b9034",
+        "usr/share/doc/oscmix-desk/README.md": "8b2b012bfdd9732578aceb190b01ebdb5a01a3e9dd3b2bd342bf6198209eb547",
+        "usr/share/licenses/oscmix-desk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+        "usr/share/licenses/oscmix-desk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+        "usr/share/oscmix-desk/backend-source.json": "408ab45b4794651eeae612b91634704ace48e13150faa25ba3fbb214bf0bacfd",
+        "usr/share/oscmix-desk/package.json": "42a1b68b1559a2198e72e50bb490e5334f9524205dd03b9bc791dfad7708d68f",
+        "usr/share/oscmix-desk/routing.conf.example": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd"
+      }
+    },
+    {
+      "artifact": "oscmix-desk-gtk-0.7.3-0.dev.3.x86_64_fedora44.rpm",
+      "sha256": "24299924e856a3ed8fd76bbd15fe2c666641c2994a91a4196ce585ce3337a857",
+      "component": "gtk",
+      "package_version": "0.7.3-0.dev.3",
+      "source_commit": "d1e0cfa8900e216e16b0e786759fee5b829c8096",
+      "dirty": true,
+      "development": true,
+      "compiler": "cc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+      "build_flags": {
+        "CC": "cc -std=c11",
+        "CFLAGS": null,
+        "CPPFLAGS": null,
+        "LDFLAGS": null
+      },
+      "backend_series_sha256": "1e33bf492112fd70caf47149437424705e3830729b646275da738b910a1c68a5",
+      "payload": {
+        "usr/bin/oscmix-gtk": "9e677f4b0fe90a5ae267b76f7f649e499863a8723d6e08695efcb88fa371d7cd",
+        "usr/share/applications/oscmix-gtk.desktop": "368cbde8634428140b5601894eef6dab910f01ad4b688a443f0f30fb853232f3",
+        "usr/share/glib-2.0/schemas/oscmix.gschema.xml": "258b7c7786aa936ee4e616b6856ba1bb0fb39064a4d708d0d28496a9088a46f1",
+        "usr/share/icons/hicolor/scalable/apps/oscmix.svg": "ecff5ed906055396ab787f472ce61aa26cf440389bbb55c7bf308addbd59a6d6",
+        "usr/share/licenses/oscmix-desk-gtk/LICENSE": "681614372778226959da5bfd919340cf6ec63aaa4c268fec6b9e5593ae27c699",
+        "usr/share/licenses/oscmix-desk-gtk/oscmix-LICENSE": "ee09883c40e1a544e9cd012cb15e9f60588a2329e8963619e000934c2f2bcb45",
+        "usr/share/oscmix-desk/gtk-package.json": "3c4fef4086085331effa91be62a13f030248ed204edc6591498466ba0a00f03c"
+      }
+    }
+  ],
+  "deployments": {
+    "base_deployment": {
+      "checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "base-checksum": null,
+      "origin": "fedora:fedora/44/x86_64/silverblue",
+      "requested-local-packages": []
+    },
+    "initial_deployment": {
+      "checksum": "eb8da50035c325cdec9b8bce8453efbcc0a894af0083b0d9bd3b234c082ddb88",
+      "base-checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "origin": "fedora:fedora/44/x86_64/silverblue",
+      "requested-local-packages": [
+        "oscmix-desk-0.7.3-0.dev.2.x86_64",
+        "oscmix-desk-gtk-0.7.3-0.dev.2.x86_64"
+      ]
+    },
+    "upgrade_deployment": {
+      "checksum": "99e70adb251f47c2c6dba437a58fbadc6a9b1da045fdced35ad2d5b58b253bbd",
+      "base-checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "origin": "fedora:fedora/44/x86_64/silverblue",
+      "requested-local-packages": [
+        "oscmix-desk-0.7.3-0.dev.3.x86_64",
+        "oscmix-desk-gtk-0.7.3-0.dev.3.x86_64"
+      ]
+    },
+    "rollback_deployment": {
+      "checksum": "eb8da50035c325cdec9b8bce8453efbcc0a894af0083b0d9bd3b234c082ddb88",
+      "base-checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "origin": "fedora:fedora/44/x86_64/silverblue",
+      "requested-local-packages": [
+        "oscmix-desk-0.7.3-0.dev.2.x86_64",
+        "oscmix-desk-gtk-0.7.3-0.dev.2.x86_64"
+      ]
+    },
+    "final_deployment": {
+      "checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "base-checksum": null,
+      "origin": "fedora:fedora/44/x86_64/silverblue",
+      "requested-local-packages": []
+    }
+  },
+  "lifecycle": {
+    "before_install": {
+      "/home/tester/.config/oscmix/routing.conf": {
+        "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+        "uid": 12510,
+        "gid": 12510
+      },
+      "/home/tester/.config/oscmix/profiles/qa-state.conf": {
+        "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+        "uid": 12510,
+        "gid": 12510
+      },
+      "/home/tester/.config/oscmix/active-profile": {
+        "sha256": "df43eb0a3af4839eda15dd85ca851c01490ac850b9a9ba33fd84a1ad3c2f7716",
+        "uid": 12510,
+        "gid": 12510
+      }
+    },
+    "user_state": {
+      "/home/tester/.config/oscmix/routing.conf": {
+        "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+        "uid": 12510,
+        "gid": 12510
+      },
+      "/home/tester/.config/oscmix/profiles/qa-state.conf": {
+        "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+        "uid": 12510,
+        "gid": 12510
+      },
+      "/home/tester/.config/oscmix/active-profile": {
+        "sha256": "df43eb0a3af4839eda15dd85ca851c01490ac850b9a9ba33fd84a1ad3c2f7716",
+        "uid": 12510,
+        "gid": 12510
+      }
+    },
+    "process": {
+      "pid": 2460,
+      "argv": [
+        "/usr/bin/python3",
+        "/usr/bin/oscmix-session"
+      ],
+      "uid": 12510,
+      "groups": [
+        10,
+        63,
+        12510
+      ],
+      "hup_handler_installed": true
+    },
+    "crash_restarts": [
+      {
+        "before": 2460,
+        "after": 2509,
+        "seconds": 3.292
+      },
+      {
+        "before": 2509,
+        "after": 2556,
+        "seconds": 3.288
+      },
+      {
+        "before": 2556,
+        "after": 2602,
+        "seconds": 3.315
+      }
+    ],
+    "installed_inactive": true,
+    "persistent_fence_survived_install_reboot": true,
+    "explicit_activation_fenced": true,
+    "running_maintenance_refused": true,
+    "setup_enable_seconds": 30.258,
+    "binaries": {
+      "oscmix": "6346990326bc59584a8263469998128ee28cfe8c91ed135dac1049b6244c252d",
+      "alsaseqio": "b3fdb0b1e418e277f05b84cee00862eb452e25c72c9fa4b18b67e06b871a8097",
+      "oscmix-gtk": "9e677f4b0fe90a5ae267b76f7f649e499863a8723d6e08695efcb88fa371d7cd"
+    },
+    "reload_kept_stopped": true,
+    "upgraded_process": {
+      "pid": 1811,
+      "argv": [
+        "/usr/bin/python3",
+        "/usr/bin/oscmix-session"
+      ],
+      "uid": 12510,
+      "groups": [
+        10,
+        63,
+        12510
+      ],
+      "hup_handler_installed": true
+    },
+    "rolled-back_process": {
+      "pid": 1785,
+      "argv": [
+        "/usr/bin/python3",
+        "/usr/bin/oscmix-session"
+      ],
+      "uid": 12510,
+      "groups": [
+        10,
+        63,
+        12510
+      ],
+      "hup_handler_installed": true
+    },
+    "disable_refused_start": true,
+    "removal_preserved_user_state": true,
+    "pending_recovery": {
+      "discarded_unbooted_deployment": true,
+      "booted_payload_unchanged": true
+    }
+  },
+  "mutable_fedora": {
+    "manager": "DNF",
+    "core_gtk_installation": true,
+    "core_gtk_removal": true,
+    "both_transaction_fences_finished": true,
+    "scope": "isolated Fedora container; no service-manager or hardware claim"
+  },
+  "corrections": [
+    "Defer RPM maintenance only in the rpm-ostree composition sandbox.",
+    "Signal test waits for the registered SIGHUP handler, not only a visible Python argv."
+  ],
+  "excluded": [
+    "final 0.8.0 candidate",
+    "package signatures and published repositories",
+    "historical 0.7.3-to-0.8.0 migration",
+    "hardware I/O",
+    "physical hotplug",
+    "suspend/resume",
+    "actual GTK desktop lifecycle"
+  ]
+}

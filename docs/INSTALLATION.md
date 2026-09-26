@@ -188,6 +188,14 @@ Follow that guide for generation switches, reboot, rollback and removal.
 actual VM reboot. Development VM checks do not replace the final 0.8.0 software,
 device-I/O and release qualification.
 
+## Fedora Silverblue (0.8.0 development)
+
+Use the [host RPM-layering procedure](SILVERBLUE.md) with the matching Fedora
+core/GTK pair. It keeps the common systemd user unit, explicit setup opt-in and
+user-owned configuration. The live host's maintenance fence must be managed
+explicitly across deployment, reboot and rollback; RPM hooks in the deployment
+sandbox cannot own it. The guide includes audio-group provisioning and removal.
+
 ## Native packages
 
 Use a package built for your distribution release and architecture. The

@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2134 tests (two empty parameter sets
+The latest interim `make check` passes 2146 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -31,7 +31,13 @@ A real NixOS 26.05 VM passes inactive installation, explicit activation, selecte
 user identity, crash/restart, maintenance across reboot, actual generation rollback
 and removal with user state preserved; the
 [development record](evidence/0.8.0/nixos-development.json) identifies the tested
-definitions and payload. These development checks do not close the remaining
+definitions and payload. Fedora Silverblue 44.1.7 now layers the common RPM pair,
+with live-host maintenance kept outside its composition sandbox. A real VM passes
+installation, activation, three crash/restart cycles, four deployment reboots,
+package-revision upgrade, actual rollback, removal and preserved user state.
+The [Silverblue development record](evidence/0.8.0/silverblue-development.json)
+also identifies the pending-deployment recovery and ordinary Fedora DNF checks.
+These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
 All proposed 0.7.4 corrections are included; there is no separate 0.7.4 milestone.

@@ -49,7 +49,7 @@ PYTHON_GUARD
 fi
 
 %posttrans
-/usr/lib/oscmix-desk/package-guard finish --component gtk
+/usr/lib/oscmix-desk/package-guard finish --component gtk --rpm-scriptlet
 
 %files
 %defattr(-,root,root)

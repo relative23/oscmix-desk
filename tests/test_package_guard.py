@@ -19,8 +19,49 @@ def guard(tmp_path, monkeypatch):
     monkeypatch.setattr(module, 'FENCE', tmp_path / 'maintenance')
     monkeypatch.setattr(module, 'GTK_FENCE', tmp_path / 'gtk-maintenance')
     monkeypatch.setattr(module, 'BACKUPS', tmp_path / 'backups')
+    monkeypatch.setattr(module, 'OSTREE_BOOTED', tmp_path / 'ostree-booted')
     monkeypatch.setattr(module, 'running', list)
     return module
+
+
+@pytest.mark.parametrize('action', ['check', 'install', 'remove', 'finish'])
+@pytest.mark.parametrize('component', ['core', 'gtk'])
+def test_ostree_composition_does_not_touch_live_fences_or_inspect_host_processes(
+        guard, monkeypatch, action, component):
+    guard.OSTREE_BOOTED.touch()
+    guard.FENCE.touch()
+    guard.GTK_FENCE.touch()
+    monkeypatch.setenv('SYSTEMD_OFFLINE', '1')
+    monkeypatch.setattr(guard.os, 'getuid', lambda: 0)
+    monkeypatch.setattr(guard, 'running',
+                        lambda: pytest.fail('composition inspected live PID set'))
+    monkeypatch.setattr(guard, 'preserve_unowned',
+                        lambda: pytest.fail('composition backed up host'))
+    monkeypatch.setattr(guard, 'clean_bytecode', lambda: pytest.fail('composition cleaned host'))
+    monkeypatch.setattr(guard.sys, 'argv',
+                        ['guard', action, '--component', component, '--rpm-scriptlet'])
+    assert guard.main() == 0
+    assert guard.FENCE.exists()
+    assert guard.GTK_FENCE.exists()
+
+
+@pytest.mark.parametrize(('marker', 'offline', 'hook'), [
+    (True, '1', False), (False, '1', True), (True, '0', True), (True, None, True),
+])
+def test_only_the_offline_ostree_rpm_hook_can_defer_maintenance(
+        guard, monkeypatch, marker, offline, hook):
+    if marker:
+        guard.OSTREE_BOOTED.touch()
+    if offline is None:
+        monkeypatch.delenv('SYSTEMD_OFFLINE', raising=False)
+    else:
+        monkeypatch.setenv('SYSTEMD_OFFLINE', offline)
+    monkeypatch.setattr(guard.os, 'getuid', lambda: 0)
+    monkeypatch.setattr(guard, 'running', lambda: ['1234'])
+    monkeypatch.setattr(guard.sys, 'argv',
+                        ['guard', 'install', *(['--rpm-scriptlet'] if hook else [])])
+    assert guard.main() == 1
+    assert not guard.FENCE.exists()
 
 
 @pytest.mark.parametrize('component', ['core', 'gtk'])
