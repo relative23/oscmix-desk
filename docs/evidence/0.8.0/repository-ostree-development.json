@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "time_utc": "2026-09-26T22:52:59Z",
+  "hardware": false,
+  "package_installed": false,
+  "script_sha256": "a66f4ddedd44e3ecb7f7388f662be1a3d009422b982c1acc1bc3d54a9185fd9a",
+  "commands": [
+    {
+      "action": "enable",
+      "exit": 1,
+      "stderr": "oscmix-repository: subscription requires the native APT, DNF5 or zypper client; rpm-ostree does not run these verification hooks. On Silverblue, install authenticated core/GTK RPM files with the documented host layering procedure\n",
+      "host_trust_and_sources_unchanged": true
+    },
+    {
+      "action": "refresh-key",
+      "exit": 1,
+      "stderr": "oscmix-repository: subscription requires the native APT, DNF5 or zypper client; rpm-ostree does not run these verification hooks. On Silverblue, install authenticated core/GTK RPM files with the documented host layering procedure\n",
+      "host_trust_and_sources_unchanged": true
+    },
+    {
+      "action": "package-begin",
+      "exit": 1,
+      "stderr": "oscmix-repository: subscription requires the native APT, DNF5 or zypper client; rpm-ostree does not run these verification hooks. On Silverblue, install authenticated core/GTK RPM files with the documented host layering procedure\n",
+      "host_trust_and_sources_unchanged": true
+    },
+    {
+      "action": "package-finish",
+      "exit": 1,
+      "stderr": "oscmix-repository: subscription requires the native APT, DNF5 or zypper client; rpm-ostree does not run these verification hooks. On Silverblue, install authenticated core/GTK RPM files with the documented host layering procedure\n",
+      "host_trust_and_sources_unchanged": true
+    },
+    {
+      "action": "native-key-sync",
+      "exit": 1,
+      "stderr": "oscmix-repository: subscription requires the native APT, DNF5 or zypper client; rpm-ostree does not run these verification hooks. On Silverblue, install authenticated core/GTK RPM files with the documented host layering procedure\n",
+      "host_trust_and_sources_unchanged": true
+    }
+  ],
+  "os_release": "NAME=\"Fedora Linux\"\nVERSION=\"44.1.7 (Silverblue)\"\nRELEASE_TYPE=stable\nID=fedora\nVERSION_ID=44\nVERSION_CODENAME=\"\"\nPRETTY_NAME=\"Fedora Linux 44.1.7 (Silverblue)\"\nANSI_COLOR=\"0;38;2;60;110;180\"\nLOGO=fedora-logo-icon\nCPE_NAME=\"cpe:/o:fedoraproject:fedora:44\"\nDEFAULT_HOSTNAME=\"fedora\"\nHOME_URL=\"https://silverblue.fedoraproject.org\"\nDOCUMENTATION_URL=\"https://docs.fedoraproject.org/en-US/fedora-silverblue/\"\nSUPPORT_URL=\"https://ask.fedoraproject.org/\"\nBUG_REPORT_URL=\"https://github.com/fedora-silverblue/issue-tracker/issues\"\nREDHAT_BUGZILLA_PRODUCT=\"Fedora\"\nREDHAT_BUGZILLA_PRODUCT_VERSION=44\nREDHAT_SUPPORT_PRODUCT=\"Fedora\"\nREDHAT_SUPPORT_PRODUCT_VERSION=44\nSUPPORT_END=2027-05-19\nVARIANT=\"Silverblue\"\nVARIANT_ID=silverblue\nOSTREE_VERSION='44.1.7'\n",
+  "rpm_ostree_version": "rpm-ostree:\n Version: '2026.1'\n Git: c044f6163dbf7aa3dbddf301eddda3b38e81916a\n Features:\n  - rust\n  - compose\n  - container\n  - fedora-integration\n",
+  "result": "passed",
+  "scope": "Development CLI guard on an actual booted Silverblue VM. No repository package was installed and no rpm-ostree transaction was attempted.",
+  "helper": "packaging/repository/configure.py",
+  "regressions": "tests/test_repository_client.py: 33 passed; includes OSTree refusals and retained disable/removal",
+  "observed_paths": [
+    "/etc/yum.repos.d",
+    "/etc/dnf/libdnf5-plugins",
+    "/var/lib/oscmix-desk-repository",
+    "/usr/share/keyrings"
+  ],
+  "unchanged_comparison": "existence, file contents (SHA256), owner, group and mode before and after each refused call",
+  "vm_transport": "QEMU q35/KVM, no USB/audio host passthrough; pinned process command and SSH host key checked",
+  "software_gate": {
+    "command": "make check",
+    "passed": 2228,
+    "skipped": 2,
+    "seconds": 128.36,
+    "log_sha256": "c5669603441d3effd7e945737d11fd3b25ff24f18a0a6af5a1a9983689a1d840"
+  }
+}

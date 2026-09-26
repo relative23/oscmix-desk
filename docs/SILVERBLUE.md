@@ -14,6 +14,12 @@ instructions. Keep the core and GTK package versions identical; the companion
 has an exact core dependency. GTK is optional, and can be omitted from each
 command below for a headless installation.
 
+Use authenticated RPM artifacts for this path. The separate
+`oscmix-desk-repository` subscription package targets native DNF5, whose additional
+signature checks do not run inside `rpm-ostree`. It refuses installation and
+activation on an OSTree host; do not copy its repository definition into the
+host's package sources.
+
 The selected normal user needs membership in `audio`. On Silverblue that group
 may initially exist only in `/usr/lib/group`. Make its existing definition
 available to the local account tools, then add the intended user:

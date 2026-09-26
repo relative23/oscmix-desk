@@ -10,6 +10,12 @@ openSUSE Leap 16 on x86_64. Each carries the core and exactly matching upstream
 GTK companion. Arch retains its native artifact/recipe, and the source archive
 remains available. Installing packages does not enable a service or apply a desk.
 
+The Fedora subscription uses DNF5 on a mutable Fedora host. Silverblue's
+`rpm-ostree` does not run that verifier. The subscription helper therefore refuses
+installation and activation on an OSTree host before modifying trust or source
+configuration; status, disable and removal remain available. Use the authenticated
+core/GTK RPM files and the [Silverblue host layering procedure](SILVERBLUE.md).
+
 ## Staging a channel
 
 `scripts/build-repository.py` requires Python 3.9+, GnuPG and the native metadata

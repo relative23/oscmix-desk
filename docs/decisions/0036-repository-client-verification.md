@@ -48,6 +48,15 @@ payload hashes, its package database and transaction recovery. Administrators
 can still deliberately override their own package-manager configuration; this
 integration is not protection from a hostile root user.
 
+The Fedora adapter covers DNF5, not rpm-ostree's separate transaction path.
+Silverblue keeps the authenticated local-RPM layering workflow from ADR 0034.
+The subscription helper refuses installation/activation on an OSTree host before
+changing trust or sources; read-only status and disabling/removing a previous
+subscription stay available. An installed libdnf5 library alone does not prove
+that the host's package manager runs its verification plugin. The tested
+rpm-ostree 2026.1 [build embeds its own libdnf](https://github.com/coreos/rpm-ostree/blob/v2026.1/rust/libdnf-sys/build.rs);
+the actual Silverblue 44.1.7 process has no libdnf5 dynamic dependency.
+
 The native `oscmix-desk-repository` bootstrap package owns these helpers and their
 payload hashes. Installing it subscribes to no channel and starts no mixer.
 `oscmix-repository enable` explicitly creates the selected distribution's source

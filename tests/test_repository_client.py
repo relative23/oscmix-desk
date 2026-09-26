@@ -169,3 +169,41 @@ def test_definition_ownership_survives_an_interrupted_first_subscription(
     monkeypatch.setattr(subscription, 'atomic', atomic)
     subscription.define(subscription.registration(), source, 'source definition')
     assert source.read_text() == 'source definition'
+
+
+@pytest.mark.parametrize('action', ['enable', 'refresh-key', 'package-begin',
+                                  'package-finish', 'native-key-sync'])
+def test_ostree_refuses_subscription_before_touching_host_state(
+        subscription, monkeypatch, tmp_path, capsys, action):
+    marker = tmp_path / 'ostree-booted'
+    marker.touch()
+    monkeypatch.setattr(subscription, 'OSTREE_BOOTED', marker)
+    monkeypatch.setattr(subscription.os, 'getuid', lambda: 0)
+    monkeypatch.setattr(subscription, 'root_path',
+                        lambda *_args, **_kwargs: pytest.fail('refusal touched host state'))
+    monkeypatch.setattr(sys, 'argv', ['oscmix-repository', action, '--certificate',
+                                     '/unread/public.asc', '--fingerprint', PRIMARY])
+    assert subscription.main() == 1
+    assert 'rpm-ostree does not run these verification hooks' in capsys.readouterr().err
+    assert not subscription.REGISTRATION.exists()
+    assert not subscription.FENCE.exists()
+
+
+@pytest.mark.parametrize('action', ['disable', 'package-remove'])
+def test_ostree_can_remove_an_existing_subscription(
+        subscription, monkeypatch, tmp_path, action):
+    marker = tmp_path / 'ostree-booted'
+    marker.touch()
+    monkeypatch.setattr(subscription, 'OSTREE_BOOTED', marker)
+    monkeypatch.setattr(subscription, 'STATE', tmp_path)
+    monkeypatch.setattr(subscription, 'PENDING_KEY', tmp_path / 'native-key.json')
+    monkeypatch.setattr(subscription.os, 'getuid', lambda: 0)
+    source = subscription.SOURCES['apt']
+    source.write_text('old subscription')
+    subscription.write_json(subscription.REGISTRATION, dict(
+        schema=1, enabled=True, files={str(source): subscription.sha(source.read_bytes())}))
+    monkeypatch.setattr(sys, 'argv', ['oscmix-repository', action])
+    assert subscription.main() == 0
+    assert not source.exists()
+    assert subscription.registration()['enabled'] is False
+    assert not subscription.FENCE.exists()

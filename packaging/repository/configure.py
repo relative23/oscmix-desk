@@ -26,6 +26,7 @@ CERTIFICATE = Path('/usr/share/keyrings/oscmix-desk-repository.asc')
 FENCE = STATE / 'update.json'
 PENDING_KEY = STATE / 'native-key.json'
 REGISTRATION = STATE / 'state.json'
+OSTREE_BOOTED = Path('/run/ostree-booted')
 ENVIRONMENT = {'PATH': '/usr/bin:/bin:/usr/sbin:/sbin', 'LC_ALL': 'C'}
 SOURCES = {'apt': Path('/etc/apt/sources.list.d/oscmix-desk.sources'),
            'dnf': Path('/etc/yum.repos.d/oscmix-desk.repo'),
@@ -356,6 +357,12 @@ def main():
         parser.error('repository subscription changes require the administrator')
     if args.action == 'refresh-key' and (not args.certificate or not args.fingerprint):
         parser.error('refresh-key requires a public --certificate and full --fingerprint')
+    if OSTREE_BOOTED.exists() and args.action not in ('disable', 'package-remove'):
+        print('oscmix-repository: subscription requires the native APT, DNF5 or zypper '
+              'client; rpm-ostree does not run these verification hooks. '
+              'On Silverblue, install authenticated core/GTK RPM files with '
+              'the documented host layering procedure', file=sys.stderr)
+        return 1
     try:
         root_path(STATE, missing=True).mkdir(parents=True, exist_ok=True)
         root_path(STATE / 'setup.lock', missing=True)

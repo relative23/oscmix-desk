@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2221 tests (two empty parameter sets
+The latest interim `make check` passes 2228 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -74,6 +74,10 @@ for qualification, including independent helper updates retaining the existing
 core/GTK pair. Actual checks of that new path, offline key custody and final HTTPS
 qualification remain open. An encrypted key archive has passed a local restore
 test of both certification and signing roles; the offline media are still pending.
+The subscription helper refuses installation/activation on OSTree hosts before
+modifying trust or sources. A [limited actual-Silverblue guard check](evidence/0.8.0/repository-ostree-development.json)
+passes; status and disabling/removing a previous subscription remain available.
+Silverblue continues to use authenticated RPM artifact layering.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
