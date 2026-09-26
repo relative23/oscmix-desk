@@ -207,7 +207,8 @@ build provenance. The 0.8.0 development matrix adds Debian 13 and Ubuntu 26.04
 DEBs; all six targets now pass their
 [development package checks](evidence/0.8.0/native-development.json).
 Final-candidate checks and signed APT/RPM qualification remain required before
-publication. The product has no embedded updater.
+publication. [Repository staging and recovery](PACKAGE-REPOSITORIES.md) describes
+the implemented generator and actual client tests. The product has no embedded updater.
 
 Use the native package manager (`apt install ./...deb`, `dnf install
 ./...rpm`, `zypper install ./...rpm`, or `pacman -U ./...pkg.tar.zst`). The

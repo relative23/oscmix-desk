@@ -1,0 +1,614 @@
+{
+  "schema": 1,
+  "status": "development-staging-qualified",
+  "date": "2026-09-26",
+  "generator_sha256": "5e52360d60bf1cea78543e08abfe2d3c143d898b6966dcbce6eb9ae3a66cacb1",
+  "fixture_sha256": "baae2bfb98a71eed0f6f1de154a29dfa9bb1801f6877b86e0740645bbb9bdd2a",
+  "production_signing_key_used": false,
+  "signing_identity": "Disposable RSA 2048 certification/signing key, generated only inside the isolated tool container; not the project publication certificate",
+  "transport": "loopback HTTP inside each native container; no host mounts, sound devices or external network",
+  "hardware": false,
+  "service_manager": false,
+  "published_https": false,
+  "key_lifecycle_qualified": false,
+  "final_release_transition": false,
+  "limits": [
+    "Wrong, expired, rotated and revoked keys remain to be qualified.",
+    "The production project certificate and published HTTPS channels remain to be tested.",
+    "These are development package revisions of runtime 0.7.3, not final 0.7.3-to-0.8.0 transitions."
+  ],
+  "investigated_failures": [
+    "Interrupted DEB unpack can require both dpkg journal processing and full pair reinstallation; either command alone was insufficient for one observed state.",
+    "DNF install of already installed names did not request an update; the fixture now uses upgrade. zypper service definitions are isolated alongside repository definitions.",
+    "Different APT indexes with identical whole-second Last-Modified values caused a 304 and retained the old index. Updates now require a later epoch, stamp mutable metadata, and pass an actual conditional-GET regression."
+  ],
+  "targets": [
+    {
+      "target": "debian13",
+      "image": "sha256:eb9e854c74ae6d47acbbcf534d0f793981374007ac6aa702b7deccf0a59c7a28",
+      "manager_version": "apt 3.0.3 (amd64)",
+      "result": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "debian13",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false,
+        "fixture_sha256": "baae2bfb98a71eed0f6f1de154a29dfa9bb1801f6877b86e0740645bbb9bdd2a",
+        "repositories": {
+          "first": "b9255a69a5bdd6e47dfd6267f155a97f3b4536a1812cd760a7f4e48a26366e70",
+          "second": "f1105535c9233aa3fca5de20aafa49c795c07537b965c705532561af2996def5"
+        }
+      },
+      "snapshots": [
+        {
+          "name": "first",
+          "sha256": "b9255a69a5bdd6e47dfd6267f155a97f3b4536a1812cd760a7f4e48a26366e70",
+          "epoch": 1790415324,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "64581ba08bbe3593e56b8590c8725a2c9278975b527ac9d526765f21e477948e",
+              "unsigned_sha256": "64581ba08bbe3593e56b8590c8725a2c9278975b527ac9d526765f21e477948e"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "541567e42ce5723807bf440c540ee138c8842a0f2c0da93b86885bbf6af317d5",
+              "unsigned_sha256": "541567e42ce5723807bf440c540ee138c8842a0f2c0da93b86885bbf6af317d5"
+            }
+          ]
+        },
+        {
+          "name": "second",
+          "sha256": "f1105535c9233aa3fca5de20aafa49c795c07537b965c705532561af2996def5",
+          "epoch": 1790415325,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "64581ba08bbe3593e56b8590c8725a2c9278975b527ac9d526765f21e477948e",
+              "unsigned_sha256": "64581ba08bbe3593e56b8590c8725a2c9278975b527ac9d526765f21e477948e"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "541567e42ce5723807bf440c540ee138c8842a0f2c0da93b86885bbf6af317d5",
+              "unsigned_sha256": "541567e42ce5723807bf440c540ee138c8842a0f2c0da93b86885bbf6af317d5"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-2",
+              "sha256": "e6605e21360980904a64e84102fe2f5d526ac8b9087955e11b26ac4646cac6e2",
+              "unsigned_sha256": "e6605e21360980904a64e84102fe2f5d526ac8b9087955e11b26ac4646cac6e2"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-2",
+              "sha256": "b6b7714424fd7c98deaaabbb2980cb887d3ec1eb8208e0a7a2cb416934cc5a9b",
+              "unsigned_sha256": "b6b7714424fd7c98deaaabbb2980cb887d3ec1eb8208e0a7a2cb416934cc5a9b"
+            }
+          ]
+        },
+        {
+          "name": "renewed",
+          "sha256": "bde844f5aec30445596c4b9edb1bd23c77af1d5fd3c52fd84d1d60af405086a7",
+          "epoch": 1790415326,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "64581ba08bbe3593e56b8590c8725a2c9278975b527ac9d526765f21e477948e",
+              "unsigned_sha256": "64581ba08bbe3593e56b8590c8725a2c9278975b527ac9d526765f21e477948e"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "541567e42ce5723807bf440c540ee138c8842a0f2c0da93b86885bbf6af317d5",
+              "unsigned_sha256": "541567e42ce5723807bf440c540ee138c8842a0f2c0da93b86885bbf6af317d5"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-2",
+              "sha256": "e6605e21360980904a64e84102fe2f5d526ac8b9087955e11b26ac4646cac6e2",
+              "unsigned_sha256": "e6605e21360980904a64e84102fe2f5d526ac8b9087955e11b26ac4646cac6e2"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-2",
+              "sha256": "b6b7714424fd7c98deaaabbb2980cb887d3ec1eb8208e0a7a2cb416934cc5a9b",
+              "unsigned_sha256": "b6b7714424fd7c98deaaabbb2980cb887d3ec1eb8208e0a7a2cb416934cc5a9b"
+            }
+          ]
+        }
+      ],
+      "conditional_index_http_statuses": [
+        200,
+        304,
+        304
+      ],
+      "command_count": 14,
+      "transcript_sha256": "885b4cd72b36c9fe05d017bf267d706326689bb4a512fbee82170b2edab86009"
+    },
+    {
+      "target": "ubuntu2404",
+      "image": "sha256:504a070b829bb4fd1fda11f778c2bbe576025324254f90fac490df526fc2370a",
+      "manager_version": "apt 2.8.3 (amd64)",
+      "result": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "ubuntu2404",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false,
+        "fixture_sha256": "baae2bfb98a71eed0f6f1de154a29dfa9bb1801f6877b86e0740645bbb9bdd2a",
+        "repositories": {
+          "first": "83ddac4d7de0496909b03668f07d8fdd6061723c8dbb309b6ed04e38831fea29",
+          "second": "e96b3f602dc6021d980b3634aac35cddd3780f20200308f17019ee2b3b169103"
+        }
+      },
+      "snapshots": [
+        {
+          "name": "first",
+          "sha256": "83ddac4d7de0496909b03668f07d8fdd6061723c8dbb309b6ed04e38831fea29",
+          "epoch": 1790415326,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "ff913eb10ac7bdd824f95986c1e42d4c9e7c03cabdd4c4475987a59953432754",
+              "unsigned_sha256": "ff913eb10ac7bdd824f95986c1e42d4c9e7c03cabdd4c4475987a59953432754"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "3c7a8bbe4e9f3531ff678744971493b0c8f68966e361b830427bc04e14f1778e",
+              "unsigned_sha256": "3c7a8bbe4e9f3531ff678744971493b0c8f68966e361b830427bc04e14f1778e"
+            }
+          ]
+        },
+        {
+          "name": "second",
+          "sha256": "e96b3f602dc6021d980b3634aac35cddd3780f20200308f17019ee2b3b169103",
+          "epoch": 1790415327,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "ff913eb10ac7bdd824f95986c1e42d4c9e7c03cabdd4c4475987a59953432754",
+              "unsigned_sha256": "ff913eb10ac7bdd824f95986c1e42d4c9e7c03cabdd4c4475987a59953432754"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "3c7a8bbe4e9f3531ff678744971493b0c8f68966e361b830427bc04e14f1778e",
+              "unsigned_sha256": "3c7a8bbe4e9f3531ff678744971493b0c8f68966e361b830427bc04e14f1778e"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-2",
+              "sha256": "f437d5dd98afb555fb5908e9a1127e73357668e19e63a00efc08c51b65e778a8",
+              "unsigned_sha256": "f437d5dd98afb555fb5908e9a1127e73357668e19e63a00efc08c51b65e778a8"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-2",
+              "sha256": "16ee575e9c7b3e2661d562d8c440f9827a6ee697302783e8f96be45bb170d4ab",
+              "unsigned_sha256": "16ee575e9c7b3e2661d562d8c440f9827a6ee697302783e8f96be45bb170d4ab"
+            }
+          ]
+        },
+        {
+          "name": "renewed",
+          "sha256": "6ea8856867643db1d5f0f50c8fcf9c78d16668b269919ed164158435adf011fe",
+          "epoch": 1790415328,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "ff913eb10ac7bdd824f95986c1e42d4c9e7c03cabdd4c4475987a59953432754",
+              "unsigned_sha256": "ff913eb10ac7bdd824f95986c1e42d4c9e7c03cabdd4c4475987a59953432754"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "3c7a8bbe4e9f3531ff678744971493b0c8f68966e361b830427bc04e14f1778e",
+              "unsigned_sha256": "3c7a8bbe4e9f3531ff678744971493b0c8f68966e361b830427bc04e14f1778e"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-2",
+              "sha256": "f437d5dd98afb555fb5908e9a1127e73357668e19e63a00efc08c51b65e778a8",
+              "unsigned_sha256": "f437d5dd98afb555fb5908e9a1127e73357668e19e63a00efc08c51b65e778a8"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-2",
+              "sha256": "16ee575e9c7b3e2661d562d8c440f9827a6ee697302783e8f96be45bb170d4ab",
+              "unsigned_sha256": "16ee575e9c7b3e2661d562d8c440f9827a6ee697302783e8f96be45bb170d4ab"
+            }
+          ]
+        }
+      ],
+      "conditional_index_http_statuses": [
+        200,
+        304,
+        304
+      ],
+      "command_count": 14,
+      "transcript_sha256": "900fabb9520a4ffbc55906a425b43a8831a9143e213c3f8fc48a578fe1c500ff"
+    },
+    {
+      "target": "ubuntu2604",
+      "image": "sha256:a7835ddc5e1e83a46552fa59604076ed2fdceffc30ead8dae35c383b3f481a49",
+      "manager_version": "apt 3.2.0 (amd64)",
+      "result": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "ubuntu2604",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false,
+        "fixture_sha256": "baae2bfb98a71eed0f6f1de154a29dfa9bb1801f6877b86e0740645bbb9bdd2a",
+        "repositories": {
+          "first": "2482d5db0785e21d33910ac794644d34f55b3b2ce4b47b16e14dd893a4ba71ec",
+          "second": "48427bc0e8ed068902c77b71306c74cc22456adb692bc6052f9d6fd373a75dfb"
+        }
+      },
+      "snapshots": [
+        {
+          "name": "first",
+          "sha256": "2482d5db0785e21d33910ac794644d34f55b3b2ce4b47b16e14dd893a4ba71ec",
+          "epoch": 1790415329,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "faa5cdc121d87591113a2e0797d139d0bc6306c5ecaa167620cdf20f4b231e40",
+              "unsigned_sha256": "faa5cdc121d87591113a2e0797d139d0bc6306c5ecaa167620cdf20f4b231e40"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "a2b5d30d66caf5a17637bfe966a1113cb941bbd4397de246a1cf2f81ac67824a",
+              "unsigned_sha256": "a2b5d30d66caf5a17637bfe966a1113cb941bbd4397de246a1cf2f81ac67824a"
+            }
+          ]
+        },
+        {
+          "name": "second",
+          "sha256": "48427bc0e8ed068902c77b71306c74cc22456adb692bc6052f9d6fd373a75dfb",
+          "epoch": 1790415330,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "faa5cdc121d87591113a2e0797d139d0bc6306c5ecaa167620cdf20f4b231e40",
+              "unsigned_sha256": "faa5cdc121d87591113a2e0797d139d0bc6306c5ecaa167620cdf20f4b231e40"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "a2b5d30d66caf5a17637bfe966a1113cb941bbd4397de246a1cf2f81ac67824a",
+              "unsigned_sha256": "a2b5d30d66caf5a17637bfe966a1113cb941bbd4397de246a1cf2f81ac67824a"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-2",
+              "sha256": "505421491da91d73f8e3cd6671288b28d2d6ecad93c5dc5ef79dc48d4a7ba5ef",
+              "unsigned_sha256": "505421491da91d73f8e3cd6671288b28d2d6ecad93c5dc5ef79dc48d4a7ba5ef"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-2",
+              "sha256": "93c8f02f48a6b86e3ac3ae1760fe27db36e6ae051608f52b1782f5d9ef9dbf7b",
+              "unsigned_sha256": "93c8f02f48a6b86e3ac3ae1760fe27db36e6ae051608f52b1782f5d9ef9dbf7b"
+            }
+          ]
+        },
+        {
+          "name": "renewed",
+          "sha256": "18f46ef719015787f2cd893c56aa3da263f573b1f10add5c268f4fb4bb742ff0",
+          "epoch": 1790415331,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-1",
+              "sha256": "faa5cdc121d87591113a2e0797d139d0bc6306c5ecaa167620cdf20f4b231e40",
+              "unsigned_sha256": "faa5cdc121d87591113a2e0797d139d0bc6306c5ecaa167620cdf20f4b231e40"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-1",
+              "sha256": "a2b5d30d66caf5a17637bfe966a1113cb941bbd4397de246a1cf2f81ac67824a",
+              "unsigned_sha256": "a2b5d30d66caf5a17637bfe966a1113cb941bbd4397de246a1cf2f81ac67824a"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3~dev-2",
+              "sha256": "505421491da91d73f8e3cd6671288b28d2d6ecad93c5dc5ef79dc48d4a7ba5ef",
+              "unsigned_sha256": "505421491da91d73f8e3cd6671288b28d2d6ecad93c5dc5ef79dc48d4a7ba5ef"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3~dev-2",
+              "sha256": "93c8f02f48a6b86e3ac3ae1760fe27db36e6ae051608f52b1782f5d9ef9dbf7b",
+              "unsigned_sha256": "93c8f02f48a6b86e3ac3ae1760fe27db36e6ae051608f52b1782f5d9ef9dbf7b"
+            }
+          ]
+        }
+      ],
+      "conditional_index_http_statuses": [
+        200,
+        304,
+        304
+      ],
+      "command_count": 14,
+      "transcript_sha256": "93fdf53f5cc134396f271cb48cb8b01d728777144b914e3e60c838e219253fac"
+    },
+    {
+      "target": "fedora44",
+      "image": "sha256:e3b232847c021ea1d1c9cd8183d13f370584e9f6d2cd2f7cd31580c1abf57a2e",
+      "manager_version": "dnf5 version 5.4.3.0",
+      "result": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "fedora44",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false,
+        "fixture_sha256": "baae2bfb98a71eed0f6f1de154a29dfa9bb1801f6877b86e0740645bbb9bdd2a",
+        "repositories": {
+          "first": "23459efdfbbf8f8a7e23c603489addaa78c91a28cec90ba24348f30518b717af",
+          "second": "7f4ebce3c47b2ac5ac7804234f23fffefbcc612158c3ffe411ed61ad6f449949"
+        }
+      },
+      "snapshots": [
+        {
+          "name": "first",
+          "sha256": "23459efdfbbf8f8a7e23c603489addaa78c91a28cec90ba24348f30518b717af",
+          "epoch": 1790415331,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "d44e5c3c52ca0329f35274f372f5d0377d599b7d18b3122a337d4287d279acc6",
+              "unsigned_sha256": "f2e9489add4f3ba8f3c94e4a907cd6fc95fd37b32d6f4cca97d34559c718eb5c"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "b609313fabf9925ef7bf793017dd82eb2bac2867240e1babdf74019d19987c23",
+              "unsigned_sha256": "79d91dab1f9c1558dba2ae31d943d70edbe8b646852a3980f9591b24420d36bf"
+            }
+          ]
+        },
+        {
+          "name": "second",
+          "sha256": "7f4ebce3c47b2ac5ac7804234f23fffefbcc612158c3ffe411ed61ad6f449949",
+          "epoch": 1790415332,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "d44e5c3c52ca0329f35274f372f5d0377d599b7d18b3122a337d4287d279acc6",
+              "unsigned_sha256": "f2e9489add4f3ba8f3c94e4a907cd6fc95fd37b32d6f4cca97d34559c718eb5c"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "b609313fabf9925ef7bf793017dd82eb2bac2867240e1babdf74019d19987c23",
+              "unsigned_sha256": "79d91dab1f9c1558dba2ae31d943d70edbe8b646852a3980f9591b24420d36bf"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.2",
+              "sha256": "9cf8eff9b0705953fec5f76bc4154b957b9fb69fde6b4c59cca6d738b6748300",
+              "unsigned_sha256": "368a87f16173608077af6efa4a138e0d2f8458ac9896d5d18f3da5b36c62a2e3"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.2",
+              "sha256": "736dd2116fb3fc4eefedca2997b4ac3c1160c4ccd6329014ab3adabff1b10b3b",
+              "unsigned_sha256": "bcca6f4bd38fea0b0b189f78cb5d5487510e40ba031e8da9082ad004271f9fa3"
+            }
+          ]
+        },
+        {
+          "name": "renewed",
+          "sha256": "c7df389d07648b72af5330547e99f834080e12ecef3dc146404139a7174a9d74",
+          "epoch": 1790415333,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "d44e5c3c52ca0329f35274f372f5d0377d599b7d18b3122a337d4287d279acc6",
+              "unsigned_sha256": "f2e9489add4f3ba8f3c94e4a907cd6fc95fd37b32d6f4cca97d34559c718eb5c"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "b609313fabf9925ef7bf793017dd82eb2bac2867240e1babdf74019d19987c23",
+              "unsigned_sha256": "79d91dab1f9c1558dba2ae31d943d70edbe8b646852a3980f9591b24420d36bf"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.2",
+              "sha256": "9cf8eff9b0705953fec5f76bc4154b957b9fb69fde6b4c59cca6d738b6748300",
+              "unsigned_sha256": "368a87f16173608077af6efa4a138e0d2f8458ac9896d5d18f3da5b36c62a2e3"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.2",
+              "sha256": "736dd2116fb3fc4eefedca2997b4ac3c1160c4ccd6329014ab3adabff1b10b3b",
+              "unsigned_sha256": "bcca6f4bd38fea0b0b189f78cb5d5487510e40ba031e8da9082ad004271f9fa3"
+            }
+          ]
+        }
+      ],
+      "conditional_index_http_statuses": [],
+      "command_count": 14,
+      "transcript_sha256": "40acd7a9880d9ec0a5747d7c6622da764d43473e3dfa0643a85aa0ba7ff31017"
+    },
+    {
+      "target": "opensuse16",
+      "image": "sha256:ad9980d09a8ac436ae21de4327b8285c87568fd041e79abf5ce5bf08c6a18e40",
+      "manager_version": "zypper 1.14.101",
+      "result": {
+        "altered_metadata": "refused before installation",
+        "subscription": "core alone and then exact GTK pair; no activation",
+        "changed_metadata": "new index fetched; conditional GET cannot retain old index",
+        "missing-package": "update refused; previous installed pair intact",
+        "altered-package": "update refused; previous installed pair intact",
+        "interruption": "actual package transaction killed after fence; recovery passed",
+        "rollback": "explicit older pair selected from retained channel metadata",
+        "user_state": "configuration, profile and marker retained byte/owner/mode",
+        "unavailable_server": "refresh refused",
+        "target": "opensuse16",
+        "ok": true,
+        "published_https": false,
+        "key_rotation_and_expiry": false,
+        "final_release_transition": false,
+        "fixture_sha256": "baae2bfb98a71eed0f6f1de154a29dfa9bb1801f6877b86e0740645bbb9bdd2a",
+        "repositories": {
+          "first": "83bb127a63d68ccfb61744d5108aa1525bb4e7f3c46e52c0ffccec0fc200ee57",
+          "second": "07b06b259e913dce3ba2b6f142ace609c2683c3d7e2f8ba435ca1fac7f8c491a"
+        }
+      },
+      "snapshots": [
+        {
+          "name": "first",
+          "sha256": "83bb127a63d68ccfb61744d5108aa1525bb4e7f3c46e52c0ffccec0fc200ee57",
+          "epoch": 1790415334,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "1dd76a8b3a1b4632be0d66205a16f18cd8e1bf049130472c9f00bb526672213b",
+              "unsigned_sha256": "a0fe5ec2881bab1237844b184be9509042fe1c84b4a7fc56be9c876b8eed0288"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "b8a7939674b9f23f8c6dffd7f1309618ee5ae7b7212acfce910c8f7986d030f0",
+              "unsigned_sha256": "72d0b5c86642fef5a098a07c708254179aba8e39eae0a451d38022dbacba4e32"
+            }
+          ]
+        },
+        {
+          "name": "second",
+          "sha256": "07b06b259e913dce3ba2b6f142ace609c2683c3d7e2f8ba435ca1fac7f8c491a",
+          "epoch": 1790415335,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "1dd76a8b3a1b4632be0d66205a16f18cd8e1bf049130472c9f00bb526672213b",
+              "unsigned_sha256": "a0fe5ec2881bab1237844b184be9509042fe1c84b4a7fc56be9c876b8eed0288"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "b8a7939674b9f23f8c6dffd7f1309618ee5ae7b7212acfce910c8f7986d030f0",
+              "unsigned_sha256": "72d0b5c86642fef5a098a07c708254179aba8e39eae0a451d38022dbacba4e32"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.2",
+              "sha256": "f4398ee4a53b93734ab1e469bdbd10d28b42cd37050ca6e3f4f017a4378721b5",
+              "unsigned_sha256": "ea9e44619dd86e4256f6001ff41ad60fc37de68c994a131b5df4a5f2efa5bee8"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.2",
+              "sha256": "cdb31d593c531494a7577190a8b957a52e330c4297f6d5af3122c34e4f86b0ab",
+              "unsigned_sha256": "3f359db12a6732cb7cb6908efc682e64731c6d65d84d21a0be4cd73102af4080"
+            }
+          ]
+        },
+        {
+          "name": "renewed",
+          "sha256": "069cbc84a5ba6d6c2a04f82ec2c779a55a6b4ba021503a4765f8db02ad91b893",
+          "epoch": 1790415336,
+          "signing_key": "1218CC04AD08D0D9663D2A3FDF47B550C867364A",
+          "packages": [
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "1dd76a8b3a1b4632be0d66205a16f18cd8e1bf049130472c9f00bb526672213b",
+              "unsigned_sha256": "a0fe5ec2881bab1237844b184be9509042fe1c84b4a7fc56be9c876b8eed0288"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.1",
+              "sha256": "b8a7939674b9f23f8c6dffd7f1309618ee5ae7b7212acfce910c8f7986d030f0",
+              "unsigned_sha256": "72d0b5c86642fef5a098a07c708254179aba8e39eae0a451d38022dbacba4e32"
+            },
+            {
+              "name": "oscmix-desk",
+              "version": "0.7.3-0.dev.2",
+              "sha256": "f4398ee4a53b93734ab1e469bdbd10d28b42cd37050ca6e3f4f017a4378721b5",
+              "unsigned_sha256": "ea9e44619dd86e4256f6001ff41ad60fc37de68c994a131b5df4a5f2efa5bee8"
+            },
+            {
+              "name": "oscmix-desk-gtk",
+              "version": "0.7.3-0.dev.2",
+              "sha256": "cdb31d593c531494a7577190a8b957a52e330c4297f6d5af3122c34e4f86b0ab",
+              "unsigned_sha256": "3f359db12a6732cb7cb6908efc682e64731c6d65d84d21a0be4cd73102af4080"
+            }
+          ]
+        }
+      ],
+      "conditional_index_http_statuses": [],
+      "command_count": 14,
+      "transcript_sha256": "6602a0afe66a6c1b8276a8773d2ffbb8f959be2df89e741be5553ba139932653"
+    }
+  ]
+}

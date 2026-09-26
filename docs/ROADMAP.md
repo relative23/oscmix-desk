@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2146 tests (two empty parameter sets
+The latest interim `make check` passes 2165 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -46,7 +46,13 @@ KDE and Xfce with the coordinated mixer. The
 [native development record](evidence/0.8.0/native-development.json) identifies
 the sources, images, package hashes, installed payload and desktop results.
 These packages remain unpublished development builds; signed repository clients
-and final 0.7.3-to-0.8.0 transitions have separate gates.
+and final 0.7.3-to-0.8.0 transitions have separate gates. Signed staging now passes
+actual APT/DNF/zypper lifecycle and fault checks on all five repository targets,
+using a disposable certificate and loopback HTTP. This includes killed transactions,
+full recovery and a conditional-GET regression for changed indexes. The
+[repository development record](evidence/0.8.0/signed-repository-development.json)
+identifies the exact generator, fixtures, snapshots and managers. Production-key
+lifecycle, CI/publication integration and published HTTPS checks remain open.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
