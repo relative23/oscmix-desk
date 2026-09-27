@@ -3,12 +3,24 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest full integrated `make check` passes 2548 tests (two empty parameter
-sets skipped), and coverage is 97.72%, meeting the unchanged 97% ratchet.
-The earlier full Python 3.9–3.14 matrix passes after correcting test-fixture
-portability. Five complete repeats, the 200-cycle soak and all fifteen fault-suite
-repeats now pass against unchanged inputs at `84b7b49`. The fresh full mutation
-run at that revision has completed: 9412 killed, 1732 survived and 13 timed out,
+The integrated follow-up at `06d8197` passes `make check` with
+2604 tests (two empty parameter sets skipped), coverage at 97.85%, all six
+Python versions, five complete repeats, the 200-cycle soak (195.94 s), and
+fifteen 72-case fault-suite repeats. It includes a reproduced invalid nested
+channel that escaped configuration recovery as `ValueError`; reload now
+keeps the running configuration through the normal `ConfigError` path.
+The [follow-up record](evidence/0.8.0/software-followup-development.json)
+retains exact inputs, logs and the initial test-runner launch failure, before
+any runtime tests began. It was merged onto main only after independently
+archiving the unchanged preceding mutation generation.
+The prior full integrated `make check` at `28b2dc4` passes 2555 tests (two
+empty parameter sets skipped), and coverage is 97.65%, meeting the unchanged
+97% ratchet. The complete Python 3.9–3.14 matrix, five complete repeats,
+200-cycle soak and all fifteen fault-suite repeats pass on the same unchanged
+revision. The [current software record](evidence/0.8.0/software-pipewire-development.json)
+retains the exact inputs, durations, interpreter versions and skips.
+The earlier fresh full mutation run at `84b7b49` has completed:
+9412 killed, 1732 survived and 13 timed out,
 with no uncovered or unresolved mutants. Its interrupted attempts and complete
 instrumented tree are retained; the last interruption is proven to be a kernel
 memory kill. The final continuation used a 2 GiB per-process address-space
@@ -27,7 +39,16 @@ durations, interpreter/dependency versions, skips and the earlier failing
 coverage result. A further native-parser regression reproduced wrong PipeWire
 targets containing quotes or backslashes. `2452075` encodes target names and
 descriptions as JSON strings accepted by SPA; native parsing and targeted
-architecture/workflow checks pass. Refreshed full gates must include that fix.
+architecture/workflow checks pass. The full software gates at `28b2dc4`
+include that correction. Its fresh 11166-mutant generation completed in
+6888.90 s: 10008 killed, 1146 survived and 12 timed out, with no uncovered or
+unresolved mutants. The [execution record](evidence/0.8.0/mutation-full-development.json)
+identifies the original inputs and independently verified complete archive.
+Rejudgment of 203 affected functions (8345 mutants) after the follow-up is
+complete: 10144 killed, 1017 survived and 12 timed out, with no uncovered or
+unresolved cases. The [follow-up mutation record](evidence/0.8.0/mutation-followup-development.json)
+identifies the unchanged inputs and independently verified archive. Full
+survivor assessment remains open.
 A later source review reproduced partial confirmation from a malformed OSC
 bundle. The receiver and measurement tools now validate the whole encoded
 delivery before exposing observations. Nine production-client cases fail
@@ -51,6 +72,18 @@ Actual desk CLI processes and GTK also pass a combined simulated-MIDI test:
 two profiles serialize through read-back, GTK cannot write during the operation,
 and backend loss preserves the marker without replay after restart. Measurement
 tools now use the same checked connection and record exact build provenance.
+The real UCX/GTK load probe exposed redundant global GTK notifications,
+premature refusal of a resumed reader and a 32-packet queue too small for
+measured refresh bursts. Patches 0007–0009 correct those boundaries while
+retaining ordered complete deliveries and the 256 KiB data bound. At `78e31f7`,
+70 backend/preparation cases and the actual GTK/CLI simulation pass. The
+real UCX probe also passes both directions, whole-operation exclusion, two
+concurrent profile processes, both launch orders, backend loss and no replay
+after restart. Saved device values and the unchanged installed 0.7.3 service
+are restored. The [load record](evidence/0.8.0/gtk-observation-load-development.json)
+retains all ten hardware attempts, the reproduced failures, exact binary
+identities and restoration limits. Final routing/audio/platform gates remain
+open for this changed series.
 Development UCX II measurements now distinguish device reports from cached
 playback flags and withhold incomplete compound input-mix reports. The
 [capability probe](evidence/0.8.0/backend-capabilities.json) found no supported
@@ -179,7 +212,7 @@ service has a separate mount namespace, read-only configuration and writable
 shared runtime directory. Exact baseline restoration preserves user state;
 retained older test generations exposed and corrected a harness assumption
 about the number of rollback steps. The earlier Q35 failure remains recorded.
-Fresh qualification at `84b7b49` also covers the current backend/GTK series on
+Earlier qualification at `84b7b49` covers the backend/GTK series through patch 0006 on
 [all six native package targets](evidence/0.8.0/series6-native-development.json),
 including the three nested desktops; the
 [Alpine/OpenRC and Void/runit services](evidence/0.8.0/series6-native-services-development.json)

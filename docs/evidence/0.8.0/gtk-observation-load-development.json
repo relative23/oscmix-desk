@@ -1,0 +1,992 @@
+{
+  "schema": 1,
+  "kind": "Development GTK/UCX load corrections; not final release qualification",
+  "recorded_utc": "2026-09-27T17:34:59.517599+00:00",
+  "code_commit": "78e31f75d9f6d9f9fae27626c73aa1c661c431c4",
+  "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+  "series_sha256": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+  "patches": [
+    {
+      "file": "0003-coordinated-backend-and-gtk.patch",
+      "sha256": "2375fae9b29a231754a84c2adbc8ea57c1e188e742b0938740494ca60e50f9c3"
+    },
+    {
+      "file": "0004-require-complete-input-mix-observations.patch",
+      "sha256": "98009d8e98bc1c1ee355fc86790909511cbf72c986c21d256eca4c60b8204dce"
+    },
+    {
+      "file": "0005-identify-the-exact-backend-and-gtk-build.patch",
+      "sha256": "3933324f9a89ae98b038dc727a114d70f49a4f1738366140481224009513a562"
+    },
+    {
+      "file": "0006-refuse-lost-midi-input.patch",
+      "sha256": "66a7ce13e78afea7f0a36481f453fd1ff2c8512d2c1e7bebc8ec866d3875f47d"
+    },
+    {
+      "file": "0007-notify-gtk-connection-changes-only.patch",
+      "sha256": "4c304a9e1c6bd6d18f40d7798495c0f829100ef10ecdd8c65db0ae20098b5819"
+    },
+    {
+      "file": "0008-drain-writable-client-queues-before-overflow.patch",
+      "sha256": "b4224643382f7f026e985542b99e97f896fc9c7fa29828fdfd9430d8c530965a"
+    },
+    {
+      "file": "0009-bound-observation-queues-by-actual-payload-size.patch",
+      "sha256": "945143f38eb8074446d8085851bc5da6268905edff15584f86a4a1fdfcb9b0ea"
+    }
+  ],
+  "device": {
+    "model": "Fireface UCX II",
+    "usb_id": "2a39:3fd9",
+    "serial": "24216011",
+    "usb_firmware": "3.01",
+    "dsp": 36
+  },
+  "safety": {
+    "maintainer_confirmation": "UCX an, KRK aus, Kopfh\u00f6rer abgezogen",
+    "phantom_power_off": true,
+    "test_writes": "Only output 5/6 volume, below the saved level; no test audio.",
+    "refresh_limit": "Existing upstream refresh may re-emit physical-input coefficients while decoding link reports (ADR 0031).",
+    "playback_limit": "Declared routes retained separately; undeclared playback coefficients remain unknown."
+  },
+  "corrections": [
+    {
+      "patch": "0007",
+      "behavior": "Do not notify global GTK status/sensitivity for observations; deliver every value/meter binding."
+    },
+    {
+      "patch": "0008",
+      "behavior": "Drain a resumed peer before applying queue-overflow checks."
+    },
+    {
+      "patch": "0009",
+      "behavior": "Retain up to 1024 ordered packets within the unchanged 256 KiB wire-data bound; allocate actual packet length and free on delivery/failure."
+    }
+  ],
+  "software": [
+    {
+      "series": 7,
+      "commit": "bfef63b",
+      "passed": true,
+      "tests_passed": 68,
+      "baseline_expected_failure": true,
+      "inputs": {
+        "tests/backend_control.py": "d7fcbdbc8d73afa9bd216f2b528972b57c66cd239c4baf5aa7a29639f4cc21af",
+        "tests/gtk_notifications.c": "f6461722abbcb3e5d6cfc506049143b794a85a5c54ce7a88b180100c76228c70",
+        "patches/backend-series.json": "bdaeb18bad7a81c50ee1d616f653ee2df6a1c2205e76a865c0a4710c1154a8ca",
+        "patches/0007-notify-gtk-connection-changes-only.patch": "4c304a9e1c6bd6d18f40d7798495c0f829100ef10ecdd8c65db0ae20098b5819"
+      },
+      "commands": [
+        {
+          "started_utc": "2026-09-27T15:42:18.623183+00:00",
+          "seconds": 0.515,
+          "exit_code": 1,
+          "expected_exit": 1,
+          "log_sha256": "e27c656b8847bfc34bfc0480b9cffade81efeac4175c026acd7b732e50c678ae"
+        },
+        {
+          "started_utc": "2026-09-27T15:42:19.138519+00:00",
+          "seconds": 115.482,
+          "exit_code": 0,
+          "expected_exit": 0,
+          "log_sha256": "70b8b16fa301987e3bc649ecc6ff062861e22f7a4f5a2776be998a0f04512ad5"
+        }
+      ],
+      "result_sha256": "0d208afb0ba2e53852c572017ceccc00bf647cac7759c91fa57a1487f4e0adcd"
+    },
+    {
+      "series": 8,
+      "commit": "a520c06",
+      "passed": true,
+      "tests_passed": 69,
+      "baseline_expected_failure": true,
+      "inputs": {
+        "tests/backend_control.py": "bb3a836f00e0efb316c8d27d67ae8d2e368a85dfbe38ab67922fd8fecc01d206",
+        "tests/gtk_notifications.c": "f6461722abbcb3e5d6cfc506049143b794a85a5c54ce7a88b180100c76228c70",
+        "tests/control_queue_recovery.c": "e8c4c78094ced1fcf78ecff5a72ae1c417d877911e801804ce33deaf689cc0e9",
+        "patches/backend-series.json": "f89af982e96a37ea133fdba3b30f442672bc293f46a56363cc5b3ea6619383bb",
+        "patches/0007-notify-gtk-connection-changes-only.patch": "4c304a9e1c6bd6d18f40d7798495c0f829100ef10ecdd8c65db0ae20098b5819",
+        "patches/0008-drain-writable-client-queues-before-overflow.patch": "b4224643382f7f026e985542b99e97f896fc9c7fa29828fdfd9430d8c530965a"
+      },
+      "commands": [
+        {
+          "started_utc": "2026-09-27T16:39:46.908576+00:00",
+          "seconds": 0.314,
+          "exit_code": 1,
+          "expected_exit": 1,
+          "log_sha256": "b3513f3a7b0f729b3bf9d3d08a16686aa3fcf3071004e3363a8590424dd60c7f"
+        },
+        {
+          "started_utc": "2026-09-27T16:39:47.222955+00:00",
+          "seconds": 115.18,
+          "exit_code": 0,
+          "expected_exit": 0,
+          "log_sha256": "8530696b63604ba0047c2b7a6c6db668fc06665d01f76e69db2181d0e8a2efab"
+        }
+      ],
+      "result_sha256": "b7ab1abc1a6a1678b93808317c0a794a8f52cba4c9b844a35284cb085d52e839"
+    },
+    {
+      "series": 9,
+      "commit": "78e31f7",
+      "passed": true,
+      "tests_passed": 70,
+      "baseline_expected_failure": true,
+      "inputs": {
+        "tests/backend_control.py": "d57574875a034e046b7eeed4d88c74868c2a1f5a41ae1eb61917342f9bf13e65",
+        "tests/gtk_notifications.c": "f6461722abbcb3e5d6cfc506049143b794a85a5c54ce7a88b180100c76228c70",
+        "tests/control_queue_recovery.c": "bc6f69a59f8f5ef8011f3a16d6cba84593c30b758ee958072c1083b1aa981b75",
+        "tests/control_queue_burst.c": "dbcc4258d3a4172d06322cfdc277a9d6be0798868dc3b2fbd14195181ec42d19",
+        "patches/backend-series.json": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+        "patches/0007-notify-gtk-connection-changes-only.patch": "4c304a9e1c6bd6d18f40d7798495c0f829100ef10ecdd8c65db0ae20098b5819",
+        "patches/0008-drain-writable-client-queues-before-overflow.patch": "b4224643382f7f026e985542b99e97f896fc9c7fa29828fdfd9430d8c530965a",
+        "patches/0009-bound-observation-queues-by-actual-payload-size.patch": "945143f38eb8074446d8085851bc5da6268905edff15584f86a4a1fdfcb9b0ea"
+      },
+      "commands": [
+        {
+          "started_utc": "2026-09-27T17:28:35.722721+00:00",
+          "seconds": 0.417,
+          "exit_code": 1,
+          "expected_exit": 1,
+          "log_sha256": "ef51939c21418a463acf607aed10cb9c82dc02f490be6fbea359fb1eb99e8cb7"
+        },
+        {
+          "started_utc": "2026-09-27T17:28:36.139658+00:00",
+          "seconds": 115.492,
+          "exit_code": 0,
+          "expected_exit": 0,
+          "log_sha256": "73a1a1ead29d8e929839140b3525b6b6658991c5e4ea77c9425d5ed404ac90aa"
+        }
+      ],
+      "result_sha256": "a6d51ffdae91cde8b65ae3283a83c1f9933ee0962ffad7b3527c72d36322db60"
+    }
+  ],
+  "actual_gtk_with_simulated_midi": [
+    {
+      "series": 7,
+      "passed": true,
+      "seconds": 129.607,
+      "started_utc": "2026-09-27T15:49:12.570468+00:00",
+      "log_sha256": "e6427faa5ac9d7991323001ecfda729c4eadfe4fc7edbee5810c7f91f55e7a7d",
+      "result_sha256": "8554f0b4d9d85c5244678408b31f3a4f0705dd539eb855de2b0b54eab3ac59ed",
+      "source_sha256": {
+        "tests/gtk_control.py": "1ece517de02756752747e978144a1f99d6f86943f1e017690ddacb337aa6977a",
+        "tests/control_peer.py": "d69251ac0a08a7b8491cdde954a50f401a5ff2b4f2e070179ec1612cf217eec8",
+        "bin/oscmix-launch": "d60fd70d7e612c86859d7a0fec2408e569c504221f4767241ad7329c18590dc4",
+        "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8"
+      },
+      "binary_sha256": {
+        "oscmix": "e01064cde247c3a0226d11e9809285cb2fabd8e0fc489074a7bc25c11884c4fb",
+        "alsaseqio": "5d6c5a609817875219bb46e57139373f0659613a3ec45f446457c6b941edecc6",
+        "gtk/oscmix-gtk": "3904229f891bcc9d5649eb06a9776302d02f0274335b84ec9327864c42006c66"
+      },
+      "scenarios": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "ok": true,
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11"
+      }
+    },
+    {
+      "series": 8,
+      "passed": true,
+      "seconds": 112.71,
+      "started_utc": "2026-09-27T16:59:09.680420+00:00",
+      "log_sha256": "733a58f5cfb84ecda5e7efce1baf70256332f41f26839370d26558f44de33568",
+      "result_sha256": "03b919e6b46629290af4f8ec62b61a5be052280ea7bd785b75ad8f9678b44975",
+      "source_sha256": {
+        "tests/gtk_control.py": "1ece517de02756752747e978144a1f99d6f86943f1e017690ddacb337aa6977a",
+        "tests/control_peer.py": "d69251ac0a08a7b8491cdde954a50f401a5ff2b4f2e070179ec1612cf217eec8",
+        "bin/oscmix-launch": "d60fd70d7e612c86859d7a0fec2408e569c504221f4767241ad7329c18590dc4",
+        "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8"
+      },
+      "binary_sha256": {
+        "oscmix": "9ff467bc09f4db32050cd0849c6ee681b49041d3bda1b8c6f48db4e41f320eff",
+        "alsaseqio": "07a3ffcc4e20299c0527dcdc4924d44033e3de1c702b4ba8d98fb49c43606e1e",
+        "gtk/oscmix-gtk": "9222370e1a2cef7352edcf238906cf1072e061bf8323606dfb635c8a59d2b055"
+      },
+      "scenarios": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "ok": true,
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11"
+      }
+    },
+    {
+      "series": 9,
+      "passed": true,
+      "seconds": 110.169,
+      "started_utc": "2026-09-27T17:25:57.876845+00:00",
+      "log_sha256": "01e9c0c12bf97c3165e7c2ffde14f6d5f05874d6bca97da0d943dd0fddfd367c",
+      "result_sha256": "27ba4722e1ad2936ba606cbe3914c5a8fb1742053a6ac214a16dd874c59570f5",
+      "source_sha256": {
+        "tests/gtk_control.py": "1ece517de02756752747e978144a1f99d6f86943f1e017690ddacb337aa6977a",
+        "tests/control_peer.py": "d69251ac0a08a7b8491cdde954a50f401a5ff2b4f2e070179ec1612cf217eec8",
+        "bin/oscmix-launch": "d60fd70d7e612c86859d7a0fec2408e569c504221f4767241ad7329c18590dc4",
+        "bin/oscmix-session": "90eeea3f497c17af648d618ee51d0be03c3b64dfb0fb867eeffd89b29d1e9be8"
+      },
+      "binary_sha256": {
+        "oscmix": "85d3e1fb8f348c307a0dc07a6e513199f3814afd4a9e1d7fa2d6ad1ae37abdf6",
+        "alsaseqio": "12dd019ffd67c4940badf8437154346fdd5b21aefb1905c9f9ea3ae2651288eb",
+        "gtk/oscmix-gtk": "7922de9fdb273ac24742ad4f99b2c609b92de45c95eb13c23b986dc0fd06af92"
+      },
+      "scenarios": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "ok": true,
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11"
+      }
+    }
+  ],
+  "hardware_attempts": [
+    {
+      "started": "2026-09-27T14:00:59.195793+00:00",
+      "finished": "2026-09-27T14:01:35.704753+00:00",
+      "code_commit": "06d8197803aaf27da91cf0d1a951e1ed8c1a4650",
+      "passed": false,
+      "harness_sha256": "99fa9e231087b429347b7f239b86a187909dc4e08d9424d6deef332221f2fa77",
+      "name": "gtk-series6-hardware-1",
+      "seconds": 36.509,
+      "result_sha256": "d71667864521ba40f80c30f8861f3324fbc5b4642b1c6663cb3377404000fa02",
+      "backend_log_sha256": "b884b1ca063539a78924110b6f32b341d9c0e1a398e9c6aef93bd5f2708e8d2e",
+      "checks": {},
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "AssertionError",
+          "detail": "condition not met in 5.0s"
+        },
+        {
+          "phase": "restore-device",
+          "type": "AssertionError",
+          "detail": "{'/durec/next': [['i', [-1]], None], '/durec/playmode': [['is', [1, 'UFX Single']], None]}"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 1910449,
+          "epoch": "34256eef6a04537ba7fac0bd8362c84a",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "e9698be21ceaf07dbece94eac293a230a58dc9ad618f8940a14ebb10b656fca0",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "auxiliary_raw_comparison": "Not performed in this earlier attempt; its failed coordinated comparison is retained."
+      }
+    },
+    {
+      "started": "2026-09-27T14:04:17.955958+00:00",
+      "finished": "2026-09-27T14:05:00.676107+00:00",
+      "code_commit": "06d8197803aaf27da91cf0d1a951e1ed8c1a4650",
+      "passed": false,
+      "harness_sha256": "f00d9998df3b9a7144dc9513dd2a06c2881fdaf4fbced75e27defc2ba0a22374",
+      "name": "gtk-series6-hardware-2",
+      "seconds": 42.72,
+      "result_sha256": "71754f7dba57ae424dfbc60e3bc58b28b762d70803e1cbfda5aa9e209062e979",
+      "backend_log_sha256": "f43c65933cdba810edfe5439571cc0b2c5e958bbf04a6bce73f5fdb218ea0884",
+      "checks": {},
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "Error",
+          "detail": "atspi_error: Method \"Get\" with signature \"ss\" on interface \"org.freedesktop.DBus.Properties\" could not be processed as object /org/a11y/atspi/accessible/5762 does not exist\n (1)"
+        },
+        {
+          "phase": "restore-device",
+          "type": "AssertionError",
+          "detail": "{'/durec/totalspace': [None, ['f', [214.5625]]], '/durec/freespace': [None, ['f', [559.0]]]}"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 1928283,
+          "epoch": "7f207100f0bab372d9d0635232b9e1e1",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        },
+        {
+          "pid": 1935391,
+          "epoch": "81fbd12600d971d6b3420439707e16ab",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "e7cdc7d320ae4b51e2b9cdb2a837b3f459e001829fa584f3445eb1d8cc09f5c4",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "auxiliary_raw_comparison": "Not performed in this earlier attempt; its failed coordinated comparison is retained."
+      }
+    },
+    {
+      "started": "2026-09-27T14:05:40.614814+00:00",
+      "finished": "2026-09-27T14:06:34.255841+00:00",
+      "code_commit": "06d8197803aaf27da91cf0d1a951e1ed8c1a4650",
+      "passed": false,
+      "harness_sha256": "a8aefeea90a3f0757600694c2b628b890c7f326e3194321ff2c749fb52c2a566",
+      "name": "gtk-series6-hardware-3",
+      "seconds": 53.641,
+      "result_sha256": "7083ee9e4390f24cbbefb6c15d9ff0b03c67313f42900d0c5000269c8421ad4e",
+      "backend_log_sha256": "ceab3295afe3d63b108dd79061dd5c0b38d230218c7105c2272b3cccd8199386",
+      "checks": {},
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "BrokenPipeError",
+          "detail": "[Errno 32] Broken pipe"
+        },
+        {
+          "phase": "restore-device",
+          "type": "AssertionError",
+          "detail": "{'/durec/next': [['i', [-1]], None], '/durec/totalspace': [None, ['f', [214.5625]]], '/durec/playmode': [['is', [1, 'UFX Single']], None], '/durec/freespace': [None, ['f', [559.0]]]}"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 1942767,
+          "epoch": "3dd51fbdd58b1253bea4952df152c103",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        },
+        {
+          "pid": 1951553,
+          "epoch": "9b1ed5fc130ccbae0d4efd465b8d53df",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "5c2b6344954ff3451daa9640f8a68e1c0308399426841641eab1c88dfb0f5f7c",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "auxiliary_raw_comparison": "Not performed in this earlier attempt; its failed coordinated comparison is retained."
+      }
+    },
+    {
+      "started": "2026-09-27T14:08:26.954524+00:00",
+      "finished": "2026-09-27T14:09:51.852685+00:00",
+      "code_commit": "06d8197803aaf27da91cf0d1a951e1ed8c1a4650",
+      "passed": false,
+      "harness_sha256": "337dc0c1e11e6a0ff422999ccbfc18c407510892e6d4968f7105f41cf7ca4db5",
+      "name": "gtk-series6-hardware-4",
+      "seconds": 84.898,
+      "result_sha256": "a8d43a2e12fd8081aa3d990d7261b9745ede90b047c96ef8f377a8f7de2fd40c",
+      "backend_log_sha256": "455c2fc31319801a09f1111d04bbec0eeb781736238f8f92e9670884e031a8b1",
+      "checks": {},
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "AssertionError",
+          "detail": "condition not met in 30.0s"
+        },
+        {
+          "phase": "restore-device",
+          "type": "AssertionError",
+          "detail": "{'/durec/playmode': [None, ['is', [1, 'UFX Single']]], '/durec/next': [None, ['i', [-1]]]}"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 1967688,
+          "epoch": "328fb26dafbaa1336c30d6b90ff2815f",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        },
+        {
+          "pid": 1980544,
+          "epoch": "1169ab609d05788e9c8f90b83c526108",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "b2c54784a254e119283ec5a3bc839fc946e217f7e90fe8e13fb3f1e9c2ab5aa9",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "auxiliary_raw_comparison": "Not performed in this earlier attempt; its failed coordinated comparison is retained."
+      }
+    },
+    {
+      "started": "2026-09-27T14:12:28.208534+00:00",
+      "finished": "2026-09-27T14:13:51.887989+00:00",
+      "code_commit": "06d8197803aaf27da91cf0d1a951e1ed8c1a4650",
+      "passed": false,
+      "harness_sha256": "8a1bb8a04abac12337110e1aa52df1f78712c497cf90b8e6c4c1a523f1e6cfa4",
+      "name": "gtk-series6-hardware-5",
+      "seconds": 83.679,
+      "result_sha256": "f55559effa56cc1c27086b40fcffb59fa03996f554bb7f15027d4a2d300415e8",
+      "backend_log_sha256": "0d1e24e0c2896db6708973d8c73d5bffc5a738d141aefdc8aaf11115ed9b3641",
+      "checks": {},
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "AssertionError",
+          "detail": "condition not met in 30.0s"
+        },
+        {
+          "phase": "restore-device",
+          "type": "AssertionError",
+          "detail": "{'/durec/next': [['i', [-1]], None], '/durec/totalspace': [None, ['f', [214.5625]]], '/durec/playmode': [['is', [1, 'UFX Single']], None], '/durec/freespace': [None, ['f', [559.0]]]}"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 1997537,
+          "epoch": "7e6bd23d857f8aa7e4f018fa3cee5576",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        },
+        {
+          "pid": 2009346,
+          "epoch": "34a69b4f87d8266dd864f7a2ed2da8fd",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "a0088b263f449db08b7debc8fcb7366e15c88692b1af3ce008e1028573ff8276",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "9b5571b0a350257c0b72a93700890db1b0ebd949b6f03c0cc2408a0839353b9e",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "b13a5afba6a06af68c8530f45fce41224bcabf527c4f02d61a356b4ed4841bda",
+          "bridge_sha256": "dfdc2f41c1dbead00af6b2cf19cca2ab7ef3d1ccbb1842a01b91c42fe55e4e67"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "f44cc6a4a14418069a156de00f29fa4fc6f2d912d19bcff7116727402c725979",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "auxiliary_raw_comparison": "Not performed in this earlier attempt; its failed coordinated comparison is retained."
+      }
+    },
+    {
+      "started": "2026-09-27T16:16:35.641798+00:00",
+      "finished": "2026-09-27T16:17:38.211227+00:00",
+      "code_commit": "bfef63b54d1195541c78edd82ba08d17d68de716",
+      "passed": false,
+      "harness_sha256": "abe956f116c512c4d0b1bf737669ca3b9a410fd2d0d0653b85d024342f4acdb7",
+      "name": "gtk-series7-hardware-1",
+      "seconds": 62.569,
+      "result_sha256": "740d049e3a9daa9c38880808ffbe1040dc034b9b42608bce633ddee6164aba62",
+      "backend_log_sha256": "adbaf0057e62dc280d0ebccef2aaf37451aecb6e413d49e53c6262ad56ee5201",
+      "checks": {},
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "AssertionError",
+          "detail": "condition not met in 30.0s"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 2752383,
+          "epoch": "655eb3d4c44e3c16ef8b5b6e318719d1",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "e01064cde247c3a0226d11e9809285cb2fabd8e0fc489074a7bc25c11884c4fb",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "bdaeb18bad7a81c50ee1d616f653ee2df6a1c2205e76a865c0a4710c1154a8ca",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "3904229f891bcc9d5649eb06a9776302d02f0274335b84ec9327864c42006c66",
+          "bridge_sha256": "5d6c5a609817875219bb46e57139373f0659613a3ec45f446457c6b941edecc6"
+        },
+        {
+          "pid": 2756380,
+          "epoch": "783f1b584fc2f5db3e67b6bf4a972e18",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "e01064cde247c3a0226d11e9809285cb2fabd8e0fc489074a7bc25c11884c4fb",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "bdaeb18bad7a81c50ee1d616f653ee2df6a1c2205e76a865c0a4710c1154a8ca",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "3904229f891bcc9d5649eb06a9776302d02f0274335b84ec9327864c42006c66",
+          "bridge_sha256": "5d6c5a609817875219bb46e57139373f0659613a3ec45f446457c6b941edecc6"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "dca09b679dde8e5b1f4ab58d46f386e3080e3de701ee3512c686e43413ae90a1",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "fresh_auxiliary_raw_registers_equal": [
+          "3584",
+          "3585",
+          "3588"
+        ]
+      }
+    },
+    {
+      "started": "2026-09-27T16:21:33.140047+00:00",
+      "finished": "2026-09-27T16:22:52.974260+00:00",
+      "code_commit": "bfef63b54d1195541c78edd82ba08d17d68de716",
+      "passed": false,
+      "harness_sha256": "eaea084cc5468b7bf999edf283a2f71e19a2ad96173d59b6669c389880cced70",
+      "name": "gtk-series7-hardware-2",
+      "seconds": 79.834,
+      "result_sha256": "1caaadc3efc4c095502b65fd8dd9dc6b7961e25adf3aa3c1c45419c0380e0f89",
+      "backend_log_sha256": "3af232b3a59e2dc9e07113afbd10c2350a5649637422c17a60b6d8737baf0422",
+      "checks": {
+        "gtk_to_device_to_desk": true
+      },
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "AssertionError",
+          "detail": "condition not met in 5.0s"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 2779261,
+          "epoch": "0b3e1d1251026387207b072919f22e1b",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "e01064cde247c3a0226d11e9809285cb2fabd8e0fc489074a7bc25c11884c4fb",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "bdaeb18bad7a81c50ee1d616f653ee2df6a1c2205e76a865c0a4710c1154a8ca",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "3904229f891bcc9d5649eb06a9776302d02f0274335b84ec9327864c42006c66",
+          "bridge_sha256": "5d6c5a609817875219bb46e57139373f0659613a3ec45f446457c6b941edecc6"
+        },
+        {
+          "pid": 2790309,
+          "epoch": "264b37d1eb086e0f1eebd60e1c82a4ac",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "e01064cde247c3a0226d11e9809285cb2fabd8e0fc489074a7bc25c11884c4fb",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "bdaeb18bad7a81c50ee1d616f653ee2df6a1c2205e76a865c0a4710c1154a8ca",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "3904229f891bcc9d5649eb06a9776302d02f0274335b84ec9327864c42006c66",
+          "bridge_sha256": "5d6c5a609817875219bb46e57139373f0659613a3ec45f446457c6b941edecc6"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "4d31414b21ebd02a42a58b770afdee5bac546ab654b4bf451d98d25c9548e33e",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "fresh_auxiliary_raw_registers_equal": [
+          "3584",
+          "3585",
+          "3588"
+        ]
+      }
+    },
+    {
+      "started": "2026-09-27T17:11:21.044225+00:00",
+      "finished": "2026-09-27T17:12:45.136143+00:00",
+      "code_commit": "a520c060da687edd352582c3c0e42682ecb34015",
+      "passed": false,
+      "harness_sha256": "5b097a559353d77a2d6d0991eaa8565a3eeb41d21ec507f353638dbd1598e46c",
+      "name": "gtk-series8-hardware-1",
+      "seconds": 84.092,
+      "result_sha256": "10807a9a48fac0926d07ad8e96b49505c15b290106dda731d7eae72a700510f4",
+      "backend_log_sha256": "455c2fc31319801a09f1111d04bbec0eeb781736238f8f92e9670884e031a8b1",
+      "checks": {},
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "AssertionError",
+          "detail": "condition not met in 30.0s"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 3168580,
+          "epoch": "c4aebf8023f05fe06d414918d428917d",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "9ff467bc09f4db32050cd0849c6ee681b49041d3bda1b8c6f48db4e41f320eff",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "f89af982e96a37ea133fdba3b30f442672bc293f46a56363cc5b3ea6619383bb",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "9222370e1a2cef7352edcf238906cf1072e061bf8323606dfb635c8a59d2b055",
+          "bridge_sha256": "07a3ffcc4e20299c0527dcdc4924d44033e3de1c702b4ba8d98fb49c43606e1e"
+        },
+        {
+          "pid": 3180528,
+          "epoch": "aa23ad75e134a964d70829a2c5e183e3",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "9ff467bc09f4db32050cd0849c6ee681b49041d3bda1b8c6f48db4e41f320eff",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "f89af982e96a37ea133fdba3b30f442672bc293f46a56363cc5b3ea6619383bb",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "9222370e1a2cef7352edcf238906cf1072e061bf8323606dfb635c8a59d2b055",
+          "bridge_sha256": "07a3ffcc4e20299c0527dcdc4924d44033e3de1c702b4ba8d98fb49c43606e1e"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "7d9fac4b25dff5b024b0c6400dc7807ed333b87fc374a020ae671319df34b088",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "fresh_auxiliary_raw_registers_equal": [
+          "3584",
+          "3585",
+          "3588"
+        ]
+      }
+    },
+    {
+      "started": "2026-09-27T17:30:42.465303+00:00",
+      "finished": "2026-09-27T17:33:17.459692+00:00",
+      "code_commit": "78e31f75d9f6d9f9fae27626c73aa1c661c431c4",
+      "passed": true,
+      "harness_sha256": "58a064ca53335d47ee9800bec14ed66b46329bd761b721d0254724e4997aaf27",
+      "name": "gtk-series9-hardware-1",
+      "seconds": 154.994,
+      "result_sha256": "36b6818eb9d5387958593859e1fca822f7907707898bc845ca06dabd63be5f89",
+      "backend_log_sha256": "534c8729d3ad6a32656ae06477413a7071a219b88872b774008dac96db0c67d9",
+      "checks": {
+        "gtk_to_device_to_desk": true,
+        "desk_to_gtk_while_gui_inhibited": true,
+        "profile_a": {
+          "exit": 0
+        },
+        "profile_b": {
+          "exit": 0
+        },
+        "concurrent_cli_profiles_and_no_busy_edit_replay": true,
+        "profile_c": {
+          "exit": 0
+        },
+        "actual_cli_first_then_gtk": true,
+        "profile_lost": {
+          "exit": 4
+        },
+        "backend_loss_keeps_previous_profile_marker": true,
+        "new_epoch_old_gtk_stays_disconnected_without_replay": true
+      },
+      "errors": [],
+      "builds": [
+        {
+          "pid": 3311595,
+          "epoch": "6693479b9c21324da4bfdc225644e08c",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "85d3e1fb8f348c307a0dc07a6e513199f3814afd4a9e1d7fa2d6ad1ae37abdf6",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "7922de9fdb273ac24742ad4f99b2c609b92de45c95eb13c23b986dc0fd06af92",
+          "bridge_sha256": "12dd019ffd67c4940badf8437154346fdd5b21aefb1905c9f9ea3ae2651288eb"
+        },
+        {
+          "pid": 3332622,
+          "epoch": "7cf06d18534d996790bf6257a858c0cb",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "85d3e1fb8f348c307a0dc07a6e513199f3814afd4a9e1d7fa2d6ad1ae37abdf6",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "7922de9fdb273ac24742ad4f99b2c609b92de45c95eb13c23b986dc0fd06af92",
+          "bridge_sha256": "12dd019ffd67c4940badf8437154346fdd5b21aefb1905c9f9ea3ae2651288eb"
+        },
+        {
+          "pid": 3333605,
+          "epoch": "f064abfd05a8f849ef585b27110e2100",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "85d3e1fb8f348c307a0dc07a6e513199f3814afd4a9e1d7fa2d6ad1ae37abdf6",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "7922de9fdb273ac24742ad4f99b2c609b92de45c95eb13c23b986dc0fd06af92",
+          "bridge_sha256": "12dd019ffd67c4940badf8437154346fdd5b21aefb1905c9f9ea3ae2651288eb"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "256ee151eb23db720b2f07c388a2f9eda598641abeedfdb0d81bf960186cd369",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "fresh_auxiliary_raw_registers_equal": [
+          "3584",
+          "3585",
+          "3588"
+        ]
+      }
+    },
+    {
+      "started": "2026-09-27T17:17:46.902936+00:00",
+      "finished": "2026-09-27T17:19:18.716734+00:00",
+      "code_commit": "a520c060da687edd352582c3c0e42682ecb34015",
+      "passed": false,
+      "harness_sha256": "eba54990996fa253254c799f5438502da7bf254d6898cf76ad9af7d43c99c051",
+      "name": "gtk-series8-trace-hardware-1",
+      "seconds": 91.814,
+      "result_sha256": "953a5b5726bc85270e3595490880064bd39c824bad890a3a20599f5e378e7757",
+      "backend_log_sha256": "455c2fc31319801a09f1111d04bbec0eeb781736238f8f92e9670884e031a8b1",
+      "checks": {},
+      "errors": [
+        {
+          "phase": "exercise",
+          "type": "AssertionError",
+          "detail": "condition not met in 30.0s"
+        }
+      ],
+      "builds": [
+        {
+          "pid": 3202366,
+          "epoch": "884b959936d2eefccd9caee46a46bfd8",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "9ff467bc09f4db32050cd0849c6ee681b49041d3bda1b8c6f48db4e41f320eff",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "f89af982e96a37ea133fdba3b30f442672bc293f46a56363cc5b3ea6619383bb",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "9222370e1a2cef7352edcf238906cf1072e061bf8323606dfb635c8a59d2b055",
+          "bridge_sha256": "07a3ffcc4e20299c0527dcdc4924d44033e3de1c702b4ba8d98fb49c43606e1e"
+        },
+        {
+          "pid": 3212987,
+          "epoch": "24d43fe3add4df6718285933b0a80bcb",
+          "device": "Fireface UCX II (24216011) Port",
+          "sha256": "9ff467bc09f4db32050cd0849c6ee681b49041d3bda1b8c6f48db4e41f320eff",
+          "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+          "series_sha256": "f89af982e96a37ea133fdba3b30f442672bc293f46a56363cc5b3ea6619383bb",
+          "protocol": "ODK1",
+          "matches_local_build": true,
+          "gtk_sha256": "9222370e1a2cef7352edcf238906cf1072e061bf8323606dfb635c8a59d2b055",
+          "bridge_sha256": "07a3ffcc4e20299c0527dcdc4924d44033e3de1c702b4ba8d98fb49c43606e1e"
+        }
+      ],
+      "audio_played_or_recorded": false,
+      "playback_readback": false,
+      "restoration": {
+        "reported_paths": 2252,
+        "device_origin_paths": 2232,
+        "cached_playback_links": 20,
+        "reported_state_unchanged": true,
+        "installed_files_unchanged": true,
+        "installed_version": "0.7.3",
+        "service_active": true,
+        "backend_sha256": "3336bafe9a1fcdc4f49796ba2ac2ee4b6c37a4e2625fb2b0adbaa8a64624002f",
+        "result_sha256": "343f560500a95fb15d2551169c87cff6c41409232b2b84f607f93431dd94399f",
+        "declared_playback_routes": "Reapplied by unchanged 0.7.3 startup; not device read-back.",
+        "fresh_auxiliary_raw_registers_equal": [
+          "3584",
+          "3585",
+          "3588"
+        ]
+      }
+    }
+  ],
+  "measurement": {
+    "raw_capture_sha256": "2d13de29e5b446be7710ffdf776c3cfddc494692b0d00cb720ba4312a0c81007",
+    "complete_midi_frames": 2231,
+    "peak_frames_per_150ms": 541,
+    "peak_frames_per_second": 814,
+    "gtk_busy_event_to_next_poll_seconds": 0.132193,
+    "gtk_trace_sha256": "b8d2f1ab4491cdd311ff0e9156f00a91d51d359c611e92102fd2d1d7137af735",
+    "trace_limit": "System-call tracing adds overhead. Untraced hardware attempts independently reproduce overflow."
+  },
+  "sanitizer": {
+    "compiler_options": [
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer"
+    ],
+    "leak_detection": true,
+    "exit_code": 0,
+    "log_sha256": "ef19fdb28b5c13de8212dac30502f48c529e6c756923d144a37b8cbbdc3dbcf7",
+    "scope": "Actual queue burst, both bounds and allocation-failure cleanup; no hardware."
+  },
+  "retained_failed_software_attempts": [
+    {
+      "run": "gtk-series7-software-1",
+      "reason": "Private test socket pathname exceeded AF_UNIX limit.",
+      "log_sha256": "2a4f61230551b99ac2affb246aa4530fae953e843ad65fc6a2e042b6efe23d38"
+    },
+    {
+      "run": "gtk-series7-software-2",
+      "reason": "Sandbox refused socket operation; not the intended baseline failure.",
+      "log_sha256": "20e8de48eb2a3db5a2d75dd8ab75f78c46ae96d8746013194ebf8cf93a643c92"
+    },
+    {
+      "run": "series7 first actual GTK attempt",
+      "reason": "Private accessibility bus disappeared; later unchanged test passes in isolated environment.",
+      "retained_output_sha256": {
+        "gui-first.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "desk-first.log": "2a1c9cc1bd9fdb5e5f88b38d2ec47950c52366f4213b22a1598631c4329b368a",
+        "c.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "accessible-failure.json": "768a7faa0678f80746d6ae21139d54367b69c09d17c626586c25094d88b6df13"
+      }
+    },
+    {
+      "run": "gtk-series9-software-1",
+      "reason": "Socket-pair fixture exited before the burst under the sandbox; baseline assertion rejected the result.",
+      "log_sha256": "721fe65f4377f8f19e9e80c1bdc8bcaa92c8066d840f611ee0b4a6f9ca6383fd"
+    },
+    {
+      "run": "gtk-series9-focused",
+      "reason": "New byte-overflow fixture used a kernel buffer too small for one large packet; corrected fixture tests the actual byte bound.",
+      "log_sha256": "00951fb1723762e02744bfe72d987c6c619e5aadc9aab7013c94bfc71d8f3167"
+    }
+  ],
+  "final_release_qualification": false,
+  "limits": [
+    "Hardware pass covers this development series and output-fader/coordination scenarios only.",
+    "Final routing, N0/N1, audio-transfer, suspend, no-interface and platform qualification remain separate.",
+    "No playback matrix read-back or targeted register request is established.",
+    "Earlier failed coordinated restoration comparisons remain failures. Fresh raw auxiliary registers supplement later change-only OSC fields.",
+    "Private raw captures, system-call traces, host configuration and internal assessments are not publication artifacts."
+  ],
+  "historical_count_clarification": {
+    "artifacts": [
+      "backend-observations.json",
+      "backend-capabilities.json"
+    ],
+    "field": "restoration.readable_registers",
+    "value": 2252,
+    "meaning": "Total legacy OSC paths compared, including 20 backend-cached playback link flags; only 2232 are device-origin paths. The original files and measured counts are retained."
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "date": "2026-09-27",
+  "source_commit": "28b2dc4a469835c33005820a64cf4c329073ce7d",
+  "scope": "Fresh complete mutation generation before the independently qualified follow-up",
+  "final_candidate": false,
+  "hardware": false,
+  "release_complete": false,
+  "inputs_sha256": "c8b13a1792736e3c3da9066c3a51fe9e9c3242f3fb069ea8d4fe058c862d58d2",
+  "commands": [
+    {
+      "command": [
+        "make",
+        "mutation",
+        "PYTHON=/home/relative/dev/projects/oscmix-desk/.venv/bin/python"
+      ],
+      "exit_code": 0,
+      "seconds": 6888.898,
+      "started_utc": "2026-09-27T12:29:40.081799+00:00",
+      "log": "build/0.8.0-software-qa/mutation-3/fresh-full-mutation.log",
+      "log_sha256": "ff1fb396400ce5ed87d9b269a657c5a18371b01a3daa6825603401907de6c162"
+    }
+  ],
+  "counts": {
+    "killed": 10008,
+    "survived": 1146,
+    "timeout": 12,
+    "uncovered": 0,
+    "unresolved": 0
+  },
+  "address_space_limit_bytes": 2147483648,
+  "max_children": 4,
+  "execution_complete": true,
+  "assessment_complete": false,
+  "archive_sha256": "5a855ec5b213e60e866a1766c79c3222edcf93fd911e86b45c48a4ab69781753",
+  "archive_independently_verified": true,
+  "limitations": [
+    "Survivors and timeouts still require completed assessment.",
+    "All functions affected by the separately committed follow-up require new attribution and rejudgment.",
+    "This records software execution only; it does not close N3, N8 or any publication gate."
+  ]
+}
