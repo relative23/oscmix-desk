@@ -228,11 +228,9 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
         log.error("SIGHUP: %s is not usable (%s); keeping the running "
                   "configuration", path, exc)
         return None
-    # The backend is already bound and already talking to a device. A
-    # reload reconciles the *desk*; the ports, the device name and the
-    # interface belong to the process that is running, and changing them
-    # here would mean writing to a port nobody is listening on -- with no
-    # error, because OSC over UDP has no delivery guarantee (ADR 0024).
+    # A reload reconciles the desk through the running backend's checked
+    # device connection. Its machine identity and accepted legacy port
+    # values remain fixed for this process; a reload cannot retarget it.
     kept = _kept_for_this_process(fresh, running)
     if kept is None:
         return None

@@ -523,11 +523,11 @@ catch. The Python matrix runs 3.9 through 3.14: a test helper that shadowed
 a private `threading.Thread` attribute failed on 3.13 alone -- the
 colliding name exists only there -- and passed on 3.11 and 3.14, so no
 local run on one interpreter could have caught it. And `make flake` repeats the suite, because the tests
-bind real UDP sockets and drive background threads, where a teardown race
+bind real local sockets and drive background threads, where a teardown race
 survived several consecutive green runs.
 
 A third runs nightly rather than per commit: `.github/workflows/soak.yml`
-restarts the session 200 times and checks the routing datagrams byte for
+restarts the session 200 times and checks the submitted OSC messages byte for
 byte every time. Timing defects have survived individual green runs.
 Numeric, export and validation defects also need independent semantic
 tests; repeating the suite alone does not establish correctness.

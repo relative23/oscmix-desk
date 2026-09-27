@@ -229,21 +229,24 @@ monitoring check report healthy silence while the backend is down.
   name the section/option at fault -- without adding a single dependency
   beyond what the shell version already needed.
 
-- **Per-user installation.** Everything lives in `~/.local` and
-  `~/.config`; root is needed for the udev rule, the resume hook and
-  ordered system service, and the tmpfiles.d entry for the shared lock directory. `--no-udev`
-  gives a rootless install that loses hotplug autostart, the reconcile
-  after suspend, and the machine-wide lock (it falls back to the per-user
-  runtime directory, ADR 0023).
+- **User-owned state and explicit host integration.** The source installer
+  puts its runtime in `~/.local`; native packages and NixOS use their managed
+  system locations. Configuration, profiles and the active marker remain
+  with the selected user. Root installs host activation/resume adapters and
+  the shared runtime directory. A source install with `--no-udev` omits those
+  host changes and uses the per-user runtime fallback (ADR 0023). Installation
+  and explicit hardware activation remain separate operations on every target.
 
-- **`oscmix-launch` depends on almost nothing.** It imports only
-  `constants` and `discovery` from the package, so a backend refactor
-  cannot break the desktop entry. The package itself is installed as a
-  plain file copy under `~/.local/lib/oscmix-desk`, no Python packaging.
+- **`oscmix-launch` shares the read-only identity checks.** It uses the
+  ordinary config lookup, backend/manager inspection, companion inspection
+  and maintenance fence. It may start an explicitly enabled matching desk,
+  then passes the checked backend and device identity to GTK. It does not
+  import the routing/apply path or issue mixer writes.
 
-- **Routing lives in the config, not in code.** The backend re-applies it
-  on every start, so the device state is reproducible regardless of what
-  the hardware remembered or what was changed interactively in the GUI.
+- **Routing lives in the config, not in code.** A new desk session applies
+  its declared starting state through the backend. Later repair and reconcile
+  preserve REMEMBER controls; explicit profile/main-desk application may
+  deliberately restore the declared values.
 
 - **udev remove matches `ENV{PRODUCT}`.** At remove time the sysfs
   attributes are already gone, so an `ATTR{idVendor}` match never fires.
@@ -251,27 +254,25 @@ monitoring check report healthy silence while the backend is down.
   exiting with its device (ADR 0013); the remove match is what lets the
   user manager retire the device unit it tagged on add.
 
-- **Stale cleanup signals the holder, not the namesake.** If the OSC
-  port is already taken at startup, the socket inode in `/proc/net/udp`
-  is resolved to the process that holds it through `/proc/<pid>/fd`, and
-  that process is terminated only when it is also an `oscmix` of this
-  user whose parent is not a live `oscmix-session`. A backend a running
-  session supervises is somebody's desk: the start exits 2 at once and
-  names that session (0.6.10). Anything else keeps the port and the start
-  fails on the port wait. Until 0.6.6 every `oscmix` of the user was
-  terminated as soon as *anything* held the port, which could stop a
-  second interface's backend and leave the actual holder running
-  (ADR 0021).
+- **Stale cleanup identifies the control owner.** The listening SEQPACKET
+  inode in `/proc/net/unix` is associated with `/proc/<pid>/fd`, the executable
+  and its exclusive ALSA bridge. Only this user's orphaned backend for the
+  selected sequencer client and serial may be terminated. A pidfd pins the
+  process and the association is checked again before signalling. A live desk,
+  another device or uncertain ownership is a refusal. The backend handles
+  abandoned socket files under its own owner lock; desk does not kill an old
+  UDP session to make room (ADR 0021, ADR 0030).
 
 - **One interface, resolved once.** `discovery.resolve_device` answers
   which interface a desk is for -- serial, sequencer client and lock key
   together -- and the service, a switch, a restore and a reconcile all
   use that one answer. `[device] serial` selects among identical
   interfaces; without it more than one candidate is refused, never
-  guessed. A switch writes only when the OSC port is held by an `oscmix`
-  of this user whose `alsaseqio` bridges the resolved client, and the
-  lock directory belongs to the group `audio`, whose members alone can
-  create or hold a lock in it (ADR 0024).
+  guessed. A switch checks the control owner and exclusive ALSA bridge,
+  connects to the matching kernel peer, and acquires the whole-operation
+  lease while holding the device file lock. The shared runtime directory
+  belongs to `root:audio`; filesystem access, process identity and operation
+  ownership are distinct checks (ADR 0024, ADR 0030).
 
 - **Named PipeWire sinks are generated, not hardcoded.**
   `oscmix-session --pipewire-sinks` derives one loopback sink per stereo

@@ -63,11 +63,13 @@ def build_arg_parser() -> ArgumentParser:
     parser.add_argument("--timeout", type=float, default=DEFAULT_DEVICE_TIMEOUT,
                         metavar="SECONDS", help="how long to wait for the device")
     parser.add_argument("--osc-port", type=int, metavar="PORT",
-                        help="UDP port oscmix listens on (overrides config)")
+                        help="legacy port value (overrides config; "
+                             "control uses a local Unix socket)")
     parser.add_argument("--dry-run", action="store_true",
                         help="show what would be started and sent, then exit")
     parser.add_argument("--status", action="store_true",
-                        help="inspect installation, device and ports without OSC or writes")
+                        help="inspect installation, device and control endpoint "
+                             "without connecting or writing")
     parser.add_argument("--json", action="store_true",
                         help="versioned JSON output for --status")
     parser.add_argument("--snapshot", action="store_true",

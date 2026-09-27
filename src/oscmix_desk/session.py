@@ -114,7 +114,7 @@ def _install_reload_handler(reload_requested: Dict[str, bool]) -> None:
     """Turn SIGHUP into a request to reconcile, not into a reconcile.
 
     The handler sets a flag and returns. Everything a reconcile does --
-    reading a config off disk, binding a port, waiting out the link
+    reading a config off disk, acquiring a writer lease, waiting out the link
     barrier -- is forbidden here: a signal handler runs between two
     bytecodes of whatever was executing, and doing that work in place
     means doing it *inside* the apply it was meant to follow.
@@ -469,12 +469,10 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     _install_stop_handlers(child, stop_requested)
     if not _await_backend_port(child, endpoint, proc_root) \
             and usb_device_present(config.usb_id, sysfs_usb):
-        # The port never came up while the device is still there.
-        # Routing written into a port nobody bound is dropped by the
-        # kernel without a word, and READY=1 would tell systemd the desk
-        # is set. A backend that exited cleanly before binding used to
-        # reach that READY through the exit mapping (0.6.7); the device
-        # being gone is still the clean no-op it always was.
+        # The control endpoint never became ready while the device is
+        # still present. Refuse startup instead of mapping an early clean
+        # backend exit to a ready desk. Device removal remains a clean
+        # no-op; an absent endpoint cannot carry an apply operation.
         log.error("backend never bound its control socket; failing the start")
         if child.poll() is None:
             _stop_child(child)
