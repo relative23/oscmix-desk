@@ -137,6 +137,24 @@ def test_read_commands_keep_the_selected_configuration_and_reader_role(
     assert capsys.readouterr().out
 
 
+@pytest.mark.parametrize('action', ['_snapshot', '_diff', '_dump_config'])
+def test_refused_connection_is_a_read_failure_without_output_or_cleanup_of_a_nonclient(
+        monkeypatch, capsys, caplog, action):
+    from oscmix_desk.model import Config
+
+    attempts = []
+
+    def refused(*args, **kwargs):
+        attempts.append((args, kwargs))
+        raise OSError('selected backend identity changed')
+
+    monkeypatch.setattr(reads_mod, 'connect_backend', refused)
+    assert getattr(reads_mod, action)(Config()) == 1
+    assert len(attempts) == 1
+    assert capsys.readouterr().out == ''
+    assert 'selected backend identity changed' in caplog.text
+
+
 def test_dump_keeps_nondefault_ports_and_reconstructed_channel_and_global_values(
         session_mod, tmp_path, capsys, read_peer):
     from oscmix_desk.model import Config
@@ -178,6 +196,39 @@ def test_dump_warns_when_invalid_channel_or_global_reports_cannot_be_exported(
     assert '/echo' in caplog.text
     assert '[input:3]' not in text
     assert '[echo]' not in text
+
+
+def test_export_keeps_later_routes_after_a_split_partner_and_preserves_decimal_levels(
+        session_mod, tmp_path, capsys, read_peer):
+    reports = [
+        ('/input/1/stereo', 'i', (1,)), ('/output/5/stereo', 'i', (0,)),
+        ('/mix/5/input/1', 'fi', (-6.2537, -100)),
+        ('/mix/6/input/1', 'fi', (-6.2537, 100)),
+        ('/input/3/stereo', 'i', (0,)), ('/output/7/stereo', 'i', (0,)),
+        ('/mix/7/input/3', 'fi', (-7.26, 0)),
+    ]
+    code, text = run_dump(session_mod, capsys, reports, read_peer=read_peer)
+    assert code == session_mod.EXIT_OK
+    assert 'INCOMPLETE EXPORT' not in text
+    path = tmp_path / 'two-routes.conf'
+    path.write_text(text)
+    assert [(r.input, r.output, r.level, r.stereo)
+            for r in session_mod.load_config(path).routes] == [
+                ((1, 2), (5, 6), -12.3, False), ((3,), (7,), -7.3, True)]
+
+
+def test_export_keeps_an_unmodelled_devices_declared_identity(
+        session_mod, tmp_path, monkeypatch, capsys):
+    config = session_mod.Config(device_name='Fireface 802', usb_id='2a39:3fb0')
+    monkeypatch.setattr(reads_mod, '_read_device',
+                        lambda *_: reads_mod.DeviceRead({'/hardware/dspvers': (1,)},
+                                                       '11111111', 'epoch'))
+    assert reads_mod._dump_config(config) == session_mod.EXIT_OK
+    path = tmp_path / 'unmodelled-device.conf'
+    path.write_text(capsys.readouterr().out)
+    restored = session_mod.load_config(path)
+    assert (restored.device_name, restored.usb_id) == ('Fireface 802', '2a39:3fb0')
+    assert restored.routes == ()
 
 
 def test_a_changed_register_extends_the_quiet_window_to_receive_later_changes(monkeypatch):

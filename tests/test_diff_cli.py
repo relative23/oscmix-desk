@@ -270,6 +270,26 @@ def test_snapshot_names_the_connected_box_and_epoch(capsys, read_peer):
     assert '000102030405060708090a0b0c0d0e0f' in out
 
 
+def test_snapshot_firmware_uses_the_default_usb_tree_and_the_connected_serial(
+        monkeypatch, capsys):
+    from oscmix_desk.model import Config
+
+    config = Config()
+    reading = reads_mod.DeviceRead({'/hardware/dspvers': (36,)}, '12345678', 'epoch')
+    monkeypatch.setattr(reads_mod, '_read_device', lambda *_: reading)
+    monkeypatch.delenv('OSCMIX_SYSFS_USB', raising=False)
+    called = []
+
+    def firmware(usb_id, sysfs, reports, *, serial):
+        called.append((usb_id, str(sysfs), reports, serial))
+        return {'usb_revision': '3.01', 'dsp_version': 36}
+
+    monkeypatch.setattr(reads_mod, 'device_firmware', firmware)
+    assert reads_mod._snapshot(config) == 0
+    assert called == [(config.usb_id, '/sys/bus/usb/devices', reading.registers, '12345678')]
+    assert 'serial 12345678, usb 3.01, dsp 36' in capsys.readouterr().out
+
+
 def test_diff_groups_each_write_by_its_actual_phase_and_sorts_within_it(capsys, read_peer):
     from oscmix_desk.model import ChannelSetting, Config, Route
 

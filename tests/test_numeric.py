@@ -10,7 +10,7 @@ from oscmix_desk import dump, numeric, reads, reconcile, routing, verify
 from oscmix_desk.config import load_config
 from oscmix_desk.devices import UCX2
 from oscmix_desk.errors import ConfigError
-from oscmix_desk.model import Config, Route
+from oscmix_desk.model import ChannelSetting, Config, Route
 from oscmix_desk.registers import register_at
 
 
@@ -35,6 +35,16 @@ def config_at(tmp_path, body):
 def test_invalid_quantity_is_refused_by_the_parser(tmp_path, section, key, value):
     with pytest.raises(ConfigError, match=key):
         config_at(tmp_path, "[%s]\n%s = %s\n" % (section, key, value))
+
+
+@pytest.mark.parametrize(('option', 'value'), [('gain', 76.), ('eq/band1freq', 20001)])
+def test_programmatic_config_cannot_bypass_numeric_bounds_before_writing(option, value):
+    config = Config(channels=(ChannelSetting('input', 1, option, value),))
+    backend = RecordingBackend()
+    with pytest.raises(ValueError, match='out of range'):
+        routing.apply_routing(config, backend)
+    assert backend.sent == []
+    assert backend.dumps == 0
 
 
 @pytest.mark.parametrize(("section", "key", "path", "want", "got"), [

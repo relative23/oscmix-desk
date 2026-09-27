@@ -77,6 +77,20 @@ def test_latest_remember_difference_is_kept_but_not_called_equal(monkeypatch):
     assert verify._kept_by_the_device(result, UCX2) == [volume]
 
 
+def test_an_unexpected_report_is_still_observed_until_its_contradiction_recovers(monkeypatch):
+    # Synthetic observations test the rule for any decoded report. They do
+    # not establish that the pinned backend actually reports output loopback.
+    link, extra = '/output/5/stereo', '/output/5/loopback'
+    registers = {link: ('i', (1,)), extra: ('i', (1,))}
+    result, seen = observe(monkeypatch, registers, [
+        [(link, 'i', (1,)), (extra, 'i', (0,))],
+        [(extra, 'i', (1,))],
+    ])
+    assert result.confirmed == sorted([link, extra])
+    assert result.mismatched == result.unobserved == []
+    assert seen[-1] == (extra, (1,))
+
+
 def test_summary_keeps_equality_policy_and_missing_reports_distinct(caplog):
     result = verify.VerifyResult(
         confirmed=["/output/5/stereo"], mismatched=["/output/5/volume"],

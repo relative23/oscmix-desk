@@ -68,6 +68,23 @@ def test_split_does_not_round_invalid_or_different_reported_levels_into_a_route(
     assert len(warnings) == 2
 
 
+@pytest.mark.parametrize(('reported', 'level'), [(-58.9794, None), (-58.93, None),
+                                               (-58.8794, -64.9)])
+def test_split_export_never_turns_a_reported_nonzero_route_into_digital_mute(reported, level):
+    seen = {'/input/1/stereo': (1,), '/output/5/stereo': (0,),
+            '/mix/5/input/1': (reported, -100), '/mix/6/input/1': (reported, 100)}
+    warnings = []
+    routes = dump.routes_from_observed(seen, UCX2, warnings)
+    if level is None:
+        assert routes == ()
+        assert len(warnings) == 2
+    else:
+        route, = routes
+        assert (route.input, route.output, route.level, route.stereo) == (
+            (1, 2), (5, 6), level, False)
+        assert warnings == []
+
+
 @pytest.mark.parametrize(('source', 'output', 'level', 'expected'), [
     (1, 1, -12.26, 'in1-2-out1-2'),
     (19, 19, -12.26, 'in19-20-out19-20'),
@@ -109,9 +126,13 @@ def test_muted_boundary_cell_does_not_hide_a_later_mono_route_at_maximum_gain():
     assert warnings == []
 
 
-def test_missing_mono_links_cannot_be_silently_assumed():
+@pytest.mark.parametrize('known_link', [None, '/input/1/stereo', '/output/5/stereo'])
+def test_missing_mono_links_cannot_be_silently_assumed(known_link):
     warnings = []
-    assert dump.routes_from_observed({"/mix/5/input/1": (-6., 0)}, UCX2, warnings) == ()
+    seen = {"/mix/5/input/1": (-6., 0)}
+    if known_link:
+        seen[known_link] = (0,)
+    assert dump.routes_from_observed(seen, UCX2, warnings) == ()
     assert "missing" in warnings[0]
 
 

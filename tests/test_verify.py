@@ -49,6 +49,11 @@ def test_prompt_reporting_hint(session_mod):
     assert prompt("/output/5/stereo") is True
 
 
+@pytest.mark.parametrize('path', ['/echo/delay', '/unmodelled/parameter'])
+def test_channel_cold_plug_hint_does_not_suppress_global_or_unknown_reports(path):
+    assert verify.register_promptly_reported(path, UCX2) is True
+
+
 def test_register_matches_with_float_tolerance():
     # Expected values are deliberately non-zero: with want = 0.0 a sign
     # error in the comparison (want - got vs want + got) is invisible,

@@ -8,6 +8,21 @@ import pytest
 from oscmix_desk import reload as reload_mod
 
 
+def test_version_reports_the_runtime_version_without_loading_or_starting_a_desk(
+        monkeypatch, capsys):
+    from oscmix_desk import cli
+    from oscmix_desk.constants import __version__
+
+    monkeypatch.setattr(cli, 'discover_config_path',
+                        lambda: pytest.fail('version must not load a desk'))
+    monkeypatch.setattr(cli, 'run_session',
+                        lambda *_: pytest.fail('version must not start a desk'))
+    with pytest.raises(SystemExit) as stopped:
+        cli.main(['--version'])
+    assert stopped.value.code == 0
+    assert capsys.readouterr().out.strip() == __version__
+
+
 @pytest.mark.parametrize('verbose', [False, True])
 def test_verbose_is_an_optional_flag_and_changes_the_logging_level(monkeypatch, verbose):
     from oscmix_desk import cli

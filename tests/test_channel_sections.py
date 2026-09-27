@@ -128,6 +128,13 @@ def test_a_gain_outside_the_range_is_refused(session_mod, tmp_path):
                                       "[input:3]\ngain = 99\n"))
 
 
+@pytest.mark.parametrize('section', ['input:1:2', 'input:extra:1', 'output:1:2'])
+def test_extra_channel_section_components_cannot_select_a_different_channel(
+        session_mod, tmp_path, section):
+    with pytest.raises(session_mod.ConfigError, match='not a channel number'):
+        session_mod.load_config(write(tmp_path, DEVICE + '[%s]\nmute = true\n' % section))
+
+
 # --------------------------------------------------------------------------
 # What it writes, and when.
 # --------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 import itertools
 import logging
+import threading
 
 import pytest
 from backend_doubles import RecordingBackend
@@ -181,6 +182,39 @@ def test_reconcile_reports_the_selected_models_pin_and_gain_quantization(
     assert backend.dumps == 1
 
 
+def test_post_apply_verification_uses_the_selected_models_gain_conversion(tmp_path, caplog):
+    path = tmp_path / 'routing.conf'
+    path.write_text('[input:1]\ngain = 6.19\n')
+    config = config_mod.load_config(path)
+    backend = RecordingBackend(lambda _: [('/input/1/gain', 'f', (6.099999904632568,))])
+    with caplog.at_level(logging.INFO):
+        assert verify.verify_and_repair(config, backend) is True
+    summary, = [r.message for r in caplog.records if 'confirmed;' in r.message]
+    assert '1 confirmed' in summary
+    assert '0 differing PIN' in summary
+    assert backend.sent == []
+    assert backend.dumps == 1
+
+
+def test_post_apply_cancellation_stops_reading_before_another_delivery(monkeypatch):
+    stopped = threading.Event()
+    backend = RecordingBackend()
+    deliveries = []
+
+    def messages(_timeout):
+        assert not deliveries, 'verification kept reading after cancellation'
+        deliveries.append(True)
+        stopped.set()
+        return iter([('/input/3/gain', 'f', (0.,))])
+
+    monkeypatch.setattr(backend, 'messages', messages)
+    config = Config(channels=[ChannelSetting('input', 3, 'gain', 6.)])
+    assert verify.verify_and_repair(config, backend, should_stop=stopped.is_set) is False
+    assert deliveries == [True]
+    assert backend.sent == []
+    assert backend.dumps == 1
+
+
 @pytest.mark.parametrize("policy", [PIN, REMEMBER])
 @pytest.mark.parametrize("missing", [True, False])
 def test_effective_policy_controls_missing_or_invalid_link_repair_summary(caplog, policy, missing):
@@ -341,3 +375,46 @@ def test_cancelled_verification_never_reports_success(monkeypatch, stage):
     assert verify.verify_and_repair(config, backend, should_stop=lambda: stopped[0]) is False
     assert backend.dumps == (0 if stage == 'before' else 1)
     assert backend.sent == ([('/input/3/gain', 'f', (6.,))] if stage == 'repair' else [])
+
+
+def test_cancellation_after_the_readback_summary_prevents_repair_and_returns_false(caplog):
+    stopped = threading.Event()
+
+    class StopAfterSummary(logging.Handler):
+        def emit(self, record):
+            if record.getMessage().startswith('routing read-back needs repair'):
+                stopped.set()
+
+    handler = StopAfterSummary()
+    backend = RecordingBackend(lambda _: [('/input/3/gain', 'f', (0.,))])
+    config = Config(channels=[ChannelSetting('input', 3, 'gain', 6.)])
+    verify.log.addHandler(handler)
+    try:
+        with caplog.at_level(logging.INFO):
+            assert verify.verify_and_repair(config, backend, should_stop=stopped.is_set) is False
+    finally:
+        verify.log.removeHandler(handler)
+    assert stopped.is_set()
+    assert backend.sent == []
+    assert backend.dumps == 1
+
+
+def test_cancellation_between_repair_phases_preserves_the_partial_write_result(monkeypatch):
+    stopped = threading.Event()
+    config = Config(routes=[Route('monitor', input=(1, 2), output=(5, 6))])
+    backend = RecordingBackend(lambda _: [('/input/1/stereo', 'i', (1,)),
+                                         ('/output/5/stereo', 'i', (0,))])
+    backend.traits = OSCMIX
+    send = backend.send
+
+    def cancel_after_sending(messages):
+        send(messages)
+        stopped.set()
+
+    monkeypatch.setattr(backend, 'send', cancel_after_sending)
+    with pytest.raises(WriteFailed, match='stop requested') as failure:
+        verify.verify_and_repair(config, backend, should_stop=stopped.is_set)
+    assert failure.value.written == ('/output/5/stereo',)
+    assert failure.value.unwritten == ('/mix/5/input/1',)
+    assert backend.sent == [('/output/5/stereo', 'i', (1,))]
+    assert backend.dumps == 1

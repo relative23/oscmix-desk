@@ -272,7 +272,7 @@ def test_user_written_registration_is_refused(tmp_path):
         hostservice._root_file(path)
 
 
-@pytest.mark.parametrize('changed', [None, 'user', 'pidfile', 'service', 'owner'])
+@pytest.mark.parametrize('changed', [None, 'user', 'pidfile', 'service', 'owner', 'command'])
 def test_openrc_identity_uses_root_registration_and_readable_parent_identity(
         native, monkeypatch, changed):
     service, proc, entry = native
@@ -292,6 +292,8 @@ def test_openrc_identity_uses_root_registration_and_readable_parent_identity(
         argv[4] = '/run/another-service.pid'
     elif changed == 'service':
         argv[1] = 'another-service'
+    elif changed == 'command':
+        argv[0] = 'another-supervisor'
     (parent / 'cmdline').write_bytes(b'\0'.join(os.fsencode(arg) for arg in argv) + b'\0')
     original_stat = Path.stat
 
