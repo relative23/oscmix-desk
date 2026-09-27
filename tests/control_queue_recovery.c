@@ -39,7 +39,7 @@ main(void)
 	    setsockopt(pair[0], SOL_SOCKET, SO_SNDBUF, &buffer, sizeof buffer))
 		return 2;
 	clients[0].fd = pair[0];
-	while (clients[0].count < QUEUE_PACKETS && sent < 1000)
+	while (clients[0].count < QUEUE_PACKETS && sent < QUEUE_PACKETS + 1000)
 		enqueue(0, CONTROL_EVENT, 0, CONTROL_OK, ++sent, NULL, 0);
 	if (clients[0].fd < 0 || clients[0].count != QUEUE_PACKETS)
 		return 5;
@@ -53,14 +53,14 @@ main(void)
 		fputs("writable peer disconnected despite available send capacity\n", stderr);
 		return 1;
 	}
-	for (unsigned index = 0; received < sent && index < 1000; ++index) {
+	for (unsigned index = 0; received < sent && index < QUEUE_PACKETS + 1000; ++index) {
 		drain(pair[1]);
 		flush(0);
 	}
 	if (received != sent || clients[0].count)
 		return 7;
 	/* A peer which stays stalled must still be disconnected at the bound. */
-	for (next = sent; clients[0].fd >= 0 && next < sent + 1000; ++next)
+	for (next = sent; clients[0].fd >= 0 && next < sent + QUEUE_PACKETS + 1000; ++next)
 		enqueue(0, CONTROL_EVENT, 0, CONTROL_OK, next + 1, NULL, 0);
 	if (clients[0].fd >= 0)
 		return 8;

@@ -142,13 +142,13 @@ is not submitted again merely because a lease was released.
 
 ### Bounds and failure
 
-Initial implementation limits, to be checked by overload/lifecycle tests:
+Implementation limits, to be checked by overload/lifecycle tests:
 
 | Resource | Bound |
 | --- | --- |
 | Connected consumers | 16 |
 | OSC payload | 8192 bytes per packet, matching upstream's buffer |
-| Pending outgoing data | 32 packets / 256 KiB per consumer |
+| Pending outgoing data | 1024 packets / 256 KiB per consumer, whichever fills first |
 | Lease inactivity | 5 seconds |
 | Total lease | 90 seconds, not renewable past this limit |
 | Refresh receive window | 10 seconds |
@@ -159,6 +159,19 @@ queued packets before enforcing the overflow bound for a new packet: the
 consumer may have resumed reading since the last blocked send. Patch 0008
 corrects a reproduced refusal of a now-writable connection, preserving order
 and the existing bounds. A peer that remains stalled is still disconnected.
+The initial 32-packet limit proved insufficient for ordinary UCX traffic:
+a recorded refresh contains 541 complete MIDI frames in 150 ms and 814 in
+one second. A GTK system-call trace measured about 132 ms between receiving
+the busy event and returning to polling while its window changed sensitivity.
+The trace itself adds overhead; it identifies a finite reception pause, not a
+performance guarantee. Untraced hardware runs also reproduce the overflow.
+Patch 0009 permits 1024 queued deliveries while retaining the 256 KiB cap on
+their complete wire bytes. Each packet allocates its actual length instead of
+reserving 8192 bytes in every slot; descriptors and allocation overhead are
+also bounded by the packet count. This accommodates short-report bursts without
+introducing a second receiver, dropping observations or changing delivery
+boundaries. Exhaustion of either bound or allocation failure disconnects the
+affected client and frees its backlog. Hardware acceptance remains required.
 A slow client
 is disconnected on overflow; it cannot delay another client's verifier or
 silently receive a supposedly complete dump. EOF, malformed/oversized input,

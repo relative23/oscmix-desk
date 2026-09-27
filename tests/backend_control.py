@@ -133,6 +133,21 @@ def test_full_queue_recovers_when_the_peer_resumes_reading(binary, tmp_path):
     assert result.stderr == 'control: disconnecting slow consumer\n'
 
 
+def test_finite_observation_burst_survives_a_paused_consumer(binary, tmp_path):
+    probe = tmp_path / 'queue-burst'
+    subprocess.run(['cc', '-std=c11', '-I', str(binary.parent),
+                    str(repo_file('tests/control_queue_burst.c')),
+                    str(binary.parent / 'osc.c'), '-lm', '-o', str(probe)],
+                   check=True, capture_output=True, timeout=30)
+    result = subprocess.run([str(probe)], capture_output=True, text=True, timeout=3)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {
+        'burst_packets': 814, 'packet_bound': True, 'byte_bound': True,
+        'allocation_failure_closed': True, 'remaining_allocations': 0}
+    assert result.stderr == ('control: disconnecting slow consumer\n' * 2
+                             + 'control: cannot allocate client packet\n')
+
+
 def test_identity_and_hardware_reports_are_shared_without_echoing_sends(midi, desk):
     with_peer = midi.connect(GUI)
     try:
@@ -325,7 +340,7 @@ def test_gui_refresh_requests_coalesce_until_operation_and_window_end(midi, desk
 def test_a_slow_consumer_cannot_block_another_writer(midi):
     slow, healthy = midi.connect(GUI, DEVICE), midi.connect(DESK, DERIVED)
     try:
-        for index in range(300):
+        for index in range(4096):
             midi.inject((0x600, -index))
         wait_for(lambda: 'slow consumer' in midi.log())
         assert healthy.request(BEGIN)[2] == OK

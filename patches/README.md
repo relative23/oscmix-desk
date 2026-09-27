@@ -187,3 +187,25 @@ prior code disconnects the writable reader; the correction preserves every
 packet in order. The same test then stops reading again and verifies that the
 unchanged bound still disconnects the stalled peer. No hardware is opened by
 this test; combined GTK and hardware load qualification remains separate.
+
+## 0009 -- size the bounded queue for measured device bursts
+
+The real UCX continued to overflow the original 32-packet queue while GTK
+briefly changed its window sensitivity. A recorded refresh has 541 complete
+MIDI frames in 150 ms and 814 in one second. A system-call trace of the real
+GTK found a roughly 132 ms reception pause after its busy event; untraced
+hardware runs also fail. These timings describe those probes, including the
+trace overhead, rather than a guaranteed upper bound on GUI latency.
+
+The queue now accepts up to 1024 packets, still capped at 256 KiB of complete
+wire data per consumer. Variable-length packet allocations replace the fixed
+8192-byte slots, keeping retained data and bookkeeping bounded. Every packet
+is freed on successful delivery or disconnect. A failed allocation terminates
+that consumer. No report is coalesced, discarded or turned into cached read-back.
+
+The actual coordinator's socket-pair test retains and delivers an 814-packet
+burst in order, then separately verifies packet overflow, byte overflow and
+allocation-failure cleanup. The former code fails the burst case. The real
+backend's stalled-client test now sends 4096 reports, beyond the new bound,
+and still requires that another writer can proceed. Combined GTK, hardware
+and platform qualification must identify this new series.

@@ -1,0 +1,75 @@
+diff --git a/control.c b/control.c
+--- a/control.c
++++ b/control.c
+@@ -16,7 +16,7 @@
+ #include "control.h"
+ #include "osc.h"
+ 
+-#define QUEUE_PACKETS 32
++#define QUEUE_PACKETS 1024
+ #define QUEUE_BYTES (256 * 1024)
+ #define LEASE_IDLE 5.0
+ #define LEASE_TOTAL 90.0
+@@ -25,7 +25,7 @@
+ 
+ struct packet {
+ 	size_t len;
+-	unsigned char data[CONTROL_PACKET];
++	unsigned char data[];
+ };
+ 
+ struct client {
+@@ -34,7 +34,7 @@
+ 	uint32_t request;
+ 	double accepted;
+ 	bool refresh;
+-	struct packet queue[QUEUE_PACKETS];
++	struct packet *queue[QUEUE_PACKETS];
+ 	unsigned head, count;
+ 	size_t bytes;
+ };
+@@ -106,7 +106,11 @@
+ 		return;
+ 	close(c->fd);
+ 	c->fd = -1;
+-	c->count = 0;
++	while (c->count) {
++		free(c->queue[c->head]);
++		c->head = (c->head + 1) % QUEUE_PACKETS;
++		--c->count;
++	}
+ 	c->bytes = 0;
+ 	c->refresh = false;
+ 	if (owner == index)
+@@ -119,7 +123,7 @@
+ 	struct client *c = &clients[index];
+ 	ssize_t sent;
+ 	while (c->fd >= 0 && c->count) {
+-		struct packet *p = &c->queue[c->head];
++		struct packet *p = c->queue[c->head];
+ 		sent = send(c->fd, p->data, p->len, MSG_DONTWAIT | MSG_NOSIGNAL);
+ 		if (sent < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+ 			return;
+@@ -130,6 +134,7 @@
+ 			return;
+ 		}
+ 		c->bytes -= p->len;
++		free(p);
+ 		c->head = (c->head + 1) % QUEUE_PACKETS;
+ 		--c->count;
+ 	}
+@@ -151,7 +156,13 @@
+ 		disconnect(index);
+ 		return;
+ 	}
+-	p = &c->queue[(c->head + c->count) % QUEUE_PACKETS];
++	p = malloc(sizeof *p + CONTROL_HEADER + len);
++	if (!p) {
++		fprintf(stderr, "control: cannot allocate client packet\n");
++		disconnect(index);
++		return;
++	}
++	c->queue[(c->head + c->count) % QUEUE_PACKETS] = p;
+ 	memcpy(p->data, "ODK1", 4);
+ 	put32(p->data + 4, kind);
+ 	put32(p->data + 8, request);

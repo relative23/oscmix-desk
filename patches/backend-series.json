@@ -26,6 +26,10 @@
     {
       "file": "0008-drain-writable-client-queues-before-overflow.patch",
       "sha256": "b4224643382f7f026e985542b99e97f896fc9c7fa29828fdfd9430d8c530965a"
+    },
+    {
+      "file": "0009-bound-observation-queues-by-actual-payload-size.patch",
+      "sha256": "945143f38eb8074446d8085851bc5da6268905edff15584f86a4a1fdfcb9b0ea"
     }
   ]
 }
