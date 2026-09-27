@@ -1,6 +1,9 @@
 # Troubleshooting
 
 Work through the layers in order -- each one has a quick check.
+This page follows the 0.8.0 development control path. For the installed 0.7.3
+release, use its tagged documentation; the transports and recovery semantics
+differ as described in [UPGRADING](UPGRADING.md).
 
 ## 1. Is the device on the bus?
 
@@ -51,6 +54,10 @@ journalctl --user -u oscmix.service -e --no-pager
 oscmix-session --dry-run        # inspect config/device and preview planned writes
 ```
 
+Registered OpenRC/runit installations use `oscmix-service status` and their
+native service logs in place of the systemd commands above. See the
+[host integration guide](INSTALLATION.md#alpineopenrc-and-voidrunit-080-development).
+
 Common findings in the journal:
 
 - `configuration error: ...` -- routing.conf problem; the message names
@@ -71,17 +78,15 @@ Common findings in the journal:
   not observed, and settings the backend cannot report. It does not assert
   complete device/config equality. `READY=1` only signals service readiness;
   the background read-back may still be running.
-- `routing cannot be verified: ... cannot bind the receive port UDP N:
-  <reason>` with `Status: running; verifier failed` -- the receive port
-  cannot be bound, and not because the mixer GUI has it. The routing *is*
-  applied; it cannot be read back until the cause is gone. `Permission
-  denied` is a `[osc] recv-port` below 1024. Until 0.6.11 this was
-  reported as "in use", which sent the reader to a GUI that was closed.
-- `cannot read the receive port UDP N: <reason>` -- the port was bound
-  and then could not be read: the loopback interface went down, or the
-  socket was taken away. Same consequences as above -- the routing is
-  applied, a read exits 1 -- and the same remedy: remove the cause, then
-  `systemctl --user reload oscmix.service`.
+- `backend disconnected; observations invalid`, `backend acknowledgement
+  timed out` or `invalid OSC delivery; observations invalid` -- the connected
+  operation lost usable feedback. It does not reconnect or continue with a
+  blind write. Inspect the backend/service error and the operation's submitted
+  and pending paths before a new explicit operation. A lost acknowledgement
+  can leave a submitted write applied; it is not evidence that nothing changed.
+- `no fresh backend refresh window available` -- the bounded wait for a new
+  window expired. Let the current operation finish and inspect status before
+  retrying. GTK does not own an exclusive reply socket in this version.
 - `no register model for '<name>': its N route(s) are written as given`
   -- `[device] name` is not an interface this project has a register
   table or channel map for, so the routes' channel numbers are not
@@ -122,15 +127,13 @@ Common findings in the journal:
   line would go there; the line says which, and what to do. A running
   session keeps its backend, so the desk was **not** applied. For
   `routing.conf`: `systemctl --user restart oscmix.service` follows it.
-- `wrote N of M register(s) of '<profile>' and then could not: cannot
-  write to the backend on UDP ...` with exit 1 -- the socket gave out
-  part of the way through a switch, so some of the profile is on the
-  device and the rest is not; the line lists both. The marker was left
-  alone, so the desk in effect is still the previous one: the command
-  asks the unit to reload, and its reconcile writes that desk back. If
-  the backend could not be reached then either, `systemctl --user reload
-  oscmix.service` once it can does the same. With nothing written at all
-  the line reads `refused ..., nothing written` and the exit code is 2.
+- A partial profile apply with exit 1 lists paths submitted before failure
+  and paths still pending. The marker remains at the previous desk, but that
+  does not roll back hardware. A requested reload can restore that desk's PIN
+  values; it preserves REMEMBER even without feedback. To deliberately restore
+  its declared starting values, explicitly select the previous profile or
+  `--no-profile` after fixing the cause. A refusal before any submission exits
+  2 and leaves the hardware untouched.
 - `profile '<name>' names another backend or interface than
   .../routing.conf -- <what differs>` -- a profile is the desk, not the
   machine (ADR 0026), so one whose `[osc]` or `[device]` resolve to
@@ -143,57 +146,43 @@ Common findings in the journal:
   changes, after which the dump names the old one. Taking `[osc]` and
   `[device]` out of the profile is the remedy either way; a desk that
   really is for another backend needs its own directory and `--config`.
-- `routing verification skipped: UDP 8222 in use` -- harmless; the mixer
-  GUI was listening on the state port, so the read-back was not possible.
-- `unconfirmed after retry: ...` -- the device never reported the listed
-  registers back. Check them in the mixer GUI; if the audio is fine, the
-  upstream dump format may simply have changed -- please open an issue.
+- `unconfirmed after retry: ...` -- PIN values remain mismatched or lack
+  expected feedback. Inspect the per-register result and backend/device
+  identity. A GUI label or working audio does not confirm every register.
 
-- `no link change reported within ...` -- normal: the output pairs were
-  already stereo-linked, so the device had no change to report.
+- `no link change reported within ...` -- the window was silent. This is
+  expected for an unchanged link but does not prove its value.
+- `link state contradicted` or `fresh link confirmation required` -- known
+  wrong links prevent dependent writes. A repair must obtain new confirmation;
+  waiting longer without reports cannot override that refusal.
 - `mix matrix re-applied against the synchronized link state` -- the
   routing was re-established after the device's register sync. This is
-  what guarantees the right-hand channel of every pair; see below.
+  a write result, not playback-matrix read-back; see below.
 
-The mix matrix is written twice on purpose. oscmix only learns that an
-output pair is stereo-linked when the device reports `/output/<n>/stereo`
-back, and it does not sync its register cache on its own -- it learns the
-device's values only from a `/refresh` dump. A mix written before that
-dump is evaluated against oscmix's startup link state and only reaches
-the odd channel of each pair, so every even output (2, 4, 6, 8) stays
-silent.
+The foreground apply writes links, waits at the link barrier, then writes
+the matrix. The verifier's completed observation window can permit a PIN
+repair or mix reapply. It never writes from the middle of a delivery, and
+malformed deliveries, contradictions or transport failures cannot authorize
+blind continuation. Input-matrix feedback and the still-unreadable playback
+matrix have different meanings; see [the protocol guide](OSC-PROTOCOL.md).
 
-So the first write gets audio going immediately, and the background
-verification pass -- whose dump is what syncs oscmix -- re-applies the
-matrix the moment that dump reports the links. Unlike the `/output/*`
-registers the matrix cannot be verified: a `/mix` write draws no reply
-and the dump omits the playback matrix, so it is re-established rather
-than checked. Both jobs deliberately share one `/refresh`; two
-overlapping dumps starve each other and confirm fewer registers.
-
-Only the blind fallback has a knob, for the case where the mixer GUI
-holds UDP 8222 and the dump cannot be observed at all
-(`systemctl --user edit oscmix.service`):
-
-```ini
-[Service]
-Environment=OSCMIX_LINK_SYNC_DELAY=30
-```
+GTK has its own subscription and may remain open. Its controls are read-only
+during a desk lease and while refreshing after it. It never replays an edit
+rejected while busy or disconnected. The old `OSCMIX_LINK_SYNC_DELAY` workaround
+for a GUI-held UDP receiver no longer applies.
 
 `systemctl --user status oscmix.service` also shows a `Status:` line
 since 0.6.3: `applying routing`, `verifying routing`, `reconciling
 (SIGHUP)`, `running; verifier finished at HH:MM:SS`, `running;
 verifier failed at HH:MM:SS`, `running; reconciled at HH:MM:SS`, or
 `running; reconcile skipped at HH:MM:SS`. "Skipped" means the reconcile
-stood down rather than wrote: the receive port was held, another writer
-had the device lock, the start-up verifier was still running after the
-wait, the config no longer parses, or the backend could not be reached
--- the journal says which. Until 0.6.10 only the first changed the
-line. "Verifier failed" (since 0.6.10) means the background
-verification could not reach the backend, or (since 0.6.11) could not
-bind its receive port for a reason other than the mixer GUI holding it;
-the routing is applied either way. It says what the unit is doing; it is not what
-keeps two writers apart. Since 0.6.5 the unit takes the same lock a
+stood down: another writer held the device lock/lease, the startup verifier
+was still running after the wait, the config no longer parses, or the backend
+could not be reached. The journal and partial-apply details distinguish
+refusal before writes from failure after submissions. "Verifier failed"
+does not erase the initial application or certify its values. The status
+line describes activity, not ownership or a complete hardware snapshot.
+The unit takes the same file lock a
 switch takes (ADR 0019), and since 0.6.7 that lock is named after the
 interface (ADR 0022). Since 0.6.8 it lives in `/run/oscmix-desk/`,
 which does not depend on the environment, the user or the config
@@ -233,20 +222,21 @@ for this, and systemd does not restart it on its own; a replug or the
 next login starts it again, and it exits 2 again until the serial is set.
 
 ```
-the backend on UDP 7222 drives the interface 24216011, not 99887766
-UDP 7222 is held by pid 4711, not by an oscmix backend of this user
+backend drives another interface
+endpoint belongs to an incompatible program
 ```
 
-A switch found a process on the OSC port that is not the backend for
-this desk's interface, and wrote nothing. `ss -ulnp | grep 7222` shows
-who it is; two desks for two interfaces need two ports.
+A command could not associate the selected Unix endpoint with the exact
+interface and exclusive ALSA bridge. Inspect `oscmix-session --status --json`
+and the process identity; do not replace the socket to bypass the refusal.
+The endpoint is selected by device identity rather than configurable UDP ports.
 
 ```
-UDP port 7222 is held by the backend (pid 4712) of a running
-  oscmix-session (pid 4711); stop that session first
+backend pid 4712 belongs to running oscmix-session pid 4711;
+  stop that session explicitly before starting another
 ```
 
-Two sessions were started for one port: the unit and `oscmix-session`
+Two sessions were started for one interface: the unit and `oscmix-session`
 by hand, or two by hand. Since 0.6.10 the newcomer exits 2 and the
 running one keeps its desk (until then each terminated the other's
 backend in turn). If the newcomer was the unit, `RestartPreventExitStatus`
@@ -322,11 +312,11 @@ install -D -m644 build/oscmix/gtk/oscmix.gschema.xml \
 glib-compile-schemas ~/.local/share/glib-2.0/schemas
 ```
 
-## 8. Journal lines that look alarming and are not
+## 8. Backend and ALSA journal messages
 
-The lines below come from the upstream backend or ALSA and are routine
-on this setup. None of them means the desk lost state -- `oscmix-session
---diff` is the check that would show it if it had (section 5).
+The lines below come from the backend or ALSA. They have different effects;
+none certifies that hardware still equals the configuration. A fresh `--diff`
+can inspect reportable state, while playback-matrix state remains unknown.
 
 - `snd_seq_event_input: No space left on device` -- the ALSA sequencer
   input pool overflowed and events were dropped; ALSA flushes the input
@@ -363,10 +353,11 @@ message. Check what the service actually started:
 journalctl --user -u oscmix.service --no-pager | grep "INFO: starting:" | tail -1
 ```
 
-It must name `~/.local/bin/alsaseqio` and `~/.local/bin/oscmix`. A path
-like `/usr/local/bin/...` is a stale install shadowing the pinned one;
-remove it (`sudo rm /usr/local/bin/{oscmix,alsaseqio,oscmix-gtk}`).
-The session now prefers `~/.local/bin` even when the systemd user
+For a source installation it should name the selected `~/.local/bin/`
+backend and bridge; native and Nix installations use their own recorded
+payload paths. Inspect `--status --json` for the resolved and running binary
+hashes before removing any old installation. The session prefers `~/.local/bin`
+even when the systemd user
 manager's PATH lacks it, which is how the stale copy won once: measured
 2026-08-26, the first hotplug start after boot ran a February build for
 six hours.

@@ -1,10 +1,12 @@
 # Which layer provides which features
 
-This inventory describes oscmix-desk 0.7.3 and the pinned oscmix revision
-`f2fdd5ec78338848754aad32cc07f3440de63395`. Backend handlers and GTK bindings
-were checked in that revision's source. Listed GTK controls describe those
-bindings. The [release evidence](evidence/0.7.3/) identifies the performed
-measurements, their methods and firmware.
+This inventory describes the 0.8.0 development implementation: upstream
+`f2fdd5ec78338848754aad32cc07f3440de63395` plus the exact
+[backend/GTK patch series](../patches/backend-series.json). Listed GTK controls
+describe source bindings, not a claim that every control was hardware-tested.
+The [development records](evidence/0.8.0/) and [0.7.3 release evidence](evidence/0.7.3/)
+identify their distinct builds and measurements. Final 0.8.0 qualification
+and genuine playback-matrix read-back remain open release conditions.
 
 ## Mixer state
 
@@ -38,21 +40,23 @@ are separate sources of capability information.
 | Preview | `--dry-run` prints planned writes even without an interface. With `--profile NAME`, it also identifies previously declared route crosspoints the target leaves undeclared and link/partner effects. `--diff` compares the effective desk with reported state without applying it. |
 | Profiles | `--list-profiles`, `--profile NAME` and `--no-profile`; switches validate, lock, apply and report an outcome. A profile is partial declared state, not a complete device snapshot. Machine identity belongs to the main config. |
 | Apply results | Verified, written but unverifiable, refused before writes, or written in part. A partial apply is not automatically rolled back. |
-| State ownership | Register defaults select PIN or REMEMBER. `[pin]` overrides cover flat input/output options; there is no global/nested override syntax. |
+| State ownership | Initial application and explicit profile selection write declared starting values. Repair and later reconcile retain every REMEMBER value, including missing or matching feedback. PIN permits restoration subject to link/partner and playback checks. `[pin]` overrides cover flat input/output options; there is no global/nested override syntax. |
 | Inspection and export | `--snapshot` retains reported values; `--dump-config` exports expressible reported settings and explains omissions. Neither recovers the unreadable playback matrix. |
-| Runtime diagnosis | `--status [--json]` inspects config/profile, installation, exact backend/device, service, playback mode, reply port and GTK resources without OSC or audio operations. JSON schema 1 never equates service readiness with verification. |
+| Runtime diagnosis | `--status [--json]` inspects config/profile, installation, exact backend/device/control endpoint, service, playback mode and GTK protocol without OSC or audio operations. JSON schema 2 removes reply-port contention and never equates service readiness with verification. |
 | Lifecycle | The user service handles start, hotplug/resume and SIGHUP reload, with device identity checks and cooperating-writer locks. Verification follows the initial apply. There is no continuous reconciliation loop. |
 | Metering | The backend streams meters and GTK displays them. Release measurement scripts consume them; there is no desk live-meter UI or recording application. |
 | Desktop audio | `--pipewire-sinks` generates named stereo sinks mapped onto hardware playback channels. PipeWire routes application audio; desk configures the hardware mixer. Neither replaces the other. |
-| Installation | Source installation has preflight, manual operation and explicit activation; upgrades preserve service state. DEB/RPM/Arch packages use the same staging contract and provide per-user setup, migration and recovery. |
+| Installation | Source installation has preflight, manual operation and explicit activation. DEB/RPM/Arch packages share payload staging and maintenance rules. Additional OpenRC/runit adapters, the opt-in NixOS module, Silverblue layering and signed APT/RPM sources have their own recorded development checks and remaining final gates. |
 | Playback mode | UCX II playback writes validate the exact active ALSA/USB mode before each write phase. Known incompatible modes are refused; idle playback is explicitly reported as unvalidated. |
-| Existing mixer | Optional `oscmix-desk-gtk` native packages provide upstream GTK. The launcher checks prerequisites, connection settings and exact backend identity. Port contention and close/read-back/reopen recovery are exercised with actual GTK. |
+| Existing mixer | Matching `oscmix-desk-gtk` packages provide the coordinated upstream GTK. The launcher checks protocol and exact backend identity. Desk and GTK share observations; GTK edits are inhibited during whole desk operations and are never replayed after busy/disconnect. Actual GTK and concurrent CLI processes are exercised with simulated MIDI. |
 | Desk desktop application | Deferred; profiles, previews, outcomes and setup remain CLI operations. |
 
-Upstream GTK and raw OSC clients do not use the desk's writer lock.
-Changes they make can become observed REMEMBER state or be replaced by
-declared PIN state on the next applicable desk operation. They do not
-rewrite `routing.conf`.
+The coordinated GTK uses the backend lease, while desk also holds its file
+lock for configuration and marker decisions. The old standalone UDP mode is
+uncoordinated and rejected by desk. Physical controls and direct raw-device
+access remain outside the lease. Manual changes can be retained as REMEMBER
+state or replaced by PIN on an applicable desk operation; they never rewrite
+`routing.conf` automatically.
 
 ## Hardware boundary
 

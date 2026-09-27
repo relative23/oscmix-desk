@@ -5,10 +5,9 @@ why a thing is the way it is lives in [the decision
 records](decisions/), measurements live in [the evidence guide](HARDWARE-EVIDENCE.md)
 and [history](history/), and future work lives in [the roadmap](ROADMAP.md).
 
-**This page is checked against the code.** `tests/test_architecture.py`
-requires every runtime module to be named here and every module named
-here to exist. A page that drifts fails the suite, which is the only
-reason to trust one.
+`tests/test_architecture.py` checks the runtime module inventory against this
+page and enforces the dependency rules. These checks do not establish that
+every behavioral description is accurate; those still require source review.
 
 ## The system it sits in
 
@@ -30,19 +29,19 @@ glue between them:
 ├──────────────────────────────────────────────────────────────┤
 │ 3  backend (systemd/oscmix.service → bin/oscmix-session)     │
 │    Discovers the ALSA sequencer client, runs                 │
-│    `alsaseqio <client>:1 oscmix`, applies routing.conf via   │
-│    OSC, supervises the process.                              │
+│    `alsaseqio -x <client>:1 oscmix -c <socket>`, applies     │
+│    routing.conf through the coordinated owner.              │
 ├──────────────────────────────────────────────────────────────┤
 │ 4  frontend (desktop entry → bin/oscmix-launch → oscmix-gtk) │
-│    Checks the device is present, ensures the backend runs,   │
-│    then execs the GTK mixer.                                 │
+│    Checks exact device/backend identity and GTK protocol,   │
+│    then connects GTK to that same owner.                     │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ## The shape of the whole thing
 
-Everything this project does is one pipeline, and every command is a
-different place to stop along it:
+The same declarations feed two pure decisions: observation comparison and
+write selection for the chosen operation intent.
 
 ```
 routing.conf ──config──▶ Config
@@ -51,17 +50,16 @@ routing.conf ──config──▶ Config
                            ▼
                         Entry[]           what the file asks for
                            │
-      device ──backend──▶ reconcile.observed()
-                           ▼
-                        seen{}            what the device reports
-                           │
-                    reconcile.plan()
-                           ▼
-                        Plan              what to write, and why
-                           │
-              ┌────────────┴────────────┐
-        routing.apply()            cli --diff
-        (sends it)                 (prints it)
+         ┌─────────────────┴───────────────────┐
+         ▼                                     ▼
+ application_plan(intent)            reconcile.plan(entries, seen)
+         │                                     ▲             │
+         ▼                                     │             ▼
+ routing.apply_routing()              backend observations   --diff
+ links → barrier → matrix → settings
+         │
+         ▼
+ verification → permitted PIN repair
 ```
 
 `--dump-config` runs the middle of it backwards: device state in,
@@ -81,7 +79,7 @@ acyclic graph.
 | Module | What it owns |
 |---|---|
 | `constants` | every timing constant and exit code, each with the measurement that produced it |
-| `errors` | `ConfigError`, the one exception a user ever sees; the two refusals that are not config text, an ambiguous interface and an unavailable device lock; and `ReceivePortError`, a receive port that cannot be bound for a reason other than a holder (ADR 0025) |
+| `errors` | configuration, ambiguous-device and lock refusals; `ReceivePortError` for failed coordinated observations (retained API name), and `WriteFailed` with submitted/pending paths |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
 | `registers` | what a register row and a device are -- path, tags, bounds, verification class, policy -- and the questions the parser, the reconciler and the verifier ask of a device's table |
@@ -92,7 +90,7 @@ acyclic graph.
 | `sections` | the sections the register table declares -- channels, families, globals -- refusing what it declares unsettable and warning about what it does not model at all |
 | `config` | parse `routing.conf` into a `Config`: `[device]`, `[osc]`, routes and pins here, the rest through `sections`; total, so every input is a `Config` or a `ConfigError` |
 | `notices` | what there is to say about a desk before it is written or shown |
-| `discovery` | find the device and resolve which interface a desk is for: serial, sequencer client and lock key from one answer; USB presence; whether a UDP port is bound |
+| `discovery` | find the device and resolve serial, sequencer client and lock key from one answer; USB presence and executable selection |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
 | `reconcile` | `desired` / `observed` / `plan`: what should be written, in what order, and why |
 | `observation` | latest decoded classification for a fixed expectation set and one observation window; matches are revocable, and no observation performs a write |
@@ -108,7 +106,7 @@ acyclic graph.
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
 | `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and associate the listening control inode with its executable and exclusive ALSA bridge |
 | `pipewire` | generate named virtual sinks from the same config |
-| `locking` | the lock every writer of one interface holds: where it lives, how it is opened, how long it is waited for |
+| `locking` | the desk file lock and shared device endpoint path: location, permissions and bounded acquisition; backend leases additionally coordinate GTK |
 | `marker` | which profile is in effect, remembered beside the config: read, written through a rename, removed |
 | `outcome` | what a switch did, as a value: applied and verified, applied and unverified, refused, or written in part with both lists |
 | `profiles` | switch to `profiles/<name>.conf` under that lock, in one fixed order -- validate, write, remember, check -- reporting an outcome rather than raising |
@@ -151,8 +149,9 @@ The pure `application_plan` selects writes from the operation intent;
 observation classification remains separate. Retained values are not counted
 as confirmations. Indirect link/partner changes are checked before writing.
 
-The device does not announce most of its own changes, so "pinned" means
-*the config wins while this session is looking*
+PIN is enforced only at the enumerated startup, repair and reload/resume
+operations. Device reports outside those windows do not trigger a continuous
+reconciliation loop
 ([ADR 0012](decisions/0012-pin-and-remember.md),
 [ADR 0013](decisions/0013-reconcile-triggers.md)).
 
@@ -171,10 +170,15 @@ be translated into silence or a blind write.
 A contradicted link, cancellation or receive error stops dependent writes
 with exact sent/pending paths. Background link sync uses the completed verifier
 result; no internal observation callback writes inside an OSC delivery.
+The pure OSC decoder validates a whole delivery before exposing a report.
+Truncated bundles or undecodable messages invalidate the connection rather
+than allowing a valid prefix to authorize writes.
 
 ## The two seams
 
-**`backend`** is the only module that opens a socket. Everything above it
+**`backend`** is the only module that opens a device-control socket.
+`notify` separately sends systemd readiness datagrams. Everything above the
+control boundary
 borrows the operation owner's `Control` connection. The owner takes the file
 lock, connects to the checked kernel peer and acquires a backend lease, then
 keeps both across every write, observation and repair. Routing and verification
@@ -193,10 +197,12 @@ The dependency graph is acyclic: `backend` may call read-only `diagnostics`,
 which uses `process`, `discovery` and pure runtime-path selection from `locking`.
 Neither diagnosis nor planning imports a command that writes hardware.
 
-**`devices`** is the only place that knows a device exists. The model is
-indexed by device from the first line (`registers.Device`), so a second
-interface is a table rather than a rewrite. Only the UCX II has one; the 802 has its
-channel map and no registers, because oscmix cannot drive it.
+**`devices`** owns the device register and channel declarations. The
+`registers.Device` model keeps them out of transport and planning code;
+`streams` separately owns the measured UCX-II playback-capacity checks.
+Only the UCX II has a register table. The 802 has a channel map but no
+register table or hardware qualification; adding declarations alone would
+not establish backend support for another interface.
 
 ### Exit codes
 
@@ -204,7 +210,7 @@ channel map and no registers, because oscmix cannot drive it.
 |---|---|---|
 | 0 | device absent, clean shutdown, or clean backend exit | none |
 | 1 | runtime failure; from the command line also a switch whose write gave out part of the way | restart after 3 s (max 5 per 2 min) |
-| 2 | a configuration the unit cannot run: a routing.conf error, two interfaces and no `[device] serial`, a session already running on the port; from the command line also a usage error or a refused switch | **no** restart (`RestartPreventExitStatus=2`) |
+| 2 | a configuration the unit cannot run: a routing.conf error, two interfaces and no `[device] serial`, or a conflicting device owner; from the command line also a usage error or a refused switch | **no** restart (`RestartPreventExitStatus=2`) |
 | 3 | `--diff` only: the device and the config disagree | never seen; the service runs no flag |
 | 4 | a switch reached the device but could not be recorded | never seen; flags only |
 | 5 | the unit is running and refused the reload | never seen; flags only |

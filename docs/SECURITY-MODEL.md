@@ -1,33 +1,41 @@
 # Security model
 
-What this project trusts, and what it does not. Short, because the
-surface is small -- but one item on it deserves to be stated plainly
-rather than discovered.
+The trust boundaries of the 0.8.0 development implementation. Its final
+hardware, host and publication qualification remains open in the
+[release plan](plans/0.8.0-reliability-integration.md).
 
-## The control port is unauthenticated
+## Local control and cooperating writers
 
-oscmix listens on **UDP 127.0.0.1:7222** and acts on every datagram it
-receives. There is no authentication, no authorisation and no origin
-check beyond the loopback bind. **Any local process that can reach this
-loopback socket can issue mixer writes**, including processes belonging
-to other local accounts. Binding localhost does not authenticate a user.
+Desk and the matching upstream GTK companion use one backend-owned Unix
+packet socket, selected by USB id and device serial. Coordinated mode opens
+no UDP command or reply listener and has no automatic UDP fallback. The
+socket is `0660` inside the shared `3770 root:audio` runtime directory.
+Path permissions authorize local access; kernel peer credentials and the
+exact backend/ALSA-bridge/device association identify the connection.
+The backend epoch and connection lifetime bound its observations.
 
-That is upstream's design, and on a single-user desktop it is a
-reasonable one -- it is the same trust level as your audio server. It is
-worth naming anyway, because the consequences grow with what the mixer
-can do:
+The backend serializes GTK edits with the desk's whole-operation lease.
+The desk separately holds its device file lock for configuration and
+profile-marker decisions. A slow consumer, expired lease, malformed delivery
+or disconnected backend cannot supply authority for later writes. No queued
+GUI edits or failed desk writes are replayed after release or reconnection.
+See [the ownership contract](decisions/0030-backend-owned-control.md).
 
-- today: routing and output faders. A hostile local process can silence
-  your monitors, or make them very loud.
-- the upstream protocol also exposes **phantom power**. An inappropriate
-  change can affect connected equipment. oscmix-desk models `48v` as
-  readable but gives it no writable config domain; `[input:N]` cannot
-  enable it. The sweep also excludes reference-level changes (ADR 0016).
+This is coordination between local device users, not isolation from them.
+An account allowed to access the socket may implement a client of its own;
+root and accounts with raw MIDI/USB access can bypass these clients or deny
+service. Physical controls remain outside the lease. Such access can change
+faders, routing and **phantom power**. Desk models `48v` as readable but
+provides no writable configuration domain; the upstream GTK and protocol
+still expose it. The write sweep also excludes reference-level changes
+(ADR 0016).
 
-If that matters for your setup, the port is the boundary to defend --
-either by controlling which local processes can reach it, or by moving
-oscmix into a namespace where 7222 is not reachable. This project cannot
-fix it from the outside; it can only avoid making it worse.
+Upstream's standalone UDP mode remains available only as a separate,
+uncoordinated mode that desk and its launcher refuse. That mode normally
+listens on `127.0.0.1:7222` without authenticating the sender; any local
+process able to reach it can issue mixer commands. Loopback alone is not
+user authentication, and the coordinated socket adds no protection to a
+separately started UDP backend.
 
 ## What the service is allowed to do
 
@@ -76,18 +84,25 @@ grep ' / / ' /proc/$pid/mountinfo      # "ro," means the sandbox applies
 grep -E 'NoNewPrivs|Seccomp:' /proc/$pid/status
 ```
 
-Nothing in this project can make the user manager apply it; that is the
-distribution's AppArmor policy. The directives stay in the unit because
-they do apply wherever the policy allows, and the unit is written to work
-under them.
+The directives stay in the unit where the host permits them. The historical
+Ubuntu result does not qualify a new distribution or manager. NixOS and
+Silverblue use the common user-unit payload; their effective restrictions
+must be checked on the actual booted generation/deployment. OpenRC and runit
+instead run the session as the explicitly registered ordinary user; they do
+not claim systemd's namespace or seccomp sandbox. Their root-owned adapter
+and persistent maintenance state control activation and update recovery.
 
 ### What the session writes
 
-One file: the device lock, `/run/oscmix-desk/<usb id>-<serial>.lock`, or
-the same name under `$XDG_RUNTIME_DIR/oscmix-desk/` on a machine whose
-installer never ran its root steps (ADR 0023, ADR 0024). It holds no data;
-the lock lives on the open file description. `ReadWritePaths` names that
-directory and nothing else.
+The session creates its device lock, and the backend creates the control
+socket and lifetime owner lock beside it, under `/run/oscmix-desk/`.
+The lock holds no configuration data; ownership lives on the open file
+description. Runtime-path selection falls back to the absolute
+`$XDG_RUNTIME_DIR/oscmix-desk/`, then the configuration directory when root
+integration is absent (ADR 0023, ADR 0030). That fallback has a narrower
+coordination scope. A permission failure on the selected shared path is a
+refusal, not permission to pick a different owner. `ReadWritePaths` names
+the shared runtime directory and nothing else.
 
 That line is load-bearing. Under a sandbox that is actually applied, `/run`
 is read-only without it and no lock file can be created, so every start
@@ -122,40 +137,41 @@ lock path -- the second is refused with its reason rather than followed or
 blocked on, the first is a wait. That is the trust the group grants, and
 it is the same group that may drive the interface at all.
 
-The lock serialises the writers of this project -- the service, a switch,
-a restore, a reconcile, the write sweep. It does not reach a process that
-writes to the backend's port without asking, the mixer GUI first among
-them: a fader moved by hand is the user's own write, and the pin/remember
-policy decides what a later reconcile does with it (ADR 0012, ADR 0019).
+The file lock serializes desk writers and profile-marker updates. The
+backend lease additionally coordinates the matching GTK companion. Neither
+lock is an access-control boundary against another authorized device user.
+The PIN/REMEMBER policy decides whether a later desk operation may overwrite
+a manual adjustment; it does not save that adjustment into the config.
 
 ## Signalling other processes
 
-`_cleanup_stale_backend` terminates a leftover `oscmix` that is holding
-the OSC port. It only considers processes owned by the calling user whose
-`comm` or argv0 is `oscmix`, without a live supervising session. After
-opening a pidfd it checks ownership of the port, process identity and
-supervision again, then signals through that handle. Checking only
+`_cleanup_stale_backend` may terminate a leftover coordinated `oscmix`.
+It considers only the calling user's identified backend at the selected
+device endpoint, without a live supervising session. After opening a pidfd
+it checks endpoint ownership, exact backend/bridge identity and supervision
+again, then signals through that handle. Checking only
 before opening it leaves a PID reuse window. A process it cannot verify
 is reported, never signalled; an unavailable pidfd never falls back to
 signalling a bare PID.
 
 ## The supply chain
 
-`install.sh` clones and compiles upstream oscmix -- the only place this
-project executes code from the network. It builds a **pinned commit**
-(`OSCMIX_REF`, default a full SHA), verifies that the checkout landed on
-exactly that commit, and records the built revision in the hardware
-evidence artifact. Tracking upstream is an explicit opt-in:
-
-```sh
-OSCMIX_REF=master ./install.sh
-```
+`install.sh` fetches the pinned upstream commit and builds the exact
+versioned backend/bridge/GTK patch series in `patches/backend-series.json`.
+Preparation exports Git objects, verifies patch hashes and records the
+resulting source/build identity. Uncommitted upstream edits are not build
+inputs. `OSCMIX_REF` must equal that full pinned SHA; a moving branch is no
+longer a supported override. `--no-build` verifies the installed series
+instead of accepting a familiar executable name or the upstream SHA alone.
+Source, native-package and Nix builds share this version contract.
 
 There is no upstream signature verification: upstream publishes no signed tags.
-That is a real gap, and it is the reason the default is a specific commit
-that has been measured against real hardware rather than a moving branch.
+That is a supply-chain limitation. A fixed upstream revision and patch
+hashes identify inputs but do not prove their correctness. Hardware records
+identify the actual patched build; old unpatched or earlier-series measurements
+do not qualify a changed backend.
 
-The 0.7.0 source release workflow produces checksums and a GitHub build
+The source release workflow produces checksums and a GitHub build
 attestation for this project's archive and manifest. The
 [verification instructions](RELEASE-ARTIFACTS.md) constrain the repository,
 workflow and release tag. That attestation identifies our build; it does
@@ -175,5 +191,6 @@ publication/recovery and HTTPS gates remain open; see
 
 ## Not in scope
 
-Multi-user separation, remote access, and anything about the audio data
-itself. This project configures a mixer; it does not carry audio.
+Isolation from other authorized hardware users, remote access, and anything
+about the audio data itself. This project configures a mixer; it does not
+carry audio.

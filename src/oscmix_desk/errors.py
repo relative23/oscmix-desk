@@ -30,15 +30,11 @@ class DeviceLockUnavailable(Exception):
 
 
 class ReceivePortError(OSError):
-    """The receive port cannot be bound, and not because somebody holds it.
+    """The coordinated connection cannot supply usable observations.
 
-    ``Backend.listen`` answers None for the one failure that is a normal
-    state: EADDRINUSE, the mixer GUI has the port. Until 0.6.11 it
-    answered None for every other OSError as well, and every caller then
-    said "in use -- close the mixer GUI" about a port nothing held.
-    Measured: ``[osc] recv-port = 80`` fails with EACCES for an ordinary
-    user, and the desk ran unverified for good under a message that named
-    the wrong cause.
+    The public exception name is retained from the UDP receiver (ADR 0025).
+    In ODK1 it covers disconnect, cancellation, malformed deliveries,
+    acknowledgement deadlines and queue overflow. None is receiver silence.
 
     An OSError, so existing receive handlers can name the failure. During
     an apply it becomes WriteFailed with exact sent and pending paths;
@@ -52,8 +48,8 @@ class WriteFailed(OSError):
 
     ``written`` are the register paths that were handed to the kernel
     before the failure, in order; ``unwritten`` the ones that were not.
-    Handed to the kernel is all a datagram socket can say -- it is not
-    arrival -- but it is the difference between "nothing happened" and
+    A submitted request whose acknowledgement is lost may already have
+    reached the device. It is the difference between "nothing happened" and
     "the desk is somewhere between two configs", which is the one thing a
     person at that desk needs to know (ADR 0027).
 

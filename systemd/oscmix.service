@@ -37,7 +37,7 @@ Restart=on-failure
 RestartSec=3
 # Exit code 2 means a configuration the unit cannot run: a routing.conf
 # error, two interfaces and no [device] serial to choose, or a session
-# already running on the port. Restarting cannot fix any of them.
+# conflicting with the selected device owner. Restarting cannot fix them.
 RestartPreventExitStatus=2
 # constants.startup_budget includes device discovery, endpoint readiness,
 # both lock waits, connection/ACK deadlines and the hard backend lease.
@@ -60,8 +60,8 @@ ProtectHome=read-only
 LockPersonality=yes
 MemoryDenyWriteExecute=yes
 SystemCallArchitectures=native
-# OSC is UDP on loopback and readiness is a UNIX datagram; nothing here
-# has any business opening another kind of socket.
+# Device control and readiness use UNIX sockets. Keep the previously
+# measured UNIX/IP family restriction until final host sandbox qualification.
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 UMask=0077
 KeyringMode=private
@@ -72,8 +72,8 @@ ProtectKernelTunables=yes
 ProtectControlGroups=yes
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
-# The config lives under ~/.config and is only ever read. The one write
-# is the device lock in the shared lock directory. Where a user manager
+# The config lives under ~/.config and is only ever read. Runtime files
+# include the device lock, backend owner lock and control socket. Where a user manager
 # can apply ProtectSystem=strict, /run is read-only without this line and
 # no lock file can be created -- measured under the system manager, which
 # applies the sandbox; Ubuntu's user manager silently does not, because

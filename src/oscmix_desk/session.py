@@ -258,9 +258,8 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
             sd_notify("STATUS=running; verifier %s at %s"
                       % ("finished" if complete else "incomplete", time.strftime("%H:%M:%S")))
         except ReceivePortError as exc:
-            # Not "skipped": this port can never be read, so the desk
-            # stays unverified until somebody changes `[osc] recv-port`
-            # or whatever keeps it from being bound (0.6.11).
+            # Failed feedback is distinct from silence. End this operation;
+            # a later explicit operation must obtain a new checked connection.
             log.error("routing cannot be verified: %s", exc)
             sd_notify("STATUS=running; verifier failed at %s"
                       % time.strftime("%H:%M:%S"))

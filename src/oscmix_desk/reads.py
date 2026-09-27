@@ -2,10 +2,9 @@
 
 ``--snapshot`` prints what the device reports, ``--diff`` what a start
 would write and why, ``--dump-config`` the device's state as a
-``routing.conf``. Each binds the receive port, asks for a dump and
-listens until it has gone quiet; none of them writes a register. A port
-the mixer GUI holds is exit 1 with that reason, and so is one that
-cannot be bound at all (ADR 0025).
+``routing.conf``. Each opens a checked reader connection, requests a fresh
+window and listens until it has gone quiet; none writes a register. Identity,
+transport and decoding failures exit 1 without publishing a partial read.
 """
 
 from __future__ import annotations
@@ -126,9 +125,9 @@ def _snapshot(config: Config, config_path: Optional[Path] = None) -> int:
 def _diff(config: Config, config_path: Optional[Path] = None) -> int:
     """Print what an apply would write, and what it would leave alone.
 
-    The reconciler already answers this -- `plan()` is what the session
-    runs on every start -- so this prints its result instead of sending
-    it. Nothing is written and no register is touched.
+    The pure comparison uses the same declarations as application planning.
+    It prints differences without applying them; operation intent separately
+    decides whether an initial apply or later repair may write REMEMBER.
 
     Exit codes, and the middle one is why this is worth stating:
 

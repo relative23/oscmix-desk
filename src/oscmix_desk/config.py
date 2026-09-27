@@ -198,7 +198,7 @@ def _parse_route(parser: configparser.ConfigParser, section: str) -> Route:
 
 def _parse_osc(parser: configparser.ConfigParser, section: str,
                config: _Draft) -> None:
-    """The [osc] section: two ports, both bounded."""
+    """Legacy [osc] port syntax stays validated; ODK1 selects a device socket."""
     _check_options(section, "osc", parser.options(section))
     for option, attr in (("port", "osc_port"), ("recv-port", "osc_recv_port")):
         raw = parser.get(section, option, fallback=str(getattr(config, attr)))

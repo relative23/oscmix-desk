@@ -244,15 +244,14 @@ def verify_routing(registers: Registers, backend: Control,
     # reader would not have.
     """Ask oscmix to dump its state and compare it against ``registers``.
 
-    Returns ``None`` when verification is impossible because the receive
-    port is taken, normally by the mixer GUI; a port that cannot be bound
-    for any other reason raises ``ReceivePortError``. Otherwise
-    a :class:`VerifyResult` classifying every expected register as
+    Returns a :class:`VerifyResult` classifying every expected register as
     confirmed or mismatched according to the last decoded report received
     for that path in this window, or unobserved when none arrived. Arrival
     order is not an atomic hardware snapshot or a device timestamp.
 
-    The checked request ACK opens the observation window.
+    The checked request ACK opens the observation window. A failed connection,
+    malformed delivery or unavailable fresh window raises ``ReceivePortError``;
+    GTK cannot take this connection's observations away.
 
     ``on_observed`` is called for each decoded report. It is an observation
     hook, not a safe write boundary: the remainder of the delivery may
@@ -389,9 +388,9 @@ def verify_and_repair(config: Config, backend: Control,
     does appear, it is compared like any other, so a future oscmix that
     dumps more (or different) registers is handled without code changes.
 
-    Verification is advisory: OSC over UDP has no delivery guarantee, so
-    a failed read-back is logged (and retried once) but never brings the
-    service down -- a restart loop would not improve anything.
+    Value mismatches are advisory and permit at most one PIN repair.
+    Transport/ownership failures propagate and stop this operation instead
+    of being treated as missing values; its owner decides the lifecycle result.
 
     The completed read-back also supplies the link-sync decision. No
     callback writes inside a partially decoded delivery. Wrong or invalid

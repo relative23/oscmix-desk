@@ -33,6 +33,18 @@ series and checks every component's build identifier before replacement;
 does not identify the patched build. Close GTK before upgrading or rolling
 back; a disconnected client never replays old writes into a new backend.
 
+`--status --json` now reports schema 2. It removes the obsolete `receive_port`
+section, identifies the Unix control endpoint, and describes the GTK control
+protocol instead of UDP connection settings. Scripts must check the schema
+version; see [the field meanings](STATUS.md#json-schema-2). Status remains
+read-only and never connects to the backend. Existing `[osc]` port syntax
+is retained and validated for compatibility but no longer selects transport.
+
+Malformed OSC deliveries now invalidate the operation instead of silently
+discarding their damaged suffix. A valid prefix cannot confirm link state or
+be recorded as a partial successful snapshot. Fix the backend/transport cause
+and start a new operation; do not interpret the missing result as device silence.
+
 For a software rollback, restore the complete 0.7.3 installation or its exact
 core/GTK package pair, then restart deliberately with the preserved desk.
 Hardware values that changed after the backup are not restored by a package

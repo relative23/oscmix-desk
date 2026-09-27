@@ -3,6 +3,10 @@
 [![CI](https://github.com/relative23/oscmix-desk/actions/workflows/ci.yml/badge.svg)](https://github.com/relative23/oscmix-desk/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+`main` contains **0.8.0 development work**; the latest published release is
+**0.7.3**. The [release plan](docs/plans/0.8.0-reliability-integration.md)
+tracks the remaining qualification and playback read-back requirement.
+
 **Your RME Fireface UCX II, described in a text file.** Write down what the desk
 should look like -- routing, faders, EQ, dynamics, reverb, the clock -- and
 enable automatic operation to apply it whenever the interface is plugged
@@ -36,7 +40,7 @@ makes the desktop integration disappear.
 | systemd user service | supervises the backend; reports initial apply and subsequent verification separately |
 | `--pipewire-sinks` | named outputs ("Monitors", "Headphones") in your desktop's sound settings |
 | desktop entry + launcher | "RME Fireface Mixer" in the app menu, with sanity checks and notifications |
-| `install.sh` | builds oscmix at a pinned revision and installs everything per-user |
+| `install.sh` | builds the pinned backend/bridge/GTK patch series and installs the shared per-user payload |
 
 [oscmix]: https://github.com/michaelforney/oscmix
 
@@ -49,7 +53,9 @@ settings and checks reported state under the PIN/REMEMBER rules.*
 
 ## Measured, not asserted
 
-Hardware claims are tied to recordings from a real UCX II. Multi-device
+The historical release results below identify their measured revisions;
+they are not final 0.8.0 evidence. Hardware claims are tied to recordings
+from a real UCX II. Multi-device
 identity and concurrency are tested with simulated devices. Three defects in 0.1.3 were
 invisible at message level and only showed up by playing a tone and reading
 the device's own meters; that set the standard the project has been held to
@@ -80,7 +86,7 @@ since.
   gain/mute cases and 65 route checks through PipeWire Pro Audio.
 - The upstream backend is **pinned to a full commit SHA**, and the pin only
   moves together with a fresh measurement.
-- Twenty-eight [decision records](docs/decisions/) carry the reasoning and the
+- The [decision records](docs/decisions/) carry the reasoning and the
   measurement behind anything non-obvious, including the ones that say *we
   looked and there was nothing to fix*.
 - Five issues and two fixes have gone upstream from this work
@@ -228,8 +234,11 @@ headphones are outputs **7/8**, not 1/2.
 does not mute its crosspoint. Declare its mute explicitly when required;
 linked-channel writes can also affect the partner channel.
 
-Initial applies write declared settings. Later selective reconciliation
-enforces PIN values and leaves REMEMBER values with the device. `[pin]`
+Initial applies and explicit profile/main-desk selection write declared
+starting settings. Repair and later selective reconciliation enforce PIN
+while retaining every REMEMBER value, including missing, invalid or matching
+feedback. Link/partner dependencies can refuse an indirectly destructive
+write. `[pin]`
 overrides apply only to flat input/output options; uncommenting a dump
 comment does not turn a setting into a pin. There is no continuous
 polling or automatic saving of GUI changes. Adding `volume = <dB>` to a
@@ -242,15 +251,23 @@ is always written.
 
 Shortly after startup,
 `oscmix-session` also reads the state back from the device in the
-background and re-sends once on mismatch -- the journal line `routing
-verified against device state` means that the read-back found no remaining
+background and attempts one PIN repair when needed. The journal line
+`routing verified against device state under PIN/REMEMBER policy` means
+that the read-back found no remaining
 problem requiring repair under the PIN/REMEMBER and reportability rules.
 It does not mean that every declared value equals the hardware: a differing
 REMEMBER value is deliberately kept and logged separately. The summary
 separates matching reports, retained REMEMBER values, PIN differences,
-missing reports and backend-unreportable settings. The playback
-mix matrix is never reported by oscmix, so it is re-established rather than
-confirmed; read-back cannot prove it.
+missing/invalid feedback and backend-unreportable settings. The current
+backend does not report the playback mix matrix, so a reapply is not hardware
+confirmation. Genuine playback read-back remains required before 0.8.0 can
+be released. A transport failure or known link contradiction cannot authorize
+a blind repair; partial results identify submitted and pending paths.
+
+The matching upstream GTK can stay open during desk operations. Both receive
+observations from the same backend. GTK disables editing during a complete
+desk application/verification/repair and refreshes afterwards; rejected edits
+are never queued for later execution. See [runtime status and GTK](docs/STATUS.md).
 
 ## Profiles
 
@@ -424,15 +441,15 @@ USB hotplug ── udev rule ── systemd user service ── oscmix-session
                                      ┌──────────────────┼─────────────────┐
                                  finds MIDI       starts alsaseqio    applies routing
                                  client via       + oscmix (OSC ⇆    from routing.conf
-                                 /proc/asound     MIDI SysEx)         via OSC/UDP
+                                 /proc/asound     MIDI SysEx)         via ODK1
 ```
 
 Details, including the failure model and exit-code semantics, are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Notes on the OSC interface
 oscmix exposes are in [docs/OSC-PROTOCOL.md](docs/OSC-PROTOCOL.md), and
 the choices that are not obvious from the code are recorded in
-[docs/decisions/](docs/decisions/). What the service is trusted with --
-including the fact that the control port is unauthenticated -- is in
+[docs/decisions/](docs/decisions/). Local socket permissions, cooperating
+writer leases and the limits of the service sandbox are described in
 [docs/SECURITY-MODEL.md](docs/SECURITY-MODEL.md). Where this is heading
 is in [docs/ROADMAP.md](docs/ROADMAP.md).
 

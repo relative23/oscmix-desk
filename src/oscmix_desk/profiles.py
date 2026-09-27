@@ -312,8 +312,9 @@ def _written(name: str, config: Config, device: Control
     about which part (third outside review). Nothing gone out is a
     refusal like any other: the desk is untouched. Some of it gone out is
     its own state, with both lists, and the marker is left alone -- the
-    desk in effect is still the one a reload or a start writes back,
-    which is the repair (ADR 0027).
+    desk in effect remains the previous one. Reload repairs only PIN;
+    restoring its REMEMBER starting values requires explicit selection
+    or a new session (ADR 0012, ADR 0027).
     """
     try:
         apply_routing(config, device, intent=ApplyIntent.EXPLICIT)
@@ -350,11 +351,9 @@ def _check(name: str, config: Config, device: Control) -> Outcome:
     try:
         result = verify_routing(registers, device, VERIFY_TIMEOUT, device_model=model)
     except OSError as exc:
-        # Applied -- the barrier waited blind -- and unverifiable for a
-        # reason that is not the mixer GUI: the receive port cannot be
-        # bound, or the request for the state could not be sent. The
-        # outcome carries it, where the first used to read "receive port
-        # in use" (0.6.11) and the second was a traceback (0.7.0).
+        # All apply phases completed, but this read-back failed. The outer
+        # operation still requires a successful lease end before changing
+        # the profile marker; connection loss cannot commit success.
         log.error("profile %r applied; it cannot be verified: %s", name, exc)
         return Outcome(state=APPLIED_UNVERIFIED, name=name,
                        reason=exc.strerror or str(exc),

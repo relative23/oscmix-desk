@@ -97,7 +97,7 @@ def await_link_echo(expected: Mapping[str, int], backend: Control,
 
     A nonmatching or invalid decoded value revokes a match. Timeout
     distinguishes a known contradiction from silence. The caller may use
-    a backend-specific settle for silence or a held port, never for a
+    a backend-specific settle for silence, never for a
     contradiction, cancellation or receive failure.
 
     ``backend`` is the caller's, when it has one. Without it this built

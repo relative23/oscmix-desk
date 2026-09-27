@@ -1,12 +1,15 @@
 # The oscmix OSC interface
 
-[oscmix](https://github.com/michaelforney/oscmix) exposes the Fireface's
-hardware mixer via OSC 1.0 over UDP. This is what `oscmix-session` uses to
-apply routing.conf, and what you can use to script the mixer yourself.
+[oscmix](https://github.com/michaelforney/oscmix) implements the OSC paths
+described here. In 0.8.0, desk and its matching GTK companion carry those
+payloads over the [ODK1 control connection](BACKEND-CONTROL.md), with shared
+observations, device identity checks and coordinated write ownership.
+The coordinated backend opens no UDP command or reply port.
 
-- oscmix **listens** on `udp://127.0.0.1:7222` (commands in)
-- oscmix **sends** state changes to `udp://127.0.0.1:8222` (where
-  oscmix-gtk listens)
+Unmodified upstream and its separate standalone mode use UDP commands at
+`127.0.0.1:7222` and one reply destination at `127.0.0.1:8222`. That mode is
+uncoordinated and rejected by the 0.8.0 desk/launcher. Changing legacy `[osc]`
+port values does not create a second transport or select the ODK1 endpoint.
 
 ## The mix matrix
 
@@ -66,17 +69,24 @@ Two properties make this awkward to wait out, both measured on a UCX II:
   unmeasured when this paragraph was written -- has since been recorded
   too (`tests/data/cold-plug-timeline.json`): the link registers come
   back **0.01 s after the `/refresh`** that asks for them, and the dump
-  is over in ~4 s. `LINK_SYNC_BLIND_DELAY` is 5 s on the strength of
-  that, see ADR 0010.
+  is over in ~4 s. These are historical measurements of their recorded
+  backend, not qualification of a changed patch series (ADR 0010).
 
-The reliable sequence is therefore: send the links, send the mix so audio
-works, then send `/refresh` and re-send the mix once the dump has reported
-`/output/<n>/stereo`. Note that `/playback/<n>/stereo` needs no such care
--- `setinputstereo()` updates oscmix's state synchronously.
+Desk sends links, waits at the link barrier, and only then sends the matrix.
+The later verification window can authorize a PIN repair or mix reapply.
+A complete decoded delivery determines the latest link state: a contradiction
+at its end revokes an earlier match. Malformed feedback or connection loss
+stops the operation; a known wrong link cannot be bypassed by timeout or
+blind reapply. An unchanged, silent link remains a distinct unconfirmed case;
+see [ADR 0029](decisions/0029-revocable-observations.md).
 
-`/mix` writes cannot be verified at all: they draw no reply, and the dump
-contains `/mix/*/input/*` but not `/mix/*/playback/*`. The matrix can only
-be re-established from a known link state, never read back.
+`setinputstereo()` updates the backend's playback flags synchronously, but
+that cached value is not hardware confirmation. The current patch series
+labels it as derived state. Computed input-matrix reports are withheld until
+their required device inputs are observed ([ADR 0031](decisions/0031-complete-input-mix-observations.md)).
+The investigated backend/UCX-II refresh path returns input-matrix reports but
+no playback-matrix coefficients. Re-establishing a declared playback route
+does not read it back; true playback read-back remains a 0.8.0 release gate.
 
 ## Other useful addresses
 
@@ -87,18 +97,20 @@ be re-established from a known link state, never read back.
 | `/output/<n>/pan` | `,i` | pan −100…100 |
 | `/input/<n>/gain` | `,f` | input gain |
 | `/mix/<out>/input/<in>` | `,fi` | hardware input → output routing |
-| `/refresh` | none | re-send the complete device state |
+| `/refresh` | none | request the backend's device refresh; reports can be partial and include derived values |
 
-The authoritative list is the upstream source (`oscmix.c`).
+The path list is in the pinned upstream `oscmix.c`. ODK1 permits refresh only
+through its dedicated request; a raw `/refresh` write cannot bypass its
+window/ownership rules.
 
-## Scripting example
+## Encoding a payload offline
 
 OSC messages are trivial to construct with the Python standard library --
 address and type tag are NUL-terminated strings padded to 4 bytes,
 arguments are big-endian:
 
 ```python
-import socket, struct
+import struct
 
 def osc(path, types="", *args):
     def s(x):
@@ -109,9 +121,11 @@ def osc(path, types="", *args):
         data += struct.pack(">f" if tag == "f" else ">i", value)
     return data
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.sendto(osc("/output/1/volume", "f", -12.0), ("127.0.0.1", 7222))
+print(osc("/output/1/volume", "f", -12.0).hex())
 ```
 
-For one-off experiments, `oscmix-session --dry-run` prints the messages it
-would send for your current routing.conf.
+This example only encodes bytes. For desk automation, use the CLI's checked
+profile/main-desk operations; `oscmix-session --dry-run` previews their
+messages without sending them. A custom control client must implement the
+ODK1 identity, ownership and failure contract; a processing ACK is not a
+hardware observation.
