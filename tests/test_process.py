@@ -365,6 +365,24 @@ def test_resolve_binary_returns_none_when_nothing_is_found(monkeypatch):
     assert discovery.resolve_binary("oscmix", "OSCMIX_BIN_BACKEND") is None
 
 
+@pytest.mark.parametrize(('available', 'expected'), [
+    ({'/usr/local/bin/oscmix', '/usr/bin/oscmix'}, '/usr/local/bin/oscmix'),
+    ({'/usr/bin/oscmix'}, '/usr/bin/oscmix'),
+])
+def test_system_install_is_found_when_the_user_path_omits_it(monkeypatch, available, expected):
+    from oscmix_desk import discovery
+
+    monkeypatch.delenv('OSCMIX_BIN_BACKEND', raising=False)
+    monkeypatch.setattr(discovery.shutil, 'which', lambda _name: None)
+
+    def executable(path, mode):
+        assert mode & os.X_OK
+        return path in available
+
+    monkeypatch.setattr(discovery.os, 'access', executable)
+    assert discovery.resolve_binary('oscmix', 'OSCMIX_BIN_BACKEND') == expected
+
+
 # --------------------------------------------------------------------------
 # Reloading the unit after a switch (ADR 0018)
 # --------------------------------------------------------------------------

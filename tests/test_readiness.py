@@ -1,5 +1,9 @@
 """Device readiness and read-only endpoint ownership."""
 
+import os
+
+import pytest
+
 from oscmix_desk import discovery, process
 
 
@@ -74,3 +78,30 @@ def test_wait_for_device_tolerates_a_missing_proc_file(session_mod, tmp_path):
     # snd_seq not loaded yet: the file simply is not there.
     assert discovery.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
                                        0.3, tmp_path / "nothing") is None
+
+
+@pytest.mark.parametrize('override', [None, '/virtual-test/sequencer'])
+def test_missing_sequencer_triggers_only_a_nonblocking_read_open(tmp_path, monkeypatch, override):
+    if override is None:
+        monkeypatch.delenv('OSCMIX_SEQ_DEV', raising=False)
+    else:
+        monkeypatch.setenv('OSCMIX_SEQ_DEV', override)
+    calls = []
+
+    def opened(path, flags):
+        assert path == (override or '/dev/snd/seq')
+        assert flags & os.O_ACCMODE == os.O_RDONLY
+        assert flags & os.O_NONBLOCK
+        calls.append(('open', path))
+        return 321
+
+    def closed(fd):
+        assert fd == 321
+        calls.append(('close', fd))
+
+    with monkeypatch.context() as patch:
+        patch.setattr(discovery.os, 'open', opened)
+        patch.setattr(discovery.os, 'close', closed)
+        assert discovery.wait_for_device('2a39:3fd9', 'Fireface UCX II', '',
+                                         0, tmp_path / 'missing-proc') is None
+    assert calls == [('open', override or '/dev/snd/seq'), ('close', 321)]

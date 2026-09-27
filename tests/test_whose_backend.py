@@ -7,6 +7,7 @@ import io
 import os
 from pathlib import Path
 
+import pytest
 from two_boxes import DESK, unit
 
 from oscmix_desk import cli
@@ -300,13 +301,17 @@ def test_the_unit_s_main_pid_is_asked_for_exactly(tmp_path, monkeypatch):
     assert process.unit_process(tmp_path).environ == {
         "OSCMIX_CONFIG": "/a=b/routing.conf"}
 
-def test_the_unit_desk_reads_the_real_proc_and_compares_files_safely(
-        tmp_path, monkeypatch):
+@pytest.mark.parametrize('override', [False, True])
+def test_the_unit_desk_uses_the_selected_proc_and_compares_files_safely(
+        tmp_path, monkeypatch, override):
     roots = []
-    monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
+    if override:
+        monkeypatch.setenv('OSCMIX_PROC_ROOT', str(tmp_path / 'selected-proc'))
+    else:
+        monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
     monkeypatch.setattr(cli, "unit_process", lambda root: roots.append(root))
     assert cli._unit_desk() == (False, None)
-    assert roots == [Path("/proc")]
+    assert roots == [tmp_path / 'selected-proc' if override else Path('/proc')]
     assert cli._same_file(tmp_path / "a", None) is False
 
     def unreadable(self, *a, **k):

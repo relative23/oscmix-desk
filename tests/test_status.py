@@ -1,5 +1,6 @@
 """Status is useful offline and must never apply, bind, or start anything."""
 
+import hashlib
 import json
 import socket
 from dataclasses import replace
@@ -66,7 +67,11 @@ def test_invalid_config_still_produces_json_diagnosis(world, capsys):
     report = json.loads(capsys.readouterr().out)
     assert report['configuration_valid'] is False
     assert report['sections']['configuration']['state'] == 'invalid'
+    assert 'usb-id' in report['sections']['configuration']['detail']
     assert report['sections']['backend']['state'] == 'unknown'
+    assert report['sections']['playback']['state'] == 'unknown'
+    for name in ('backend', 'playback'):
+        assert 'invalid configuration' in report['sections'][name]['detail']
 
 
 def test_stale_active_profile_is_not_reported_as_the_effective_one(world):
@@ -77,6 +82,7 @@ def test_stale_active_profile_is_not_reported_as_the_effective_one(world):
     assert section['state'] == 'fallback'
     assert section['stored_profile'] == 'missing'
     assert section['effective_profile'] is None
+    assert 'main configuration selected' in section['detail']
     assert marker.read_text() == 'missing\n'
 
 
@@ -114,13 +120,18 @@ def test_known_failing_mode_and_corrupt_playback_remain_distinct(world):
     (card / 'stream0').write_text('corrupt')
     section = status.collect_status(path, CommandLine())['sections']['playback']
     assert section['state'] == 'unknown'
+    assert 'identity' in section['detail']
 
 
 def test_no_playback_observation_is_not_a_default_rate(world):
     _, proc = world
-    assert status._playback(Config(), proc)['state'] == 'unobserved'
+    missing = status._playback(Config(), proc)
+    assert missing['state'] == 'unobserved'
+    assert 'no matching' in missing['detail']
     other = replace(Config(), usb_id='1234:5678')
-    assert status._playback(other, proc)['state'] == 'not-applicable'
+    unmeasured = status._playback(other, proc)
+    assert unmeasured['state'] == 'not-applicable'
+    assert 'UCX II' in unmeasured['detail']
 
 
 def test_service_environment_is_not_leaked_in_status(world, monkeypatch):
@@ -162,7 +173,8 @@ def test_native_provenance_comes_from_the_resolved_file(world, monkeypatch, meta
 def test_missing_backend_file_is_diagnosed(world, monkeypatch):
     path, _ = world
     monkeypatch.setattr(status, 'resolve_binary', lambda *_: str(path.parent / 'gone'))
-    assert 'detail' in status.collect_status(path, CommandLine())['sections']['installation']
+    info = status.collect_status(path, CommandLine())['sections']['installation']
+    assert 'gone' in info['detail']
 
 
 def test_incomplete_component_maintenance_and_failed_inspection_are_distinct(world):
@@ -174,6 +186,7 @@ def test_incomplete_component_maintenance_and_failed_inspection_are_distinct(wor
     info = status.collect_status(path, CommandLine())['sections']['installation']['maintenance']
     assert info['core']['pending'] is True
     assert info['gtk']['pending'] is None
+    assert 'gtk-package-update' in info['gtk']['detail']
     assert info['service']['pending'] is True
     assert 'host service' in info['service']['detail']
     assert 'repair' in info['core']['detail']
@@ -196,6 +209,9 @@ def test_running_binary_is_compared_with_resolved_binary(world, monkeypatch, sam
     assert info['state'] == 'observed'
     assert info['matches_resolved'] is same
     assert info['executable'] == str(running)
+    expected_content = b'new-backend' if same else b'previous-backend'
+    assert info['sha256'] == hashlib.sha256(expected_content).hexdigest()
+    assert info['note']
 
 
 def test_status_can_report_a_valid_installed_desktop(world, monkeypatch):
@@ -260,8 +276,6 @@ def test_installation_status_identifies_the_interpreter_and_absent_binary(world,
 
 
 def test_status_resolves_and_hashes_the_explicit_backend_without_executing_it(world, monkeypatch):
-    import hashlib
-
     from oscmix_desk.discovery import resolve_binary
 
     path, _ = world
@@ -274,6 +288,68 @@ def test_status_resolves_and_hashes_the_explicit_backend_without_executing_it(wo
     info = status.collect_status(path, CommandLine())['sections']['installation']
     assert info['resolved_backend'] == str(binary)
     assert info['backend_sha256'] == hashlib.sha256(content).hexdigest()
+
+
+def test_status_resolves_the_backend_on_path_without_executing_it(world, monkeypatch):
+    from oscmix_desk.discovery import resolve_binary
+
+    path, _ = world
+    binary = path.parent / 'bin/oscmix'
+    binary.parent.mkdir()
+    binary.write_bytes(b'not executable code; inspect only')
+    binary.chmod(0o700)
+    monkeypatch.delenv('OSCMIX_BIN_BACKEND', raising=False)
+    monkeypatch.setenv('HOME', str(path.parent / 'empty-home'))
+    monkeypatch.setenv('PATH', str(binary.parent))
+    monkeypatch.setattr(status, 'resolve_binary', resolve_binary)
+    info = status.collect_status(path, CommandLine())['sections']['installation']
+    assert info['resolved_backend'] == str(binary)
+    assert info['backend_sha256'] == hashlib.sha256(binary.read_bytes()).hexdigest()
+
+
+def test_status_hands_the_config_path_and_resolved_device_to_its_readers(world, monkeypatch):
+    from pathlib import Path
+
+    from oscmix_desk.diagnostics import BackendStatus
+    from oscmix_desk.discovery import Device
+
+    path, _ = world
+    path.write_text('[device]\nname=Fireface UCX II\n')
+    monkeypatch.delenv('OSCMIX_PROC_ROOT', raising=False)
+    seen = []
+
+    def inspect(config, proc_root, config_path):
+        assert config.serial == ''
+        assert proc_root == Path('/proc')
+        assert config_path == path
+        seen.append('backend')
+        return BackendStatus('absent', 'not running', Device('2a39:3fd9', '24216011', 24))
+
+    def playback(config, proc_root):
+        assert config.serial == '24216011'
+        assert proc_root == Path('/proc')
+        seen.append('playback')
+        return {'state': 'unobserved'}
+
+    monkeypatch.setattr(status, 'backend_status', inspect)
+    monkeypatch.setattr(status, '_playback', playback)
+    report = status.collect_status(path, CommandLine())
+    assert report['sections']['backend']['state'] == 'absent'
+    assert seen == ['backend', 'playback']
+
+
+def test_an_untrusted_backend_pid_does_not_become_a_running_file_identity(world, monkeypatch):
+    from oscmix_desk.diagnostics import BackendStatus
+
+    path, _ = world
+    monkeypatch.setattr(status, 'backend_status', lambda *_:
+                        BackendStatus('unknown', 'identity not established', pid=101))
+    monkeypatch.setattr(status, '_running_backend', lambda *_:
+                        pytest.fail('hashed an unidentified backend'))
+    info = status.collect_status(path, CommandLine())['sections']['backend']
+    assert info['state'] == 'unknown'
+    assert info['pid'] == 101
+    assert 'running_file' not in info
 
 
 def test_unreadable_running_binary_keeps_the_inspection_error(world):

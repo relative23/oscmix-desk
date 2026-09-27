@@ -170,6 +170,25 @@ def test_a_missing_notify_send_is_not_an_error(launch_mod, clean_env):
     launch_mod.notify("summary", "body")
 
 
+def test_a_hung_or_failing_notification_stays_bounded_and_nonfatal(launch_mod, clean_env):
+    calls = []
+
+    def failing(argv, **options):
+        assert 0 < options.get('timeout', float('inf')) <= 5
+        calls.append(argv)
+        if len(calls) == 1:
+            raise subprocess.TimeoutExpired(argv, options['timeout'])
+        if options.get('check'):
+            raise subprocess.CalledProcessError(1, argv)
+        return subprocess.CompletedProcess(argv, 1)
+
+    clean_env.setattr(subprocess, 'run', failing)
+    launch_mod.notify('summary', 'body')
+    launch_mod.notify('summary', 'body')
+    assert calls == [['notify-send', '--urgency', 'normal', '--icon', 'oscmix',
+                      'summary', 'body']] * 2
+
+
 def test_systemctl_returns_the_exit_status_it_saw(launch_mod, clean_env):
     seen = []
 
@@ -190,6 +209,41 @@ def test_a_missing_systemctl_reports_failure_rather_than_raising(launch_mod,
 
     clean_env.setattr(subprocess, "run", boom)
     assert launch_mod.systemctl_user("start", "x.service") == 1
+
+
+def test_systemctl_preserves_nonzero_exit_and_bounds_a_hung_command(launch_mod, clean_env):
+    calls = []
+
+    def failing(argv, **options):
+        assert 0 < options.get('timeout', float('inf')) <= 5
+        calls.append(argv)
+        if len(calls) == 1:
+            raise subprocess.TimeoutExpired(argv, options['timeout'])
+        if options.get('check'):
+            raise subprocess.CalledProcessError(3, argv)
+        return subprocess.CompletedProcess(argv, 3)
+
+    clean_env.setattr(subprocess, 'run', failing)
+    assert launch_mod.systemctl_user('start', 'x.service') == 1
+    assert launch_mod.systemctl_user('start', 'x.service') == 3
+    assert calls == [['systemctl', '--user', 'start', 'x.service']] * 2
+
+
+def test_default_proc_root_and_launch_refusal_are_handed_over_without_io(launch_mod, clean_env):
+    seen = []
+    notices = []
+    clean_env.delenv('OSCMIX_PROC_ROOT', raising=False)
+
+    def refused(proc_root):
+        seen.append(proc_root)
+        raise OSError('selected backend could not be identified')
+
+    clean_env.setattr(launch_mod, '_launch', refused)
+    clean_env.setattr(launch_mod, 'notify', lambda _title, body, urgency:
+                      notices.append((body, urgency)))
+    assert launch_mod.main() == 1
+    assert seen == [Path('/proc')]
+    assert notices == [('selected backend could not be identified', 'critical')]
 
 
 def test_an_executable_override_wins(launch_mod, clean_env, tmp_path):

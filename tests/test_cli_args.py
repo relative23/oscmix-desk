@@ -1,10 +1,24 @@
 """Command-line overrides are bounded like the file they override."""
 
+import logging
 from itertools import permutations
 
 import pytest
 
 from oscmix_desk import reload as reload_mod
+
+
+@pytest.mark.parametrize('verbose', [False, True])
+def test_verbose_is_an_optional_flag_and_changes_the_logging_level(monkeypatch, verbose):
+    from oscmix_desk import cli
+
+    settings, requests = [], []
+    monkeypatch.setattr(cli.logging, 'basicConfig', lambda **options: settings.append(options))
+    monkeypatch.setattr(cli, 'discover_config_path', lambda: None)
+    monkeypatch.setattr(cli, 'print_status', lambda *args: requests.append(args) or 0)
+    assert cli.main(['--status'] + (['--verbose'] if verbose else [])) == 0
+    assert len(requests) == 1
+    assert settings[0]['level'] == (logging.DEBUG if verbose else logging.INFO)
 
 
 def test_an_out_of_range_osc_port_on_the_command_line_is_a_config_error(

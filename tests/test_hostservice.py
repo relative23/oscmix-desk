@@ -158,7 +158,8 @@ def test_reload_waits_for_handler_without_changing_the_pinned_process(native, mo
     monkeypatch.setattr(signal, 'pidfd_send_signal', lambda fd, sig: calls.append((fd, sig)),
                         raising=False)
 
-    def finish_importing(_):
+    def finish_importing(seconds):
+        assert 0 < seconds <= hostservice.RELOAD_READY_TIMEOUT
         assert calls == [('open', 1234)]
         (entry / 'status').write_text('PPid:\t12\nSigCgt:\t1\n')
 
@@ -230,10 +231,24 @@ def test_read_only_status_does_not_start_or_signal_native_manager(native, monkey
     assert report['UnitFileState'] == 'disabled'
 
 
+@pytest.mark.parametrize('override', [False, True])
+def test_native_status_passes_the_selected_process_root(native, monkeypatch, override):
+    service, proc, _ = native
+    if not override:
+        monkeypatch.delenv('OSCMIX_PROC_ROOT')
+    calls = []
+    response = dict(state='observed', manager=service.manager)
+    monkeypatch.setattr(diagnostics.hostservice, 'report',
+                        lambda *args: calls.append(args) or response)
+    assert diagnostics.service_status() == response
+    assert calls == [(service, proc if override else Path('/proc'))]
+
+
 def test_another_users_host_service_is_unavailable_not_inactive(native):
     service, proc, _ = native
     report = hostservice.report(replace(service, uid=service.uid + 1), proc)
     assert report['state'] == 'unavailable'
+    assert report['manager'] == service.manager
     assert 'ActiveState' not in report
     assert 'another user' in report['detail']
 
@@ -286,7 +301,11 @@ def test_openrc_identity_uses_root_registration_and_readable_parent_identity(
         return original_stat(path, *args, **kwargs)
 
     monkeypatch.setattr(Path, 'stat', stat_owner)
-    monkeypatch.setattr(hostservice, '_root_file', lambda _: '12\n')
+    def supervisor_identity(path):
+        assert path == hostservice.SUPERVISOR_PID
+        return '12\n'
+
+    monkeypatch.setattr(hostservice, '_root_file', supervisor_identity)
     if changed:
         with pytest.raises(OSError, match='supervisor identity'):
             hostservice.main_pid(service, proc)
