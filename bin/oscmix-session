@@ -4,8 +4,8 @@
 This program is the ExecStart of the oscmix systemd user service. It
 
   1. waits until the Fireface registers as an ALSA sequencer client,
-  2. starts ``alsaseqio <client>:1 oscmix`` (the MIDI <-> OSC bridge),
-  3. waits until oscmix listens on its OSC UDP port,
+  2. starts ``alsaseqio -x <client>:1 oscmix -c <control socket>``,
+  3. waits for the checked backend to own its coordinated endpoint,
   4. applies the mixer routing configured in routing.conf, and
   5. supervises the backend until it exits or the service is stopped.
 
@@ -15,8 +15,8 @@ can actually help:
   0  nothing to do (device not connected), clean shutdown, or backend
      exited cleanly
   1  runtime failure (systemd restarts via Restart=on-failure)
-  2  configuration error, an ambiguous interface, or a session already
-     running on the port (no restart; see RestartPreventExitStatus);
+  2  configuration error, an ambiguous interface, or a conflicting
+     device owner (no restart; see RestartPreventExitStatus);
      from the command line also a usage error, or a switch or restore
      that was refused and wrote nothing
   3  --diff: the device differs from the config
