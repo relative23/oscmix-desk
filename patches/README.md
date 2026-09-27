@@ -172,3 +172,18 @@ captured continuous device traffic reproduces the slow-consumer failure and
 passes with this correction. Queue limits, refresh windows, protocol and device
 commands are unchanged. Fresh hardware and platform checks must identify this
 new series; earlier results remain development evidence for their own builds.
+
+## 0008 -- drain writable queues before declaring overflow
+
+The coordinator checked an already full userspace queue before attempting to
+send its contents again. A consumer that had resumed reading could therefore
+be disconnected on the next delivery despite available kernel send capacity.
+Patch 0008 drains the old queue before applying the existing overflow checks.
+The usual post-enqueue drain remains; the packet and byte bounds do not change.
+
+A socket-pair regression compiles the actual coordinator, fills its kernel
+and userspace queues, resumes the reader and publishes the next packet. The
+prior code disconnects the writable reader; the correction preserves every
+packet in order. The same test then stops reading again and verifies that the
+unchanged bound still disconnects the stalled peer. No hardware is opened by
+this test; combined GTK and hardware load qualification remains separate.

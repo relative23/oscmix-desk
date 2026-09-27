@@ -22,6 +22,10 @@
     {
       "file": "0007-notify-gtk-connection-changes-only.patch",
       "sha256": "4c304a9e1c6bd6d18f40d7798495c0f829100ef10ecdd8c65db0ae20098b5819"
+    },
+    {
+      "file": "0008-drain-writable-client-queues-before-overflow.patch",
+      "sha256": "b4224643382f7f026e985542b99e97f896fc9c7fa29828fdfd9430d8c530965a"
     }
   ]
 }

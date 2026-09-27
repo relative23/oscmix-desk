@@ -154,7 +154,12 @@ Initial implementation limits, to be checked by overload/lifecycle tests:
 | Refresh receive window | 10 seconds |
 | Pending GUI refresh | One coalesced request |
 
-Use nonblocking client I/O and bounded work per poll iteration. A slow client
+Use nonblocking client I/O and bounded work per poll iteration. Drain existing
+queued packets before enforcing the overflow bound for a new packet: the
+consumer may have resumed reading since the last blocked send. Patch 0008
+corrects a reproduced refusal of a now-writable connection, preserving order
+and the existing bounds. A peer that remains stalled is still disconnected.
+A slow client
 is disconnected on overflow; it cannot delay another client's verifier or
 silently receive a supposedly complete dump. EOF, malformed/oversized input,
 MIDI/bridge failure and backend shutdown invalidate the connection. Clients

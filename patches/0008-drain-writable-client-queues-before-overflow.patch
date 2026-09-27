@@ -1,0 +1,12 @@
+diff --git a/control.c b/control.c
+--- a/control.c
++++ b/control.c
+@@ -135,6 +135,8 @@ enqueue(int index, uint32_t kind, uint32_t request, uint32_t code,
+ {
+ 	struct client *c = &clients[index];
+ 	struct packet *p;
++	/* A previously full queue may be writable again before this delivery. */
++	flush(index);
+ 	if (c->fd < 0)
+ 		return;
+ 	if (len > CONTROL_PAYLOAD || c->count == QUEUE_PACKETS ||

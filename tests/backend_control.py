@@ -119,6 +119,20 @@ def test_gtk_observations_do_not_notify_global_connection_properties(binary, tmp
         midi.close()
 
 
+def test_full_queue_recovers_when_the_peer_resumes_reading(binary, tmp_path):
+    probe = tmp_path / 'queue-recovery'
+    subprocess.run(['cc', '-std=c11', '-I', str(binary.parent),
+                    str(repo_file('tests/control_queue_recovery.c')),
+                    str(binary.parent / 'osc.c'), '-lm', '-o', str(probe)],
+                   check=True, capture_output=True, timeout=30)
+    result = subprocess.run([str(probe)], capture_output=True, text=True, timeout=3)
+    assert result.returncode == 0, result.stderr
+    observed = json.loads(result.stdout)
+    assert observed['recovered_packets'] > 32
+    assert observed['slow_peer_disconnected'] is True
+    assert result.stderr == 'control: disconnecting slow consumer\n'
+
+
 def test_identity_and_hardware_reports_are_shared_without_echoing_sends(midi, desk):
     with_peer = midi.connect(GUI)
     try:
