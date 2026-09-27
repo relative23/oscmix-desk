@@ -12,9 +12,17 @@ before correction and pass afterwards; the fresh 2333-test suite and actual
 GTK/concurrent CLI probe with simulated MIDI pass. The
 [delivery record](evidence/0.8.0/osc-delivery-development.json) identifies the
 code and test inputs; final hardware qualification remains open.
+A further source assessment reproduced two known MIDI-loss paths: the ALSA
+bridge continued after input FIFO loss, and the backend processed buffered
+reports and a queued write before an already reported pipe hangup. Patch 0006
+now ends both paths before further observations or writes. The fresh series
+passes 67 preparation/protocol checks, `make check` (2333 passed, two skipped,
+131.33 s) and the actual GTK/concurrent CLI probe. The
+[MIDI-loss record](evidence/0.8.0/midi-input-loss-development.json) identifies
+both failing baselines and the corrected build; it contains no hardware claim.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
-backend/GTK build passes 65 preparation/protocol tests and the actual GTK
+backend/GTK integration originally passed 65 preparation/protocol tests and the actual GTK
 fader, lease, start-order, disconnect and identity checks with simulated MIDI.
 Actual desk CLI processes and GTK also pass a combined simulated-MIDI test:
 two profiles serialize through read-back, GTK cannot write during the operation,

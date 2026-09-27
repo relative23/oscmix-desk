@@ -108,15 +108,13 @@ def _verifier_finished(verifier: Optional[threading.Thread],
                        stop_requested: Dict[str, bool]) -> bool:
     """Wait for the start-up verifier before a reconcile writes anything.
 
-    Both write the whole routing to one device. The verifier holds the
-    receive port for stretches and releases it between phases, and a
-    SIGHUP landing in one of those gaps used to start a second
-    ``apply_routing`` on the main thread while the verifier's retry was
-    about to start its own: two link phases, two barriers and two mix
-    writes interleaved on the wire, which is exactly the ordering the
-    two-phase apply exists to guarantee. Not theoretical: after a
-    suspend the device re-enumerates, udev restarts the unit, and the
-    resume hook sends its reload into that same window.
+    Startup verification retains the operation's connection and ownership
+    through observation and permitted repair. A later selective reconcile
+    waits for that worker to end before acquiring its own ownership. Both
+    preserve REMEMBER starting values. The historical receive-port gaps
+    allowed their link and mix phases to interleave; the worker wait and
+    whole-operation ownership retain that ordering across reloads at startup
+    or resume.
 
     Returns False when the reconcile must not proceed: a stop arrived
     while waiting, or the verifier outlived ``RECONCILE_WAIT_FOR_VERIFIER``,
@@ -141,7 +139,7 @@ def _verifier_finished(verifier: Optional[threading.Thread],
 def _reconcile(args: argparse.Namespace, config: Config,
                stop_requested: Dict[str, bool],
                verifier: Optional[threading.Thread] = None) -> None:
-    """Re-read the config and re-apply it, on SIGHUP.
+    """Re-read the config and selectively reconcile PIN settings on SIGHUP.
 
     Re-reading is what makes SIGHUP mean what it means everywhere else.
     A config that no longer parses is *not* applied and not fatal: the

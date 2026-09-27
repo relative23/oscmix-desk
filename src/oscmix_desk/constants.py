@@ -26,17 +26,12 @@ VERIFY_SETTLE = 0.5
 # evaluated against the stale flag, takes the unlinked branch in setlevel()
 # and never writes the pair's right channel -- every even output stays
 # silent. Link messages therefore go out first, and the mix matrix only
-# after the echo arrived (or LINK_SETTLE elapsed, when nobody can listen).
-#
-# The echo only fires on an actual *change*: writing stereo=1 to a pair
-# the device already has linked changes nothing and stays silent. The
-# barrier below is therefore opportunistic -- short, and a timeout is
-# normal rather than an error. What closes the gap for good is that
-# oscmix reports every register once its initial sync completes (measured
-# on a UCX II: /output/1..12/stereo arrive ~15 s after start, far too late
-# to block readiness on). So the mix is written twice: immediately, so
-# audio works, and again after that sync, when oscmix's link state is
-# guaranteed correct.
+# after the bounded barrier has processed each complete delivery. A known
+# contradiction refuses the mix phase. Missing reports are distinct: an
+# unchanged link may produce no immediate echo. Where no retained-link
+# dependency requires confirmation, that timeout can proceed, followed by
+# the fresh sync window. Its latest observations decide whether mix repair
+# is permitted; they do not establish permanent or playback-matrix state.
 LINK_ECHO_TIMEOUT = float(os.environ.get("OSCMIX_LINK_TIMEOUT", "1.5"))
 # ODK1 server limits, qualified against the versioned C backend. Acquisition
 # precedes a lease whose total duration cannot be extended by keepalives.
@@ -94,24 +89,19 @@ VERIFIER_STOP_GRACE = 2.0
 # backend, so the port it held is free before the new one binds.
 STALE_BACKEND_SETTLE = 0.5
 
-# How long a SIGHUP reconcile waits for the start-up verifier before
-# giving up on it. Both write the whole routing to one device, so they
-# are serialised (see session._verifier_finished). The verifier's longest
-# path is a full observation window, a re-apply and a second window:
-# VERIFY_SETTLE + VERIFY_TIMEOUT + LINK_ECHO_TIMEOUT + VERIFY_SETTLE +
-# VERIFY_TIMEOUT = 22.5 s; the blind path is about 6 s. 30 s covers the
-# longer one with margin and is short enough that a reload during a
-# shutdown does not hold the supervise loop for long.
+# How long SIGHUP waits for startup verification before logging a skipped
+# reconcile (reload._verifier_finished). Startup and later selective
+# reconciliation must not overlap. A timeout requires another explicit
+# reload; the backend's hard lease deadline separately bounds each operation.
 RECONCILE_WAIT_FOR_VERIFIER = 30.0
 
 # How long a writer waits for the device lock before it gives up. Every
 # writer takes it: a switch, `--no-profile`, and the unit's own apply,
 # verifier and reconcile (locking.take_device_lock, ADR 0019). Two at
 # once would interleave their link phases and mix writes on the wire.
-# A switch holds it for at most a barrier, the writes and a read-back
-# window -- about 13 s -- and the unit's start-up transaction for about
-# 22 s, so 30 s covers one queued writer with margin; past that a switch
-# refuses, which writes nothing, and that is the honest answer.
+# This wait bounds contention rather than guaranteeing that a preceding
+# operation finishes in time. The lock and backend lease span verification
+# and repair too. If the wait expires, the new switch refuses without writes.
 SWITCH_LOCK_WAIT = 30.0
 
 
