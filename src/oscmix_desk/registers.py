@@ -280,7 +280,7 @@ def _matches(template: str, path: str) -> bool:
         return False
     for part_want, part_got in zip(want, got):
         if part_want.startswith("{") and part_want.endswith("}"):
-            if not part_got.isdigit():
+            if not part_got.isascii() or not part_got.isdigit():
                 return False
         elif part_want != part_got:
             return False

@@ -316,6 +316,30 @@ def test_the_global_registers_are_declared_once_not_per_channel():
         assert paths.count(register.template) == 1, register.template
 
 
+@pytest.mark.parametrize("channel", ["left", "-1", "1.5", "", "²", "٢"])
+def test_nonnumeric_channel_paths_do_not_name_a_register(channel):
+    path = "/output/%s/volume" % channel
+    assert registers.register_at(devices.UCX2, path) is None
+    assert registers.verify_class(devices.UCX2, path) is None
+    assert not registers.cold_plug_complete(devices.UCX2, "/output/%s/stereo" % channel)
+
+
+@pytest.mark.parametrize(("channels", "expected"), [
+    (None, ("/output/1/volume", "/output/2/volume", "/echo/delay")),
+    ({"outputs": (5,)}, ("/output/5/volume", "/echo/delay")),
+    ({"outputs": ()}, ("/echo/delay",)),
+])
+def test_declared_paths_respects_capabilities_without_expanding_matrix(channels, expected):
+    device = registers.Device(
+        key="fixture", name="Fixture", usb_id="0000:0000", supported=False,
+        channels={"outputs": (1, 2)}, registers=(
+            registers.Register("/output/{ch}/volume", "f", registers.VERIFIABLE, "outputs"),
+            registers.Register("/echo/delay", "f", registers.VERIFIABLE, registers.GLOBAL),
+            registers.Register("/mix/{out}/playback/{pb}", "fi", registers.REESTABLISHED,
+                               "outputs")))
+    assert registers.declared_paths(device, channels) == expected
+
+
 def test_every_declared_echo_register_is_in_the_recording(warm):
     """The table against the device, not against the datasheet.
 
