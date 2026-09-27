@@ -1,0 +1,15 @@
+diff --git a/gtk/mixer.c b/gtk/mixer.c
+--- a/gtk/mixer.c
++++ b/gtk/mixer.c
+@@ -316,7 +316,10 @@ on_control_data(GSocket *socket, GIOCondition condition, gpointer ptr)
+ 	} else {
+ 		goto failed;
+ 	}
+-	changed(self);
++	/* Observations update their own bindings, not the whole window's
++	 * connection status and sensitivity on every meter packet. */
++	if (kind != CONTROL_OBSERVATION)
++		changed(self);
+ 	return self->socket ? G_SOURCE_CONTINUE : G_SOURCE_REMOVE;
+ failed:
+ 	disconnect_backend(self);

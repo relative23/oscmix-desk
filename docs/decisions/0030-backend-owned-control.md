@@ -164,6 +164,15 @@ that cannot fit the backend's OSC buffer terminates the backend instead of
 publishing a truncated bundle or writing past that buffer. Both failures can
 leave earlier submitted paths applied and require the same partial outcome.
 
+GTK updates value and meter bindings for observations, but only control replies
+and events notify its global connection status and window sensitivity. A real
+device probe and subsequent software replay found that notifying the entire
+window on each observation made this healthy consumer fall behind normal
+continuous traffic. Patch 0007 removes that redundant work without relaxing
+queue bounds, discarding reports or extending deadlines. The actual GTK object
+and full-window replay cover the correction; new hardware qualification remains
+required for the changed series.
+
 Write acknowledgements describe processing by this backend, not a hardware
 read-back. Partial outcomes continue to distinguish paths submitted before a
 failure from pending paths. A request whose acknowledgement is lost may have

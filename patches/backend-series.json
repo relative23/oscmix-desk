@@ -18,6 +18,10 @@
     {
       "file": "0006-refuse-lost-midi-input.patch",
       "sha256": "66a7ce13e78afea7f0a36481f453fd1ff2c8512d2c1e7bebc8ec866d3875f47d"
+    },
+    {
+      "file": "0007-notify-gtk-connection-changes-only.patch",
+      "sha256": "4c304a9e1c6bd6d18f40d7798495c0f829100ef10ecdd8c65db0ae20098b5819"
     }
   ]
 }

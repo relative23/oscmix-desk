@@ -5,7 +5,10 @@ Run after building the versioned backend patches:
 Missing binaries fail qualification; these tests never open a hardware device.
 """
 
+import json
 import os
+import select
+import shlex
 import signal
 import subprocess
 import time
@@ -80,6 +83,40 @@ def test_alsa_input_loss_terminates_the_actual_bridge_reader(binary, tmp_path):
     assert result.returncode == 1
     assert b'snd_seq_event_input:' in result.stderr
     assert result.stdout == b'', 'bridge continued reading after known lost MIDI events'
+
+
+def test_gtk_observations_do_not_notify_global_connection_properties(binary, tmp_path):
+    """Value delivery must not repeatedly rebind the entire GTK window."""
+    probe = tmp_path / 'gtk-notifications'
+    flags = shlex.split(subprocess.check_output(
+        ['pkg-config', '--cflags', '--libs', 'gtk+-3.0'], text=True, timeout=10))
+    subprocess.run(['cc', '-std=c11', '-I', str(binary.parent),
+                    str(repo_file('tests/gtk_notifications.c')),
+                    str(binary.parent / 'gtk/mixer.c'), str(binary.parent / 'osc.c'),
+                    '-o', str(probe), *flags, '-lm'],
+                   check=True, capture_output=True, timeout=30)
+    midi = SimulatedMidi(binary, tmp_path / 'g.sock')
+    child = None
+    try:
+        wait_for(lambda: midi.path.exists())
+        child = subprocess.Popen([str(probe), str(midi.path), str(midi.child.pid)],
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        wait_for(lambda: (0x3e04, 0x67cd) in midi.registers())
+        midi.inject((0x600, -330))
+        assert select.select([child.stdout], [], [], 3)[0]
+        assert child.stdout.readline() == 'READY\n'
+        for index in range(100):
+            midi.inject((0x600, -300 - index))
+        midi.inject((0x600, -440))
+        stdout, stderr = child.communicate(timeout=5)
+        assert child.returncode == 0, stderr
+        assert json.loads(stdout) == {'reports': 101, 'connection_notifications': 0}
+        assert 'disconnecting slow consumer' not in midi.log()
+    finally:
+        if child is not None and child.poll() is None:
+            child.kill()
+            child.wait(timeout=3)
+        midi.close()
 
 
 def test_identity_and_hardware_reports_are_shared_without_echoing_sends(midi, desk):

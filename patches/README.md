@@ -155,3 +155,20 @@ when `POLLIN` and `POLLHUP` arrive together. Both boundaries invalidate connecte
 observations and leases. There is no new transport, retry queue or device
 command. The exact series identity changes; earlier hardware measurements do
 not qualify this build.
+
+## 0007 -- keep GTK connection notifications out of the observation stream
+
+The real GTK mixer could fall behind continuous device and meter reports and
+be disconnected as a slow consumer during refresh. Every observation notified
+the global `writable` and `status` properties, which are bound to the window's
+sensitivity and header. Patch 0007 confines those notifications to control
+replies and events. Value and meter bindings still receive every observation;
+malformed input and disconnects still invalidate the connection.
+
+A display-free test runs the actual GTK mixer object against the actual C
+backend with simulated MIDI. All 101 requested value updates arrive; the old
+code also emits 202 unnecessary global notifications. Real GTK replay of the
+captured continuous device traffic reproduces the slow-consumer failure and
+passes with this correction. Queue limits, refresh windows, protocol and device
+commands are unchanged. Fresh hardware and platform checks must identify this
+new series; earlier results remain development evidence for their own builds.
