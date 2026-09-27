@@ -77,6 +77,10 @@ Clients preserve delivery boundaries when deciding whether a confirmation
 has survived all messages. Invalid or oversized deliveries cannot become
 partial successful reads. Backend shutdown, MIDI EOF, blocked MIDI writes,
 protocol loss and queue overflow invalidate the connection and its authority.
+The ALSA bridge also terminates after reported input FIFO loss (`-ENOSPC`),
+so a known gap cannot silently leave old observations or a writer lease valid.
+An observed MIDI hangup/error takes precedence over buffered reports and queued
+client writes, even when the pipe also reports readable tail data.
 
 ## Reproducing the software qualification
 

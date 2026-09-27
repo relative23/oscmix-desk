@@ -4,9 +4,10 @@
 protocol and SHA-256 for each patch applied by `scripts/prepare-backend.py`.
 Patch 0003 extends the existing backend, ALSA bridge and GTK mixer together.
 It is carried locally; no upstream acceptance is claimed. Its software
-contract is [documented here](../docs/BACKEND-CONTROL.md). Desk runtime,
-hardware, packaging and release qualification are still pending; the existing
-installer has not yet switched to this candidate.
+contract is [documented here](../docs/BACKEND-CONTROL.md). The development
+installer now builds and verifies this exact series. Final hardware,
+packaging and release qualification remain pending; the installed/published
+0.7.3 release is a separate build.
 
 Changes to [michaelforney/oscmix][oscmix] that this project would like to
 see, kept here so the reasoning survives whether or not they are
@@ -57,11 +58,13 @@ the *device* echoes the register back over MIDI. A `/mix` arriving in
 between takes the unlinked branch, writes `mix[0]` and never touches
 `mix[1]` -- the pair's right channel is left alone.
 
-That is this project's most expensive shipped defect: **every even output
-silent**. Three constants exist solely to work around it --
+That was the original **every even output silent** defect. The historical
+workaround used three constants --
 `LINK_ECHO_TIMEOUT`, `LINK_SETTLE` and `LINK_SYNC_BLIND_DELAY` -- along
 with the two-phase apply and the barrier between the phases
 ([ADR 0001](../docs/decisions/0001-two-phase-routing-apply.md)).
+The 0.8.0 path retains the output-link barrier and bounded verification;
+the old GUI-held-receiver blind delay no longer applies.
 
 ### The measurement
 
@@ -133,9 +136,22 @@ Measured on a UCX II (serial 24216011) against the pinned revision, one
 `2252 - 1932 = 320` -- exactly the 16 aliased offsets on each of the 20
 outputs.
 
-**Not applied here.** Nothing in this project reads or writes `roomeq`;
-it is not in the register model. The patch exists so the measurement is
-reproducible and so 0.4.0, which declared the family (reported and not
-settable, upstream #33), did not start from a folded address space.
+**Not applied as a separate patch:** the base pin includes the upstream fix.
+The text and measurement above record the historical investigation. The
+current register model does include supported Room EQ settings; see the
+[feature inventory](../docs/FEATURE-SURFACE.md).
 
 [32]: https://github.com/michaelforney/oscmix/issues/32
+
+## 0006 -- terminate after known MIDI input loss
+
+The inherited ALSA bridge continued after `snd_seq_event_input()` reported
+`-ENOSPC`, despite the lost events and cleared input FIFO. A fault-injection
+probe compiling the actual prepared read loop reproduces a subsequent read
+after that error, without opening ALSA or USB devices. Patch 0006 ends the
+bridge on the error. The backend handles MIDI hangup/error before buffered
+input or waiting writes: a second real-process regression reproduces a write
+when `POLLIN` and `POLLHUP` arrive together. Both boundaries invalidate connected
+observations and leases. There is no new transport, retry queue or device
+command. The exact series identity changes; earlier hardware measurements do
+not qualify this build.

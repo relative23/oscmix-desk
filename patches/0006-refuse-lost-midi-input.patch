@@ -1,0 +1,30 @@
+diff --git a/alsaseqio.c b/alsaseqio.c
+--- a/alsaseqio.c
++++ b/alsaseqio.c
+@@ -35,8 +35,8 @@ midiread(void *arg)
+ 		ret = snd_seq_event_input(seq, &evt);
+ 		if (ret < 0) {
+ 			fprintf(stderr, "snd_seq_event_input: %s\n", snd_strerror(ret));
+-			if (ret == -ENOSPC)
+-				continue;
++			/* ENOSPC means MIDI events were lost. Closing the bridge
++			 * invalidates the backend and all observation/lease state. */
+ 			exit(1);
+ 		}
+ 		ret = snd_midi_event_decode(dev, buf, sizeof buf, evt);
+diff --git a/main.c b/main.c
+--- a/main.c
++++ b/main.c
+@@ -270,10 +270,10 @@ main(int argc, char *argv[])
+ 			fatal("poll:");
+ 		if (stopping)
+ 			break;
++		if (pfd[0].revents & (POLLHUP | POLLERR | POLLNVAL))
++			fatal("MIDI bridge disconnected");
+ 		if (pfd[0].revents & POLLIN)
+ 			midiread(6);
+-		else if (pfd[0].revents & (POLLHUP | POLLERR | POLLNVAL))
+-			fatal("MIDI bridge disconnected");
+ 		if (coordinated)
+ 			control_dispatch(pfd + 1);
+ 		else if (pfd[1].revents & POLLIN)

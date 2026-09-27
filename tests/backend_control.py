@@ -6,6 +6,8 @@ Missing binaries fail qualification; these tests never open a hardware device.
 """
 
 import os
+import signal
+import subprocess
 import time
 from pathlib import Path
 
@@ -30,6 +32,7 @@ from control_peer import (
     SimulatedMidi,
     wait_for,
 )
+from support import repo_file
 
 from oscmix_desk.backend import Control
 from oscmix_desk.errors import ReceivePortError, WriteFailed
@@ -65,6 +68,18 @@ def desk(midi):
 
 def messages(packet):
     return [decode_osc(raw) for raw in iter_osc_messages(packet[4])]
+
+
+def test_alsa_input_loss_terminates_the_actual_bridge_reader(binary, tmp_path):
+    probe = tmp_path / 'bridge-input-loss'
+    subprocess.run(['cc', '-std=c11', '-I', str(binary.parent),
+                    str(repo_file('tests/alsaseq_input_loss.c')),
+                    '-lasound', '-pthread', '-o', str(probe)],
+                   check=True, capture_output=True, timeout=30)
+    result = subprocess.run([str(probe)], capture_output=True, timeout=3)
+    assert result.returncode == 1
+    assert b'snd_seq_event_input:' in result.stderr
+    assert result.stdout == b'', 'bridge continued reading after known lost MIDI events'
 
 
 def test_identity_and_hardware_reports_are_shared_without_echoing_sends(midi, desk):
@@ -280,6 +295,30 @@ def test_midi_eof_invalidates_all_connections(midi, desk):
     assert midi.child.wait(timeout=3) != 0
     assert 'MIDI bridge disconnected' in midi.log()
     assert not midi.path.exists()
+
+
+def test_midi_hangup_refuses_buffered_reports_and_waiting_writes(midi, desk):
+    assert desk.request(BEGIN)[2] == OK
+    midi.child.send_signal(signal.SIGSTOP)
+    try:
+        state = Path('/proc') / str(midi.child.pid) / 'status'
+        wait_for(lambda: '\nState:\tT ' in '\n' + state.read_text())
+        # Make POLLIN and POLLHUP visible together. Both old observations and
+        # a waiting writer must lose authority at this known failure boundary.
+        midi.inject((0x604, 1), (0x684, 1))
+        os.close(midi.inject_fd)
+        midi.inject_fd = -1
+        desk.send(WRITE, payload=encode_osc('/output/5/volume', 'f', -40))
+    finally:
+        midi.child.send_signal(signal.SIGCONT)
+    with pytest.raises((EOFError, ConnectionResetError)):
+        desk.drain()
+    assert midi.child.wait(timeout=3) != 0
+    midi.thread.join(timeout=2)
+    assert not midi.thread.is_alive()
+    assert midi.registers() == [], 'known MIDI hangup still allowed a write'
+    assert desk.observations == [], 'buffered reports escaped after known MIDI hangup'
+    assert 'MIDI bridge disconnected' in midi.log()
 
 
 def test_oversized_decoded_delivery_cannot_become_partial_confirmation(midi, desk):

@@ -104,6 +104,20 @@ keepalive cannot extend the hard limit. Expiry closes the owner's connection
 and releases the lease, so buffered old commands cannot turn into new work.
 No failed write is replayed after timeout or reconnection.
 
+Known ALSA sequencer input loss also ends the bridge. `snd_seq_event_input()`
+returning `-ENOSPC` means events were lost and the input FIFO was cleared
+([ALSA API contract](https://www.alsa-project.org/alsa-doc/alsa-lib/group___seq_event.html)).
+The inherited bridge loop previously logged this and kept reading. Continuing
+would hide an observed transport loss from the backend's consumers; a missing
+link contradiction could leave an earlier match in their windows. Patch 0006
+now exits on that error as on other input failures, closing the MIDI pipe.
+The backend also processes an observed MIDI hangup/error before buffered input
+or waiting client commands. A pipe can report `POLLIN` and `POLLHUP` together;
+reading its tail first previously allowed a queued write despite the known
+disconnect. Both boundaries now invalidate the backend, leases and connected
+consumers. This changes no device command, register classification or upstream
+base pin.
+
 ### Refresh and observation windows
 
 One backend arbitrates refresh. It records a bounded receive window after

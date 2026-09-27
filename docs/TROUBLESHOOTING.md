@@ -321,15 +321,17 @@ can inspect reportable state, while playback-matrix state remains unknown.
 - `snd_seq_event_input: No space left on device` -- the ALSA sequencer
   input pool overflowed and events were dropped; ALSA flushes the input
   FIFO on this error, so what was queued at that moment is gone.
-  `alsaseqio` treats it as non-fatal and keeps reading. By sheer volume
-  the queue is meter traffic (~880 datagrams a second), but a register
-  report can be among the drops -- which is why applied state is read
-  back and `--diff` exists, rather than trusting every report arrived.
+  In the 0.8.0 series, `alsaseqio` terminates so the backend invalidates all
+  connected observations and leases. Older versions logged this and kept
+  reading. A dropped register could include a link contradiction; continued
+  meter traffic would not make that observation window reliable again.
   The kernel counts the damage in `/proc/asound/seq/clients` under the
   client's `Input pool` (`Alloc failures`). Measured 2026-08-28: even a
   ten-dump `/refresh` flood under four parallel test suites peaks at
   96 of the 200 cells with zero failures -- the overflows are rare
-  scheduling events under sustained full load, not a capacity problem.
+  scheduling events observed under that historical load. This does not
+  establish the absence of loss on another build or host. Check the current
+  backend identity and surrounding journal before retrying a failed operation.
 - `ignoring unknown sysex packet (mfr=200d ...)` -- the device sends a
   vendor SysEx that oscmix does not decode. Ignored by design.
 - `unexpected enum value -1` -- a register reports a value outside its
