@@ -12,6 +12,7 @@ exactly its job. The fix is covering the path, not lowering the gate.
 
 import time
 
+import pytest
 from control_peer import HELLO, REFRESH
 
 from oscmix_desk import cli
@@ -111,3 +112,96 @@ def test_latest_value_in_the_read_window_replaces_earlier_report(session_mod, re
                     ('/output/5/volume', 'f', (-30.,))]):
         observed = reads_mod._read_device(session_mod.Config())
     assert observed.registers == {'/output/5/volume': (-30.,)}
+
+
+@pytest.mark.parametrize('action', ['_snapshot', '_diff', '_dump_config'])
+def test_read_commands_keep_the_selected_configuration_and_reader_role(
+        tmp_path, read_peer, monkeypatch, action, capsys):
+    from oscmix_desk.model import Config
+
+    config = Config(osc_port=9345, osc_recv_port=9346)
+    path = tmp_path / 'selected/routing.conf'
+    calls = []
+    with read_peer([('/input/3/gain', 'f', (12.0,))]) as peer, monkeypatch.context() as patch:
+        connect = reads_mod.connect_backend
+
+        def checked(selected, selected_path, *, reader):
+            calls.append((selected, selected_path, reader))
+            return connect(selected, selected_path, reader=reader)
+
+        patch.setattr(reads_mod, 'connect_backend', checked)
+        assert getattr(reads_mod, action)(config, path) == 0
+    assert calls == [(config, path, True)]
+    assert peer.requests == [HELLO, REFRESH]
+    assert peer.writes == []
+    assert capsys.readouterr().out
+
+
+def test_dump_keeps_nondefault_ports_and_reconstructed_channel_and_global_values(
+        session_mod, tmp_path, capsys, read_peer):
+    from oscmix_desk.model import Config
+
+    config = Config(osc_port=9345, osc_recv_port=9346)
+    with read_peer([('/input/3/gain', 'f', (12.0,)),
+                    ('/output/5/volume', 'f', (-9.0,)), ('/echo', 'i', (1,))]):
+        assert reads_mod._dump_config(config) == 0
+    text = capsys.readouterr().out
+    path = tmp_path / 'export.conf'
+    path.write_text(text)
+    restored = session_mod.load_config(path)
+    assert restored.device_name == config.device_name
+    assert restored.usb_id == config.usb_id
+    assert (restored.osc_port, restored.osc_recv_port) == (9345, 9346)
+    assert {(s.family, s.channel, s.option): s.value for s in restored.channels} == {
+        ('input', 3, 'gain'): 12.0}
+    assert restored.globals == ()
+    # The observed REMEMBER values remain available as comments; exporting
+    # them must not silently turn them into declarations to apply.
+    assert '# volume = -9.0' in text
+    assert '# enabled = true' in text
+    path.write_text(text.replace('# volume =', 'volume =').replace('# enabled =', 'enabled ='))
+    restored = session_mod.load_config(path)
+    assert {(s.family, s.channel, s.option): s.value for s in restored.channels} == {
+        ('input', 3, 'gain'): 12.0, ('output', 5, 'volume'): -9.0}
+    assert {setting.path: setting.value for setting in restored.globals} == {'/echo': 1}
+
+
+def test_dump_warns_when_invalid_channel_or_global_reports_cannot_be_exported(
+        session_mod, capsys, caplog, read_peer):
+    with caplog.at_level('WARNING'):
+        code, text = run_dump(session_mod, capsys, [
+            ('/input/3/gain', 'f', (float('nan'),)), ('/echo', 'i', (-1,)),
+        ], read_peer=read_peer)
+    assert code == 0
+    assert 'incomplete export' in caplog.text
+    assert '/input/3/gain' in caplog.text
+    assert '/echo' in caplog.text
+    assert '[input:3]' not in text
+    assert '[echo]' not in text
+
+
+def test_a_changed_register_extends_the_quiet_window_to_receive_later_changes(monkeypatch):
+    from types import SimpleNamespace
+
+    from oscmix_desk.model import Config
+
+    clock = [0.0]
+    deliveries = iter([(0.1, [('/output/5/volume', 'f', (-10.0,))]),
+                       (0.7, [('/output/5/volume', 'f', (-20.0,))]),
+                       (1.2, []), (1.4, [('/output/5/volume', 'f', (-30.0,))]), (2.5, [])])
+    closed = []
+
+    def messages(_timeout):
+        clock[0], reports = next(deliveries)
+        return reports
+
+    peer = SimpleNamespace(request_dump=lambda: None, messages=messages,
+        device_name='Fireface UCX II (24216011)', epoch=b'\xab' * 16,
+        close=lambda: closed.append(True))
+    monkeypatch.setattr(reads_mod, 'connect_backend', lambda *_args, **_kwargs: peer)
+    monkeypatch.setattr(reads_mod.time, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(reads_mod, 'DUMP_QUIET_SECONDS', 1.0)
+    reading = reads_mod._read_device(Config())
+    assert reading.registers == {'/output/5/volume': (-30.0,)}
+    assert reading.serial == '24216011'
+    assert closed == [True]

@@ -339,6 +339,7 @@ def render_config(config: Config, device: Optional[Device] = None,
         "",
         "[osc]",
         "port = %d" % config.osc_port,
+        "recv-port = %d" % config.osc_recv_port,
         "",
     ]
     if not config.routes:

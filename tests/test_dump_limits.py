@@ -64,6 +64,44 @@ def test_missing_mono_links_cannot_be_silently_assumed():
     assert "missing" in warnings[0]
 
 
+@pytest.mark.parametrize(('out', 'src'), [(0, 1), (21, 1), (5, 0), (5, 21)])
+def test_unlinked_reports_do_not_make_unknown_matrix_channels_exportable(out, src):
+    seen = {f'/output/{out - (out - 1) % 2}/stereo': (0,),
+            f'/input/{src - (src - 1) % 2}/stereo': (0,),
+            f'/mix/{out}/input/{src}': (-6.0, 0)}
+    warnings = []
+    assert dump.routes_from_observed(seen, UCX2, warnings) == ()
+    assert len(warnings) == 1
+    assert 'outside the known device map' in warnings[0]
+
+
+def test_unknown_device_map_cannot_supply_a_route():
+    warnings = []
+    assert dump.routes_from_observed(stereo(), None, warnings) == ()
+    assert len(warnings) == 1
+    assert 'outside the known device map' in warnings[0]
+
+
+def test_one_invalid_route_does_not_hide_a_later_independent_valid_route():
+    seen = {'/mix/1/input/1': (-6.0, 0), **stereo()}
+    warnings = []
+    route, = dump.routes_from_observed(seen, UCX2, warnings)
+    assert (route.input, route.output, route.level) == ((1, 2), (5, 6), -6.0)
+    assert len(warnings) == 1
+    assert '/mix/1/input/1' in warnings[0]
+
+
+@pytest.mark.parametrize('path', ['/notmix/5/input/1', '/mix/5/notinput/1',
+                                  '/mix/5/input/1/extra'])
+def test_other_message_shapes_are_not_reconstructed_as_matrix_cells(path):
+    seen = stereo()
+    del seen['/mix/5/input/1']
+    seen[path] = (-6.0, 0)
+    warnings = []
+    assert dump.routes_from_observed(seen, UCX2, warnings) == ()
+    assert warnings == []
+
+
 def test_command_keeps_the_omissions_next_to_the_export(monkeypatch, capsys):
     seen = dict(stereo(), **{"/mix/5/input/1": (-6., 50)})
     monkeypatch.setattr(reads, "_read_device",

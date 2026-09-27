@@ -54,6 +54,8 @@ ROUND_TRIP = [
     dict(input=(1, 2), output=(5, 6), level=-6.0),
     dict(input=(3,), output=(9,), level=-12.0),
     dict(input=(1, 2), output=(5, 6), level=-6.0, stereo=False),
+    dict(input=(2,), output=(6,), level=-12.3),
+    dict(input=(1, 2), output=(5, 6), level=6.0),
 ]
 
 
