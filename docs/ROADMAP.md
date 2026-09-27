@@ -89,6 +89,10 @@ The subscription helper refuses installation/activation on OSTree hosts before
 modifying trust or sources. A [limited actual-Silverblue guard check](evidence/0.8.0/repository-ostree-development.json)
 passes; status and disabling/removing a previous subscription remain available.
 Silverblue continues to use authenticated RPM artifact layering.
+A fresh actual Silverblue deep-sleep probe found that the old resume hook
+missed an active user service while `user.slice` was frozen. Resume now queues
+a bounded system service ordered after the sleep operation; targeted software
+checks pass, and actual-VM qualification of that correction is pending.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.

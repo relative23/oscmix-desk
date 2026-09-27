@@ -1,33 +1,25 @@
 #!/bin/sh
-# Reconcile the Fireface mixer state after the machine wakes up.
-#
-# A system-sleep hook and not a user unit, because there is no user-level
-# sleep.target: on systemd 259 `systemctl --user cat sleep.target` reports
-# "No files found", so a user unit with WantedBy=sleep.target would be
-# installed, enabled, and never run. Checked rather than assumed.
-#
-# `reload`, never `kill`. Measured: `systemctl --user kill --signal=SIGHUP
-# oscmix.service` signals every process in the unit, and neither oscmix
-# nor alsaseqio handles SIGHUP, so the default action applies and the
-# backend dies -- the service went inactive. ExecReload in oscmix.service
-# sends the signal to the main process alone.
-#
-# A reload is a reconcile, not a restart: pinned settings are re-applied,
-# remembered ones are left wherever the user put them (ADR 0012). That is
-# why this is safe to run on every wake, including the wakes where
-# nothing was lost.
-#
-# Whether this device needs it at all is NOT established. A suspend/resume
-# cycle on the machine that would answer it was not run: a resume that
-# fails leaves someone locked out of a machine nobody is sitting at, which
-# is not a reasonable thing to risk for a measurement. What is known is
-# that the reconcile is cheap and idempotent, and that a replug -- the
-# other way this device loses state -- is already covered by udev
-# restarting the unit. See docs/decisions/0013-reconcile-triggers.md.
+# systemd keeps user.slice frozen throughout both sleep-hook phases.
+# Queue one system job without waiting; its ordering postpones the user
+# manager calls until systemd-sleep has thawed that slice (ADR 0013).
+case "${1:-}" in
+    post) exec systemctl --no-block start oscmix-resume.service ;;
+    reload-active) ;; # Only the ordered system service uses this phase.
+    *) exit 0 ;;
+esac
 
-[ "$1" = "post" ] || exit 0
-
-for user in $(loginctl list-users --no-legend | awk '{print $2}'); do
-    systemctl --user --machine="${user}@.host" reload oscmix.service \
-        >/dev/null 2>&1 || :
+users=$(loginctl list-users --no-legend) || exit 1
+status=0
+for user in $(printf '%s\n' "$users" | awk '{print $2}'); do
+    # Reload cannot activate an absent or stopped desk. Check first so
+    # ordinary inactive users are quiet while actual reload failures are
+    # visible in the system service's journal. ExecReload signals only the
+    # session's main process, preserving the backend and REMEMBER values.
+    if systemctl --user --machine="${user}@.host" is-active --quiet oscmix.service; then
+        if ! systemctl --user --machine="${user}@.host" reload oscmix.service; then
+            echo "oscmix: resume reload failed for $user" >&2
+            status=1
+        fi
+    fi
 done
+exit "$status"

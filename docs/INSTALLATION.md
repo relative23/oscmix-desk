@@ -60,6 +60,12 @@ variables to another desk while operating its service. An upgrade preserves
 the previous active/enabled state: an active service is stopped before
 replacement and restarted afterward; a stopped service remains stopped.
 
+Resume requests a reload only for already active desks. On ordinary systemd
+installations the sleep hook queues `oscmix-resume.service`, ordered after all
+system sleep services so user managers have been thawed before it contacts them.
+It neither enables nor starts a user desk. Its journal reports reload failures;
+the helper has a 30-second deadline. NixOS uses its native ordered resume action.
+
 The existing upstream GTK companion is optional. Without GTK development
 libraries, the installer builds the headless backend and creates no new
 desktop shortcut. This does not implement the deferred oscmix-desk GUI.

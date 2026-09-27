@@ -28,7 +28,8 @@ def test_fresh_install_with_device_present_never_applies_example(tmp_path):
     result = run('install.sh', ['--no-build'], env)
     assert result.returncode == 0, result.stderr + result.stdout
     calls = log.read_text()
-    for forbidden in ('enable --quiet', 'restart', 'udevadm', 'udev.rules', 'sleep-hook'):
+    for forbidden in ('enable --quiet', 'restart', 'udevadm', 'udev.rules', 'sleep-hook',
+                      'resume.service'):
         assert forbidden not in calls
     assert 'automatic operation has not been enabled' in result.stdout
 

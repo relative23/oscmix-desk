@@ -155,6 +155,7 @@ case "$1" in
         systemd-tmpfiles --create /usr/lib/tmpfiles.d/oscmix-desk.conf
     fi
     if command -v udevadm >/dev/null 2>&1; then udevadm control --reload-rules || true; fi
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
     if command -v glib-compile-schemas >/dev/null 2>&1; then
         glib-compile-schemas /usr/share/glib-2.0/schemas
     fi
@@ -178,6 +179,7 @@ fi
 set -eu
 case "$1" in
   remove|purge)
+    if [ -d /run/systemd/system ]; then systemctl daemon-reload; fi
     if command -v glib-compile-schemas >/dev/null 2>&1; then
         glib-compile-schemas /usr/share/glib-2.0/schemas
     fi

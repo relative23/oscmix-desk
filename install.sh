@@ -2,7 +2,7 @@
 # oscmix-desk installer.
 #
 # Everything is installed per-user (~/.local, ~/.config); root is needed
-# for three files: the udev hotplug rule, the resume hook, and the
+# for the udev hotplug rule, the resume hook and system service, and the
 # tmpfiles.d entry that creates the shared lock directory. Existing files
 # are backed up before being replaced, an existing routing.conf is never
 # touched.
@@ -54,6 +54,7 @@ UNIT_DIR="$CONFIG_HOME/systemd/user"
 # files -- as root, $SUDO is empty and the install would be real.
 UDEV_RULE="${OSCMIX_UDEV_RULE:-/etc/udev/rules.d/90-rme-fireface.rules}"
 SLEEP_HOOK="${OSCMIX_SLEEP_HOOK:-/usr/lib/systemd/system-sleep/oscmix}"
+RESUME_UNIT="${OSCMIX_RESUME_UNIT:-/usr/lib/systemd/system/oscmix-resume.service}"
 TMPFILES_CONF="${OSCMIX_TMPFILES_CONF:-/usr/lib/tmpfiles.d/oscmix-desk.conf}"
 
 DO_BUILD=1
@@ -74,7 +75,7 @@ options:
   --manual     install for foreground use without a systemd user manager
   --no-build   skip building oscmix (use already installed binaries)
   --no-udev    skip the root steps: the udev rule (no hotplug autostart),
-               the resume hook (no reconcile after suspend) and the
+               resume integration (no reconcile after suspend) and the
                shared lock directory (the lock falls back to the
                per-user runtime directory, ADR 0023)
   -h, --help   show this help
@@ -375,7 +376,7 @@ if [ "$HAS_GTK" = 1 ]; then
 fi
 
 # --------------------------------------------------------------------------
-# The steps that need root: the udev rule, the resume hook, and the
+# The steps that need root: the udev rule, resume integration, and the
 # shared lock directory
 # --------------------------------------------------------------------------
 
@@ -405,22 +406,23 @@ if [ "$DO_UDEV" = 1 ]; then
         warn "  sudo udevadm control --reload-rules"
     fi
 
-    # Reconcile after resume. A system-sleep hook and not a user unit:
-    # there is no user-level sleep.target to hang one on, checked rather
-    # than assumed. It runs `systemctl --user ... reload`, which reaches
-    # the session process alone -- signalling the unit kills the backend,
-    # measured.
-    if [ -d "$(dirname "$SLEEP_HOOK")" ]; then
-        if $SUDO install -m 755 "$PROJECT_DIR/systemd/system-sleep/oscmix" \
+    # Install the ordered system service before its queueing hook. The
+    # hook cannot talk to user managers while systemd keeps them frozen.
+    # daemon-reload loads the definition; it starts neither helper nor desk.
+    if [ -d "$(dirname "$SLEEP_HOOK")" ] && [ -d "$(dirname "$RESUME_UNIT")" ]; then
+        if $SUDO install -m 644 "$PROJECT_DIR/systemd/oscmix-resume.service" "$RESUME_UNIT" \
+            && $SUDO systemctl daemon-reload \
+            && $SUDO install -m 755 "$PROJECT_DIR/systemd/system-sleep/oscmix" \
             "$SLEEP_HOOK"; then
-            info "installed resume hook $SLEEP_HOOK"
+            info "installed resume integration: $SLEEP_HOOK and $RESUME_UNIT"
         else
-            warn "could not install $SLEEP_HOOK -- the mixer state will not"
-            warn "be reconciled after suspend. To finish manually:"
+            warn "resume integration is incomplete. To finish manually:"
+            warn "  sudo install -m 644 systemd/oscmix-resume.service $RESUME_UNIT"
+            warn "  sudo systemctl daemon-reload"
             warn "  sudo install -m 755 systemd/system-sleep/oscmix $SLEEP_HOOK"
         fi
     else
-        warn "no system-sleep directory; skipping the resume hook"
+        warn "systemd integration directories missing; skipping resume integration"
     fi
     else
         info "hotplug and resume activation deferred; use --enable after reviewing the desk"

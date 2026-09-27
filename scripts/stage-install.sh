@@ -80,6 +80,8 @@ install_file 644 "$PROJECT_DIR/udev/90-rme-fireface.rules" \
     "$DESTDIR/usr/lib/udev/rules.d/90-rme-fireface.rules"
 install_file 755 "$PROJECT_DIR/systemd/system-sleep/oscmix" \
     "$DESTDIR/usr/lib/systemd/system-sleep/oscmix"
+install_file 644 "$PROJECT_DIR/systemd/oscmix-resume.service" \
+    "$DESTDIR/usr/lib/systemd/system/oscmix-resume.service"
 mkdir -p "$DESTDIR/usr/lib/systemd/user"
 # The vendor service requires an explicit per-user opt-in. Merely
 # installing a package (or having a routing.conf from another install)

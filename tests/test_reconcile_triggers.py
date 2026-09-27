@@ -15,21 +15,22 @@ unit".
 pinned settings are re-applied, remembered ones are left where the user
 put them.
 
-**Resume** rides on SIGHUP through a system-sleep hook, because there is
-no user-level sleep.target to hang a unit on.
+**Resume** queues an ordered system service from the sleep hook. It reaches
+the user managers only after systemd has thawed them.
 """
 
-import re
+import configparser
+import json
+import os
+import subprocess
+import sys
 
+import pytest
 from support import repo_file
 
 
 def unit_text():
     return repo_file("systemd", "oscmix.service").read_text()
-
-
-def hook_text():
-    return repo_file("systemd", "system-sleep", "oscmix").read_text()
 
 
 # --------------------------------------------------------------------------
@@ -69,52 +70,95 @@ def test_the_unit_does_not_restart_to_reconcile():
 # Resume.
 # --------------------------------------------------------------------------
 
-def test_the_resume_hook_is_a_system_sleep_script_not_a_user_unit():
-    """Checked against systemd rather than assumed.
+@pytest.fixture
+def resume_hook(tmp_path):
+    """Execute the real hook with isolated system-manager command doubles."""
+    log = tmp_path / 'calls.jsonl'
+    login = tmp_path / 'loginctl'
+    login.write_text('#!/bin/sh\nprintf "%s\\n" "$TEST_USERS"\n'
+                     'exit "${TEST_LOGIN_CODE:-0}"\n')
+    control = tmp_path / 'systemctl'
+    control.write_text('#!' + sys.executable + '\n' + r"""
+import json
+import os
+import sys
+args = sys.argv[1:]
+with open(os.environ['TEST_LOG'], 'a') as log:
+    log.write(json.dumps(args) + '\n')
+if 'start' in args:
+    sys.exit(int(os.environ.get('TEST_QUEUE_CODE', '0')))
+user = next(a for a in args if a.startswith('--machine='))[10:].split('@')[0]
+if 'is-active' in args:
+    sys.exit(0 if user in os.environ['TEST_ACTIVE'].split(',') else 3)
+if 'reload' in args:
+    sys.exit(1 if user == os.environ.get('TEST_FAIL_USER') else 0)
+sys.exit(99)
+""")
+    login.chmod(0o755)
+    control.chmod(0o755)
 
-    A user unit with `WantedBy=sleep.target` installs cleanly, enables
-    cleanly and never runs: on systemd 259 `systemctl --user cat
-    sleep.target` reports "No files found for sleep.target". The user
-    manager has no such target. A system-sleep hook does run, and can
-    reach the user manager via `--machine=<user>@.host`.
-    """
-    path = repo_file("systemd", "system-sleep", "oscmix")
-    assert path.exists()
-    assert path.stat().st_mode & 0o111, "a sleep hook has to be executable"
-    assert not list(repo_file("systemd").glob("*resume*.service")), (
-        "a user unit cannot hook sleep.target; that route was measured "
-        "and does not exist")
+    def invoke(*args, **extra):
+        env = dict(os.environ, PATH=str(tmp_path) + os.pathsep + os.environ['PATH'],
+                   TEST_LOG=str(log), TEST_USERS='1000 alice no active\n1001 bob no active',
+                   TEST_ACTIVE='alice,bob')
+        env.update(extra)
+        result = subprocess.run([str(repo_file('systemd/system-sleep/oscmix')), *args],
+                                env=env, capture_output=True, text=True, timeout=5)
+        calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+        return result, calls
+    return invoke
 
 
-def test_the_resume_hook_only_acts_after_waking():
-    # `pre` runs on the way down, when reconciling is pointless and the
-    # device is about to go away.
-    assert re.search(r'\[\s*"\$1"\s*=\s*"post"\s*\]', hook_text()), (
-        "the hook must exit unless invoked with 'post'")
+@pytest.mark.parametrize('args', [(), ('pre', 'suspend'), ('unknown',)])
+def test_resume_hook_does_nothing_before_waking(resume_hook, args):
+    result, calls = resume_hook(*args)
+    assert result.returncode == 0
+    assert calls == []
 
 
-def test_the_resume_hook_reloads_rather_than_killing():
-    """Checked against the commands, not the whole file.
-
-    The comment above them explains why `systemctl kill --signal=SIGHUP`
-    is wrong, and a test that searched the text would have banned the
-    explanation along with the mistake.
-    """
-    commands = [line for line in hook_text().splitlines()
-                if line.strip() and not line.lstrip().startswith("#")]
-    body = "\n".join(commands)
-    assert "reload oscmix.service" in body
-    assert "--signal" not in body, (
-        "signalling the unit kills the backend -- measured; use reload")
+def test_resume_hook_queues_only_one_nonblocking_system_job(resume_hook):
+    result, calls = resume_hook('post', 'suspend')
+    assert result.returncode == 0
+    assert calls == [['--no-block', 'start', 'oscmix-resume.service']]
 
 
-def test_the_resume_hook_survives_a_missing_service():
-    """Waking up with no Fireface attached is the common case.
+def test_resume_hook_reports_a_failed_queue_request(resume_hook):
+    result, _ = resume_hook('post', 'suspend', TEST_QUEUE_CODE='1')
+    assert result.returncode == 1
 
-    A hook that reported failure there would put a line in every wake-up
-    log, and people learn to ignore logs that cry wolf.
-    """
-    assert "|| :" in hook_text() or "|| true" in hook_text()
+
+def test_resume_service_waits_for_all_sleep_services_and_is_bounded():
+    unit = configparser.ConfigParser(interpolation=None)
+    unit.read(repo_file('systemd/oscmix-resume.service'))
+    assert set(unit['Unit']['After'].split()) == {
+        'systemd-' + mode + '.service' for mode in
+        ('suspend', 'hibernate', 'hybrid-sleep', 'suspend-then-hibernate')}
+    assert unit['Service']['Type'] == 'oneshot'
+    assert unit['Service']['ExecStart'] == '/usr/lib/systemd/system-sleep/oscmix reload-active'
+    assert 0 < int(unit['Service']['TimeoutStartSec']) <= 30
+    assert 'Install' not in unit  # Queued by resume, never enabled at boot.
+
+
+def test_resume_reloads_only_active_desks_without_starting_them(resume_hook):
+    result, calls = resume_hook('reload-active', TEST_ACTIVE='alice')
+    assert result.returncode == 0
+    assert calls == [
+        ['--user', '--machine=alice@.host', 'is-active', '--quiet', 'oscmix.service'],
+        ['--user', '--machine=alice@.host', 'reload', 'oscmix.service'],
+        ['--user', '--machine=bob@.host', 'is-active', '--quiet', 'oscmix.service']]
+
+
+def test_resume_reports_reload_failure_and_still_reaches_other_users(resume_hook):
+    result, calls = resume_hook('reload-active', TEST_FAIL_USER='alice')
+    assert result.returncode == 1
+    assert 'resume reload failed for alice' in result.stderr
+    assert calls[-1] == ['--user', '--machine=bob@.host', 'reload', 'oscmix.service']
+
+
+def test_resume_reports_failed_user_enumeration_without_writing(resume_hook):
+    result, calls = resume_hook('reload-active', TEST_LOGIN_CODE='1')
+    assert result.returncode == 1
+    assert calls == []
 
 
 # --------------------------------------------------------------------------

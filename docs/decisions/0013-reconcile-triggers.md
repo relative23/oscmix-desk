@@ -79,6 +79,29 @@ then SIGHUP:
 
 ### Resume: a system-sleep hook, and it is honest about being unproven
 
+> **0.8.0 correction, measured 2026-09-27:** the direct hook below is
+> superseded. A Silverblue 44.1.7 VM with systemd 259 and enforcing SELinux
+> completed a real deep-sleep cycle without delivering the reload to an
+> active signal-receiver fixture. A control reload from a system service
+> reached that same user unit successfully. The sleep journal confirmed that
+> the old hook ran while `user.slice` was frozen; systemd thaws it only after
+> every post hook completes. This matches the
+> [systemd contract](https://github.com/systemd/systemd/blob/v259/man/systemd-suspend.service.xml).
+> The earlier UCX measurement below remains evidence for that earlier platform,
+> not a guarantee for current systemd versions.
+>
+> The hook now queues one fixed `oscmix-resume.service` with `--no-block`.
+> Its ordering is after all four system sleep services. Only then does it
+> enumerate users and reload active desks; an inactive desk is never started.
+> Reload failures remain visible and do not skip subsequent users. The root
+> helper has a 30-second deadline and no automatic retry or periodic timer.
+> Each wake may request it again, including after an earlier failure.
+> Source installation loads the system unit before installing the queueing
+> hook; native core packages own both files. NixOS already runs its native
+> resume action when its `sleep-actions.service` stops after the sleep target.
+> The corrected ordinary-systemd path still requires its actual-VM regression
+> check; the signal fixture does not qualify mixer or device behavior.
+
 A user unit with `WantedBy=sleep.target` would install, enable, and never
 run: on systemd 259 `systemctl --user cat sleep.target` reports *"No
 files found for sleep.target"*. The user manager has no such target.

@@ -38,6 +38,7 @@ UNIT_DIR="$CONFIG_HOME/systemd/user"
 # files on a developer machine.
 UDEV_RULE="${OSCMIX_UDEV_RULE:-/etc/udev/rules.d/90-rme-fireface.rules}"
 SLEEP_HOOK="${OSCMIX_SLEEP_HOOK:-/usr/lib/systemd/system-sleep/oscmix}"
+RESUME_UNIT="${OSCMIX_RESUME_UNIT:-/usr/lib/systemd/system/oscmix-resume.service}"
 TMPFILES_CONF="${OSCMIX_TMPFILES_CONF:-/usr/lib/tmpfiles.d/oscmix-desk.conf}"
 
 PURGE=0
@@ -118,13 +119,13 @@ if [ -d "$DATA_DIR/glib-2.0/schemas" ]; then
 fi
 systemctl --user daemon-reload 2>/dev/null || true   # no user bus over ssh without linger
 
-if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$TMPFILES_CONF" ]; then
+if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$RESUME_UNIT" ] || [ -e "$TMPFILES_CONF" ]; then
   if ! manages_this_home; then
     # The system files serve whichever installation the session's home
     # has. Removing them from a scratch home took away the real desk's
     # hotplug rule, resume hook and lock directory -- the same trap as
     # the service above, one level down.
-    warn "not removing $UDEV_RULE, $SLEEP_HOOK or $TMPFILES_CONF:"
+    warn "not removing $UDEV_RULE, $SLEEP_HOOK, $RESUME_UNIT or $TMPFILES_CONF:"
     warn "they serve the installation in systemd's session home, not $HOME."
   else
     info "removing the root-installed files (needs root)"
@@ -137,6 +138,12 @@ if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$TMPFILES_CONF" ]; then
     if [ -e "$SLEEP_HOOK" ]; then
         $SUDO rm -f "$SLEEP_HOOK" \
             || echo "warning: remove $SLEEP_HOOK manually" >&2
+    fi
+    if [ -e "$RESUME_UNIT" ]; then
+        $SUDO systemctl stop oscmix-resume.service \
+            || echo "warning: could not stop pending resume work" >&2
+        $SUDO rm -f "$RESUME_UNIT" && $SUDO systemctl daemon-reload \
+            || echo "warning: remove $RESUME_UNIT and reload the system manager manually" >&2
     fi
     if [ -f "$TMPFILES_CONF" ]; then
         # The directory itself lives on tmpfs and goes with the next

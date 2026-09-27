@@ -18,6 +18,7 @@ CACHE = Path('/usr/lib/oscmix-desk/oscmix_desk/__pycache__')
 OSTREE_BOOTED = Path('/run/ostree-booted')
 SYSTEM_FILES = (
     '/usr/lib/systemd/system-sleep/oscmix', '/usr/lib/tmpfiles.d/oscmix-desk.conf',
+    '/usr/lib/systemd/system/oscmix-resume.service',
     '/usr/bin/oscmix', '/usr/bin/alsaseqio', '/usr/bin/oscmix-gtk',
     '/usr/bin/oscmix-session', '/usr/bin/oscmix-launch',
 )

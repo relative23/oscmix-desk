@@ -224,8 +224,8 @@ monitoring check report healthy silence while the backend is down.
   beyond what the shell version already needed.
 
 - **Per-user installation.** Everything lives in `~/.local` and
-  `~/.config`; root is needed for three files: the udev rule, the resume
-  hook and the tmpfiles.d entry for the shared lock directory. `--no-udev`
+  `~/.config`; root is needed for the udev rule, the resume hook and
+  ordered system service, and the tmpfiles.d entry for the shared lock directory. `--no-udev`
   gives a rootless install that loses hotplug autostart, the reconcile
   after suspend, and the machine-wide lock (it falls back to the per-user
   runtime directory, ADR 0023).
@@ -304,6 +304,7 @@ The source-installation layout is:
 ~/.local/share/icons/hicolor/scalable/apps/oscmix.svg
 ~/.local/share/glib-2.0/schemas/oscmix.gschema.xml   (needed by oscmix-gtk)
 /etc/udev/rules.d/90-rme-fireface.rules              (root)
-/usr/lib/systemd/system-sleep/oscmix                 (root; reconcile after resume)
+/usr/lib/systemd/system-sleep/oscmix                 (root; queue resume work)
+/usr/lib/systemd/system/oscmix-resume.service        (root; reload after user.slice thaws)
 /usr/lib/tmpfiles.d/oscmix-desk.conf                 (root; /run/oscmix-desk, group audio)
 ```

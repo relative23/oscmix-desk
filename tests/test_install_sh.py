@@ -35,7 +35,7 @@ STUBBED_TOOLS = ("systemctl", "udevadm", "sudo", "systemd-tmpfiles")
 
 #: What $SUDO install and $SUDO rm may write or remove: only the targets
 #: make_fake_home points into the scratch directory.
-OVERRIDDEN_TARGETS = ('"$UDEV_RULE"', '"$SLEEP_HOOK"', '"$TMPFILES_CONF"')
+OVERRIDDEN_TARGETS = ('"$UDEV_RULE"', '"$SLEEP_HOOK"', '"$RESUME_UNIT"', '"$TMPFILES_CONF"')
 
 
 def make_fake_home(tmp_path):
@@ -71,6 +71,7 @@ def make_fake_home(tmp_path):
         # and install.sh's $SUDO is empty.
         "OSCMIX_UDEV_RULE": str(tmp_path / "system" / "udev.rules"),
         "OSCMIX_SLEEP_HOOK": str(tmp_path / "system" / "sleep-hook"),
+        "OSCMIX_RESUME_UNIT": str(tmp_path / "system" / "resume.service"),
         "OSCMIX_TMPFILES_CONF": str(tmp_path / "system" / "tmpfiles.conf"),
         # No interface, unless a test plugs one in: install.sh reads this
         # since 0.6.10, and inherited from the suite's own fixture it put
@@ -440,10 +441,24 @@ def test_install_arms_the_service_when_the_session_matches(tmp_path):
     assert "enable --quiet oscmix.service" in log.read_text()
 
 
+def test_install_loads_the_resume_unit_before_installing_its_hook(tmp_path):
+    home, env, log = make_fake_home(tmp_path)
+    session_home_stub(tmp_path, str(home))
+    result = run("install.sh", ["--no-build", "--enable"], env)
+    assert result.returncode == 0, result.stderr
+    calls = log.read_text()
+    unit = calls.index('systemd/oscmix-resume.service ' + env['OSCMIX_RESUME_UNIT'])
+    reload = calls.index('sudo systemctl daemon-reload')
+    hook = calls.index('systemd/system-sleep/oscmix ' + env['OSCMIX_SLEEP_HOOK'])
+    assert unit < reload < hook
+    assert 'start oscmix-resume.service' not in calls
+
+
 def _fake_system_files(tmp_path, env):
     files = {}
     for name, var in (("udev.rules", "OSCMIX_UDEV_RULE"),
                       ("sleep-hook", "OSCMIX_SLEEP_HOOK"),
+                      ("resume.service", "OSCMIX_RESUME_UNIT"),
                       ("tmpfiles.conf", "OSCMIX_TMPFILES_CONF")):
         path = tmp_path / "system" / name
         path.parent.mkdir(exist_ok=True)
@@ -486,7 +501,8 @@ def test_uninstall_of_the_session_s_home_removes_the_system_files(tmp_path):
 
     assert result.returncode == 0
     calls = log.read_text()
-    for var in ("OSCMIX_UDEV_RULE", "OSCMIX_SLEEP_HOOK", "OSCMIX_TMPFILES_CONF"):
+    for var in ("OSCMIX_UDEV_RULE", "OSCMIX_SLEEP_HOOK", "OSCMIX_RESUME_UNIT",
+                "OSCMIX_TMPFILES_CONF"):
         assert "sudo rm -f %s" % env[var] in calls
 
 

@@ -31,6 +31,12 @@ fix it from the outside; it can only avoid making it worse.
 
 ## What the service is allowed to do
 
+The systemd resume helper is a separate, short root operation. Its root-owned
+sleep hook queues a fixed system unit; after the sleep services finish, that
+unit asks user managers to reload already active desks. Mixer code still runs
+as its ordinary user. The helper does not read a user's routing configuration
+or start an inactive desk, and is terminated after 30 seconds if it stalls.
+
 `systemd/oscmix.service` is sandboxed as far as an unprivileged **user**
 unit can be. The hardening that a user manager cannot apply is documented
 in `tests/test_unit_file.py` along with why -- capability-dropping and

@@ -1,0 +1,12 @@
+[Unit]
+Description=Reconcile active oscmix desks after resume
+StartLimitIntervalSec=0
+# The system-sleep hook queues this job with --no-block. Waiting there
+# for a user manager is invalid: user.slice is still frozen at that point.
+After=systemd-suspend.service systemd-hibernate.service systemd-hybrid-sleep.service systemd-suspend-then-hibernate.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/systemd/system-sleep/oscmix reload-active
+# A stalled user manager must not leave an unbounded root helper behind.
+TimeoutStartSec=30

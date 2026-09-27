@@ -87,13 +87,15 @@ fi
 
 %postun
 if [ "$1" -eq 0 ]; then
-/usr/bin/python3 -I <<'PYTHON_GUARD'
+/usr/bin/python3 -I <<'PYTHON_GUARD' || exit 1
 @FINISH_GUARD@
 PYTHON_GUARD
+if [ -d /run/systemd/system ]; then systemctl daemon-reload || exit 1; fi
 fi
 
 %posttrans
-/usr/lib/oscmix-desk/package-guard finish --rpm-scriptlet
+/usr/lib/oscmix-desk/package-guard finish --rpm-scriptlet || exit 1
+if [ -d /run/systemd/system ]; then systemctl daemon-reload || exit 1; fi
 
 %files
 %defattr(-,root,root)
@@ -101,6 +103,7 @@ fi
 /usr/lib/oscmix-desk
 /usr/lib/systemd/user/oscmix.service
 /usr/lib/systemd/system-sleep/oscmix
+/usr/lib/systemd/system/oscmix-resume.service
 /usr/lib/tmpfiles.d/oscmix-desk.conf
 /usr/lib/udev/rules.d/90-rme-fireface.rules
 /usr/share/oscmix-desk

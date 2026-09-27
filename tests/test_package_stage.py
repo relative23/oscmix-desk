@@ -36,6 +36,9 @@ def test_stage_runs_and_does_not_activate_a_new_desk(tmp_path):
     assert not list(stage.rglob('service-allowed'))
     assert not list(stage.rglob('routing.conf'))
     assert not list(stage.rglob('*.wants'))
+    resume = stage / 'usr/lib/systemd/system/oscmix-resume.service'
+    assert resume.read_bytes() == (project / 'systemd/oscmix-resume.service').read_bytes()
+    assert (stage / 'usr/lib/systemd/system-sleep/oscmix').stat().st_mode & 0o111
     assert not (stage / 'usr/share/applications/oscmix-gtk.desktop').exists()
 
 

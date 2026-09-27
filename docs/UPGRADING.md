@@ -196,7 +196,8 @@ Back up the complete installed package, all five executables under
 - the `oscmix-gtk.desktop` entry, `oscmix.svg` icon and oscmix GSettings
   schema under `~/.local/share`;
 - `/etc/udev/rules.d/90-rme-fireface.rules`,
-  `/usr/lib/systemd/system-sleep/oscmix` and
+  `/usr/lib/systemd/system-sleep/oscmix`,
+  `/usr/lib/systemd/system/oscmix-resume.service` (since 0.8.0) and
   `/usr/lib/tmpfiles.d/oscmix-desk.conf` if installed.
 
 Use your actual `XDG_CONFIG_HOME` and `XDG_DATA_HOME` where configured.
