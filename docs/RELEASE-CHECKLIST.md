@@ -50,6 +50,11 @@ particular binary (ADR 0008).
       verdicts (0.6.8 measured a "full" run in 11 minutes that way).
       Functions whose tests were written after the run took its copy are
       re-judged by name with the stats file cleared.
+      The runner and its clean-test baseline share the Makefile's per-process
+      address-space limit (`MUTATION_VMEM_KB`, 2 GiB by default). Retain any
+      interrupted run and its cause; a kernel memory kill of the controller
+      is not a completed result. Record nondefault execution limits alongside
+      the input fingerprints and counts.
 - [ ] `make check` once with the interface **switched off**. A test that
       resolves the interface from the machine's own `/proc` passes only
       while the box is on, and CI has none (0.6.9 caught one at release

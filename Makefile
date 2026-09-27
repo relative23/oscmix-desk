@@ -7,6 +7,9 @@ SHELL_SCRIPTS = install.sh uninstall.sh scripts/verify-unit.sh scripts/install-p
 REPEAT ?= 5
 # Restart cycles for `make soak`. The scheduled workflow runs 200.
 SOAK_CYCLES ?= 50
+# A mutated decoder can allocate forever before its CPU timeout. Bound each
+# runner/worker to 2 GiB; clean tests run under the same limit before mutants.
+MUTATION_VMEM_KB ?= 2097152
 
 .PHONY: all check test lint typecheck deadcode coverage mutation flake soak \
 	verify-hardware install uninstall clean
@@ -60,10 +63,10 @@ verify-hardware:
 	$(PYTHON) scripts/verify-hardware.py --evidence hardware-evidence.json
 
 # Answers what coverage cannot: whether the assertions catch a wrong
-# value or merely execute the line. Slow (~15 min), so it is not part of
+# value or merely execute the line. A full run takes hours, so it is not part of
 # `check`; the baseline in quality/ turns the result into a ratchet.
 mutation:
-	$(PYTHON) -m mutmut run --max-children 4
+	ulimit -v $(MUTATION_VMEM_KB) && $(PYTHON) -m mutmut run --max-children 4
 	$(PYTHON) scripts/mutation-policy.py
 
 # Runs the suite repeatedly: races in the UDP/threading fakes only show up
