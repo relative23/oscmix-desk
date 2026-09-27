@@ -22,14 +22,7 @@ from .paths import discover_config_path
 
 BACKEND_WAIT = float(os.environ.get("OSCMIX_BACKEND_WAIT", "5"))
 SERVICE = SERVICE_UNIT
-SYSTEM_CONFIG = Path("/etc/oscmix/routing.conf")
 log = logging.getLogger("oscmix-launch")
-
-
-def config_file() -> Optional[Path]:
-    """Use the session's discovery rule, including its testable system path."""
-    return discover_config_path({**os.environ, "OSCMIX_SYSTEM_CONFIG":
-        os.environ.get("OSCMIX_SYSTEM_CONFIG") or str(SYSTEM_CONFIG)})
 
 
 def notify(summary: str, body: str, urgency: str = "normal") -> None:
@@ -85,7 +78,7 @@ def resolve_gtk_binary() -> Optional[str]:
 
 
 def _launch(proc_root: Path) -> None:
-    path = config_file()
+    path = discover_config_path()
     config = load_config(path)
     gtk = resolve_gtk_binary()
     if gtk is None:

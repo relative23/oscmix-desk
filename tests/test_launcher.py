@@ -16,11 +16,10 @@ from pathlib import Path
 
 import pytest
 
-from oscmix_desk import launcher as _launcher
 from oscmix_desk import paths as paths_mod
 
 #: Read at collection, before any fixture patches them.
-_IMPORTED_SYSTEM_CONFIGS = (paths_mod.SYSTEM_CONFIG, _launcher.SYSTEM_CONFIG)
+_IMPORTED_SYSTEM_CONFIG = paths_mod.SYSTEM_CONFIG
 
 
 @pytest.fixture
@@ -40,24 +39,33 @@ def write_conf(path, body):
     return path
 
 
-def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
-                                                       tmp_path):
-    """paths_mod.discover_config_path's rule, repeated in a module that may
-    not import config -- held equal here across the environments that
-    decide it. A relative XDG_CONFIG_HOME is ignored by both (0.6.10),
+def test_the_launcher_finds_the_file_the_backend_would(launcher_world, tmp_path):
+    """The shared config lookup is reached through the actual launcher.
+
+    A relative XDG_CONFIG_HOME is ignored by both (0.6.10),
     an empty HOME is looked up, and a uid without a passwd entry has no
     user directory: `~/.config` is not read relative to the cwd."""
     import pwd
 
+    launch_mod, clean_env, _, notices, _ = launcher_world
+    found_paths = []
+    backend_status = launch_mod.backend_status
 
+    def inspect(config, proc, config_path):
+        assert config.osc_port == 9005
+        found_paths.append(config_path)
+        return backend_status(config, proc, config_path)
+
+    clean_env.setattr(launch_mod, 'backend_status', inspect)
     home = tmp_path / "home"
     xdg = tmp_path / "xdg"
     system = tmp_path / "etc" / "routing.conf"
     for path in (home / ".config" / "oscmix" / "routing.conf",
                  xdg / "oscmix" / "routing.conf", system,
+                 tmp_path / "named.conf",
                  tmp_path / "rel" / "oscmix" / "routing.conf",
                  tmp_path / "~" / ".config" / "oscmix" / "routing.conf"):
-        path.parent.mkdir(parents=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         write_conf(path, "[osc]\nport = 9005\n")
     clean_env.setenv("OSCMIX_SYSTEM_CONFIG", str(system))
     clean_env.chdir(tmp_path)
@@ -93,7 +101,9 @@ def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
                 clean_env.delenv(name, raising=False)
             else:
                 clean_env.setenv(name, value)
-        found = launch_mod.config_file()
+        assert launch_mod.main() == 0
+        assert notices == []
+        found = found_paths[-1]
         assert found == paths_mod.discover_config_path(), case
         seen.add(found)
     assert seen == {home / ".config" / "oscmix" / "routing.conf",
@@ -101,23 +111,36 @@ def test_the_launcher_finds_the_file_the_backend_would(launch_mod, clean_env,
                     system}
 
 
-def test_both_modules_default_to_the_same_system_config(launch_mod,
-                                                        clean_env, tmp_path):
-    """The two literals, as imported -- the suite patches both, so only
-    the values read before any fixture can show them drifting apart."""
-
-    in_config, in_launcher = _IMPORTED_SYSTEM_CONFIGS
-    assert in_config == Path("/etc/oscmix/routing.conf")
-    assert in_launcher == in_config
+def test_the_system_config_default_and_environment_are_resolved_in_one_place(clean_env, tmp_path):
+    assert str(_IMPORTED_SYSTEM_CONFIG) == "/etc/oscmix/routing.conf"
     clean_env.delenv("OSCMIX_SYSTEM_CONFIG")
     clean_env.setattr(paths_mod, "SYSTEM_CONFIG", tmp_path / "a")
     assert paths_mod.system_config({}) == tmp_path / "a"
     assert paths_mod.system_config(
         {"OSCMIX_SYSTEM_CONFIG": str(tmp_path / "b")}) == tmp_path / "b"
-    # From the environment it is given, like the rest of the search: the
-    # unit's, when the CLI resolves the unit's desk.
+    # An explicitly supplied environment, such as the unit's, is independent
+    # of the environment inherited by this process.
     clean_env.setenv("OSCMIX_SYSTEM_CONFIG", str(tmp_path / "c"))
     assert paths_mod.system_config({}) == tmp_path / "a"
+
+
+def test_launcher_uses_the_shared_system_config_default(launcher_world, tmp_path):
+    mod, monkey, calls, notices, execs = launcher_world
+    path = write_conf(tmp_path / 'system.conf', '[osc]\nport=9333\n')
+    monkey.delenv('OSCMIX_SYSTEM_CONFIG')
+    monkey.setattr(paths_mod, 'SYSTEM_CONFIG', path)
+    selected = []
+    original = mod.backend_status
+
+    def inspect(config, proc, config_path):
+        selected.append((config_path, config.osc_port))
+        return original(config, proc, config_path)
+
+    monkey.setattr(mod, 'backend_status', inspect)
+    assert mod.main() == 0
+    assert selected == [(path, 9333)]
+    assert calls == notices == []
+    assert len(execs) == 1
 
 
 def test_notify_calls_notify_send_with_the_urgency_it_was_given(
@@ -332,11 +355,23 @@ def test_disconnected_interface_does_not_start_a_service(launcher_world):
     assert calls == []
 
 
-def test_incomplete_identity_cannot_be_passed_to_gtk(launcher_world):
+@pytest.mark.parametrize('missing', ['all', 'pid', 'endpoint', 'device', 'serial'])
+def test_incomplete_identity_cannot_be_passed_to_gtk(launcher_world, missing):
+    from dataclasses import replace
+
     from oscmix_desk.diagnostics import BackendStatus
+    from oscmix_desk.discovery import Device
 
     mod, monkey, calls, notices, execs = launcher_world
-    monkey.setattr(mod, 'backend_status', lambda *_: BackendStatus('ready', 'incomplete'))
+    status = BackendStatus('ready', 'matched', Device('2a39:3fd9', '24216011', 24),
+                           40000, '/isolated/control')
+    if missing == 'all':
+        status = BackendStatus('ready', 'incomplete')
+    elif missing == 'serial':
+        status = replace(status, device=replace(status.device, serial=''))
+    else:
+        status = replace(status, **{missing: None})
+    monkey.setattr(mod, 'backend_status', lambda *_: status)
     assert mod.main() == 1
     assert 'identity is incomplete' in notices[0]
     assert execs == calls == []
@@ -382,24 +417,65 @@ def test_failing_exec_is_a_message_without_a_traceback(launcher_world, caplog):
 
 
 @pytest.mark.parametrize('problem', [None, 'manual session required'])
-def test_only_an_enabled_matching_service_may_be_started(launcher_world, problem):
+@pytest.mark.parametrize('manager', ['systemd', 'openrc', 'runit'])
+def test_only_an_enabled_matching_service_may_be_started(
+        launcher_world, problem, manager, tmp_path):
     from oscmix_desk.diagnostics import BackendStatus
     from oscmix_desk.discovery import Device
 
     mod, monkey, calls, notices, execs = launcher_world
     device = Device('2a39:3fd9', '24216011', 24)
+    path = write_conf(tmp_path / 'selected.conf', '[device]\nserial=24216011\n')
+    monkey.setenv('OSCMIX_CONFIG', str(path))
+    proc = Path(os.environ['OSCMIX_PROC_ROOT'])
     states = iter([BackendStatus('absent', 'no listener', device),
                    BackendStatus('ready', 'matched', device, 40000, '/isolated/control')])
-    monkey.setattr(mod, 'backend_status', lambda *_: next(states))
-    monkey.setattr(mod, 'service_status', lambda: {'state': 'observed'})
+
+    def inspect(config, proc_root, config_path):
+        assert config.serial == '24216011'
+        assert proc_root == proc
+        assert config_path == path
+        return next(states)
+
+    monkey.setattr(mod, 'backend_status', inspect)
+    monkey.setattr(mod, 'service_status', lambda: {'state': 'observed', 'manager': manager})
     monkey.setattr(mod, 'service_start_problem', lambda *_: problem)
     assert mod.main() == (1 if problem else 0)
     if problem:
         assert notices == [problem]
         assert calls == execs == []
     else:
-        assert calls == [('reset-failed', mod.SERVICE), ('start', '--no-block', mod.SERVICE)]
+        assert calls == ([('reset-failed', mod.SERVICE), ('start', '--no-block', mod.SERVICE)]
+                         if manager == 'systemd' else [])
         assert len(execs) == 1
+
+
+def test_launcher_inspects_the_selected_gtk_and_preserves_the_desktop_environment(launcher_world):
+    from oscmix_desk.desktop import DesktopStatus
+
+    mod, monkey, calls, notices, _ = launcher_world
+    gtk = '/selected/companion/oscmix-gtk'
+    inspected, launched = [], []
+    monkey.setattr(mod, 'resolve_gtk_binary', lambda: gtk)
+    monkey.setattr(mod, 'inspect_desktop',
+                   lambda binary: inspected.append(binary) or DesktopStatus(binary, None))
+    monkey.setenv('WAYLAND_DISPLAY', 'qa-wayland')
+    monkey.setenv('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/qa-bus')
+    for key in ('OSCMIX_CONTROL_SOCKET', 'OSCMIX_BACKEND_PID', 'OSCMIX_DEVICE_SERIAL'):
+        monkey.setenv(key, 'stale')
+    monkey.setattr(mod.os, 'execve', lambda binary, argv, env:
+                   launched.append((binary, argv, env)))
+    assert mod.main() == 0
+    assert inspected == [gtk]
+    assert len(launched) == 1
+    binary, argv, env = launched[0]
+    assert (binary, argv) == (gtk, [gtk])
+    assert env['WAYLAND_DISPLAY'] == 'qa-wayland'
+    assert env['DBUS_SESSION_BUS_ADDRESS'] == 'unix:path=/qa-bus'
+    assert env['OSCMIX_CONTROL_SOCKET'] == '/isolated/control'
+    assert env['OSCMIX_BACKEND_PID'] == '40000'
+    assert env['OSCMIX_DEVICE_SERIAL'] == '24216011'
+    assert calls == notices == []
 
 
 @pytest.mark.parametrize('failure', ['start', 'timeout', 'replaced'])

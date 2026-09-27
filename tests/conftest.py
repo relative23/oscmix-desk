@@ -259,7 +259,6 @@ def _no_real_config(tmp_path_factory, monkeypatch):
     defaults, which a mutant renaming the variable falls back to.
     A test that wants a desk sets its own.
     """
-    from oscmix_desk import launcher
     from oscmix_desk import paths as paths_mod
 
     empty = tmp_path_factory.mktemp("xdg-config")
@@ -268,7 +267,6 @@ def _no_real_config(tmp_path_factory, monkeypatch):
     nowhere = empty / "etc-oscmix-routing.conf"
     monkeypatch.setenv("OSCMIX_SYSTEM_CONFIG", str(nowhere))
     monkeypatch.setattr(paths_mod, "SYSTEM_CONFIG", nowhere)
-    monkeypatch.setattr(launcher, "SYSTEM_CONFIG", nowhere)
 
 
 @pytest.fixture(scope="session")
@@ -459,6 +457,8 @@ def fake_sysfs(tmp_path):
     dev.mkdir(parents=True)
     (dev / "idVendor").write_text("2a39\n")
     (dev / "idProduct").write_text("3fd9\n")
+    (dev / "product").write_text("Fireface UCX II (24216011)\n")
+    (dev / "serial").write_text("opaque-usb-identifier\n")
     (dev / "bcdDevice").write_text("0301\n")
     # An interface directory without id files, as in real sysfs.
     (root / "5-2:1.0").mkdir()
