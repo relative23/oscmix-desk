@@ -189,6 +189,7 @@ def test_no_register_is_written_in_a_type_the_device_will_not_read():
     ("[eq:input:3]\nband1freq = 30000\n", "above 20 kHz"),
     ("[eq:input:3]\nband1q = 12.0\n", "above 9.9"),
     ("[eq:input:99]\nband1freq = 80\n", "no such channel"),
+    ("[eq:input:²]\nband1freq = 80\n", "not an integer channel"),
     ("[eq:input:3]\nband4gain = 0.0\n", "no fourth band"),
 ])
 def test_a_bad_nested_value_is_refused(tmp_path, body, why):

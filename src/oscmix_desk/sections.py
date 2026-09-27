@@ -137,7 +137,11 @@ def _parse_nested_section(parser: "configparser.ConfigParser", section: str,
     second loop to forget.
     """
     sub, family, raw = section.split(":")
-    channel = int(raw)
+    try:
+        channel = int(raw)
+    except ValueError:
+        raise ConfigError(
+            "[%s]: %r is not a channel number" % (section, raw)) from None
     known = settable_nested(device, sub, family)
     if not known:
         # Two different situations produce an empty set, and they call

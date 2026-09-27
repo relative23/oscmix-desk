@@ -116,8 +116,12 @@ def test_a_stop_wins_over_a_pending_reload(session_mod, monkeypatch):
                       reload_requested={"reload": True})
     assert called == []
 
+@pytest.mark.parametrize('invalid', [
+    '[route:x]\noutput = 99\nplayback = 1\n',
+    '[eq:input:²]\nband1freq = 80\n',
+], ids=['invalid-route', 'invalid-nested-channel'])
 def test_a_broken_config_on_reload_keeps_the_running_one(tmp_path, session_mod,
-                                                        monkeypatch):
+                                                        monkeypatch, invalid, caplog):
     """SIGHUP with a typo must not take the routing down.
 
     The session is holding state somebody is listening to. Exiting over
@@ -129,7 +133,7 @@ def test_a_broken_config_on_reload_keeps_the_running_one(tmp_path, session_mod,
 
 
     path = tmp_path / "routing.conf"
-    path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
+    path.write_text(invalid)
     applied = []
     monkeypatch.setattr(reload_mod, "reconcile_now",
                         lambda *a, **k: applied.append(a))
@@ -137,6 +141,7 @@ def test_a_broken_config_on_reload_keeps_the_running_one(tmp_path, session_mod,
     reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
     assert applied == [], "a config that does not parse must not be applied"
+    assert 'keeping the running configuration' in caplog.text
 
 def _reload_in_background(session_mod, session_module, path, stop, verifier):
     import argparse
