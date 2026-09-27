@@ -1,10 +1,13 @@
 """PipeWire named-sink generation (--pipewire-sinks)."""
 
 import json
+import shutil
+import subprocess
 
 import pytest
 
 from oscmix_desk import pipewire
+from oscmix_desk.model import Config, Route
 
 
 def _sink_info(device_name, target=None, dump_text=None):
@@ -198,6 +201,55 @@ def test_a_quote_in_a_route_name_does_not_break_the_conf(session_mod):
         make_config(session_mod, routes), target="alsa_output.fireface")
     assert 'node.description = "the \\"big\\" room"' in conf
     assert 'node.name = "oscmix.the__big__room"' in conf
+
+
+@pytest.mark.parametrize("target", [
+    'alsa_output."studio"', r'alsa_output.\the-room', 'alsa_output.Ä\tB\nC',
+])
+def test_target_names_round_trip_through_the_generated_quoted_value(target):
+    config = Config(routes=(Route(name='room', playback=(1, 2), output=(1, 2)),))
+    text = pipewire.generate_pipewire_conf(config, target)
+    line, = [line for line in text.splitlines() if 'target.object =' in line]
+    assert json.loads(line.split('=', 1)[1]) == target
+
+
+@pytest.mark.parametrize("target", [
+    'alsa_output.fireface', 'alsa_output."studio"', r'alsa_output.\the-room',
+    'alsa_output.Ä\tB\nC',
+])
+def test_pipewire_reads_the_complete_generated_sink_configuration(tmp_path, target):
+    # pw-config only parses files: no daemon, backend or audio device is used.
+    parser = shutil.which('pw-config')
+    if parser is None:
+        pytest.skip('pw-config is unavailable; CI installs pipewire-bin for this check')
+    config = Config(routes=(
+        Route(name='mono', playback=(3,), output=(7,)),
+        Route(name='Main \\ "room"', playback=(1, 2), output=(5, 6)),
+        Route(name='direct', playback=(5, 6), output=(5, 6)),
+    ))
+    path = tmp_path / 'generated.conf'
+    path.write_text(pipewire.generate_pipewire_conf(
+        config, target, ['AUX%d' % n for n in range(20)]))
+    result = subprocess.run(
+        [parser, '-n', str(path), '-r', '-N', 'merge', 'context.modules'],
+        check=True, text=True, capture_output=True, timeout=10,
+        env={'HOME': str(tmp_path), 'XDG_CONFIG_HOME': str(tmp_path / 'config'),
+             'XDG_CONFIG_DIRS': str(tmp_path / 'system'),
+             'PIPEWIRE_CONFIG_DIR': str(tmp_path),
+             'PIPEWIRE_CONFIG_OVERRIDE_DIR': str(tmp_path / 'overrides')})
+    assert json.loads(result.stdout) == [{
+        'name': 'libpipewire-module-loopback',
+        'args': {
+            'node.description': 'Main \\ "room"',
+            'capture.props': {'node.name': 'oscmix.Main____room_',
+                              'media.class': 'Audio/Sink',
+                              'audio.position': ['FL', 'FR']},
+            'playback.props': {'node.name': 'oscmix.Main____room_.out',
+                               'audio.position': ['AUX4', 'AUX5'],
+                               'target.object': target,
+                               'stream.dont-remix': True, 'node.passive': True},
+        },
+    }]
 
 
 def test_pw_dump_is_run_once_bounded_and_as_text(monkeypatch):

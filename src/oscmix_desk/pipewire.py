@@ -128,7 +128,7 @@ def find_sink(objects: List[Dict[str, Any]], device_name: str,
 _LOOPBACK_TEMPLATE = """\
     {{ name = libpipewire-module-loopback
         args = {{
-            node.description = "{description}"
+            node.description = {description}
             capture.props = {{
                 node.name = "oscmix.{node}"
                 media.class = Audio/Sink
@@ -137,7 +137,7 @@ _LOOPBACK_TEMPLATE = """\
             playback.props = {{
                 node.name = "oscmix.{node}.out"
                 audio.position = [ {device_positions} ]
-                target.object = "{target}"
+                target.object = {target}
                 stream.dont-remix = true
                 node.passive = true
             }}
@@ -196,13 +196,13 @@ def generate_pipewire_conf(config: Config, target: Optional[str],
     parts.append("context.modules = [")
     for route in pair_routes:
         parts.append(_LOOPBACK_TEMPLATE.format(
-            # The description is a quoted string in the conf; a quote in
-            # the route name -- which routing.conf accepts -- broke it.
-            description=route.name.replace("\\", "\\\\").replace('"', '\\"'),
+            # SPA accepts JSON strings. Preserve quotes, backslashes and
+            # control characters in both user names and selected targets.
+            description=json.dumps(route.name),
             node=re.sub(r"[^\w.-]", "_", route.name),
             device_positions=" ".join(
                 pipewire_positions(route.output, sink_positions)),
-            target=target,
+            target=json.dumps(target),
         ))
     parts.append("]")
     return "\n".join(parts) + "\n"
