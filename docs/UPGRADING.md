@@ -205,6 +205,12 @@ The package lives at `~/.local/lib/oscmix-desk`. Backups made by individual
 `install.sh` copies do not replace this backup: the package directory is
 replaced as a unit, and system integration has separate files.
 
+Native RPM installation/removal keeps its maintenance fence if reloading the
+system manager fails. Restore the manager connection before repairing the
+package transaction; a successful reinstall clears the fence only after its
+integration steps finish. A failed package command is not permission to start
+the desk against an incompletely updated installation.
+
 ## Compatibility changes
 
 | Previous use | 0.7.0 action |

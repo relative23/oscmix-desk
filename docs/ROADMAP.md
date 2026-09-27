@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2228 tests (two empty parameter sets
+The latest interim `make check` passes 2271 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -91,8 +91,13 @@ passes; status and disabling/removing a previous subscription remain available.
 Silverblue continues to use authenticated RPM artifact layering.
 A fresh actual Silverblue deep-sleep probe found that the old resume hook
 missed an active user service while `user.slice` was frozen. Resume now queues
-a bounded system service ordered after the sleep operation; targeted software
-checks pass, and actual-VM qualification of that correction is pending.
+a bounded system service ordered after the sleep operation. The
+[actual-VM regression](evidence/0.8.0/systemd-resume-development.json) passes
+six deep-entry/exit cycles, including failed reload, recovery and an inactive
+desk. Actual deployment rollback and return preserve user state and restore
+the respective integration files. A separate native RPM failure probe found
+premature fence removal after a failed manager reload; the ordering correction
+and permanent container regression now await their fresh native qualification.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.

@@ -1,0 +1,210 @@
+{
+  "schema": 1,
+  "qualification": "development-only",
+  "hardware": false,
+  "scope": "Installed systemd resume trigger and native deployment lifecycle; signal receiver replaces mixer session",
+  "platform": {
+    "distribution": "Fedora Silverblue 44.1.7",
+    "kernel": "6.19.10-300.fc44.x86_64",
+    "systemd": "systemd 259 (259.5-1.fc44)",
+    "selinux": "Enforcing",
+    "virtualization": "QEMU/KVM q35",
+    "host_devices_passed_through": false
+  },
+  "baseline": {
+    "package_source": "9eb9956b232d439d44ee9c632b8b72107e8c1ffa",
+    "hook_sha256": "8037c4d5c7700fcf5855dce5d263085ff56c52042421c81acad2bbf97c056b4a",
+    "control_reload_received": true,
+    "deep_cycle": true,
+    "resume_reload_received": false,
+    "same_pid": true,
+    "watchdog_intervened": false,
+    "second_probe": {
+      "control_from_system_service": true,
+      "deep_cycle": true,
+      "resume_reload_received": false
+    }
+  },
+  "corrected": {
+    "package_source": "a1cdd6ff15ef7df560350c101b2cee5fcd72ddd3",
+    "packages": [
+      {
+        "artifact": "oscmix-desk-0.7.3-0.dev.2.x86_64_fedora44.rpm",
+        "sha256": "d13ce176ff1cf4b17a87bf5e6fccf26f358c326708b53b2de9471de701ab5d49",
+        "package_version": "0.7.3-0.dev.2",
+        "component": "core"
+      },
+      {
+        "artifact": "oscmix-desk-gtk-0.7.3-0.dev.2.x86_64_fedora44.rpm",
+        "sha256": "735d68f4972532d11506ac6306222601c22ea06b703223a2480e177e6e849e54",
+        "package_version": "0.7.3-0.dev.2",
+        "component": "gtk"
+      }
+    ],
+    "installed_payloads_verified": true,
+    "probe": {
+      "path": "tests/silverblue_resume.py",
+      "sha256": "2a99ec2ee2dd078e47828403f54baa5687694453372c2f946a266ba2b27c0dc3"
+    },
+    "source_files": {
+      "systemd/system-sleep/oscmix": "d2c27b55ec94e74ad684dde68f4d9326d506a3199758eef61aec722c4ca9b454",
+      "systemd/oscmix-resume.service": "8db809c9234868d3e2d371ce5501fe74ae0a5b0fe0163e6bfed8b4f68200d187"
+    },
+    "installed_files": {
+      "usr/lib/systemd/system-sleep/oscmix": "b5c5f3c5949fa7d89c54f8e2c1cf933b992ac339574919357742a3c53d20f563",
+      "usr/lib/systemd/system/oscmix-resume.service": "8db809c9234868d3e2d371ce5501fe74ae0a5b0fe0163e6bfed8b4f68200d187"
+    },
+    "cases": [
+      {
+        "case": "normal-1",
+        "deep_cycle": true,
+        "boottime_seconds": 6.88,
+        "started_after_thaw": true,
+        "expected_hups": 2,
+        "received_hups": 2,
+        "expected_pid": 1860,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      },
+      {
+        "case": "normal-2",
+        "deep_cycle": true,
+        "boottime_seconds": 0.415,
+        "started_after_thaw": true,
+        "expected_hups": 3,
+        "received_hups": 3,
+        "expected_pid": 1860,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      },
+      {
+        "case": "normal-3",
+        "deep_cycle": true,
+        "boottime_seconds": 0.431,
+        "started_after_thaw": true,
+        "expected_hups": 4,
+        "received_hups": 4,
+        "expected_pid": 1860,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      },
+      {
+        "case": "reload-failure",
+        "deep_cycle": true,
+        "boottime_seconds": 0.417,
+        "started_after_thaw": true,
+        "expected_hups": 4,
+        "received_hups": 4,
+        "expected_pid": 1860,
+        "reload_failed": true,
+        "watchdog": null,
+        "passed": true
+      },
+      {
+        "case": "recovered",
+        "deep_cycle": true,
+        "boottime_seconds": 0.451,
+        "started_after_thaw": true,
+        "expected_hups": 5,
+        "received_hups": 5,
+        "expected_pid": 1860,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      },
+      {
+        "case": "inactive",
+        "deep_cycle": true,
+        "boottime_seconds": 0.304,
+        "started_after_thaw": true,
+        "expected_hups": 5,
+        "received_hups": 5,
+        "expected_pid": 0,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      }
+    ],
+    "user_state_preserved": true,
+    "fixture_removed": true,
+    "remaining_qa_units": 0,
+    "watchdog_intervened": false,
+    "passed": true
+  },
+  "deployment_lifecycle": {
+    "before": {
+      "checksum": "7608509bd40023ed9265c5c0d038582a0cc9e328f319d7991ca922fc676c29ce",
+      "base-checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "version": "44.1.7",
+      "requested-local-packages": [
+        "oscmix-desk-0.7.3-0.dev.1.x86_64",
+        "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64"
+      ]
+    },
+    "upgraded": {
+      "checksum": "bbd30a068c3d9007ef8ef0bab419db563068d653cc072a3bffee9003d648af03",
+      "base-checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "version": "44.1.7",
+      "requested-local-packages": [
+        "oscmix-desk-0.7.3-0.dev.2.x86_64",
+        "oscmix-desk-gtk-0.7.3-0.dev.2.x86_64"
+      ]
+    },
+    "rolled_back": {
+      "checksum": "7608509bd40023ed9265c5c0d038582a0cc9e328f319d7991ca922fc676c29ce",
+      "base-checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "version": "44.1.7",
+      "requested-local-packages": [
+        "oscmix-desk-0.7.3-0.dev.1.x86_64",
+        "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64"
+      ]
+    },
+    "returned": {
+      "checksum": "bbd30a068c3d9007ef8ef0bab419db563068d653cc072a3bffee9003d648af03",
+      "base-checksum": "b8e75b708a972d784856f07d964202860088b1138ef9eadb01aa7d76c795104a",
+      "version": "44.1.7",
+      "requested-local-packages": [
+        "oscmix-desk-0.7.3-0.dev.2.x86_64",
+        "oscmix-desk-gtk-0.7.3-0.dev.2.x86_64"
+      ]
+    },
+    "all_installed_payloads_verified": true,
+    "rollback_removed_new_resume_unit": true,
+    "return_restored_new_resume_unit": true,
+    "user_state_preserved": true,
+    "activation_remained_disabled": true,
+    "maintenance_persisted_across_reboots": true
+  },
+  "software_gate": {
+    "command": "make check PYTHON=.venv/bin/python",
+    "passed": 2271,
+    "skipped": 2,
+    "seconds": 129.51,
+    "final_release_gate": false
+  },
+  "native_build": {
+    "result": "passed",
+    "source": "a1cdd6ff15ef7df560350c101b2cee5fcd72ddd3",
+    "seconds": 146.21,
+    "image": "sha256:79d9c26eb5b02d8f145471ad5d9647502ff5cd33a2d41ff689a16d564759c8d2",
+    "reproducible_core_gtk_and_repository_client": true
+  },
+  "private_transcript_sha256": {
+    "result-baseline.json": "a32bb9656f8fbddd8f53624686da7280c0709ca718125bc9f0e2348c6a086a41",
+    "result-diagnostic.json": "d8306e5f8dd0188b5e71f9e8d6f0156a09302cdb1a224be4e282188be14e8417",
+    "result-fixed.json": "9971b3b3e2ab508b96bd44f22fd13e4bbfdb6bfca11e8375726296a42b37cce8",
+    "fixed-logs.tar": "fbd19abcc4718861942ae46dc5cb30f3bbc3b4e0c3bafc15c7325ca386e585c5",
+    "deployments.tar": "f5f14cd587d343301801ed49b5a83f6f4346d0e99b70ebe7ff0cbc8b655ad492"
+  },
+  "limitations": [
+    "The candidate still has a 0.7.3 development package revision; this is not the final 0.7.3-to-0.8.0 transition.",
+    "The VM had no audio interface; the real user unit ran a signal receiver, not mixer code.",
+    "All six corrected cycles had fresh kernel deep-entry/exit events. Only the first lasted about six seconds; later virtual-RTC wakes were immediate. This qualifies trigger ordering, not extended sleep or hardware state retention.",
+    "Hibernate, hybrid sleep and suspend-then-hibernate were not exercised; their ordering is covered by software checks only.",
+    "Other systemd distributions, NixOS resume and final-candidate hardware checks remain open.",
+    "A subsequent isolated RPM fault probe found premature fence removal when systemctl daemon-reload fails. Its correction and native regression are separate from this successful-VM record."
+  ]
+}

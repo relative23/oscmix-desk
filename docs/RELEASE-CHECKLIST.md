@@ -193,6 +193,15 @@ one that found all three defects in 0.1.3.
       still be there, and the real service must still be
       `active`/`enabled` afterwards.
 
+- [ ] On the final Silverblue pair, run `tests/silverblue_resume.py` in the
+      isolated QA VM after the ordinary installation/deployment lifecycle.
+      Verify all installed payloads first. Exercise repeated actual deep
+      sleep, a failing reload, subsequent recovery and an inactive desk;
+      retain the ordering journal and verify removal of the signal fixture.
+      This tests the real service transport with a signal receiver. Final
+      mixer/device suspend evidence and the other platform gates in the
+      [0.8.0 plan](plans/0.8.0-reliability-integration.md) remain separate.
+
 ## 6. The tag
 
 - [ ] Tag `v<version>`, annotated, message = the changelog section.

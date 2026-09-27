@@ -202,6 +202,25 @@ install(first, gtk)
 verify_files(first)
 verify_files(gtk)
 remove('oscmix-desk-gtk')
+if kind == 'rpm':
+    # Make systemctl try an unavailable manager inside this disposable
+    # container. These are real RPM scriptlet failures, not command doubles.
+    # Both failed installation and removal must retain maintenance until
+    # an explicit successful repair completes all integration steps.
+    booted = Path('/run/systemd/system')
+    assert not booted.exists()
+    for operation in ('install', 'remove'):
+        booted.mkdir(parents=True)
+        try:
+            failure = (install(first, expected=None) if operation == 'install'
+                       else remove('oscmix-desk', expected=None))
+            assert 'scriptlet failed' in failure.stderr
+            assert FENCE.exists(), 'system manager failure cleared maintenance'
+        finally:
+            booted.rmdir()
+        install(first)
+        verify_files(first)
+        assert not FENCE.exists()
 remove('oscmix-desk')
 assert not Path('/usr/bin/oscmix-session').exists()
 assert not FENCE.exists()

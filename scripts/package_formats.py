@@ -87,15 +87,15 @@ fi
 
 %postun
 if [ "$1" -eq 0 ]; then
+if [ -d /run/systemd/system ]; then systemctl daemon-reload || exit 1; fi
 /usr/bin/python3 -I <<'PYTHON_GUARD' || exit 1
 @FINISH_GUARD@
 PYTHON_GUARD
-if [ -d /run/systemd/system ]; then systemctl daemon-reload || exit 1; fi
 fi
 
 %posttrans
-/usr/lib/oscmix-desk/package-guard finish --rpm-scriptlet || exit 1
 if [ -d /run/systemd/system ]; then systemctl daemon-reload || exit 1; fi
+/usr/lib/oscmix-desk/package-guard finish --rpm-scriptlet || exit 1
 
 %files
 %defattr(-,root,root)

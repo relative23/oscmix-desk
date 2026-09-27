@@ -99,8 +99,12 @@ then SIGHUP:
 > Source installation loads the system unit before installing the queueing
 > hook; native core packages own both files. NixOS already runs its native
 > resume action when its `sleep-actions.service` stops after the sleep target.
-> The corrected ordinary-systemd path still requires its actual-VM regression
-> check; the signal fixture does not qualify mixer or device behavior.
+> The [actual-VM regression](../evidence/0.8.0/systemd-resume-development.json)
+> passes six fresh deep-entry/exit cycles, including a failed reload, recovery
+> and an inactive desk. Deployment rollback removes the new unit, and returning
+> to the candidate restores it. Later virtual-RTC wakes were immediate; the
+> signal fixture qualifies trigger ordering, not mixer/device behavior or
+> extended sleep. Other platforms and the final candidate still need checking.
 
 A user unit with `WantedBy=sleep.target` would install, enable, and never
 run: on systemd 259 `systemctl --user cat sleep.target` reports *"No
