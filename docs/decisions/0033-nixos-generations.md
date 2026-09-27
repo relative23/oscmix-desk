@@ -67,7 +67,25 @@ The subsequent poweroff panicked after filesystem unmount. A cold-boot control
 powered off cleanly; another control without the mixer package, user unit or
 mixer resume action reproduced the same panic after four deep cycles. The
 evidence records both controls and the RTC-related ACPI errors. The platform
-cause is unresolved, and clean shutdown after resume is not qualified.
+cause is unresolved, and clean shutdown after resume is not qualified on that
+Q35 combination.
+
+The [2026-09-27 i440FX/PIIX comparison](../evidence/0.8.0/nixos-piix-development.json)
+keeps the same NixOS generation and kernel in a writable overlay of the stopped
+VM. Four bare deep cycles and a separate current-package run with six service
+cycles both power off cleanly. The service run includes a refused reload,
+subsequent recovery, inactive-service preservation and effective sandbox probes.
+It still uses a signal receiver and contains no device-I/O claim. The machine
+model changes the observed result; it does not prove a firmware or kernel cause.
+Keep the earlier failure as evidence rather than treating this passing platform
+as a correction to its historical result.
+
+Recovery must identify the saved generation, not assume a fixed number of
+`--rollback` operations. This VM retained newer test generations after an earlier
+rollback; two backward steps therefore reached an older test deployment instead
+of the saved baseline. The maintenance fence remained in force, the profile
+history identified the exact baseline, and further native rollbacks restored it
+without changing user state or removing generations.
 
 See the [package and operating instructions](../../packaging/nix/README.md),
 [NixOS manual](https://nixos.org/manual/nixos/stable/), and the pinned

@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "date": "2026-09-27",
+  "source_commit": "3dab2335d5ca4d88d2a7e816a90063431759cd1f",
+  "scope": "Full check and coverage after integrated identity, retention, export and address-validation corrections",
+  "final_candidate": false,
+  "hardware": false,
+  "release_complete": false,
+  "check": {
+    "passed": true,
+    "inputs_unchanged": true,
+    "inputs_sha256": "bfe31e08556884c0500b875ec44b7e6dd5d48af5829b7a5b1b2da60e619c6ee6",
+    "runs": [
+      {
+        "exit_code": 0,
+        "seconds": 154.68,
+        "started_utc": "2026-09-27T12:18:52.520767+00:00",
+        "log_sha256": "269398a87b18a8cdf04977389708f94bea93c18af07a744ae44a64fb6835d355",
+        "summary": [
+          "2548 passed, 2 skipped in 153.34s (0:02:33)"
+        ]
+      }
+    ]
+  },
+  "coverage": {
+    "passed": true,
+    "inputs_unchanged": true,
+    "inputs_sha256": "bfe31e08556884c0500b875ec44b7e6dd5d48af5829b7a5b1b2da60e619c6ee6",
+    "runs": [
+      {
+        "exit_code": 0,
+        "seconds": 176.458,
+        "started_utc": "2026-09-27T12:18:52.553625+00:00",
+        "log_sha256": "673b1b0d2680915ebba7ff2596fcba8c736e84f6d528a17ecc9f59d84e735f41",
+        "summary": [
+          "2548 passed, 2 skipped in 175.94s (0:02:55)"
+        ]
+      },
+      {
+        "exit_code": 0,
+        "seconds": 0.214,
+        "started_utc": "2026-09-27T12:21:49.011550+00:00",
+        "log_sha256": "2801fd2e65eb36fd135c29e7f2e29616e3d035561d06063fcea5af65a7b47a11",
+        "summary": []
+      }
+    ],
+    "measured_percent": 97.71516921491153,
+    "fail_under": 97,
+    "report_sha256": "88a08a6413f2dd7fc5bd9d4862a6c20af08319f9c909dc125d1ebdf2f20f8559"
+  },
+  "failed_attempts": [
+    {
+      "gate": "make check",
+      "result": {
+        "passed": false,
+        "inputs_unchanged": true,
+        "inputs_sha256": "bfe31e08556884c0500b875ec44b7e6dd5d48af5829b7a5b1b2da60e619c6ee6",
+        "runs": [
+          {
+            "exit_code": 2,
+            "seconds": 141.162,
+            "started_utc": "2026-09-27T11:30:39.242222+00:00",
+            "log_sha256": "aa03253ef574b2e632cc2633f5951507fb9d541908a8872312fbc65e3447f7ce",
+            "summary": [
+              "1 failed, 2131 passed, 2 skipped, 416 errors in 139.53s (0:02:19)"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "gate": "make coverage",
+      "result": {
+        "passed": false,
+        "inputs_unchanged": true,
+        "inputs_sha256": "bfe31e08556884c0500b875ec44b7e6dd5d48af5829b7a5b1b2da60e619c6ee6",
+        "runs": [
+          {
+            "exit_code": 2,
+            "seconds": 149.827,
+            "started_utc": "2026-09-27T11:30:28.966620+00:00",
+            "log_sha256": "0223c515fee30886ea085d86aadd8c81cf233d829b32c9113545c738faa5e0d6",
+            "summary": [
+              "2093 passed, 2 skipped, 455 errors in 149.47s (0:02:29)"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "failed_attempt_cause": "tmpfs inode exhaustion; setup errors and inability to create the integration device lock",
+  "recovery": {
+    "method": "Preserved six completed earlier test trees on the system disk and verified regular-file hashes, symlink targets and modes before removing their temporary originals. Inactive socket names are recorded; FIFOs are recreated.",
+    "retention_record_sha256": "7ba41c6ff98250e8e11d5b1c1f1317786892b0d4cd5302db7f6b37ad634de60a",
+    "free_tmp_inodes_after": 259459,
+    "retry_temporary_filesystem": "System disk, under /var/tmp/odk080"
+  },
+  "skips": "Two existing empty read-only subfamily parameter sets",
+  "limitations": [
+    "These gates precede the subsequently reproduced PipeWire target-string correction.",
+    "Fresh full interpreter/repetition/mutation gates on the resulting tree remain required.",
+    "No new hardware access, interface-off check, release, CI or local installation is claimed."
+  ]
+}

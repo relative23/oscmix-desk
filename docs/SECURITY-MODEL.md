@@ -92,6 +92,26 @@ instead run the session as the explicitly registered ordinary user; they do
 not claim systemd's namespace or seccomp sandbox. Their root-owned adapter
 and persistent maintenance state control activation and update recovery.
 
+The [2026-09-27 NixOS 26.05 development probe](evidence/0.8.0/nixos-piix-development.json)
+measures the current package under systemd 260.4: a separate mount namespace,
+read-only root/configuration, private `/tmp` and `/var/tmp`, and writable
+`/run/oscmix-desk`. The process has `NoNewPrivs=1`, `Seccomp=2`, no effective
+capabilities and umask 0077. Actual socket creation permits UNIX/IPv4/IPv6 and
+refuses NETLINK; writable executable memory is refused. These probes run in a
+signal receiver under the installed service's restrictions. They do not qualify
+audio-device access, other distributions, or every declared hardening directive.
+
+The [current Silverblue 44.1.7 development deployment](evidence/0.8.0/series6-silverblue-development.json)
+also applies these observed restrictions under systemd 259.5 with SELinux
+enforcing: separate mount namespace, read-only root/configuration, private
+temporary directories, writable shared runtime, no effective capabilities,
+`NoNewPrivs=1`, `Seccomp=2`, umask 0077, the same socket-family boundaries and
+refusal of writable executable memory. It uses the same signal-receiver
+method and retains the same limits. The
+[current OpenRC/runit probes](evidence/0.8.0/series6-native-services-development.json)
+instead measure the selected ordinary UID and no effective capabilities;
+they report `NoNewPrivs=0` and `Seccomp=0` and claim no systemd sandbox.
+
 ### What the session writes
 
 The session creates its device lock, and the backend creates the control

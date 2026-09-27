@@ -3,8 +3,31 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2333 tests (two empty parameter sets
-skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
+The latest full integrated `make check` passes 2548 tests (two empty parameter
+sets skipped), and coverage is 97.72%, meeting the unchanged 97% ratchet.
+The earlier full Python 3.9–3.14 matrix passes after correcting test-fixture
+portability. Five complete repeats, the 200-cycle soak and all fifteen fault-suite
+repeats now pass against unchanged inputs at `84b7b49`. The fresh full mutation
+run at that revision has completed: 9412 killed, 1732 survived and 13 timed out,
+with no uncovered or unresolved mutants. Its interrupted attempts and complete
+instrumented tree are retained; the last interruption is proven to be a kernel
+memory kill. The final continuation used a 2 GiB per-process address-space
+limit without excluding mutants or changing the score floor. Evaluation and
+new judgments after the added tests remain open; these are development results,
+not final release gates. The separately tested firmware/device association,
+receive-port export, shared launcher discovery and ASCII register-address
+corrections are now integrated through `3dab233`. Full check and coverage
+attempts on that revision exhausted `/tmp` inodes. Those failures are retained;
+six completed test trees have been preserved and verified on the system disk,
+and successful replacement runs use that disk for their temporary data. The
+[integration record](evidence/0.8.0/software-integration-development.json)
+retains the failed attempts and passing full gates at `3dab233`.
+The [software record](evidence/0.8.0/software-development.json) retains exact
+durations, interpreter/dependency versions, skips and the earlier failing
+coverage result. A further native-parser regression reproduced wrong PipeWire
+targets containing quotes or backslashes. `2452075` encodes target names and
+descriptions as JSON strings accepted by SPA; native parsing and targeted
+architecture/workflow checks pass. Refreshed full gates must include that fix.
 A later source review reproduced partial confirmation from a malformed OSC
 bundle. The receiver and measurement tools now validate the whole encoded
 delivery before exposing observations. Nine production-client cases fail
@@ -32,7 +55,10 @@ Development UCX II measurements now distinguish device reports from cached
 playback flags and withhold incomplete compound input-mix reports. The
 [capability probe](evidence/0.8.0/backend-capabilities.json) found no supported
 targeted read or playback-matrix read-back. The maintainer explicitly retains
-genuine playback read-back as a release condition; N3 remains open. Readable state and known declared routes were restored after each
+genuine playback read-back as a release condition; N3 remains open. A technical
+request for the required protocol commands was sent to the manufacturer on
+2026-09-27; no hardware read-back capability is inferred from that request.
+Readable state and known declared routes were restored after each
 probe. Source/native staging now checks the exact backend/bridge/GTK patch
 series, and the project signing certificate is prepared. OpenRC and runit now
 supervise the same unprivileged source installation with explicit activation,
@@ -145,6 +171,25 @@ the installed mixer, user unit or mixer resume action reproduces the same panic
 after four deep cycles; cold poweroff without suspend succeeds. The underlying
 VM/platform cause remains unresolved. Resume ordering is measured, but clean
 shutdown after resume is not qualified on this combination.
+A separate [i440FX/PIIX control and service run](evidence/0.8.0/nixos-piix-development.json)
+uses the same NixOS/kernel on an isolated disk overlay. Four bare deep cycles
+and six current-payload service cycles, including failed reload and recovery,
+last about seven seconds each and both runs power off cleanly. The actual user
+service has a separate mount namespace, read-only configuration and writable
+shared runtime directory. Exact baseline restoration preserves user state;
+retained older test generations exposed and corrected a harness assumption
+about the number of rollback steps. The earlier Q35 failure remains recorded.
+Fresh qualification at `84b7b49` also covers the current backend/GTK series on
+[all six native package targets](evidence/0.8.0/series6-native-development.json),
+including the three nested desktops; the
+[Alpine/OpenRC and Void/runit services](evidence/0.8.0/series6-native-services-development.json)
+pass their complete absent-device replacement/reboot/recovery lifecycle.
+The [current Silverblue deployment](evidence/0.8.0/series6-silverblue-development.json)
+passes actual session activation, reload, three crash restarts, six resume
+ordering cases, effective sandbox probes and exact deployment rollback.
+Its later virtual-RTC wakes are immediate. All three guests preserve user
+state and power off cleanly. Runtime versions are still development builds of
+0.7.3; these records do not claim the final version transition.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
