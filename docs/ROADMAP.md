@@ -89,6 +89,14 @@ The subscription helper refuses installation/activation on OSTree hosts before
 modifying trust or sources. A [limited actual-Silverblue guard check](evidence/0.8.0/repository-ostree-development.json)
 passes; status and disabling/removing a previous subscription remain available.
 Silverblue continues to use authenticated RPM artifact layering.
+RPM rotation now re-signs retained versions while preserving their previous
+download paths and indexing exactly one signature form per version. Fresh Fedora
+and openSUSE clients pass downgrade and upgrade after revocation of the old subkey.
+Complete five-channel assembly and the six historical build-provenance inputs
+also pass; `make check` passes 2280 tests with two empty parameter skips in 128.94 s.
+The [rotation record](evidence/0.8.0/repository-rpm-rotation-development.json)
+identifies the development inputs. Recovery after an already invalid publication
+signature, final signed-output provenance and published HTTPS remain open.
 A fresh actual Silverblue deep-sleep probe found that the old resume hook
 missed an active user service while `user.slice` was frozen. Resume now queues
 a bounded system service ordered after the sleep operation. The
