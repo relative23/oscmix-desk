@@ -126,13 +126,14 @@ def _trigger_snd_seq_load() -> None:
         pass
 
 
-def _usb_device_dir(usb_id: str, sysfs_usb: Path) -> Optional[Path]:
-    """The sysfs directory of a USB device, by vendor:product, or None."""
+def _usb_device_dirs(usb_id: str, sysfs_usb: Path) -> List[Path]:
+    """All sysfs devices with this vendor:product identity."""
     vendor, product = usb_id.lower().split(":")
     try:
         entries = list(sysfs_usb.iterdir())
     except OSError:
-        return None
+        return []
+    matches = []
     for entry in entries:
         try:
             dev_vendor = (entry / "idVendor").read_text().strip().lower()
@@ -140,13 +141,13 @@ def _usb_device_dir(usb_id: str, sysfs_usb: Path) -> Optional[Path]:
         except OSError:
             continue
         if dev_vendor == vendor and dev_product == product:
-            return entry
-    return None
+            matches.append(entry)
+    return matches
 
 
 def usb_device_present(usb_id: str, sysfs_usb: Path) -> bool:
     """Check for a USB device by scanning sysfs (no lsusb dependency)."""
-    return _usb_device_dir(usb_id, sysfs_usb) is not None
+    return bool(_usb_device_dirs(usb_id, sysfs_usb))
 
 
 def usb_device_authorized(usb_id: str, sysfs_usb: Path) -> bool:
@@ -161,16 +162,16 @@ def usb_device_authorized(usb_id: str, sysfs_usb: Path) -> bool:
     nothing. What was wrong was the reason the start gave (0.6.10). A
     missing or unreadable attribute is authorized, the kernel's default.
     """
-    entry = _usb_device_dir(usb_id, sysfs_usb)
-    if entry is None:
+    entries = _usb_device_dirs(usb_id, sysfs_usb)
+    if not entries:
         return True
     try:
-        return (entry / "authorized").read_text().strip() != "0"
+        return (entries[0] / "authorized").read_text().strip() != "0"
     except OSError:
         return True
 
 
-def usb_revision(usb_id: str, sysfs_usb: Path) -> Optional[str]:
+def usb_revision(usb_id: str, sysfs_usb: Path, *, serial: str = "") -> Optional[str]:
     """The device release number USB reports, e.g. ``3.01``.
 
     ``bcdDevice`` in sysfs is the descriptor's release field, binary-coded
@@ -180,12 +181,27 @@ def usb_revision(usb_id: str, sysfs_usb: Path) -> Optional[str]:
     measurement that does not say which firmware it was taken against
     cannot be told apart from the next one, and a firmware that behaves
     differently would be invisible in the evidence.
+
+    A selected serial is RME's printed device number, as in the product
+    string and ALSA name. Missing or ambiguous association returns None;
+    an unspecified serial is usable only with one matching USB device.
     """
-    entry = _usb_device_dir(usb_id, sysfs_usb)
-    if entry is None:
+    # ALSA/device reports use the number in RME's product string. USB's
+    # separate `serial` attribute is a different, opaque identifier.
+    entries = _usb_device_dirs(usb_id, sysfs_usb)
+    if serial:
+        selected = []
+        for entry in entries:
+            try:
+                if serial_in((entry / "product").read_text()) == serial:
+                    selected.append(entry)
+            except OSError:
+                continue
+        entries = selected
+    if len(entries) != 1:
         return None
     try:
-        raw = (entry / "bcdDevice").read_text().strip()
+        raw = (entries[0] / "bcdDevice").read_text().strip()
     except OSError:
         return None
     # Binary-coded decimal has decimal digits only. The first version of
@@ -198,7 +214,7 @@ def usb_revision(usb_id: str, sysfs_usb: Path) -> Optional[str]:
 
 
 def device_firmware(usb_id: str, sysfs_usb: Path,
-                    reports: Optional[Mapping[str, object]] = None
+                    reports: Optional[Mapping[str, object]] = None, *, serial: str = ""
                     ) -> Dict[str, Optional[object]]:
     """The two version numbers the device offers, in one shape.
 
@@ -207,6 +223,8 @@ def device_firmware(usb_id: str, sysfs_usb: Path,
     One function so that every artifact -- the hardware evidence, the
     write sweep, the recorded dump, the snapshot header -- carries the
     same keys and a reader can compare two runs field by field.
+    Callers with device reports pass that device's serial so the USB and
+    DSP observations cannot silently describe two different interfaces.
     """
     dsp: Optional[object] = None
     if reports:
@@ -214,7 +232,7 @@ def device_firmware(usb_id: str, sysfs_usb: Path,
         # The CLI and the fixture recorder keep every argument, the
         # write sweep keeps the first value only; both are one number.
         dsp = _first(args) if isinstance(args, (list, tuple)) else args
-    return {"usb_revision": usb_revision(usb_id, sysfs_usb),
+    return {"usb_revision": usb_revision(usb_id, sysfs_usb, serial=serial),
             "dsp_version": dsp}
 
 

@@ -530,7 +530,7 @@ def main() -> int:
         "firmware": device_firmware(
             config.usb_id,
             Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")),
-            {"/hardware/dspvers": reader.dspvers}),
+            {"/hardware/dspvers": reader.dspvers}, serial=serial or "?"),
         "min_response_db": MIN_RESPONSE_DB,
         "min_above_background_db": MIN_ABOVE_BACKGROUND_DB,
         "tone": {"hz": TONE_HZ, "seconds": TONE_SECONDS,

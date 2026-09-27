@@ -824,7 +824,7 @@ def main() -> int:
         "firmware": device_firmware(
             DEFAULT_USB_ID,
             Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")),
-            transactions[0]["before"] if transactions else {}),
+            transactions[0]["before"] if transactions else {}, serial=interface.serial),
         "probed": len(targets),
         "seconds": round(elapsed, 2),
         "write_pace": WRITE_PACE,

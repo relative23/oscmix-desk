@@ -352,7 +352,7 @@ def _firmware_notice(config: Config, sysfs_usb: Path) -> None:
     """
     model = device_for_name(config.device_name)
     measured = None if model is None else model.firmware
-    reported = usb_revision(config.usb_id, sysfs_usb)
+    reported = usb_revision(config.usb_id, sysfs_usb, serial=config.serial)
     if measured and reported and reported != measured:
         log.warning("the interface reports USB release %s, and the register "
                     "table for %r was recorded on %s: every register is "

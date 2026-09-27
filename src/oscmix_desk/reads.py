@@ -107,7 +107,8 @@ def _snapshot(config: Config, config_path: Optional[Path] = None) -> int:
              len(seen), len(rows), len(seen) - len(rows))
     firmware = device_firmware(
         config.usb_id,
-        Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")), seen)
+        Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")), seen,
+        serial=reading.serial)
     # Provenance on the first line: two snapshots are only comparable
     # when they come from the same device on the same firmware, and a
     # file that does not say cannot be checked later.

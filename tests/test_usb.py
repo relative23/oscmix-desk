@@ -5,6 +5,71 @@ import pytest
 from oscmix_desk import discovery
 
 
+@pytest.fixture
+def usb_pair(fake_sysfs):
+    first = fake_sysfs / '5-2'
+    (first / 'product').write_text('Fireface UCX II (24216011)\n')
+    (first / 'serial').write_text('opaque-usb-a\n')
+    second = fake_sysfs / '5-3'
+    second.mkdir()
+    for name, value in {'idVendor': '2a39', 'idProduct': '3fd9',
+                        'product': 'Fireface UCX II (99887766)',
+                        'serial': 'opaque-usb-b', 'bcdDevice': '0302'}.items():
+        (second / name).write_text(value + '\n')
+    return fake_sysfs
+
+
+@pytest.mark.parametrize(('serial', 'expected'), [
+    ('24216011', '3.01'), ('99887766', '3.02'), ('', None),
+    ('00000000', None), ('opaque-usb-b', None),
+])
+def test_firmware_belongs_to_the_selected_rme_identity(usb_pair, serial, expected):
+    assert discovery.usb_revision('2a39:3fd9', usb_pair, serial=serial) == expected
+    assert discovery.device_firmware('2a39:3fd9', usb_pair,
+        {'/hardware/dspvers': (36,)}, serial=serial) == {
+            'usb_revision': expected, 'dsp_version': 36}
+
+
+@pytest.mark.parametrize('change', ['missing-product', 'unreadable-product', 'duplicate-product'])
+def test_firmware_with_uncertain_product_identity_is_unknown(usb_pair, change):
+    product = usb_pair / '5-3/product'
+    if change == 'duplicate-product':
+        (usb_pair / '5-2/product').write_text(product.read_text())
+    else:
+        product.unlink()
+        if change == 'unreadable-product':
+            product.mkdir()
+    assert discovery.usb_revision('2a39:3fd9', usb_pair, serial='99887766') is None
+
+
+@pytest.mark.parametrize(('serial', 'revision'), [('24216011', '3.01'), ('99887766', '3.02')])
+def test_snapshot_uses_the_reported_device_identity_for_its_firmware(
+        usb_pair, monkeypatch, capsys, serial, revision):
+    from oscmix_desk import reads
+    from oscmix_desk.model import Config
+
+    monkeypatch.setenv('OSCMIX_SYSFS_USB', str(usb_pair))
+    monkeypatch.setattr(reads, '_read_device', lambda *_: reads.DeviceRead(
+        {'/hardware/dspvers': (36,), '/mix/5/input/1': (-6.0, 0)}, serial, 'ab' * 16))
+    assert reads._snapshot(Config()) == 0
+    text = capsys.readouterr().out
+    assert 'serial %s, usb %s, dsp 36;' % (serial, revision) in text
+    assert '/mix/5/input/1 -6.0 0\n' in text
+
+
+@pytest.mark.parametrize(('serial', 'warning'), [('24216011', False), ('99887766', True)])
+def test_firmware_notice_uses_the_configured_device(
+        usb_pair, caplog, session_module, serial, warning):
+    from oscmix_desk.model import Config
+
+    with caplog.at_level('WARNING'):
+        session_module._firmware_notice(Config(serial=serial), usb_pair)
+    assert bool(caplog.text) is warning
+    if warning:
+        assert 'USB release 3.02' in caplog.text
+        assert 'recorded on 3.01' in caplog.text
+
+
 def test_device_found(session_mod, fake_sysfs):
     assert discovery.usb_device_present("2a39:3fd9", fake_sysfs) is True
 

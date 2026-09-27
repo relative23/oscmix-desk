@@ -165,7 +165,7 @@ def main() -> int:
         "firmware": device_firmware(
             config.usb_id,
             Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices")),
-            {"/hardware/dspvers": dspvers}),
+            {"/hardware/dspvers": dspvers}, serial=interface.serial),
         "dump_seconds": duration,
         "note": [
             "Register shape and arrival times only; mixer values are private.",

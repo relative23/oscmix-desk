@@ -90,7 +90,10 @@ def test_an_unsavable_artifact_still_reports_unrestored_state(sweep, monkeypatch
     monkeypatch.setattr(sweep, 'read_all', lambda *args: {'/output/1/volume': 0.0})
     monkeypatch.setattr(sweep, 'measure_and_restore', lambda *args:
                         ([], {}, ['/output/1/volume'], 'restoration failed'))
-    monkeypatch.setattr(sweep, 'device_firmware', lambda *args: {})
+    def firmware(*_args, serial):
+        assert serial == '123'
+        return {}
+    monkeypatch.setattr(sweep, 'device_firmware', firmware)
     assert sweep.main() == 1
     error = capsys.readouterr().err
     assert 'NOT RESTORED' in error
@@ -214,7 +217,10 @@ def test_evidence_names_comparison_code_and_refuses_a_changed_runtime(
     monkeypatch.setattr(sweep, 'read_all', lambda *args: state)
     monkeypatch.setattr(sweep, 'measure_and_restore', lambda *args:
                         ([{'path': args[2][0][0], 'verdict': 'confirmed'}], state, [], None))
-    monkeypatch.setattr(sweep, 'device_firmware', lambda *args: {})
+    def firmware(*_args, serial):
+        assert serial == '123'
+        return {}
+    monkeypatch.setattr(sweep, 'device_firmware', firmware)
     assert sweep.main() == int(changed)
     evidence = json.loads(output.read_text())
     assert evidence['desk_source'] == actual
