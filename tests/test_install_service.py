@@ -3,15 +3,15 @@ import importlib.util
 import json
 import os
 import subprocess
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from support import repo_file
 
 
 @pytest.fixture
 def admin(tmp_path, monkeypatch):
-    path = Path(__file__).resolve().parents[1] / 'scripts/install-service.py'
+    path = repo_file('scripts/install-service.py')
     spec = importlib.util.spec_from_file_location('install_service', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

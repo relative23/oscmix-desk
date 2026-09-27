@@ -81,8 +81,10 @@ def test_native_pid_is_not_authority_to_reload_a_different_session(native, repla
 def test_reload_targets_only_the_pinned_desk_process(native, monkeypatch):
     service, proc, _ = native
     calls = []
-    monkeypatch.setattr(os, 'pidfd_open', lambda pid: calls.append(('open', pid)) or 39)
-    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda fd, sig: calls.append((fd, sig)))
+    monkeypatch.setattr(os, 'pidfd_open', lambda pid: calls.append(('open', pid)) or 39,
+                        raising=False)
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda fd, sig: calls.append((fd, sig)),
+                        raising=False)
     monkeypatch.setattr(os, 'close', lambda fd: calls.append(('close', fd)))
     assert hostservice.reload(service, proc) == 'reloaded'
     assert calls == [('open', 1234), (39, signal.SIGHUP), ('close', 39)]
@@ -93,11 +95,35 @@ def test_reload_revalidates_after_pinning_pid_and_closes_on_replacement(native, 
     calls = []
     answers = iter((1234, 4321))
     monkeypatch.setattr(hostservice, 'main_pid', lambda *_: next(answers))
-    monkeypatch.setattr(os, 'pidfd_open', lambda _: 39)
-    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda *_: pytest.fail('wrong process'))
+    monkeypatch.setattr(os, 'pidfd_open', lambda _: 39, raising=False)
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda *_: pytest.fail('wrong process'),
+                        raising=False)
     monkeypatch.setattr(os, 'close', calls.append)
     assert hostservice.reload(service, proc) == 'failed'
     assert calls == [39]
+
+
+@pytest.mark.parametrize('operation', ['open', 'send'])
+@pytest.mark.parametrize('failure', ['unavailable', 'denied'])
+def test_reload_refuses_without_safe_process_signalling(native, monkeypatch, operation, failure):
+    service, proc, _ = native
+    opened, closed = [], []
+    # pidfd APIs depend on the interpreter build as well as the running kernel.
+    monkeypatch.setattr(os, 'pidfd_open', lambda pid: opened.append(pid) or 39, raising=False)
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda *_: pytest.fail('must not signal'),
+                        raising=False)
+    monkeypatch.setattr(os, 'kill', lambda *_: pytest.fail('unsafe numeric PID fallback'))
+    monkeypatch.setattr(os, 'close', closed.append)
+    module, name = (os, 'pidfd_open') if operation == 'open' else (signal, 'pidfd_send_signal')
+    if failure == 'unavailable':
+        monkeypatch.delattr(module, name)
+    else:
+        def denied(*_):
+            raise PermissionError('pidfd operation denied')
+        monkeypatch.setattr(module, name, denied)
+    assert hostservice.reload(service, proc) == 'failed'
+    assert opened == ([1234] if operation == 'send' else [])
+    assert closed == ([39] if operation == 'send' else [])
 
 
 @pytest.mark.parametrize('status', ['SigCgt:\t0', 'SigCgt:\t2', 'SigCgt:\tbroken', '', None])
@@ -114,9 +140,10 @@ def test_reload_cannot_kill_a_python_process_before_its_handler_exists(
     clock = iter((0.0, hostservice.RELOAD_READY_TIMEOUT + 1))
     monkeypatch.setattr(hostservice.time, 'monotonic', lambda: next(clock))
     closed = []
-    monkeypatch.setattr(os, 'pidfd_open', lambda _: 39)
+    monkeypatch.setattr(os, 'pidfd_open', lambda _: 39, raising=False)
     monkeypatch.setattr(os, 'close', closed.append)
-    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda *_: pytest.fail('premature SIGHUP'))
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda *_: pytest.fail('premature SIGHUP'),
+                        raising=False)
     assert hostservice.reload(service, proc) == 'failed'
     assert closed == [39]
 
@@ -125,9 +152,11 @@ def test_reload_waits_for_handler_without_changing_the_pinned_process(native, mo
     service, proc, entry = native
     (entry / 'status').write_text('PPid:\t12\nSigCgt:\t0\n')
     calls = []
-    monkeypatch.setattr(os, 'pidfd_open', lambda pid: calls.append(('open', pid)) or 39)
+    monkeypatch.setattr(os, 'pidfd_open', lambda pid: calls.append(('open', pid)) or 39,
+                        raising=False)
     monkeypatch.setattr(os, 'close', lambda fd: calls.append(('close', fd)))
-    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda fd, sig: calls.append((fd, sig)))
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda fd, sig: calls.append((fd, sig)),
+                        raising=False)
 
     def finish_importing(_):
         assert calls == [('open', 1234)]
@@ -192,7 +221,8 @@ def test_stale_runit_pid_is_not_authority_without_the_registered_supervisor(nati
 
 def test_read_only_status_does_not_start_or_signal_native_manager(native, monkeypatch):
     service, _, _ = native
-    monkeypatch.setattr(os, 'pidfd_open', lambda _: pytest.fail('status must not signal'))
+    monkeypatch.setattr(os, 'pidfd_open', lambda _: pytest.fail('status must not signal'),
+                        raising=False)
     report = diagnostics.service_status()
     assert report['manager'] == 'runit'
     assert report['ActiveState'] == 'active'

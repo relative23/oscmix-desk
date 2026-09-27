@@ -7,8 +7,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from support import repo_file
 
-DIRECTORY = Path(__file__).resolve().parents[1] / 'packaging/repository'
+DIRECTORY = repo_file('packaging/repository')
 PRIMARY = 'A' * 40
 SIGNER = 'B' * 40
 VALID = ('[GNUPG:] GOODSIG ' + SIGNER[-16:] + ' Test key\n'
