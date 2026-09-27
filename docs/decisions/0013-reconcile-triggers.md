@@ -286,3 +286,25 @@ mechanism was described wrongly.
 A reload re-reads the desk in effect since 0.6.3 -- the active profile,
 else `routing.conf` (ADR 0018) -- not `routing.conf` alone as the
 SIGHUP section above says.
+
+## Amended in 0.8.0
+
+The trigger list remains bounded to explicit lifecycle events. A later
+reconcile preserves every declared REMEMBER value, even when its feedback
+is missing, invalid or still matches the file. A changed file read by SIGHUP
+does not make those starting values writable again. PIN repair and dependent
+link/partner checks follow the [ownership correction in ADR 0012](0012-pin-and-remember.md#080-correction-ownership-does-not-depend-on-feedback).
+Explicit profile/main-desk application and a new session after restart or
+hotplug still apply starting values; explicit profile results remain strict.
+
+Startup verification and reload still must not interleave. The reload helper
+waits for the existing verifier before acquiring its own backend operation.
+The [coordinated backend lease](0030-backend-owned-control.md) additionally
+excludes GTK and other cooperating writers throughout each desk operation,
+including its read-back and permitted repair. A stopped, failed or expired
+operation cannot be continued with observations from an earlier connection.
+
+The historical receive-port discussion above describes the old UDP path.
+Desk and the matching GTK now receive separate observations from the same
+backend owner. This does not add polling, hardware timestamps or playback
+matrix read-back, and does not turn a cached value into a hardware report.

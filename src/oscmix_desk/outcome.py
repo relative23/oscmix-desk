@@ -6,10 +6,11 @@ Four states:
     Written, and the device reported the values back.
 
 ``APPLIED_UNVERIFIED``
-    Written, and the read-back could not confirm it -- normally because
-    the mixer GUI holds UDP 8222, which is the common desktop case, not
-    a fault. Carries the list of what went unconfirmed, because
-    "unverified" without the list is not an outcome a person can act on.
+    Written, but hardware-origin reports did not confirm every value,
+    verification was not requested, or the coordinated operation failed
+    to finish. Carries the unconfirmed registers and whether the marker
+    was committed. Shared replies let GTK and desk observe the same
+    backend without competing for a receive port.
 
 ``REFUSED``
     Nothing was written. The config did not parse, the profile does not
@@ -89,18 +90,16 @@ class Outcome:
     #: not be synced, so a power cut may bring the previous state back.
     #: ``persisted`` decides the reload; this is said in the line only.
     durable: bool = True
-    #: Whether a read-back ran, for an applied outcome (a refusal wrote
-    #: nothing, so there was nothing to read). False when the caller
-    #: asked for none, or the receive port was held or could not be
-    #: bound: ``unverified`` then means "unknown" rather than "looked for
-    #: and absent", and ``reason`` says why nobody looked. Not derivable
-    #: from ``reason``, which is free text for an unbindable port. Until
-    #: 0.6.11 a held port was worded "N register(s) unconfirmed", which
-    #: is what a read-back that ran and came up short says.
+    #: Whether a completed read-back remains valid for this operation.
+    #: False when verification was skipped, reading failed, or the lease
+    #: could not finish: ``unverified`` then means unknown rather than
+    #: observed to differ or absent from a completed observation window.
+    #: ``reason`` explains the failure but does not determine this flag.
     read_back: bool = True
     #: For ``WRITTEN_IN_PART``: the registers that had gone out when the
-    #: wire gave out, in order, and the ones that had not. Handed to the
-    #: kernel is what "gone out" means; a datagram socket knows no more.
+    #: wire gave out, in order, and the ones that had not. Submission or
+    #: a lost acknowledgment does not confirm a hardware value. The
+    #: uncertain in-flight write stays in ``written`` to prevent replay.
     written: List[str] = field(default_factory=list)
     unwritten: List[str] = field(default_factory=list)
 
