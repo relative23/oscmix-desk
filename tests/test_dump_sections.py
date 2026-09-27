@@ -19,10 +19,10 @@ state). The shapes still come from the device; only the numbers are ours.
 
 import pytest
 
-from oscmix_desk import dump
+from oscmix_desk import dump, reconcile
 from oscmix_desk.config import load_config
 from oscmix_desk.devices import device_for_name
-from oscmix_desk.model import Config
+from oscmix_desk.model import ChannelSetting, Config
 from oscmix_desk.registers import (
     BOOL,
     ENUM,
@@ -153,6 +153,21 @@ def test_every_setting_survives_a_dump_and_a_reload(seen, tmp_path):
     first = dumped(seen)
     second = dump.render_config(reloaded(first, tmp_path), UCX2)
     assert settings_in(second) == settings_in(first)
+
+
+@pytest.mark.parametrize('value', [False, True])
+@pytest.mark.parametrize('model', [UCX2, None], ids=['modelled', 'unclassified'])
+def test_an_adopted_boolean_export_preserves_both_on_and_off_values(tmp_path, value, model):
+    config = Config(channels=(ChannelSetting('input', 3, 'phase', value),))
+    text = dump.render_config(config, model)
+    # The report stays REMEMBER; only explicit adoption activates its value.
+    assert not any(line.startswith('phase =') for line in text.splitlines())
+    adopted = '\n'.join(line[2:] if line.startswith('# phase =') else line
+                        for line in text.splitlines())
+    path = tmp_path / 'adopted.conf'
+    path.write_text(adopted)
+    entry, = reconcile.desired(load_config(path))
+    assert (entry.path, entry.tags, entry.args) == ('/input/3/phase', 'i', (int(value),))
 
 
 def test_the_dump_is_a_fixed_point_from_the_second_render(seen, tmp_path):

@@ -78,6 +78,18 @@ def test_a_section_parses_every_domain(session_mod, tmp_path):
     assert got[("output", 5, "reflevel")] == "+4dBu"
 
 
+@pytest.mark.parametrize(('spelling', 'expected'), [
+    ('1', 1), ('YeS', 1), ('TRUE', 1), ('on', 1),
+    ('0', 0), ('no', 0), ('False', 0), ('Off', 0),
+])
+def test_boolean_spellings_produce_the_same_channel_write(
+        session_mod, tmp_path, spelling, expected):
+    config = session_mod.load_config(write(tmp_path, DEVICE +
+                                          '[input:3]\nphase =  %s  \n' % spelling))
+    entry, = reconcile.desired(config)
+    assert (entry.path, entry.tags, entry.args) == ('/input/3/phase', 'i', (expected,))
+
+
 def test_an_option_the_channel_does_not_have_is_refused(session_mod, tmp_path):
     # The mic preamps have gain and 48V but no reference level; inputs
     # 3-8 have reflevel. That is per *channel*, not per device, and it

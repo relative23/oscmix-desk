@@ -217,16 +217,21 @@ def test_target_names_round_trip_through_the_generated_quoted_value(target):
     'alsa_output.fireface', 'alsa_output."studio"', r'alsa_output.\the-room',
     'alsa_output.Ä\tB\nC',
 ])
-def test_pipewire_reads_the_complete_generated_sink_configuration(tmp_path, target):
+@pytest.mark.parametrize('identity_route', [False, True])
+def test_pipewire_reads_the_complete_generated_sink_configuration(
+    tmp_path, target, identity_route,
+):
     # pw-config only parses files: no daemon, backend or audio device is used.
     parser = shutil.which('pw-config')
     if parser is None:
         pytest.skip('pw-config is unavailable; CI installs pipewire-bin for this check')
-    config = Config(routes=(
+    routes = [
         Route(name='mono', playback=(3,), output=(7,)),
         Route(name='Main \\ "room"', playback=(1, 2), output=(5, 6)),
-        Route(name='direct', playback=(5, 6), output=(5, 6)),
-    ))
+    ]
+    if identity_route:
+        routes.append(Route(name='direct', playback=(5, 6), output=(5, 6)))
+    config = Config(routes=tuple(routes))
     path = tmp_path / 'generated.conf'
     path.write_text(pipewire.generate_pipewire_conf(
         config, target, ['AUX%d' % n for n in range(20)]))
