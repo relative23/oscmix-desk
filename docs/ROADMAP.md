@@ -3,7 +3,7 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2271 tests (two empty parameter sets
+The latest interim `make check` passes 2314 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
@@ -97,6 +97,16 @@ also pass; `make check` passes 2280 tests with two empty parameter skips in 128.
 The [rotation record](evidence/0.8.0/repository-rpm-rotation-development.json)
 identifies the development inputs. Recovery after an already invalid publication
 signature, final signed-output provenance and published HTTPS remain open.
+The tag workflow now retains a draft while a separate publisher checks the
+complete signed archive, exact release-build provenance, selected live predecessor
+and retained downloads. It prepares independent signed-output provenance and
+rechecks freshness immediately before a selected deployment. A fresh development
+test verifies five complete channels, all 123 files over actual loopback HTTP,
+ten changed native-validator requests, stale promotion and interrupted responses.
+The [promotion record](evidence/0.8.0/repository-promotion-development.json)
+identifies the implementation and the passing 2314-test software run. No publisher
+workflow or Pages deployment has run. Recovery with actual publication provenance,
+published HTTPS and final native release transitions remain mandatory gates.
 A fresh actual Silverblue deep-sleep probe found that the old resume hook
 missed an active user service while `user.slice` was frozen. Resume now queues
 a bounded system service ordered after the sleep operation. The
