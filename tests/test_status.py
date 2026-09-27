@@ -212,3 +212,95 @@ def test_status_json_and_actions_cannot_accidentally_apply(args):
     with pytest.raises(SystemExit) as exc:
         cli.main(args)
     assert exc.value.code == 2
+
+
+def test_json_status_keeps_effective_configuration_identity(world, capsys):
+    path, _ = world
+    assert cli.main(['--config', str(path), '--status', '--json',
+                     '--device', 'Fireface UCX II', '--osc-port', '9345']) == 0
+    report = json.loads(capsys.readouterr().out)
+    info = report['sections']['configuration']
+    assert info['state'] == 'loaded'
+    assert info['path'] == str(path)
+    assert info['selected_file'] == str(path)
+    assert info['device_name'] == 'Fireface UCX II'
+    assert info['usb_id'] == '2a39:3fd9'
+    assert info['configured_serial'] == '24216011'
+    assert info['send_port'] == 9345
+    assert info['receive_port'] == 8222
+    assert 'detail' not in info
+    assert report['configuration_valid'] is True
+    assert report['desk_version'] == status.__version__
+    assert report['note']
+
+
+def test_status_retains_service_identity_but_excludes_private_environment(world, monkeypatch):
+    path, _ = world
+    public = dict(state='observed', manager='openrc', ActiveState='active',
+                  UnitFileState='enabled', MainPID='1234', StatusText='discovering',
+                  FragmentPath='/var/lib/oscmix-desk/service.json', detail='process inspection')
+    monkeypatch.setattr(status, 'service_status', lambda:
+                        {**public, 'Environment': 'PRIVATE=value', 'unrelated': 'hidden'})
+    assert status.collect_status(path, CommandLine())['sections']['service'] == public
+
+
+def test_installation_status_identifies_the_interpreter_and_absent_binary(world, monkeypatch):
+    path, _ = world
+    monkeypatch.setattr(status.sys, 'argv', ['/chosen/bin/oscmix-session', '--status'])
+    info = status.collect_status(path, CommandLine())['sections']['installation']
+    assert info['runtime'] == str(status.Path(status.__file__).resolve().parent)
+    assert info['entry_point'] == '/chosen/bin/oscmix-session'
+    assert info['python'] == status.sys.version.split()[0]
+    assert info['resolved_backend'] is None
+    assert info['backend_sha256'] is None
+    assert info['package_metadata'] is None
+    assert info['provenance_note']
+    assert info['maintenance'] == {
+        'core': {'pending': False}, 'gtk': {'pending': False}, 'service': {'pending': False}}
+
+
+def test_status_resolves_and_hashes_the_explicit_backend_without_executing_it(world, monkeypatch):
+    import hashlib
+
+    from oscmix_desk.discovery import resolve_binary
+
+    path, _ = world
+    binary = path.parent / 'chosen-backend'
+    content = b'not an executable program; status must only read this file'
+    binary.write_bytes(content)
+    binary.chmod(0o700)
+    monkeypatch.setenv('OSCMIX_BIN_BACKEND', str(binary))
+    monkeypatch.setattr(status, 'resolve_binary', resolve_binary)
+    info = status.collect_status(path, CommandLine())['sections']['installation']
+    assert info['resolved_backend'] == str(binary)
+    assert info['backend_sha256'] == hashlib.sha256(content).hexdigest()
+
+
+def test_unreadable_running_binary_keeps_the_inspection_error(world):
+    path, proc = world
+    # Endpoint/bridge identity is still observed; only hashing its kernel
+    # executable reference fails after that process inspection.
+    (proc / '101/exe').unlink()
+    (proc / '101/exe').symlink_to(path.parent / 'missing/oscmix')
+    info = status.collect_status(path, CommandLine())['sections']['backend']['running_file']
+    assert info['state'] == 'unknown'
+    assert 'No such file' in info['detail']
+    assert 'matches_resolved' not in info
+
+
+@pytest.mark.parametrize('active', [False, True])
+def test_playback_status_retains_the_observed_card_and_serial(world, active):
+    path, proc = world
+    row = recorded()
+    if not active:
+        row = {**row, 'stream0': row['stream0'].replace('Status: Running', 'Status: Stop')}
+    write_card(proc, row, number=2)
+    write_card(proc, recorded(), number=7, serial='99887766')
+    info = status.collect_status(path, CommandLine())['sections']['playback']
+    assert info['state'] == ('observed' if active else 'idle')
+    assert info['serial'] == '24216011'
+    assert info['card'] == 2
+    if active:
+        assert info['problem'] is None
+    else:
+        assert info['detail']

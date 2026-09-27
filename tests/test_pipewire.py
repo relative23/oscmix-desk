@@ -47,8 +47,8 @@ def test_parse_positions_from_spa_json_string(pipewire_mod):
 
 def test_generated_conf_contains_sink_per_pair_route(session_mod):
     routes = [
-        session_mod.Route(name="monitors", playback=(5, 6), output=(5, 6)),
         session_mod.Route(name="sub", playback=(3,), output=(7,)),  # mono: skipped
+        session_mod.Route(name="monitors", playback=(5, 6), output=(5, 6)),
     ]
     conf = session_mod.generate_pipewire_conf(
         make_config(session_mod, routes), target="alsa_output.fireface"
@@ -277,3 +277,14 @@ def test_the_sink_is_found_by_the_desks_name_past_what_is_not_it():
                                                                  None)
     assert pipewire.find_sink(objects, "nobody", "out.babyface") == (
         "out.babyface", None), "past a sink of another name"
+
+
+@pytest.mark.parametrize("property_name", [
+    "node.name", "node.nick", "alsa.card_name", "node.description",
+])
+def test_sink_detection_accepts_each_identifying_property(property_name):
+    props = {"media.class": "Audio/Sink", "node.name": "out.usb",
+             "audio.position": ["AUX0", "AUX1"]}
+    props[property_name] = "BABYFACE Pro"
+    assert pipewire.find_sink([{"info": {"props": props}}], "Babyface Pro") == (
+        props["node.name"], ["AUX0", "AUX1"])

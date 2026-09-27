@@ -103,14 +103,38 @@ def test_gtk_protocol_is_queried_without_a_display_or_connection(monkeypatch):
     monkeypatch.setattr(desktop, 'query', lambda argv: calls.append(argv) or 'ODK1')
     result = desktop.inspect_desktop('/gtk')
     assert result.problem is None
-    assert result.connection['protocol'] == 'ODK1'
+    assert result.binary == '/gtk'
+    assert result.connection == {'protocol': 'ODK1',
+                                 'endpoint': 'selected and checked by oscmix-launch'}
     assert calls == [['/gtk', '--control-version']]
 
 
 @pytest.mark.parametrize('content', ['', 'ODK2', 'ODK1 extra', 'ODK1\nODK1', '1'])
 def test_incompatible_gtk_is_not_accepted(monkeypatch, content):
     monkeypatch.setattr(desktop, 'query', lambda _: content)
-    assert 'incompatible' in desktop.inspect_desktop('/gtk').problem
+    result = desktop.inspect_desktop('/gtk')
+    assert 'incompatible' in result.problem
+    assert result.binary == '/gtk'
+    assert result.connection == {}
+
+
+@pytest.mark.parametrize('override', [False, True])
+def test_gtk_diagnostics_resolve_the_actual_companion_before_inspection(
+        tmp_path, monkeypatch, override):
+    binary = tmp_path / ('selected-gtk' if override else 'oscmix-gtk')
+    binary.write_text('#!/bin/sh\nexit 0\n')
+    binary.chmod(0o755)
+    monkeypatch.delenv('OSCMIX_BIN_GTK', raising=False)
+    monkeypatch.setenv('HOME', str(tmp_path))
+    monkeypatch.setenv('PATH', str(tmp_path))
+    if override:
+        monkeypatch.setenv('OSCMIX_BIN_GTK', str(binary))
+    calls = []
+    monkeypatch.setattr(desktop, 'query', lambda argv: calls.append(argv) or 'ODK1')
+    result = desktop.inspect_desktop()
+    assert result.binary == str(binary)
+    assert result.problem is None
+    assert calls == [[str(binary), '--control-version']]
 
 
 def test_missing_gtk_is_diagnosed_before_protocol_query(monkeypatch):
@@ -118,5 +142,69 @@ def test_missing_gtk_is_diagnosed_before_protocol_query(monkeypatch):
     assert 'not installed' in desktop.inspect_desktop().problem
 
 
+def test_service_query_preserves_all_requested_status_and_launcher_fields(monkeypatch):
+    from oscmix_desk.constants import SERVICE_UNIT
+
+    fields = {
+        'LoadState': 'loaded', 'ActiveState': 'active', 'UnitFileState': 'enabled',
+        'MainPID': '42', 'StatusText': 'waiting for device',
+        'FragmentPath': '/usr/lib/systemd/user/oscmix.service',
+        'ExecStart': '/usr/bin/oscmix-session', 'Environment': 'OSCMIX_CONFIG=/desk',
+        'EnvironmentFiles': '/etc/private-desk', 'UnsetEnvironment': 'XDG_CONFIG_HOME',
+    }
+
+    def query(argv):
+        assert argv[:4] == ['systemctl', '--user', 'show', '--no-pager']
+        assert argv[-1] == SERVICE_UNIT
+        requested = argv[4].removeprefix('--property=').split(',')
+        return '\n'.join(key + '=' + fields[key] for key in requested if key in fields)
+
+    monkeypatch.setattr(diagnostics, 'query', query)
+    assert diagnostics.service_status() == {'state': 'observed', **fields}
+
+
+@pytest.mark.parametrize('missing', ['LoadState', 'ActiveState'])
+def test_service_report_missing_either_required_state_is_unknown(monkeypatch, missing):
+    values = {'LoadState': 'loaded', 'ActiveState': 'active'}
+    values.pop(missing)
+    monkeypatch.setattr(diagnostics, 'query',
+                        lambda _: '\n'.join(k + '=' + v for k, v in values.items()))
+    assert diagnostics.service_status() == {
+        'state': 'unknown', 'detail': 'incomplete systemd service report'}
+
+
+@pytest.mark.parametrize('source', ['registration', 'manager'])
+def test_unavailable_service_report_retains_the_failure_detail(monkeypatch, source):
+    from oscmix_desk import hostservice
+
+    def fail(*_args):
+        raise OSError('cannot read selected manager')
+
+    if source == 'registration':
+        monkeypatch.setattr(hostservice, 'registered', fail)
+    else:
+        monkeypatch.setattr(diagnostics, 'query', fail)
+    assert diagnostics.service_status() == {
+        'state': 'unavailable', 'detail': 'cannot read selected manager'}
+
+
 def test_unreadable_gtk_protocol_is_a_diagnostic():
-    assert 'cannot identify' in desktop.inspect_desktop('/gtk').problem
+    result = desktop.inspect_desktop('/gtk')
+    assert 'cannot identify' in result.problem
+    assert result.binary == '/gtk'
+    assert result.connection == {}
+
+
+@pytest.mark.parametrize('source', ['manager', 'unit'])
+def test_launcher_config_identity_preserves_spaces_and_equals(tmp_path, monkeypatch, source):
+    path = tmp_path / 'desk space=a=b.conf'
+    path.write_text('')
+    monkeypatch.setenv('HOME', str(tmp_path))
+    manager_path = path if source == 'manager' else tmp_path / 'other.conf'
+    monkeypatch.setattr(diagnostics, 'query', lambda _:
+                        'HOME=%s\nOSCMIX_CONFIG=%s\n' % (tmp_path, manager_path))
+    service = enabled()
+    if source == 'unit':
+        service['Environment'] = '"OSCMIX_CONFIG=%s"' % path
+    assert diagnostics.service_start_problem(path, service) is None
+    assert 'different' in diagnostics.service_start_problem(tmp_path / 'other.conf', service)

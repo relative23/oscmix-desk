@@ -246,3 +246,19 @@ def test_measured_mix_tolerance_includes_its_boundary_only():
     register = register_at(UCX2, '/mix/1/input/1')
     assert numeric.equal_float(-20., -20.5, register)
     assert not numeric.equal_float(-20., -20.51, register)
+
+
+@pytest.mark.parametrize(('reported', 'matches'), [(11.5, True), (12.5, True),
+                                                  (11.49, False), (12.51, False)])
+def test_explicit_tolerance_for_an_unknown_scalar_uses_the_requested_value(reported, matches):
+    assert reconcile.matches('f', (12.,), (reported,), tolerance=.5) is matches
+
+
+@pytest.mark.parametrize(('path', 'value', 'text'), [
+    ('/reverb/predelay', 123, '123'),
+    ('/reverb/predelay', -123, '-123'),
+    (None, 0.123456789, '0.123456789'),
+])
+def test_number_rendering_keeps_integer_and_unclassified_values(path, value, text):
+    register = register_at(UCX2, path) if path else None
+    assert numeric.render_number(value, register) == text

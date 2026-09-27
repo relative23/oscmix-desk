@@ -6,6 +6,7 @@ from pathlib import Path
 
 import oracle
 import pytest
+from backend_doubles import RecordingBackend
 from control_peer import REFRESH, ScriptedControl
 from support import repo_file
 
@@ -89,6 +90,34 @@ def test_verify_confirms_matching_state(session_mod):
     assert result.mismatched == []
     assert result.unobserved == []
     assert sorted(registers) == result.confirmed
+
+
+def test_cancel_before_read_keeps_all_expectations_unobserved():
+    backend = RecordingBackend()
+    result = verify.verify_routing(
+        {"/output/5/volume": ("f", (-6.,)), "/output/1/volume": ("f", (-12.,))},
+        backend, should_stop=lambda: True, device_model=UCX2)
+    assert result == verify.VerifyResult([], [], ["/output/1/volume", "/output/5/volume"])
+    assert backend.dumps == 0
+    assert backend.sent == []
+
+
+def test_read_window_closes_after_every_reportable_path_even_with_write_only_left(monkeypatch):
+    backend = RecordingBackend()
+    deliveries = []
+
+    def receive(_timeout):
+        deliveries.append(1)
+        assert len(deliveries) == 1, "all reportable expectations were already confirmed"
+        yield "/output/5/volume", "f", (-6.,)
+
+    monkeypatch.setattr(backend, "messages", receive)
+    result = verify.verify_routing(
+        {"/output/5/volume": ("f", (-6.,)), "/output/5/loopback": ("i", (1,))},
+        backend, device_model=UCX2)
+    assert result == verify.VerifyResult(["/output/5/volume"], [], ["/output/5/loopback"])
+    assert backend.dumps == 1
+    assert deliveries == [1]
 
 
 def test_verify_classifies_wrong_value_as_mismatch(session_mod):

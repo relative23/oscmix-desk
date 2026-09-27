@@ -156,6 +156,44 @@ def test_verified_means_the_device_confirmed_it(tmp_path, confirming_backend):
     assert outcome.unverified == []
 
 
+def test_explicit_profile_checks_the_selected_models_quantized_report(tmp_path):
+    write_config(tmp_path / "profiles" / "gain.conf", "[input:1]\ngain = 1.29\n")
+    backend = RecordingBackend(lambda _: [("/input/1/gain", "f", (1.2000000476837158,))])
+    outcome = profiles.switch_profile("gain", config_path=tmp_path / "routing.conf",
+                                      backend=backend)
+    assert outcome.state == outcome_mod.APPLIED_VERIFIED
+    assert outcome.unverified == []
+    assert outcome.unverifiable == []
+    assert outcome.read_back
+    assert outcome.persisted
+    assert backend.sent == [("/input/1/gain", "f", (1.29,))]
+
+
+@pytest.mark.parametrize("failure", [
+    OSError(11, "window unavailable"), OSError("window unavailable"),
+])
+def test_failed_profile_readback_keeps_its_name_and_complete_unconfirmed_list(tmp_path, failure):
+    write_config(tmp_path / "profiles" / "levels.conf",
+                 "[output:5]\nvolume = -6\n[output:1]\nvolume = -12\n")
+
+    class RefusedRefresh(RecordingBackend):
+        def request_dump(self):
+            raise failure
+
+    backend = RefusedRefresh()
+    outcome = profiles.switch_profile("levels", config_path=tmp_path / "routing.conf",
+                                      backend=backend)
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
+    assert outcome.name == "levels"
+    assert outcome.reason == "window unavailable"
+    assert outcome.unverified == ["/output/1/volume", "/output/5/volume"]
+    assert outcome.unverifiable == []
+    assert outcome.read_back is False
+    assert backend.sent == [("/output/5/volume", "f", (-6.,)),
+                            ("/output/1/volume", "f", (-12.,))]
+    assert backend.operations == ["begin", "finish", "close"]
+
+
 # --------------------------------------------------------------------------
 # Outcome 2: applied, but it could not be checked -- with the list.
 # --------------------------------------------------------------------------
@@ -228,6 +266,16 @@ def test_no_profiles_directory_is_empty_not_an_error(tmp_path):
     assert paths_mod.list_profiles(tmp_path / "routing.conf") == []
 
 
+def test_no_discoverable_config_means_an_empty_profile_list(tmp_path, monkeypatch):
+    monkeypatch.delenv("OSCMIX_CONFIG", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setenv("OSCMIX_SYSTEM_CONFIG", str(tmp_path / "system.conf"))
+    assert paths_mod.discover_config_path() is None
+    assert paths_mod.list_profiles() == []
+    assert profiles.describe_profiles() == []
+
+
 # --------------------------------------------------------------------------
 # The rest of the public surface.
 # --------------------------------------------------------------------------
@@ -283,6 +331,31 @@ def test_profile_path_maps_a_name_to_a_file(tmp_path):
 
     path = paths_mod.profile_path("tracking", tmp_path / "routing.conf")
     assert path == tmp_path / "profiles" / "tracking.conf"
+
+
+@pytest.mark.parametrize('count', [6, 8])
+@pytest.mark.parametrize('state', [outcome_mod.APPLIED_UNVERIFIED, outcome_mod.WRITTEN_IN_PART])
+def test_outcome_abbreviation_retains_exact_counts_and_the_complete_result(count, state):
+    paths = ['/input/%d/mute' % n for n in range(1, count + 1)]
+    outcome = outcome_mod.Outcome(state, 'tracking', unverified=list(paths),
+                                  written=list(paths), unwritten=['/output/5/volume'])
+    text = outcome.describe()
+    shown = ', '.join(paths[:6])
+    expected = shown if count == 6 else shown + ' and 2 more'
+    assert expected in text
+    if count == 6:
+        assert ' more' not in text
+    else:
+        assert paths[6] not in text
+        assert paths[7] not in text
+    if state == outcome_mod.WRITTEN_IN_PART:
+        assert 'wrote %d of %d register(s)' % (count, count + 1) in text
+        assert 'not written: /output/5/volume' in text
+    else:
+        assert '%d register(s) unconfirmed' % count in text
+    assert outcome.unverified == paths
+    assert outcome.written == paths
+    assert outcome.unwritten == ['/output/5/volume']
 
 
 def test_the_outcome_describes_itself_in_one_line(tmp_path):

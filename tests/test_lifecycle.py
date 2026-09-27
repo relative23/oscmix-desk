@@ -348,3 +348,45 @@ def test_a_start_that_applied_says_ready_exactly_and_hands_on_its_config(
                                   path) == ("verifier", None)
     assert notices == ["READY=1"]
     assert handed == [path]
+
+
+@pytest.mark.parametrize('missing', [None, 'alsaseqio', 'oscmix'])
+def test_backend_start_uses_the_selected_binaries_and_device_endpoint(
+        session_module, tmp_path, monkeypatch, missing):
+    from oscmix_desk.discovery import lock_key
+    from oscmix_desk.locking import control_path
+    from oscmix_desk.model import Config
+
+    binaries = {}
+    for name, variable in [('alsaseqio', 'OSCMIX_BIN_ALSASEQIO'),
+                           ('oscmix', 'OSCMIX_BIN_BACKEND')]:
+        binary = tmp_path / name
+        if name != missing:
+            binary.write_text('test binary; must never execute')
+            binary.chmod(0o700)
+        monkeypatch.setenv(variable, str(binary))
+        binaries[name] = str(binary)
+    config = Config(serial='99887766')
+    selected = tmp_path / 'routing.conf'
+    endpoint = control_path(selected, lock_key(config.usb_id, config.serial))
+    child, calls = object(), []
+    monkeypatch.setattr(session_module.subprocess, 'Popen',
+                        lambda *args, **kwargs: calls.append((args, kwargs)) or child)
+    result = session_module._start_backend(28, config, selected)
+    if missing:
+        assert result is None
+        assert calls == []
+    else:
+        assert result is child
+        assert calls == [(([binaries['alsaseqio'], '-x', '28:1', binaries['oscmix'],
+                            '-c', str(endpoint)],), {})]
+        assert endpoint.parent.is_dir()
+
+
+def test_backend_readiness_timeout_remains_a_failure(session_module, tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(session_module, 'PORT_READY_TIMEOUT', .01)
+    monkeypatch.setattr(session_module, 'control_socket_owner', lambda *_: None)
+    child = SimpleNamespace(pid=123, poll=lambda: None)
+    assert session_module._await_backend_port(child, tmp_path / 'control', tmp_path) is False

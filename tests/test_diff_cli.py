@@ -268,3 +268,35 @@ def test_snapshot_names_the_connected_box_and_epoch(capsys, read_peer):
     out = capsys.readouterr().out
     assert 'serial 00000000' in out
     assert '000102030405060708090a0b0c0d0e0f' in out
+
+
+def test_diff_groups_each_write_by_its_actual_phase_and_sorts_within_it(capsys, read_peer):
+    from oscmix_desk.model import ChannelSetting, Config, Route
+
+    config = Config(
+        routes=(Route('monitor', output=(5, 6), input=(1, 2), level=-9.0),),
+        channels=(ChannelSetting('input', 4, 'gain', 15.0),
+                  ChannelSetting('input', 3, 'gain', 12.0)))
+    with read_peer([('/input/3/gain', 'f', (3.0,))]) as peer:
+        assert reads_mod._diff(config) == 3
+    assert peer.requests == [HELLO, REFRESH]
+    assert peer.writes == []
+    groups = {}
+    for line in capsys.readouterr().out.splitlines():
+        if line.startswith('phase '):
+            phase = line
+            groups[phase] = []
+        elif line.startswith('  /'):
+            groups[phase].append(line.split())
+    assert list(groups) == ['phase 0 -- links', 'phase 1 -- mix matrix',
+                            'phase 2 -- channel and global state']
+    assert groups == {
+        'phase 0 -- links': [
+            ['/input/1/stereo', '1', 'device', '-', 'missing'],
+            ['/output/5/stereo', '1', 'device', '-', 'missing']],
+        'phase 1 -- mix matrix': [
+            ['/mix/5/input/1', '-9.0,', '0', 'device', '-', 'missing']],
+        'phase 2 -- channel and global state': [
+            ['/input/3/gain', '12.0', 'device', '3.0', 'mismatched'],
+            ['/input/4/gain', '15.0', 'device', '-', 'missing']],
+    }

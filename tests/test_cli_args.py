@@ -399,28 +399,31 @@ def test_an_override_still_goes_with_a_start_and_with_a_read(tmp_path,
     def record(name):
         def called(*args):
             config = args[1] if name == "start" else args[0]
-            seen.append((name, config.device_name, config.osc_port, config.overrides))
+            selected_path = args[0].config if name == "start" else args[1]
+            seen.append((name, config.device_name, config.osc_port,
+                         config.overrides, selected_path))
             return 0
         return called
 
     monkeypatch.setattr(cli, "run_session", record("start"))
     monkeypatch.setattr(cli, "_diff", record("--diff"))
     monkeypatch.setattr(cli, "_snapshot", record("--snapshot"))
+    monkeypatch.setattr(cli, "_dump_config", record("--dump-config"))
     path = tmp_path / "routing.conf"
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
     overrides = ["--device", "fireface ucx ii", "--osc-port", "9000"]
-    for action in ([], ["--diff"], ["--snapshot"]):
+    for action in ([], ["--diff"], ["--snapshot"], ["--dump-config"]):
         assert cli.main(["--config", str(path), *overrides, *action]) == 0
     # Replaced, and remembered as replaced: what a session resolves a
     # re-read file with (`reload_mod._kept_for_this_process`).
     from oscmix_desk import CommandLine
 
     said = CommandLine(device_name="fireface ucx ii", osc_port=9000)
-    assert seen == [(name, "fireface ucx ii", 9000, said)
-                    for name in ("start", "--diff", "--snapshot")]
+    assert seen == [(name, "fireface ucx ii", 9000, said, path)
+                    for name in ("start", "--diff", "--snapshot", "--dump-config")]
     seen.clear()
     assert cli.main(["--config", str(path)]) == 0
-    assert seen == [("start", "Fireface UCX II", 7222, CommandLine())]
+    assert seen == [("start", "Fireface UCX II", 7222, CommandLine(), path)]
 
 
 def test_a_dry_run_shows_the_desk_as_the_switch_loads_it(

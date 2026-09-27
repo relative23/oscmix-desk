@@ -88,6 +88,7 @@ def test_inactive_pcm_does_not_adopt_an_advertised_rate_or_a_previous_hw_params(
     "duplicate-altset",
     "missing-descriptor", "duplicate-descriptor", "channels", "format", "pcm-format",
     "missing-rate", "duplicate-rate", "zero-rate", "fractional-rate", "zero-denominator",
+    "zero-fraction",
     "unknown-map",
 ])
 def test_inconsistent_active_data_is_never_a_valid_mode(kind):
@@ -125,11 +126,19 @@ def test_inconsistent_active_data_is_never_a_valid_mode(kind):
         params = params.replace("48000/1", "96001/2")
     elif kind == "zero-denominator":
         params = params.replace("48000/1", "48000/0")
+    elif kind == "zero-fraction":
+        params = params.replace("48000/1", "0/0")
     elif kind == "unknown-map":
         stream = stream.replace("Channels: 20", "Channels: 18")
         params = params.replace("channels: 20", "channels: 18")
     with pytest.raises(ValueError, match=r"USB|ALSA"):
         streams.parse_playback(stream, params)
+
+
+def test_integral_rate_may_have_a_nonunit_denominator():
+    row = recorded()
+    params = row["hw_params"].replace("48000/1", "96000/2")
+    assert streams.parse_playback(row["stream0"], params) == streams.PlaybackMode(48000, 20, 1)
 
 
 def test_only_the_configured_serials_card_is_read(proc):

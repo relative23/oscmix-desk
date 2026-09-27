@@ -33,6 +33,35 @@ volume = -10.0
 """
 
 
+@pytest.mark.parametrize('state', [outcome_mod.APPLIED_VERIFIED, outcome_mod.WRITTEN_IN_PART])
+@pytest.mark.parametrize('selection', [('--profile', 'tracking'), ('--no-profile',)])
+def test_switch_and_restore_keep_the_selected_desk_through_partial_and_complete_outcomes(
+        tmp_path, monkeypatch, capsys, state, selection):
+    from two_boxes import unit
+
+    path = tmp_path / 'selected.conf'
+    path.write_text('')
+    other = tmp_path / 'other.conf'
+    other.write_text('')
+    calls, reloads = [], []
+
+    def result(name, config_path):
+        calls.append((name, config_path))
+        return outcome_mod.Outcome(
+            state, name, written=['/input/3/gain'], unwritten=['/input/4/gain'])
+
+    monkeypatch.setattr(cli, 'switch_profile', result)
+    monkeypatch.setattr(cli, 'restore_main',
+                        lambda config_path: result('routing.conf', config_path))
+    monkeypatch.setattr(cli, 'unit_process', unit({'OSCMIX_CONFIG': str(other)}))
+    monkeypatch.setattr(cli, 'reload_service', lambda: reloads.append(True) or cli.RELOAD_DONE)
+    assert cli.main(['--config', str(path), *selection]) == (
+        cli.EXIT_FAILURE if state == outcome_mod.WRITTEN_IN_PART else EXIT_OK)
+    assert calls == [('tracking' if selection[0] == '--profile' else 'routing.conf', path)]
+    assert reloads == []
+    assert capsys.readouterr().out
+
+
 @pytest.mark.parametrize("selection", [("--profile", "tracking"), ("--no-profile",)])
 def test_a_dry_run_never_switches_or_forgets_a_profile(
         tmp_path, capsys, monkeypatch, selection):

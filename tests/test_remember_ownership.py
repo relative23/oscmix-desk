@@ -9,6 +9,7 @@ from backend_doubles import RecordingBackend
 from oscmix_desk import config as config_mod
 from oscmix_desk import routing, verify
 from oscmix_desk.backend import OSCMIX
+from oscmix_desk.devices import UCX2
 from oscmix_desk.errors import WriteFailed
 from oscmix_desk.model import ChannelSetting, Config, Route
 from oscmix_desk.reconcile import ApplyIntent
@@ -159,6 +160,30 @@ def test_retention_summary_does_not_invent_confirmation(monkeypatch, caplog, val
     assert backend.sent == []
 
 
+@pytest.mark.parametrize("policy", [PIN, REMEMBER])
+@pytest.mark.parametrize("missing", [True, False])
+def test_effective_policy_controls_missing_or_invalid_link_repair_summary(caplog, policy, missing):
+    path = "/output/5/stereo"
+    result = (verify.VerifyResult([], [], [path]) if missing
+              else verify.VerifyResult([], [path], [], [path]))
+    config = route_config(policies={("output", "stereo"): policy})
+    with caplog.at_level(logging.INFO):
+        problems = verify._report(result, config, UCX2, 1)
+    summaries = [record.message for record in caplog.records if "confirmed;" in record.message]
+    assert len(summaries) == 1
+    if policy == PIN:
+        assert problems == [path]
+        assert all("0 REMEMBER retained without feedback" in s for s in summaries)
+        assert all("0 REMEMBER invalid feedback" in s for s in summaries)
+        meaning = "1 missing prompt" if missing else "1 differing PIN"
+    else:
+        assert problems == []
+        assert "0 differing PIN" in summaries[0]
+        meaning = ("1 REMEMBER retained without feedback" if missing
+                   else "1 REMEMBER invalid feedback")
+    assert all("0 confirmed" in summary and meaning in summary for summary in summaries)
+
+
 @pytest.mark.parametrize("reports", [[], [("/output/5/volume", "f", (-30.,))]])
 def test_explicit_profile_remains_strict_and_persists_after_unverified_apply(
         tmp_path, monkeypatch, reports):
@@ -232,3 +257,66 @@ def test_reload_waits_for_startup_verification_without_resetting_missing_remembe
     assert backend.dumps == 2
     assert backend.sent == [("/output/5/volume", "f", (-6.,))]
     assert statuses[-1].startswith("STATUS=running; reconciled")
+
+
+@pytest.mark.parametrize('confirmed', [False, True])
+def test_direct_mix_repair_cannot_bypass_a_retained_link(monkeypatch, confirmed):
+    config = route_config(policies={('output', 'stereo'): REMEMBER})
+    backend = recorded(monkeypatch, lambda _: LINKS)
+    if confirmed:
+        routing.send_mix(config, backend, confirmed=['/output/5/stereo'])
+        assert backend.sent == [('/mix/5/playback/1', 'fi', (0., 0))]
+    else:
+        with pytest.raises(WriteFailed, match='retained link state') as failure:
+            routing.send_mix(config, backend)
+        assert failure.value.written == ()
+        assert failure.value.unwritten == ('/mix/5/playback/1',)
+        assert backend.sent == []
+    assert backend.dumps == 0
+
+
+@pytest.mark.parametrize('value', [None, 0, 1, 2])
+def test_link_sync_preserves_retention_and_reports_its_actual_result(monkeypatch, value):
+    config = route_config(policies={('output', 'stereo'): REMEMBER})
+    reports = LINKS[:1] + ([] if value is None else [('/output/5/stereo', 'i', (value,))])
+    backend = recorded(monkeypatch, lambda _: reports)
+    if value is None:
+        with pytest.raises(WriteFailed, match='retained link state') as failure:
+            verify.verify_and_repair(config, backend)
+        assert failure.value.written == ()
+        assert failure.value.unwritten == ('/mix/5/playback/1',)
+    else:
+        assert verify.verify_and_repair(config, backend) is (value == 1)
+    assert backend.sent == ([('/mix/5/playback/1', 'fi', (0., 0))] if value == 1 else [])
+    assert backend.dumps == 1
+
+
+def test_failed_pin_repair_is_false_after_exactly_one_retry(monkeypatch):
+    config = Config(channels=[ChannelSetting('input', 3, 'gain', 6.)])
+    backend = recorded(monkeypatch, lambda _: [('/input/3/gain', 'f', (0.,))])
+    assert verify.verify_and_repair(config, backend) is False
+    assert backend.dumps == 2
+    assert backend.sent == [('/input/3/gain', 'f', (6.,))]
+
+
+@pytest.mark.parametrize('stage', ['before', 'refresh', 'repair'])
+def test_cancelled_verification_never_reports_success(monkeypatch, stage):
+    config = Config(channels=[ChannelSetting('input', 3, 'gain', 6.)])
+    backend = recorded(monkeypatch, lambda _: [('/input/3/gain', 'f', (0.,))])
+    stopped = [stage == 'before']
+    request, send = backend.request_dump, backend.send
+
+    def refresh():
+        request()
+        if stage == 'refresh':
+            stopped[0] = True
+
+    def repair(messages):
+        send(messages)
+        stopped[0] = True
+
+    monkeypatch.setattr(backend, 'request_dump', refresh)
+    monkeypatch.setattr(backend, 'send', repair)
+    assert verify.verify_and_repair(config, backend, should_stop=lambda: stopped[0]) is False
+    assert backend.dumps == (0 if stage == 'before' else 1)
+    assert backend.sent == ([('/input/3/gain', 'f', (6.,))] if stage == 'repair' else [])

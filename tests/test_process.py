@@ -507,3 +507,84 @@ def test_a_link_to_another_socket_is_not_ownership(process_mod, endpoint):
     (proc / "101/fd/3").unlink()
     (proc / "101/fd/4").symlink_to("socket:[999]")
     assert process_mod.control_socket_owner(path, proc) is None
+
+
+def test_shutdown_preserves_grace_before_forcing_backend_exit(process_mod, monkeypatch):
+    clock = [10.0]
+    waits = []
+    child = Child(ignore_terminate=True)
+    original_wait = child.wait
+
+    def wait(timeout=None):
+        assert clock[0] <= 15, 'shutdown exceeded its bounded grace'
+        waits.append(clock[0])
+        clock[0] += 1
+        return original_wait(timeout)
+
+    monkeypatch.setattr(child, 'wait', wait)
+    monkeypatch.setattr(process_mod.time, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(process_mod, 'CHILD_STOP_GRACE', 3.0)
+    assert process_mod.supervise(child, {'stop': True}) == 0
+    assert child.killed
+    # First timeout notices shutdown at t=11. The backend may finish its
+    # cleanup until t=14; only then may the wait after SIGKILL occur.
+    assert waits[-1] >= 14
+    assert waits[-1] < 15
+
+
+def test_unreadable_identity_after_pinning_never_signals_a_backend(
+        process_mod, endpoint, monkeypatch):
+    path, device, proc = stale_target(endpoint)
+    closed = []
+
+    def pin(pid):
+        assert pid == 101
+        (proc / 'net/unix').write_text('unreadable replacement table')
+        return 39
+
+    monkeypatch.setattr(os, 'pidfd_open', pin, raising=False)
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda *_: pytest.fail('uncertain identity'),
+                        raising=False)
+    monkeypatch.setattr(os, 'close', closed.append)
+    assert process_mod._cleanup_stale_backend(path, device, proc) == 101
+    assert closed == [39]
+
+
+@pytest.mark.parametrize('mismatch', ['client', 'serial'])
+def test_stale_cleanup_requires_each_device_identity_component(
+        process_mod, endpoint, monkeypatch, mismatch):
+    from dataclasses import replace
+
+    path, device, proc = stale_target(endpoint)
+    selected = replace(device, **({'client': 25} if mismatch == 'client'
+                                  else {'serial': '99887766'}))
+    monkeypatch.setattr(process_mod, '_terminate', lambda *_: pytest.fail('other device'))
+    assert process_mod._cleanup_stale_backend(path, selected, proc) == 101
+
+
+@pytest.mark.parametrize('condition', ['unreadable-owner', 'other-owner', 'invalid-text'])
+def test_process_scan_continues_and_finds_an_oscmix_with_changed_argv(
+        process_mod, tmp_path, monkeypatch, condition):
+    from types import SimpleNamespace
+
+    proc = fake_proc(tmp_path, {100: ('another', '/other'), 101: ('oscmix', '')})
+    first, second = proc / '100', proc / '101'
+    original_stat = process_mod.Path.stat
+    original_iterdir = process_mod.Path.iterdir
+
+    def metadata(path, *args, **kwargs):
+        if path == first:
+            if condition == 'unreadable-owner':
+                raise PermissionError('process ownership unavailable')
+            if condition == 'other-owner':
+                return SimpleNamespace(st_uid=os.getuid() + 1)
+        return original_stat(path, *args, **kwargs)
+
+    if condition == 'invalid-text':
+        (first / 'comm').write_bytes(b'other\xff\n')
+        (first / 'cmdline').write_bytes(b'other\xff\0argument\0')
+    monkeypatch.setattr(process_mod.Path, 'stat', metadata)
+    monkeypatch.setattr(process_mod.Path, 'iterdir',
+                        lambda path: iter([first, second]) if path == proc
+                        else original_iterdir(path))
+    assert process_mod.find_stale_backends(proc) == [101]

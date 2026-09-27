@@ -314,3 +314,258 @@ def test_maintenance_does_not_block_status_or_pure_plan(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, 'run_session', lambda args, _: 0 if args.dry_run else 1)
     assert cli.main(['--status', '--json']) == 0
     assert cli.main(['--dry-run', '--timeout', '0']) == 0
+
+
+@pytest.mark.parametrize('damage', [None, 'file-owner', 'file-mode', 'file-type',
+                                    'parent-owner', 'parent-mode'])
+def test_registration_requires_a_trusted_file_and_parent_chain(tmp_path, monkeypatch, damage):
+    path = tmp_path / 'service.json'
+    path.write_text('root registration')
+    original_stat = Path.stat
+
+    def metadata(selected, *args, **kwargs):
+        if selected not in (path, *path.parents):
+            return original_stat(selected, *args, **kwargs)
+        is_file = selected == path
+        owner = int(damage == ('file-owner' if is_file else 'parent-owner'))
+        mode = 0o100644 if is_file else 0o40755
+        if damage == ('file-mode' if is_file else 'parent-mode'):
+            mode |= 0o020
+        if is_file and damage == 'file-type':
+            mode = 0o120777
+        return SimpleNamespace(st_uid=owner, st_mode=mode)
+
+    monkeypatch.setattr(Path, 'stat', metadata)
+    monkeypatch.setattr(Path, 'lstat', lambda selected: metadata(selected, follow_symlinks=False))
+    if damage is None:
+        assert hostservice._root_file(path) == 'root registration'
+    else:
+        with pytest.raises(OSError, match=r'untrusted parent|root-owned regular'):
+            hostservice._root_file(path)
+
+
+@pytest.mark.parametrize('changed', [None, {'manager': ''}, {'user': None},
+                                    {'command': 1}, {'manager': 'unknown'},
+                                    {'uid': True}, {'uid': 0}, {'config': 'relative'},
+                                    {'home': 'relative'}, {'command': 'relative'}])
+@pytest.mark.parametrize('manager', ['openrc', 'runit'])
+def test_complete_registration_still_requires_exact_native_identity(monkeypatch, changed, manager):
+    record = dict(schema=1, installed=True, manager=manager, user='tester', uid=12510,
+                  home='/home/tester', config='/home/tester/.config/oscmix/routing.conf',
+                  command='/home/tester/.local/bin/oscmix-session')
+    record.update(changed or {})
+    monkeypatch.setattr(hostservice, '_root_file', lambda _: json.dumps(record))
+    if changed:
+        with pytest.raises(OSError, match=r'incomplete|invalid'):
+            hostservice.registered()
+    else:
+        assert hostservice.registered() == hostservice.HostService(
+            manager, 'tester', 12510, Path(record['home']), Path(record['config']),
+            Path(record['command']))
+
+
+@pytest.mark.parametrize('present', [False, True])
+def test_absent_registration_and_invalid_json_are_distinct(tmp_path, monkeypatch, present):
+    path = tmp_path / 'registration.json'
+    if present:
+        path.write_text('{')
+    monkeypatch.setattr(hostservice, '_root_file', lambda _: path.read_text())
+    if present:
+        with pytest.raises(OSError, match='invalid host service registration'):
+            hostservice.registered()
+    else:
+        assert hostservice.registered() is None
+
+
+@pytest.mark.parametrize('pid', [None, 'garbage', '0', '1'])
+def test_native_pid_file_absence_is_distinct_from_invalid_identity(native, pid):
+    service, proc, _ = native
+    path = hostservice.RUNIT_SERVICE / 'supervise/pid'
+    if pid is None:
+        path.unlink()
+        assert hostservice.main_pid(service, proc) is None
+    else:
+        path.write_text(pid)
+        with pytest.raises(OSError, match='invalid runit child PID'):
+            hostservice.main_pid(service, proc)
+
+
+def test_another_users_native_process_is_never_selected(native):
+    service, proc, _ = native
+    assert hostservice.main_pid(replace(service, uid=service.uid + 1), proc) is None
+
+
+@pytest.mark.parametrize('missing', ['supervisor', 'child-context'])
+def test_disappearing_native_process_is_not_permission_to_signal(native, missing):
+    service, proc, entry = native
+    path = proc / '12/cmdline' if missing == 'supervisor' else entry / 'environ'
+    path.unlink()
+    assert hostservice.reload(service, proc) == 'not running'
+
+
+@pytest.mark.parametrize('condition', ['missing-pidfile', 'bad-pid', 'init-pid', 'zero-pid',
+                                      'missing-supervisor',
+                                      'no-child', 'two-children'])
+def test_openrc_requires_one_live_identified_child(native, monkeypatch, condition):
+    service, proc, entry = native
+    service = replace(service, manager='openrc')
+    (entry / 'environ').write_bytes(b'HOME=' + os.fsencode(service.home)
+                                  + b'\0OSCMIX_SERVICE_MANAGER=openrc\0')
+    parent = proc / '12'
+    (parent / 'cmdline').write_bytes(b'\0'.join([
+        b'supervise-daemon', b'oscmix-desk', b'--start', b'--pidfile',
+        os.fsencode(hostservice.SUPERVISOR_PID), b'--user', b'tester']) + b'\0')
+    children = parent / 'task/12/children'
+    children.parent.mkdir(parents=True)
+    children.write_text('1234')
+    if condition == 'missing-pidfile':
+        def absent(_):
+            raise FileNotFoundError('supervisor stopped')
+        monkeypatch.setattr(hostservice, '_root_file', absent)
+    else:
+        supervisor = {'bad-pid': 'invalid', 'init-pid': '1', 'zero-pid': '0'}.get(condition, '12')
+        monkeypatch.setattr(hostservice, '_root_file', lambda _: supervisor)
+    if condition == 'missing-supervisor':
+        (parent / 'cmdline').unlink()
+    elif condition == 'no-child':
+        children.write_text('gone 9999')
+    elif condition == 'two-children':
+        replacement = proc / '4321'
+        replacement.mkdir()
+        for name in ('cmdline', 'environ'):
+            (replacement / name).write_bytes((entry / name).read_bytes())
+        children.write_text('1234 4321')
+    if condition in ('bad-pid', 'init-pid', 'zero-pid', 'two-children'):
+        with pytest.raises(OSError, match=r'invalid OpenRC supervisor PID|multiple matching'):
+            hostservice.main_pid(service, proc)
+    else:
+        assert hostservice.main_pid(service, proc) is None
+
+
+def test_unreadable_maintenance_state_refuses_manual_activation(tmp_path, monkeypatch):
+    monkeypatch.setattr(hostservice, 'STATE', tmp_path)
+    original_stat = Path.stat
+
+    def unreadable(path, *args, **kwargs):
+        if path == tmp_path / 'package-update':
+            raise PermissionError('maintenance state unreadable')
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'stat', unreadable)
+    assert 'cannot establish installation maintenance state' in hostservice.maintenance_problem()
+
+
+@pytest.mark.parametrize('changed', [None, {'Maintenance': 'true'}, {'UserID': '0'},
+                                    {'ConfiguredHome': '/other/home'},
+                                    {'Configuration': '/other/desk'},
+                                    {'ActiveState': 'inactive'}])
+@pytest.mark.parametrize('manager', ['openrc', 'runit'])
+def test_native_launcher_requires_ready_registered_desk(native, monkeypatch, changed, manager):
+    service, _, _ = native
+    monkeypatch.setenv('HOME', str(service.home))
+    report = dict(LoadState='loaded', UnitFileState='enabled', manager=manager,
+                  Maintenance='false', UserID=str(service.uid), ConfiguredHome=str(service.home),
+                  Configuration=str(service.config), ActiveState='active')
+    report.update(changed or {})
+    problem = diagnostics.service_start_problem(service.config, report)
+    assert bool(problem) == bool(changed)
+    assert diagnostics.service_start_problem(None, report) is not None
+
+
+@pytest.mark.parametrize('manager', ['openrc', 'runit'])
+@pytest.mark.parametrize(('running', 'allowed', 'linked', 'maintenance'), [
+    (True, True, True, False), (False, True, True, False),
+    (False, True, True, True), (False, False, True, False),
+    (False, True, False, False),
+])
+def test_native_status_keeps_activation_process_and_maintenance_distinct(
+        native, tmp_path, monkeypatch, manager, running, allowed, linked, maintenance):
+    service, proc, _ = native
+    service = replace(service, manager=manager)
+    state = tmp_path / 'state'
+    state.mkdir()
+    selected = tmp_path / 'manager-enabled'
+    other = tmp_path / 'other-manager-enabled'
+    if linked:
+        selected.touch()
+    else:
+        other.touch()
+    monkeypatch.setattr(hostservice, 'STATE', state)
+    monkeypatch.setattr(hostservice, 'OPENRC_ENABLED', selected if manager == 'openrc' else other)
+    monkeypatch.setattr(hostservice, 'RUNIT_SERVICE', selected if manager == 'runit' else other)
+    if allowed:
+        (state / 'service-allowed').touch()
+    if maintenance:
+        (state / 'service-update').write_text('incomplete replacement')
+    monkeypatch.setattr(hostservice, 'main_pid', lambda *_: 1234 if running else None)
+    before = {p.name: p.read_bytes() for p in state.iterdir()}
+    report = hostservice.report(service, proc)
+    assert report['state'] == 'observed'
+    assert report['manager'] == manager
+    assert report['LoadState'] == 'loaded'
+    assert report['ActiveState'] == ('active' if running else 'inactive')
+    assert report['UnitFileState'] == ('enabled' if linked and allowed else 'disabled')
+    assert report['MainPID'] == ('1234' if running else '0')
+    assert report['FragmentPath'] == str(hostservice.REGISTRATION)
+    assert report['ConfiguredHome'] == str(service.home)
+    assert report['Configuration'] == str(service.config)
+    assert report['UserID'] == str(service.uid)
+    assert report['Maintenance'] == ('true' if maintenance else 'false')
+    assert ('maintenance' if maintenance else 'no hardware verification') in report['StatusText']
+    assert {p.name: p.read_bytes() for p in state.iterdir()} == before
+
+
+def test_lookalike_native_child_owned_by_another_user_is_refused(native, monkeypatch):
+    service, proc, entry = native
+    original_stat = Path.stat
+
+    def owner(path, *args, **kwargs):
+        if path == entry:
+            return SimpleNamespace(st_uid=service.uid + 1)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'stat', owner)
+    assert hostservice.main_pid(service, proc) is None
+    assert hostservice.reload(service, proc) == 'not running'
+
+
+def test_runit_lookalike_supervisor_must_belong_to_root(native, monkeypatch):
+    service, proc, _ = native
+    original_stat = Path.stat
+
+    def owner(path, *args, **kwargs):
+        if path == proc / '12':
+            return SimpleNamespace(st_uid=1)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'stat', owner)
+    with pytest.raises(OSError, match='supervisor identity changed'):
+        hostservice.main_pid(service, proc)
+
+
+@pytest.mark.parametrize('mask', ['11', 'a1'])
+def test_native_reload_interprets_proc_signal_mask_as_hexadecimal(native, monkeypatch, mask):
+    service, proc, entry = native
+    (entry / 'status').write_text('PPid:\t12\nSigCgt:\t' + mask + '\n')
+    sent, closed = [], []
+    monkeypatch.setattr(os, 'pidfd_open', lambda _: 39, raising=False)
+    monkeypatch.setattr(signal, 'pidfd_send_signal', lambda *args: sent.append(args),
+                        raising=False)
+    monkeypatch.setattr(os, 'close', closed.append)
+    monkeypatch.setattr(hostservice.time, 'sleep',
+                        lambda _: pytest.fail('ready process must not wait'))
+    assert hostservice.reload(service, proc) == 'reloaded'
+    assert sent == [(39, signal.SIGHUP)]
+    assert closed == [39]
+
+
+@pytest.mark.parametrize('override', [False, True])
+def test_profile_reload_retains_the_native_process_root(native, monkeypatch, override):
+    service, proc, _ = native
+    if not override:
+        monkeypatch.delenv('OSCMIX_PROC_ROOT')
+    calls = []
+    monkeypatch.setattr(process.hostservice, 'reload',
+                        lambda selected, root: calls.append((selected, root)) or 'reloaded')
+    assert process.reload_service() == 'reloaded'
+    assert calls == [(service, proc if override else Path('/proc'))]

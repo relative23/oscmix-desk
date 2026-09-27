@@ -18,6 +18,7 @@ from control_peer import (
     KEEPALIVE,
     METERS,
     OBSERVATION,
+    REFRESH,
     REPLY,
     WRITE,
     ScriptedControl,
@@ -358,3 +359,124 @@ def test_lost_lease_event_invalidates_queued_observations(control):
         client.wait(.1)
     with pytest.raises(ReceivePortError, match='no longer valid'):
         client.next_delivery(.1)
+
+
+@pytest.mark.parametrize('fault', ['request', 'kind', 'payload',
+                                   'status', 'generation', 'timeout'])
+def test_invalid_write_ack_preserves_partial_result_and_closes(control, monkeypatch, fault):
+    server, client = control
+    client.begin()
+    emit = server.emit
+
+    def reply(kind, request=0, code=0, sequence=None, payload=b''):
+        if kind == WRITE | REPLY:
+            if fault == 'timeout':
+                return
+            if fault == 'request':
+                request -= 1
+            elif fault == 'kind':
+                kind = BEGIN | REPLY
+            elif fault == 'payload':
+                payload = b'unexpected'
+            elif fault == 'status':
+                code = 5
+            elif fault == 'generation':
+                sequence = server.generation + 1
+        emit(kind, request, code, sequence, payload)
+
+    monkeypatch.setattr(server, 'emit', reply)
+    if fault == 'timeout':
+        monkeypatch.setattr(backend, 'CONTROL_ACK_TIMEOUT', .2)
+    with pytest.raises(WriteFailed) as failed:
+        client.send([('/output/5/volume', 'f', (-40,)), ('/output/7/volume', 'f', (-30,))])
+    assert failed.value.errno == (errno.ETIMEDOUT if fault == 'timeout' else errno.EPROTO)
+    assert failed.value.written == ('/output/5/volume',)
+    assert failed.value.unwritten == ('/output/7/volume',)
+    assert server.writes == [encode_osc('/output/5/volume', 'f', -40)]
+    with pytest.raises(ReceivePortError, match='no longer valid'):
+        client.next_delivery(.1)
+    with pytest.raises(ReceivePortError, match='no longer valid'):
+        client.finish()
+    assert server.requests == [HELLO, BEGIN, WRITE]
+
+
+@pytest.mark.parametrize('phase', ['heartbeat', 'finish'])
+@pytest.mark.parametrize('fault', ['generation', 'refused'])
+def test_lease_ack_confirms_the_same_operation(control, monkeypatch, phase, fault):
+    server, client = control
+    client.begin()
+    token = server.generation
+    emit = server.emit
+
+    def reply(kind, request=0, code=0, sequence=None, payload=b''):
+        expected = KEEPALIVE if phase == 'heartbeat' else END
+        if kind == expected | REPLY:
+            if fault == 'refused':
+                code = 6
+            else:
+                sequence = token + 1 if phase == 'heartbeat' else token
+        emit(kind, request, code, sequence, payload)
+
+    monkeypatch.setattr(server, 'emit', reply)
+    monkeypatch.setattr(backend, 'CONTROL_HEARTBEAT', 0)
+    with pytest.raises(ReceivePortError, match=r'lease lost|did not finish'):
+        client.heartbeat() if phase == 'heartbeat' else client.finish()
+    with pytest.raises(ReceivePortError, match='no longer valid'):
+        client.next_delivery(.1)
+    assert not server.writes
+
+
+def test_operations_cannot_write_without_a_lease_or_acquire_one_twice(control):
+    server, client = control
+    with pytest.raises(OSError, match='no backend operation lease') as missing:
+        client.finish()
+    assert missing.value.errno == errno.EPERM
+    with pytest.raises(WriteFailed) as refused:
+        client.send([('/output/5/volume', 'f', (-40,))])
+    assert refused.value.written == ()
+    assert refused.value.unwritten == ('/output/5/volume',)
+    assert server.requests == [HELLO]
+    client.begin()
+    with pytest.raises(OSError, match='already owns an operation') as duplicate:
+        client.begin()
+    assert duplicate.value.errno == errno.EALREADY
+    assert server.requests == [HELLO, BEGIN]
+    assert not server.writes
+
+
+def test_refresh_retries_a_busy_window_and_discards_earlier_observations(control, monkeypatch):
+    server, client = control
+    client.begin()
+    server.refresh_busy = True
+    server.reports = [encode_osc('/output/5/volume', 'f', -6.0)]
+    emit = server.emit
+
+    def reply(kind, request=0, code=0, sequence=None, payload=b''):
+        if kind == REFRESH | REPLY and code == BUSY:
+            server.sequence += 1
+            emit(OBSERVATION, code=DEVICE, sequence=server.sequence,
+                 payload=encode_osc('/output/5/volume', 'f', -30.0))
+            server.refresh_busy = False
+        emit(kind, request, code, sequence, payload)
+
+    monkeypatch.setattr(server, 'emit', reply)
+    client.request_dump(timeout=.5)
+    assert list(client.messages(.5)) == [('/output/5/volume', 'f', (-6.0,))]
+    assert client.next_delivery(0) is None
+    assert server.requests == [HELLO, BEGIN, REFRESH, REFRESH]
+    assert server.writes == []
+
+
+def test_a_definite_refresh_refusal_is_not_retried_or_misreported_as_a_dump(control, monkeypatch):
+    server, client = control
+    emit = server.emit
+
+    def reply(kind, request=0, code=0, sequence=None, payload=b''):
+        emit(kind, request, 2 if kind == REFRESH | REPLY else code, sequence, payload)
+
+    monkeypatch.setattr(server, 'emit', reply)
+    with pytest.raises(ReceivePortError, match='refresh window') as refused:
+        client.request_dump(timeout=.5)
+    assert refused.value.errno == errno.EBUSY
+    assert server.requests == [HELLO, REFRESH]
+    assert server.writes == []

@@ -83,6 +83,24 @@ output = 1/2    ; main out
     assert config.routes[0].playback == (1, 2)
 
 
+@pytest.mark.parametrize('option', ['level', 'volume'])
+@pytest.mark.parametrize('value', [-65.0, 6.0])
+def test_route_db_includes_both_declared_boundaries(session_mod, tmp_path, option, value):
+    path = routing_conf(tmp_path, '[route:boundary]\nplayback=1/2\noutput=5/6\n%s=%s\n'
+                        % (option, value))
+    config = session_mod.load_config(path)
+    assert getattr(config.routes[0], option) == value
+
+
+@pytest.mark.parametrize('option', ['level', 'volume'])
+@pytest.mark.parametrize('value', [-65.01, 6.01])
+def test_route_db_refuses_values_just_outside_the_boundaries(session_mod, tmp_path, option, value):
+    path = routing_conf(tmp_path, '[route:boundary]\nplayback=1/2\noutput=5/6\n%s=%s\n'
+                        % (option, value))
+    with pytest.raises(session_mod.ConfigError, match=option):
+        session_mod.load_config(path)
+
+
 @pytest.mark.parametrize(("snippet", "hint"), [
     ("[route:x]\nplayback = 1/2/3\noutput = 1/2\n", "playback"),
     ("[route:x]\nplayback = 1/2\noutput = five/6\n", "channel number"),
