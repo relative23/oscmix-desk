@@ -63,6 +63,11 @@ stopped. The module needed no resume change. Maintenance survived the preceding
 reboot, and actual generation rollbacks restored the prior disabled system and
 user state. Later virtual-RTC wakeups were immediate: this is evidence for
 trigger ordering, not extended sleep, mixer/device restoration or a final release.
+The subsequent poweroff panicked after filesystem unmount. A cold-boot control
+powered off cleanly; another control without the mixer package, user unit or
+mixer resume action reproduced the same panic after four deep cycles. The
+evidence records both controls and the RTC-related ACPI errors. The platform
+cause is unresolved, and clean shutdown after resume is not qualified.
 
 See the [package and operating instructions](../../packaging/nix/README.md),
 [NixOS manual](https://nixos.org/manual/nixos/stable/), and the pinned

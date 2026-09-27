@@ -150,6 +150,78 @@
     "All four cycles had fresh deep-entry/exit events. The first lasted about six seconds; later virtual-RTC wakeups were immediate. Extended sleep and physical device retention remain unqualified.",
     "No hibernate, hybrid sleep or suspend-then-hibernate cycle was run.",
     "This probe did not inject NixOS reload failures; the separate Silverblue regression did so for its own integration path.",
-    "The package remains a development build of runtime 0.7.3; final 0.8.0 platform and historical migration gates remain open."
-  ]
+    "The package remains a development build of runtime 0.7.3; final 0.8.0 platform and historical migration gates remain open.",
+    "Clean shutdown after resume remains unqualified on this QEMU/SeaBIOS/kernel combination: the same panic reproduces without the mixer installation, whereas a fresh boot without suspend powers off cleanly. The ordering results above do not imply a passing poweroff gate."
+  ],
+  "post_probe_shutdown": {
+    "result": "kernel-panic",
+    "kernel_message": "Attempted to kill init! exitcode=0x00000000",
+    "filesystems_unmounted_before_panic": true,
+    "original_generation_restored_before_panic": true,
+    "serial_sha256": "360a1360a001fcc7c6ff11f12e7525387a16f267b3f82644779887c0e8d8219b",
+    "qemu_terminated_after_identity_check": true,
+    "control_investigation": "reproduced after suspend without installed mixer; cold poweroff succeeds",
+    "controls": {
+      "cold_boot": {
+        "boot": "c91d768c-ba9c-4cbc-bce8-87fc944255f2",
+        "kernel": "6.18.53",
+        "generation": "/nix/store/vwkmgn83vf7sldk4r40q9z1qapsi1hgm-nixos-system-oscmix-nixos-qa-26.05.10529.c508844df6c2",
+        "mixer_package_absent": true,
+        "mixer_unit_absent": true,
+        "mixer_resume_action_absent": true,
+        "user_state_preserved_after_previous_panic": true,
+        "no_sleep_cycle_in_this_boot": true,
+        "hardware": false,
+        "action": "cold-boot poweroff control prepared",
+        "clean_poweroff": true,
+        "qemu_exited": true,
+        "serial_sha256": "d45501cdb9607f9722f44dcb2147ddfbf0b11ecf39c810389b376c2403eee3c5"
+      },
+      "four_deep_cycles": {
+        "boot": "ff2189d9-d364-4cc1-8a56-0e30a89300c1",
+        "kernel": "6.18.53",
+        "generation": "/nix/store/vwkmgn83vf7sldk4r40q9z1qapsi1hgm-nixos-system-oscmix-nixos-qa-26.05.10529.c508844df6c2",
+        "mixer_package_absent": true,
+        "mixer_unit_absent": true,
+        "mixer_resume_action_absent": true,
+        "hardware": false,
+        "cases": [
+          {
+            "cycle": 1,
+            "deep_cycle": true,
+            "boottime_seconds": 6.819
+          },
+          {
+            "cycle": 2,
+            "deep_cycle": true,
+            "boottime_seconds": 0.362
+          },
+          {
+            "cycle": 3,
+            "deep_cycle": true,
+            "boottime_seconds": 0.311
+          },
+          {
+            "cycle": 4,
+            "deep_cycle": true,
+            "boottime_seconds": 0.318
+          }
+        ],
+        "user_state_preserved": true,
+        "action": "suspend control complete; poweroff pending",
+        "clean_poweroff": false,
+        "qemu_exited": false,
+        "serial_sha256": "3436da772cc4c9c8090a1ae8b6b830099dbdda5bbe17773236d498476ad3dc2a",
+        "filesystems_unmounted": true,
+        "kernel_message": "Attempted to kill init! exitcode=0x00000000",
+        "qemu_terminated_after_identity_check": true
+      }
+    },
+    "control_probe_sha256": "0c06344c9e7e3087e120e7233cc4250acb0bf42b42aee454648b832ebfcfab11",
+    "control_archive_sha256": "bc907da4e972d8ba58957c9c945af70fd5f350c09eeeeff330ae0e8b1cc39fa3",
+    "qemu": "10.2.1 (Debian 1:10.2.1+ds-1ubuntu3.2)",
+    "firmware": "SeaBIOS 1.17.0-debian-1.17.0-1ubuntu1",
+    "additional_observation": "All four bare control cycles report ACPI Error: Could not disable RealTimeClock events; subsequent RTC wakes are immediate.",
+    "conclusion": "The shutdown failure is reproducible without the installed mixer, user unit or mixer resume action. Its underlying platform cause is not established."
+  }
 }

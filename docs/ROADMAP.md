@@ -107,6 +107,11 @@ A separate [NixOS resume probe](evidence/0.8.0/nixos-resume-development.json)
 passes three active and one inactive deep-entry/exit cycles through the existing
 native stop action on systemd 260.4. It needed no module change. Exact generation
 rollbacks restore the previous disabled system and preserve user state.
+Subsequent poweroff panicked after filesystem unmount. A fresh control without
+the installed mixer, user unit or mixer resume action reproduces the same panic
+after four deep cycles; cold poweroff without suspend succeeds. The underlying
+VM/platform cause remains unresolved. Resume ordering is measured, but clean
+shutdown after resume is not qualified on this combination.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
