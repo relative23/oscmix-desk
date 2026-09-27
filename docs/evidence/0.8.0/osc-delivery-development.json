@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "qualification": "Development rejection of malformed OSC deliveries",
+  "implementation_commit": "1474e04f3dd67174073b6c0eb0eed932fea5df85",
+  "hardware": false,
+  "production_signing_key_used": false,
+  "installed_host_changed": false,
+  "regression": {
+    "before_commit": "3b88639cbbe8bb144fb49027df8b96af7e513e3d",
+    "failed_before": 9,
+    "seconds_before": 61.78,
+    "before_log_sha256": "0c616fea56278c0bbe04e195149182227572c527dc957db80383edcf5dfb098c",
+    "cases": [
+      "missing OSC argument after confirmed links",
+      "truncated final bundle element after confirmed links",
+      "truncated nested bundle after confirmed links"
+    ],
+    "paths": [
+      "real Control.messages",
+      "foreground apply with sent/pending paths",
+      "verify_and_repair"
+    ],
+    "targeted": {
+      "passed": 104,
+      "seconds": 1.69,
+      "log_sha256": "49a518f2739e8220d135971543a9f864726ddc04a2a2e97ed389141b4dd74b0d"
+    }
+  },
+  "software": {
+    "check": "passed",
+    "passed": 2333,
+    "skipped": 2,
+    "skip_reason": "empty read-only subfamily parameter sets",
+    "seconds": 130.91,
+    "log_sha256": "052456c2bbb658f8e07c6f8c100de2d550a8314b143d3d8799b4a934d84d6c73",
+    "python": "Python 3.14.4"
+  },
+  "gtk_with_concurrent_cli": {
+    "gtk_edit": "output 5 -40 dB emitted through real backend",
+    "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+    "desk_first": "GTK subscribed while lease held; received fresh state after release",
+    "backend_loss": "visible disconnected state; no automatic replay",
+    "wrong-pid": "refused before refresh or writes",
+    "wrong-serial": "refused before refresh or writes",
+    "symlink": "refused before refresh or writes",
+    "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+    "session": "bin/oscmix-session",
+    "launcher": "bin/oscmix-launch",
+    "ok": true,
+    "backend": "build/backend-0.8.0-series4/oscmix",
+    "gtk": "build/backend-0.8.0-series4/gtk/oscmix-gtk",
+    "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+    "display_backend": "x11",
+    "desktop": null
+  },
+  "gtk_log_sha256": "7de23de6d257f3b4e6841446d91b69f80313171faae7719048db9b7496d94c18",
+  "backend": {
+    "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+    "series_sha256": "1e33bf492112fd70caf47149437424705e3830729b646275da738b910a1c68a5",
+    "protocol": "ODK1",
+    "binaries_sha256": {
+      "backend": "e0b3d8ef8c4063b3912ca83e44522a29beaf33b8555e5546bb7b63ab0abff24a",
+      "gtk": "9f4b99d3a100b95b7c7ed5b19494a59c37cf83646085ac3d7172b10bc73aed0c"
+    }
+  },
+  "files_sha256": {
+    "src/oscmix_desk/osc.py": "1133ed993bb40fd477b435fa2ec200ae8422328d7e7b932ada0f72dc40c67915",
+    "src/oscmix_desk/backend.py": "0b8aea62b6005d0319c8c031ceaae4a0f2d92f4dc5c63ae87a49b69033e20825",
+    "scripts/measurement.py": "ffa51aafaa17256d6549ca016603e0577dc7e31cd9ac97b26100126fec0c122c",
+    "tests/test_osc_delivery.py": "51630047a9f47c6739ccd7fc35f59bf5ab17b6c2df3939fad66e3e8fc4787c26",
+    "tests/test_contracts.py": "87824f4a2fe89ba5e4f2ff49537bd6e076dacc84a07fc413921f5136da33521b",
+    "tests/test_osc.py": "8bbf1ea365b18e8700e71015f5691648abe94805821304ddae8ae0ee81082025",
+    "tests/test_backend.py": "dd05e7d0f97f424d456c77c67c3cc8e8b480ba522a45f77bfe3e41d31bd400ac",
+    "tests/test_verify.py": "380fa56874fbc0be94f6070eed0ed5c76d2d52c403ac0f09599f4eed590e9173",
+    "tests/test_measurement_provenance.py": "a7265c3c855cb9f09d6ef1694ec443db77c6e9357b50a963045f297f1d8f66c1"
+  },
+  "limits": [
+    "The independently scripted wire peers and actual C/GTK processes use simulated MIDI; no hardware was accessed.",
+    "The first full suite exposed two legacy property tests requiring corrupt packets to be skipped. Their corruption contract was deliberately changed to refusal, with an additional generated oversized-tail regression.",
+    "Final Python matrix, coverage, repeats, mutation, soak, platform and hardware qualification remain separate required gates."
+  ]
+}

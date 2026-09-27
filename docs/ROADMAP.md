@@ -3,8 +3,15 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The latest interim `make check` passes 2314 tests (two empty parameter sets
+The latest interim `make check` passes 2333 tests (two empty parameter sets
 skipped); the earlier coordinated-runtime coverage run passes the 97% ratchet.
+A later source review reproduced partial confirmation from a malformed OSC
+bundle. The receiver and measurement tools now validate the whole encoded
+delivery before exposing observations. Nine production-client cases fail
+before correction and pass afterwards; the fresh 2333-test suite and actual
+GTK/concurrent CLI probe with simulated MIDI pass. The
+[delivery record](evidence/0.8.0/osc-delivery-development.json) identifies the
+code and test inputs; final hardware qualification remains open.
 N2 now uses one checked, backend-owned connection through desk apply,
 verification, repair and profile/reload operations. The fresh versioned
 backend/GTK build passes 65 preparation/protocol tests and the actual GTK
