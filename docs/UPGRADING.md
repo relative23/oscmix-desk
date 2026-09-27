@@ -208,8 +208,9 @@ replaced as a unit, and system integration has separate files.
 Native RPM installation/removal keeps its maintenance fence if reloading the
 system manager fails. Restore the manager connection before repairing the
 package transaction; a successful reinstall clears the fence only after its
-integration steps finish. A failed package command is not permission to start
-the desk against an incompletely updated installation.
+integration steps finish. Actual openSUSE RPM also returned zero while reporting
+a failed scriptlet. Check the diagnostic and maintenance state, not just the
+package-manager exit code, before treating a transaction as complete.
 
 ## Compatibility changes
 

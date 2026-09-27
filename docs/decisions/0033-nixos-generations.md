@@ -54,6 +54,16 @@ their timestamp headers previously made otherwise identical builds differ.
 The [development evidence](../evidence/0.8.0/nixos-development.json) records
 the definitions, payload, binaries, Nix outputs and measured lifecycle.
 
+A subsequent [native-resume probe](../evidence/0.8.0/nixos-resume-development.json)
+checked systemd 260.4 in that VM with a fresh package built from the committed
+development source. NixOS's existing `sleep-actions.service` stop action ran
+after `user.slice` thawed; three fresh deep-entry/exit cycles delivered one
+reload each to the same signal receiver. A fourth cycle left a stopped desk
+stopped. The module needed no resume change. Maintenance survived the preceding
+reboot, and actual generation rollbacks restored the prior disabled system and
+user state. Later virtual-RTC wakeups were immediate: this is evidence for
+trigger ordering, not extended sleep, mixer/device restoration or a final release.
+
 See the [package and operating instructions](../../packaging/nix/README.md),
 [NixOS manual](https://nixos.org/manual/nixos/stable/), and the pinned
 [pre-switch-check implementation](https://github.com/NixOS/nixpkgs/blob/c508844df6c28fa6dabc1b6af70f3ccbd65c5201/nixos/modules/system/activation/pre-switch-check.nix).

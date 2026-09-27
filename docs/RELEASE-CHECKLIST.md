@@ -189,7 +189,7 @@ one that found all three defects in 0.1.3.
       with a message saying how to do it from the right session.
 
       So this step is now safe to run, and its guards are what to
-      check: `sudo -n true` must fail, the three system files must
+      check: `sudo -n true` must fail, the system integration files must
       still be there, and the real service must still be
       `active`/`enabled` afterwards.
 
@@ -201,6 +201,10 @@ one that found all three defects in 0.1.3.
       This tests the real service transport with a signal receiver. Final
       mixer/device suspend evidence and the other platform gates in the
       [0.8.0 plan](plans/0.8.0-reliability-integration.md) remain separate.
+- [ ] The native RPM lifecycle includes a real failed system-manager reload
+      during installation and removal, with the maintenance fence retained
+      until a successful explicit repair. A zero RPM exit code alone does
+      not satisfy this check; openSUSE reported failed scriptlets that way.
 
 ## 6. The tag
 

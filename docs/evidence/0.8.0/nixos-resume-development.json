@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "qualification": "Development NixOS native resume ordering probe",
+  "source_commit": "ae873202680df91c2fe10de5b9f75ce536184230",
+  "source_archive_sha256": "e3bf3abe8eff14ffec23c184becef05ac63b36ff1fb614bd65becee4601ad196",
+  "hardware": false,
+  "signal_target_fixture": true,
+  "final_release_transition": false,
+  "platform": {
+    "distribution": "NixOS 26.05.10529.c508844df6c2",
+    "systemd": "systemd 260 (260.4)",
+    "kernel": "6.18.53",
+    "virtualization": "QEMU/KVM q35",
+    "memory_mib": 2048,
+    "host_devices_passed_through": false
+  },
+  "implementation": {
+    "changed": false,
+    "mechanism": "Native sleep-actions.service ExecStop invokes the selected-user reload after sleep.target stops",
+    "source_files": {
+      "packaging/nix/module.nix": "25cfe38ccc156de3211e45c8447fa726d8f3a1931d5bbdb9feda403b99755d8b",
+      "packaging/nix/package.nix": "807ce2d93da61dbd59f6d1453a9381ab7ff5e1e980a6a46cd8d5b955c638cb3d",
+      "packaging/nix/default.nix": "a2dc0bfab7f82a66448d4c39311bc7ff954d4e37b55e7e1d7a1f4d4308fc1d25"
+    },
+    "package": "/nix/store/a4j1mqmr4j6m3cdsiirsq9ry0ip49v5h-oscmix-desk-0.7.3",
+    "package_nar": {
+      "/nix/store/a4j1mqmr4j6m3cdsiirsq9ry0ip49v5h-oscmix-desk-0.7.3": {
+        "ca": null,
+        "deriver": "/nix/store/k19ymplcxy3i3jbmwagfqh45xfaaw15m-oscmix-desk-0.7.3.drv",
+        "narHash": "sha256-BqNXqnsO6zdhspTN/JQfEsNb/rX8WmtvCAywD0b5RnQ=",
+        "narSize": 866488,
+        "references": [
+          "/nix/store/04nqnwc7dvgxl6ai5wpc89b9x81yx381-glib-2.88.3",
+          "/nix/store/2ga5nd1m56n5cx2wh8vbf6nrdhqk2f0q-gcc-15.3.0-lib",
+          "/nix/store/518lhxlcf2pmdg9g0m61b5mx04srbfk5-gtk+3-3.24.52",
+          "/nix/store/7ni0ai18560pw5lg7q17kmsk682lxzkj-gdk-pixbuf-2.44.7",
+          "/nix/store/7sl918qz81by3bwl7ylgv807rxr7nwqb-harfbuzz-13.2.1",
+          "/nix/store/833invqvsk7anqnqrki5hqncrcllj825-coreutils-9.11",
+          "/nix/store/9r02ykx9y35lf4gk6gc30gnag1y8ncp7-python3-3.13.15",
+          "/nix/store/a4j1mqmr4j6m3cdsiirsq9ry0ip49v5h-oscmix-desk-0.7.3",
+          "/nix/store/b7fcqsg01qmxwgiw2a3m0zzdpr4z18i8-librsvg-2.62.3",
+          "/nix/store/f0fiqn9dnivd4ihirkij2vmbbgflykxw-gsettings-desktop-schemas-50.1",
+          "/nix/store/ilz7zyc5wphy64ln04j12f1f206yqn4v-alsa-lib-1.2.15.3",
+          "/nix/store/jcg7bmaj399j3494v0ppghs70v93l3qz-pango-1.57.1",
+          "/nix/store/n0rip9alj8hd6l8s27bdq25nkl259z92-cairo-1.18.4",
+          "/nix/store/vjh2lq0x8k77qyf3zr2h3vdy7xn6pwqb-at-spi2-core-2.60.6",
+          "/nix/store/yyyzwhqk92c56jpb1zlgnz7nwx3j2v9f-dconf-0.49.0-lib",
+          "/nix/store/znb3q6g1ik34454j3vcjx824h1871asg-glibc-2.42-84"
+        ],
+        "registrationTime": 1790470814,
+        "signatures": [],
+        "storeDir": "/nix/store",
+        "ultimate": true,
+        "version": 1
+      }
+    },
+    "recorded_payload_files": 56,
+    "installed_payload_hashes_verified": true
+  },
+  "setup": {
+    "inactive_installation": true,
+    "explicit_activation_under_maintenance": true,
+    "maintenance_survived_reboot": true,
+    "initial_harness_error": "An unused oscmix-qa.nix was edited. The rebuild left the active generation unchanged. The file was restored and the actually imported oscmix-qualification.nix was used before measuring resume."
+  },
+  "probe": {
+    "private_probe_sha256": "ffe9c02d8cc6456664d6aa94ce22fedd5879c1e5fa6917d3746233fb30874a02",
+    "cases": [
+      {
+        "case": "normal-1",
+        "deep_cycle": true,
+        "boottime_seconds": 5.966,
+        "started_after_thaw": true,
+        "expected_hups": 2,
+        "received_hups": 2,
+        "expected_pid": 818,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      },
+      {
+        "case": "normal-2",
+        "deep_cycle": true,
+        "boottime_seconds": 0.419,
+        "started_after_thaw": true,
+        "expected_hups": 3,
+        "received_hups": 3,
+        "expected_pid": 818,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      },
+      {
+        "case": "normal-3",
+        "deep_cycle": true,
+        "boottime_seconds": 0.36,
+        "started_after_thaw": true,
+        "expected_hups": 4,
+        "received_hups": 4,
+        "expected_pid": 818,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      },
+      {
+        "case": "inactive",
+        "deep_cycle": true,
+        "boottime_seconds": 0.293,
+        "started_after_thaw": true,
+        "expected_hups": 4,
+        "received_hups": 4,
+        "expected_pid": 0,
+        "reload_failed": false,
+        "watchdog": null,
+        "passed": true
+      }
+    ],
+    "same_process_during_active_cycles": true,
+    "stopped_desk_remained_stopped": true,
+    "user_state_preserved": true,
+    "fixture_removed": true,
+    "remaining_qa_units": 0,
+    "watchdog_intervened": false,
+    "passed": true
+  },
+  "recovery": {
+    "original_generation_restored": true,
+    "generation": "/nix/store/vwkmgn83vf7sldk4r40q9z1qapsi1hgm-nixos-system-oscmix-nixos-qa-26.05.10529.c508844df6c2",
+    "activation_rollback": {
+      "generation": "/nix/store/2hjphmhzrzaszpaz4jwbw6hp60lh13hn-nixos-system-oscmix-nixos-qa-26.05.10529.c508844df6c2",
+      "identity": {
+        "activate": false,
+        "config": "/home/tester/.config/oscmix/routing.conf",
+        "enabled": true,
+        "package": "/nix/store/a4j1mqmr4j6m3cdsiirsq9ry0ip49v5h-oscmix-desk-0.7.3",
+        "user": "tester"
+      }
+    },
+    "user_state_preserved": true,
+    "maintenance_cleared_after_verification": true,
+    "original_configuration_restored": true,
+    "unused_configuration_restored": true,
+    "mixer_package_removed": true,
+    "fixture_removed": true,
+    "boot": "cb49386a-4c57-4e1e-b6af-a6439cd72276"
+  },
+  "private_evidence_archive_sha256": "67bfac166a261fca7d969b5014339041fab687e352dbc83243b7c7d13b3bd388",
+  "limits": [
+    "The real user service used a Python signal receiver instead of the mixer session; no device or playback state was exercised.",
+    "All four cycles had fresh deep-entry/exit events. The first lasted about six seconds; later virtual-RTC wakeups were immediate. Extended sleep and physical device retention remain unqualified.",
+    "No hibernate, hybrid sleep or suspend-then-hibernate cycle was run.",
+    "This probe did not inject NixOS reload failures; the separate Silverblue regression did so for its own integration path.",
+    "The package remains a development build of runtime 0.7.3; final 0.8.0 platform and historical migration gates remain open."
+  ]
+}

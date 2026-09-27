@@ -1,0 +1,389 @@
+{
+  "schema": 1,
+  "qualification": "Development resume packaging and maintenance regression",
+  "source_commit": "ae873202680df91c2fe10de5b9f75ce536184230",
+  "hardware": false,
+  "service_manager": false,
+  "published_https": false,
+  "production_signing_key_used": false,
+  "final_release_transition": false,
+  "before_fix": {
+    "source_commit": "a1cdd6ff15ef7df560350c101b2cee5fcd72ddd3",
+    "real_rpm_posttrans_failed": true,
+    "native_exit_code": 1,
+    "maintenance_retained": false,
+    "transcript_sha256": "6904271068e856d4cb7b67d7b187448910756e715fa8ef60726a94c6bef7b672"
+  },
+  "correction": "Reload the system manager before finishing RPM maintenance, on both installation and removal.",
+  "scripts": {
+    "scripts/build-package.py": "d5d45f99bd4b7ea7633d008c33e54fc63dc80c0323de879dc5a14607de8c602a",
+    "scripts/package_formats.py": "39b9b9e07209707ec0d6e213a519aaf476ffb99e68345a4dcd960f2ac61442c5",
+    "scripts/stage-install.sh": "e8032e75f0c8104587d06ed901518728d30a8289729bc03e78e9438be108fbf7",
+    "packaging/package-guard": "d7f6312143e9f0c7e7f6fda3505c9a9431c219cc6b364073fbcda3dac9b0be2c",
+    "packaging/oscmix-desk.install": "14ab08642bf66b8a1fdc535ce6bfa4ee05d4ac587fb089c98e41ac1fe4e078d4",
+    "tests/package_lifecycle.py": "c242ec714f5d517a4bdfb15a7fe926ecb47a6ad4620c4ba238f7ec68c1e2512b",
+    "systemd/system-sleep/oscmix": "d2c27b55ec94e74ad684dde68f4d9326d506a3199758eef61aec722c4ca9b454",
+    "systemd/oscmix-resume.service": "8db809c9234868d3e2d371ce5501fe74ae0a5b0fe0163e6bfed8b4f68200d187"
+  },
+  "software_gate": {
+    "command": "make check PYTHON=.venv/bin/python",
+    "passed": 2271,
+    "skipped": 2,
+    "seconds": 132.22
+  },
+  "targets": {
+    "debian13": {
+      "image": "sha256:45dc3607d3d6364c98353dc87bbb10e83de0ce91a95527a059514d553fa3c282",
+      "base_digests": [
+        "debian@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c"
+      ],
+      "seconds": 153.91,
+      "repeat_builds": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_debian13.deb",
+          "first": "d0ab4f106b5809e758d46d807f57bb7e385f36fec31b3201e47ea14c427a62ea",
+          "repeated": "d0ab4f106b5809e758d46d807f57bb7e385f36fec31b3201e47ea14c427a62ea"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_debian13.deb",
+          "first": "4891f443286b05091348cb4940a56d11432d2d182d88da6cbe9f7d73a771dca6",
+          "repeated": "4891f443286b05091348cb4940a56d11432d2d182d88da6cbe9f7d73a771dca6"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_debian13.deb",
+          "first": "453a03a4ab9b51ebdfe43c8bc2564ff3e630235bff88dce1fd4504b1d47995e7",
+          "repeated": "453a03a4ab9b51ebdfe43c8bc2564ff3e630235bff88dce1fd4504b1d47995e7"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk_0.7.3-1_amd64_debian13.deb"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_debian13.deb",
+          "sha256": "4891f443286b05091348cb4940a56d11432d2d182d88da6cbe9f7d73a771dca6",
+          "component": "gtk",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_debian13.deb",
+          "sha256": "453a03a4ab9b51ebdfe43c8bc2564ff3e630235bff88dce1fd4504b1d47995e7",
+          "component": "repository",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_debian13.deb",
+          "sha256": "d0ab4f106b5809e758d46d807f57bb7e385f36fec31b3201e47ea14c427a62ea",
+          "component": "core",
+          "package_version": "0.7.3~dev-1"
+        }
+      ],
+      "log_sha256": "e18d614208b1c93bc7e131dd1dbd4f3ac39b63e2d743c9397a5a658cb1142151"
+    },
+    "ubuntu2404": {
+      "image": "sha256:a2852242e97426ab740b7e61e643c0f624befd047cb7c372d37201ab32e11536",
+      "base_digests": [
+        "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3"
+      ],
+      "seconds": 484.14,
+      "repeat_builds": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "first": "c679c51e85950c0599a9e8fcf6e19beba2bafd5f245662f0aee4e7b4c31765be",
+          "repeated": "c679c51e85950c0599a9e8fcf6e19beba2bafd5f245662f0aee4e7b4c31765be"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "first": "e0772490dc85fb828b1b698e474b709c8726b3f8e3b559e8e3c47b813440b194",
+          "repeated": "e0772490dc85fb828b1b698e474b709c8726b3f8e3b559e8e3c47b813440b194"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "first": "5502551c3c60a80c42bcd1221752dc84262abd30eddc5f3501012e0eadc77ebe",
+          "repeated": "5502551c3c60a80c42bcd1221752dc84262abd30eddc5f3501012e0eadc77ebe"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk_0.7.3-1_amd64_ubuntu24.04.deb"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "e0772490dc85fb828b1b698e474b709c8726b3f8e3b559e8e3c47b813440b194",
+          "component": "gtk",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "5502551c3c60a80c42bcd1221752dc84262abd30eddc5f3501012e0eadc77ebe",
+          "component": "repository",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "c679c51e85950c0599a9e8fcf6e19beba2bafd5f245662f0aee4e7b4c31765be",
+          "component": "core",
+          "package_version": "0.7.3~dev-1"
+        }
+      ],
+      "log_sha256": "1e2cfe73f7e2411541feeade25f8a875bd8ee37a858f8a23b769007976b509f0",
+      "nested_desktops": [
+        "gnome",
+        "kde",
+        "xfce"
+      ]
+    },
+    "ubuntu2604": {
+      "image": "sha256:4597ce5b2bf9e0adeeed421a17bd5e375733c05e242b20b05614a6c7daf50796",
+      "base_digests": [
+        "ubuntu@sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78"
+      ],
+      "seconds": 152.73,
+      "repeat_builds": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "first": "5f45fccab8ba9dce5b04cc0de68e0f9b617061a5f6ea99edff2444094f188373",
+          "repeated": "5f45fccab8ba9dce5b04cc0de68e0f9b617061a5f6ea99edff2444094f188373"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "first": "b1b6176e1e8497ac4057fd448a30f15bfa2d25d4118bcd2f1c502c73ddf6ea6c",
+          "repeated": "b1b6176e1e8497ac4057fd448a30f15bfa2d25d4118bcd2f1c502c73ddf6ea6c"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "first": "44efdcd1b877088cfe08e425ce0307c573acb3e833b3c5087c37959dde90a906",
+          "repeated": "44efdcd1b877088cfe08e425ce0307c573acb3e833b3c5087c37959dde90a906"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk_0.7.3-1_amd64_ubuntu26.04.deb"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "sha256": "b1b6176e1e8497ac4057fd448a30f15bfa2d25d4118bcd2f1c502c73ddf6ea6c",
+          "component": "gtk",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "sha256": "44efdcd1b877088cfe08e425ce0307c573acb3e833b3c5087c37959dde90a906",
+          "component": "repository",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "sha256": "5f45fccab8ba9dce5b04cc0de68e0f9b617061a5f6ea99edff2444094f188373",
+          "component": "core",
+          "package_version": "0.7.3~dev-1"
+        }
+      ],
+      "log_sha256": "0f8ce646ea5aa6e70cb2735b3a022a261d5f3dcacd17b7e8bf83dc01fb558da4"
+    },
+    "fedora44": {
+      "image": "sha256:94965448468109e45ed20ac7b83c76852c347c60dc4708e77b3cf6b9faf6ba10",
+      "base_digests": [
+        "fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80"
+      ],
+      "seconds": 153.32,
+      "repeat_builds": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "first": "d389f31f76c8d9e198b9b2a7ce8456e8f557637825730226ae74873a0284dd81",
+          "repeated": "d389f31f76c8d9e198b9b2a7ce8456e8f557637825730226ae74873a0284dd81"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "first": "5cfdd7ab21a1e35401fdd55e4b864918ee1ab0bfcda766f5f0854773af58530a",
+          "repeated": "5cfdd7ab21a1e35401fdd55e4b864918ee1ab0bfcda766f5f0854773af58530a"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "first": "c81b4804d5fb3fa02f9af7cf4e9efe5bea02cdc800e8fa78a0e8b7c9d44184dc",
+          "repeated": "c81b4804d5fb3fa02f9af7cf4e9efe5bea02cdc800e8fa78a0e8b7c9d44184dc"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk-0.7.3-1.x86_64_fedora44.rpm"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "d389f31f76c8d9e198b9b2a7ce8456e8f557637825730226ae74873a0284dd81",
+          "component": "core",
+          "package_version": "0.7.3-0.dev.1"
+        },
+        {
+          "artifact": "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "5cfdd7ab21a1e35401fdd55e4b864918ee1ab0bfcda766f5f0854773af58530a",
+          "component": "gtk",
+          "package_version": "0.7.3-0.dev.1"
+        },
+        {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "c81b4804d5fb3fa02f9af7cf4e9efe5bea02cdc800e8fa78a0e8b7c9d44184dc",
+          "component": "repository",
+          "package_version": "0.7.3-0.dev.1"
+        }
+      ],
+      "log_sha256": "596b7ee0898f85a2dcfbdee2c8c03eef6f7a1beb4f3207b34bb3fdf8f9b22f99",
+      "unavailable_manager_regression": {
+        "operations": [
+          "install",
+          "remove"
+        ],
+        "native_exit_codes": [
+          1,
+          1
+        ],
+        "scriptlet_failure_reported": true,
+        "maintenance_retained": true,
+        "successful_reinstall_cleared_maintenance": true,
+        "installed_payloads_verified": true
+      }
+    },
+    "opensuse16": {
+      "image": "sha256:bbab0342ef192aa3077c267b26efe94594f6a6a982ad78ff90fd81a15e07c728",
+      "base_digests": [
+        "opensuse/leap@sha256:1e710a28227dea189500dd49a9ccd2b9f218e059329354abdb1297ee94d2dcd4"
+      ],
+      "seconds": 151.4,
+      "repeat_builds": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "first": "8e407f75d1a55b2c4a2c39d636b9434af1ada2ae7e428b21acfd5975645b25af",
+          "repeated": "8e407f75d1a55b2c4a2c39d636b9434af1ada2ae7e428b21acfd5975645b25af"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "first": "85b70d45aad438ec7001e0f4a542c7c7569b7f882125b56dd9d7b61ec073a3bf",
+          "repeated": "85b70d45aad438ec7001e0f4a542c7c7569b7f882125b56dd9d7b61ec073a3bf"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "first": "cefd3963d7d64da88f49d0e7cba4fdc04459551d43d1d6b98c4950dc5d64fb2a",
+          "repeated": "cefd3963d7d64da88f49d0e7cba4fdc04459551d43d1d6b98c4950dc5d64fb2a"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk-0.7.3-1.x86_64_opensuse-leap16.0.rpm"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "8e407f75d1a55b2c4a2c39d636b9434af1ada2ae7e428b21acfd5975645b25af",
+          "component": "core",
+          "package_version": "0.7.3-0.dev.1"
+        },
+        {
+          "artifact": "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "85b70d45aad438ec7001e0f4a542c7c7569b7f882125b56dd9d7b61ec073a3bf",
+          "component": "gtk",
+          "package_version": "0.7.3-0.dev.1"
+        },
+        {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "cefd3963d7d64da88f49d0e7cba4fdc04459551d43d1d6b98c4950dc5d64fb2a",
+          "component": "repository",
+          "package_version": "0.7.3-0.dev.1"
+        }
+      ],
+      "log_sha256": "8c25f80d814d3b47631b1d7b52ebc4a71556ca18d6ffc6f4644cb22832efd499",
+      "unavailable_manager_regression": {
+        "operations": [
+          "install",
+          "remove"
+        ],
+        "native_exit_codes": [
+          0,
+          0
+        ],
+        "scriptlet_failure_reported": true,
+        "maintenance_retained": true,
+        "successful_reinstall_cleared_maintenance": true,
+        "installed_payloads_verified": true
+      }
+    },
+    "arch": {
+      "image": "sha256:c30cf03ec8a05e2383b3a46559f652bf66c4c117505aa6977a4ca132853c0f22",
+      "base_digests": [
+        "archlinux@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6"
+      ],
+      "seconds": 161.77,
+      "repeat_builds": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-0.7.3.dev-1-x86_64.pkg.tar.zst",
+          "first": "1de34cb8d265e569175269e2ea716f50c77f9ecef6f670cd210662d4dcfb5c2a",
+          "repeated": "1de34cb8d265e569175269e2ea716f50c77f9ecef6f670cd210662d4dcfb5c2a"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk-0.7.3.dev-1-x86_64.pkg.tar.zst",
+          "first": "185c7a5fcae8067fbf020076fd3032d250fcb6cc8520df34799fad3dd342e23b",
+          "repeated": "185c7a5fcae8067fbf020076fd3032d250fcb6cc8520df34799fad3dd342e23b"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk-0.7.3-1-x86_64.pkg.tar.zst"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-0.7.3.dev-1-x86_64.pkg.tar.zst",
+          "sha256": "1de34cb8d265e569175269e2ea716f50c77f9ecef6f670cd210662d4dcfb5c2a",
+          "component": "core",
+          "package_version": "0.7.3.dev-1"
+        },
+        {
+          "artifact": "oscmix-desk-gtk-0.7.3.dev-1-x86_64.pkg.tar.zst",
+          "sha256": "185c7a5fcae8067fbf020076fd3032d250fcb6cc8520df34799fad3dd342e23b",
+          "component": "gtk",
+          "package_version": "0.7.3.dev-1"
+        }
+      ],
+      "log_sha256": "2dce577732e5ecb894bd2f8598f702fea4e8d0f34af7a408383b3a3b4b250162"
+    }
+  },
+  "limitations": [
+    "Runtime remains 0.7.3 with development package revisions, not a final 0.8.0 candidate.",
+    "These containers run actual package managers and failure/recovery scripts, without a live systemd manager or audio hardware.",
+    "The separate Silverblue signal-receiver evidence covers actual systemd ordering for the a1cdd6f payload. It is not replaced by these container results.",
+    "The baseline core is rebuilt from released 0.7.3 source with its own build script; GTK is removed for that historical core rollback.",
+    "openSUSE RPM exits zero despite failing scriptlets. The regression checks retained maintenance and successful repair, not exit status alone.",
+    "Final historical release upgrade/rollback, final hardware, HTTPS repositories and release publication remain open."
+  ]
+}

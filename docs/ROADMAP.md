@@ -97,7 +97,16 @@ six deep-entry/exit cycles, including failed reload, recovery and an inactive
 desk. Actual deployment rollback and return preserve user state and restore
 the respective integration files. A separate native RPM failure probe found
 premature fence removal after a failed manager reload; the ordering correction
-and permanent container regression now await their fresh native qualification.
+and permanent container regression now pass on both RPM targets. All six native
+targets pass the updated packaging matrix; Ubuntu 24.04 also passes GNOME/KDE
+Wayland and Xfce/X11. The
+[packaging regression record](evidence/0.8.0/resume-packaging-development.json)
+identifies the new artifacts and distinguishes expected scriptlet failures
+from successfully repaired transactions.
+A separate [NixOS resume probe](evidence/0.8.0/nixos-resume-development.json)
+passes three active and one inactive deep-entry/exit cycles through the existing
+native stop action on systemd 260.4. It needed no module change. Exact generation
+rollbacks restore the previous disabled system and preserve user state.
 These development checks do not close the remaining
 device-I/O, concurrency, suspend or final-candidate VM gates. Final hardware,
 installation, service/VM and repository qualification remain open.
