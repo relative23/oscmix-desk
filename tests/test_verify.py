@@ -192,14 +192,14 @@ def test_registers_outside_the_expectation_are_ignored(session_mod):
     assert result.mismatched == []
 
 
-def test_a_corrupt_message_does_not_end_the_dump(session_mod):
-    # Decode failures `continue` rather than `break`: one malformed
-    # datagram in a multi-thousand-message dump must not abandon the rest.
+def test_a_corrupt_delivery_refuses_the_dump(session_mod):
+    # The reliable control path must not turn malformed feedback into
+    # silence and allow a dependent repair based on a partial delivery.
     registers = {"/output/5/volume": ("f", (0.0,))}
     state = [b"\x01\x02\x03\x04",                      # no NUL: undecodable
              osc.encode_osc("/output/5/volume", "f", 0.0)]
-    result = run_verify(session_mod, registers, state)
-    assert result.confirmed == ["/output/5/volume"]
+    with pytest.raises(ReceivePortError, match="invalid OSC delivery"):
+        run_verify(session_mod, registers, state)
 
 
 def test_observer_receives_the_path_and_its_arguments(session_mod):

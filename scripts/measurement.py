@@ -6,10 +6,9 @@ transport and neither acquire a lease nor write a register on their own.
 
 import hashlib
 import json
-import struct
 from pathlib import Path
 
-from oscmix_desk.osc import decode_osc, iter_osc_messages
+from oscmix_desk.osc import decode_delivery
 
 
 def build_evidence(connection, build_dir, proc_root=Path('/proc')):
@@ -42,9 +41,10 @@ def observations(connection, timeout):
     delivery = connection.next_delivery(timeout)
     if delivery is None:
         return
-    for raw in iter_osc_messages(delivery.payload):
-        try:
-            path, tags, args = decode_osc(raw)
-        except (ValueError, struct.error):
-            continue
+    try:
+        messages = decode_delivery(delivery.payload)
+    except ValueError:
+        connection.close()
+        raise
+    for path, tags, args in messages:
         yield path, tags, args, delivery.origin, delivery.sequence

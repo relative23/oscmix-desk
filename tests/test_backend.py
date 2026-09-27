@@ -99,14 +99,16 @@ def test_a_timeout_yields_nothing_rather_than_raising(tmp_path):
         peer.close()
 
 
-def test_a_malformed_osc_delivery_does_not_hide_the_next_one(tmp_path):
+def test_a_malformed_osc_delivery_invalidates_the_connection(tmp_path):
     valid = osc.encode_osc("/output/5/stereo", "i", 1)
     peer = ScriptedControl(tmp_path / "c.sock", reports=[b"bad!", valid])
     device = backend.Control(peer.path, os.getpid(), reader=True)
     try:
         device.request_dump()
-        assert list(device.messages(0.5)) == []
-        assert list(device.messages(0.5)) == [("/output/5/stereo", "i", (1,))]
+        with pytest.raises(OSError, match="invalid OSC delivery"):
+            list(device.messages(0.5))
+        with pytest.raises(OSError, match="no longer valid"):
+            list(device.messages(0.5))
     finally:
         device.close()
         peer.close()

@@ -118,8 +118,24 @@ def test_deeply_nested_bundles_do_not_exhaust_the_python_stack(session_mod):
         osc_bundle([nested, message]))) == [message, message]
 
 
-def test_truncated_bundle_stops_cleanly(session_mod):
+def test_truncated_bundle_is_refused(session_mod):
     message = osc.encode_osc("/x", "i", 1)
     bundle = (b"#bundle\x00" + b"\x00" * 8
               + struct.pack(">i", len(message) + 100) + message)
-    assert list(osc.iter_osc_messages(bundle)) == []
+    with pytest.raises(ValueError, match="element size"):
+        list(osc.iter_osc_messages(bundle))
+
+
+@pytest.mark.parametrize('bad', [
+    b'#bundle\x00',  # absent timetag
+    b'#bundle\x00' + b'\x00' * 8 + struct.pack('>i', 0),
+    b'#bundle\x00' + b'\x00' * 8 + struct.pack('>i', -4),
+    b'#bundle\x00' + b'\x00' * 8 + struct.pack('>i', 7) + b'\x00' * 8,
+    b'/x\x00\xff,i\x00\x00' + struct.pack('>i', 1),  # nonzero string padding
+    b'/x\x00\x00,i\x00\x00' + struct.pack('>i', 1) + b'\x00' * 4,
+    b'/x\x00\x00,s\x00\x00bad\x00' + b'x',  # unaligned tail
+    b'/x\x00\x00,s\x00\x00x\x00',  # missing string padding
+])
+def test_malformed_framing_cannot_supply_a_partial_observation(bad):
+    with pytest.raises(ValueError):
+        osc.decode_delivery(bad)

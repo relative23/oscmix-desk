@@ -47,7 +47,10 @@ def _decode_string(data: bytes, offset: int) -> Tuple[str, int]:
     end = data.index(b"\x00", offset)
     value = data[offset:end].decode("ascii")
     end += 1
-    return value, end + (-end % 4)
+    padded = end + (-end % 4)
+    if padded > len(data) or any(data[end:padded]):
+        raise ValueError("invalid OSC string padding")
+    return value, padded
 
 
 def decode_osc(data: bytes) -> Message:
@@ -76,6 +79,8 @@ def decode_osc(data: bytes) -> Message:
             args.append(value)
     except (struct.error, IndexError):
         raise ValueError("truncated OSC arguments") from None
+    if offset != len(data):
+        raise ValueError("unexpected trailing OSC data")
     return path, tags[1:], tuple(args)
 
 
@@ -88,22 +93,32 @@ def iter_osc_messages(datagram: bytes) -> Iterator[bytes]:
     packet; a thousand frames do not fit in the interpreter's stack, and
     this reads whatever the network hands it.
 
-    Depth first, in wire order, and a truncated element ends the bundle
-    it sits in rather than the whole datagram.
+    Depth first, in wire order. Invalid bundle framing raises rather than
+    silently keeping a prefix. Consumers must finish decoding the delivery
+    before using any of its messages; see ``decode_delivery``.
     """
     pending = [datagram]
     while pending:
         current = pending.pop()
+        if len(current) % 4:
+            raise ValueError("unaligned OSC delivery")
         if not current.startswith(b"#bundle\x00"):
             yield current
             continue
+        if len(current) < 16:
+            raise ValueError("truncated OSC bundle header")
         offset = 16  # "#bundle\0" plus 8-byte time tag
         elements = []
         while offset + 4 <= len(current):
             (size,) = struct.unpack_from(">i", current, offset)
             offset += 4
-            if size <= 0 or offset + size > len(current):
-                break
+            if size <= 0 or size % 4 or offset + size > len(current):
+                raise ValueError("invalid OSC bundle element size")
             elements.append(current[offset:offset + size])
             offset += size
         pending.extend(reversed(elements))
+
+
+def decode_delivery(data: bytes) -> Tuple[Message, ...]:
+    """Decode every message before exposing any part of one OSC delivery."""
+    return tuple(decode_osc(raw) for raw in iter_osc_messages(data))

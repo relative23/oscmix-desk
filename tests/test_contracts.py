@@ -120,12 +120,16 @@ def test_decoding_hostile_bytes_fails_cleanly(session_mod, data):
 
 @settings(max_examples=400)
 @given(data=st.binary(max_size=256))
-def test_iterating_hostile_datagrams_never_raises(session_mod, data):
-    # iter_osc_messages splits bundles by a length prefix taken straight
-    # from the datagram; a hostile length must not escape as an exception
-    # or spin forever.
-    for message in osc.iter_osc_messages(data):
-        assert isinstance(message, bytes)
+def test_hostile_deliveries_decode_or_raise_value_error(session_mod, data):
+    # Protocol corruption is refused in 0.8.0; it cannot escape as a
+    # different exception or expose a partially decoded delivery.
+    try:
+        result = osc.decode_delivery(data)
+    except ValueError:
+        return
+    assert isinstance(result, tuple)
+    assert all(isinstance(path, str) and len(tags) == len(args)
+               for path, tags, args in result)
 
 
 @given(level=st.floats(min_value=-65.0, max_value=6.0,
@@ -264,13 +268,32 @@ def test_decoding_corrupted_messages_fails_cleanly(session_mod, data):
                       max_size=4),
        payload=st.binary(max_size=64))
 def test_bundles_with_hostile_sizes_terminate(session_mod, sizes, payload):
-    # iter_osc_messages walks a bundle by a length prefix taken straight
-    # from the datagram. A negative or oversized length must end the walk,
-    # not loop or read past the buffer.
+    # Arbitrary framing must finish or refuse with the documented parse
+    # error, never loop, recurse or read past the buffer.
     datagram = b"#bundle\x00" + b"\x00" * 8
     for size in sizes:
         datagram += struct.pack(">i", size) + payload
-    assert isinstance(list(osc.iter_osc_messages(datagram)), list)
+    try:
+        result = osc.decode_delivery(datagram)
+    except ValueError:
+        return
+    assert isinstance(result, tuple)
+
+
+@given(prefix=st.lists(osc_messages(), max_size=10),
+       tail=osc_messages(), extra=st.integers(min_value=1, max_value=1024),
+       nested=st.booleans())
+def test_an_oversized_tail_refuses_even_a_valid_bundle_prefix(prefix, tail, extra, nested):
+    from support import osc_bundle
+
+    good = [osc.encode_osc(path, tags, *args) for path, tags, args in prefix]
+    path, tags, args = tail
+    payload = osc.encode_osc(path, tags, *args)
+    bad = struct.pack('>i', len(payload) + 4 * extra) + payload
+    delivery = (osc_bundle(good + [osc_bundle([]) + bad]) if nested
+                else osc_bundle(good) + bad)
+    with pytest.raises(ValueError, match='element size'):
+        osc.decode_delivery(delivery)
 
 
 @given(reports=st.lists(st.tuples(st.sampled_from([

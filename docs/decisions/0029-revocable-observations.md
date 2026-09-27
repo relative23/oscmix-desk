@@ -45,3 +45,22 @@ timeouts, cancellation, receive errors, repair with missing fresh evidence,
 and the actual foreground/background write paths. The original regressions
 fail against the unchanged 0.7.3 runtime. These are simulated I/O results,
 not claims about a newly measured audible hardware effect.
+
+## Encoded delivery correction during N7/N9 review
+
+The shared observation rule alone did not cover malformed wire data. The
+Python receiver still skipped an undecodable message, and bundle traversal
+silently stopped at a truncated element. A=1, B=1 followed by a truncated
+A=0 therefore let both the foreground apply and later mix repair write from
+the remaining valid prefix. Nine production-client regressions reproduce
+this on the pre-correction 0.8.0 development source with simulated peers.
+
+OSC framing and every contained message are now decoded before any report
+in the delivery reaches an observer. Bad bundle sizes, missing arguments,
+invalid padding and trailing data refuse the delivery and invalidate the
+control connection. The existing partial-apply mapping preserves the sent
+link paths and withholds the pending matrix. Measurement tools share this
+pure decoder and cannot record a valid prefix from a damaged delivery.
+Well-formed but invalid register values still use revocation and later
+reconfirmation through `Observation`; they are a different case from a
+delivery whose remaining reports cannot be decoded.

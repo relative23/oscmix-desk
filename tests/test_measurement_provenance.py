@@ -66,3 +66,20 @@ def test_other_or_unidentified_build_refuses_before_measurement(measurement, pre
     with pytest.raises((ValueError, FileNotFoundError),
                        match=r'changed|differs|series|No such file'):
         measurement.build_evidence(peer, build, proc)
+
+
+def test_malformed_delivery_cannot_enter_measurement_evidence(measurement):
+    from support import osc_bundle
+
+    from oscmix_desk.backend import Delivery
+    from oscmix_desk.osc import encode_osc
+
+    good = encode_osc('/output/5/stereo', 'i', 1)
+    bad = encode_osc('/output/5/stereo', 'i', 0)[:-4]
+    delivery = Delivery(1, 1, bytes(range(16)), osc_bundle([good, bad]))
+    closed = []
+    connection = SimpleNamespace(next_delivery=lambda _: delivery,
+                                 close=lambda: closed.append(True))
+    with pytest.raises(ValueError, match='truncated OSC arguments'):
+        next(measurement.observations(connection, .5))
+    assert closed == [True]

@@ -25,7 +25,7 @@ from .diagnostics import backend_status
 from .discovery import serial_in
 from .errors import ReceivePortError, WriteFailed
 from .model import Config
-from .osc import Message, decode_osc, encode_osc, iter_osc_messages
+from .osc import Message, decode_delivery, encode_osc
 
 
 @dataclass(frozen=True)
@@ -360,11 +360,11 @@ class Control:
         delivery = self.next_delivery(timeout)
         if delivery is None or delivery.origin != 1:
             return
-        for raw in iter_osc_messages(delivery.payload):
-            try:
-                yield decode_osc(raw)
-            except (ValueError, struct.error):
-                continue
+        try:
+            messages = decode_delivery(delivery.payload)
+        except ValueError:
+            self._protocol_error("invalid OSC delivery; observations invalid")
+        yield from messages
 
     def request_dump(self, timeout: float = 12.0) -> None:
         deadline = time.monotonic() + timeout
