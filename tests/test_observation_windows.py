@@ -144,6 +144,50 @@ def test_reconcile_cannot_replace_known_wrong_links_with_silence(clocked):
     assert backend.sent == [report(A, 1)]
 
 
+@pytest.mark.parametrize('bad', [0, 2])
+@pytest.mark.parametrize('recovered', [False, True])
+def test_reconcile_requires_fresh_confirmation_of_a_wrong_playback_link(
+        clocked, bad, recovered):
+    playback = '/playback/1/stereo'
+    backend = Deliveries([[[report(A, 1), report(B, 1), report(playback, bad)]],
+                          [[report(playback, 1)]] if recovered else []])
+    if recovered:
+        assert verify.reconcile_now(desk(), 'playback link repaired', backend=backend)
+        assert backend.sent == [report(playback, 1),
+                                ('/mix/5/playback/1', 'fi', (0., 0)),
+                                ('/mix/7/playback/1', 'fi', (0., 0))]
+    else:
+        with pytest.raises(WriteFailed, match='fresh link confirmation required') as failure:
+            verify.reconcile_now(desk(), 'playback link still unconfirmed', backend=backend)
+        assert failure.value.written == (playback,)
+        assert failure.value.unwritten == ('/mix/5/playback/1', '/mix/7/playback/1')
+        assert backend.sent == [report(playback, 1)]
+    assert backend.dumps == 1
+    assert backend.closed == 0
+
+
+def test_reconcile_cancellation_after_the_link_phase_reports_the_partial_write(clocked):
+    backend = Deliveries([[]])
+    with pytest.raises(WriteFailed, match='stop requested') as failure:
+        verify.reconcile_now(desk(), 'cancelled', backend=backend,
+                             should_stop=lambda: bool(backend.sent))
+    assert backend.sent == [report('/playback/1/stereo', 1), report(A, 1), report(B, 1)]
+    assert failure.value.written == ('/playback/1/stereo', A, B)
+    assert failure.value.unwritten == ('/mix/5/playback/1', '/mix/7/playback/1')
+    assert backend.dumps == 1
+    assert backend.closed == 0
+
+
+def test_missing_playback_link_is_not_a_known_contradiction(clocked):
+    backend = Deliveries([[[report(A, 1), report(B, 1)]], []])
+    assert verify.reconcile_now(desk(), 'missing playback feedback', backend=backend)
+    assert backend.sent == [report('/playback/1/stereo', 1),
+                            ('/mix/5/playback/1', 'fi', (0., 0)),
+                            ('/mix/7/playback/1', 'fi', (0., 0))]
+    assert backend.dumps == 1
+    assert backend.closed == 0
+
+
 def test_stop_during_a_link_delivery_abandons_dependent_writes(clocked):
     backend = Deliveries([[[report(A, 1), report(B, 1)]]])
     # Stop after the link phase, while the barrier owns its listener.

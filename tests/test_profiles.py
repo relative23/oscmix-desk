@@ -194,6 +194,24 @@ def test_failed_profile_readback_keeps_its_name_and_complete_unconfirmed_list(tm
     assert backend.operations == ["begin", "finish", "close"]
 
 
+def test_explicit_profile_distinguishes_missing_feedback_from_unreportable_state(
+        tmp_path, recording_backend, monkeypatch):
+    monkeypatch.setattr(profiles, 'VERIFY_TIMEOUT', .002)
+    write_config(tmp_path / 'profiles/tracking.conf', GOOD)
+    outcome = profiles.switch_profile('tracking', config_path=tmp_path / 'routing.conf',
+                                      backend=recording_backend)
+    assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
+    assert outcome.unverified == ['/mix/1/playback/1', '/output/1/volume']
+    assert outcome.unverifiable == ['/mix/1/playback/1']
+    assert outcome.reason == '2 unconfirmed, 1 of them never reported by this backend'
+    assert outcome.read_back
+    assert outcome.persisted
+    assert recording_backend.sent == [('/playback/1/stereo', 'i', (1,)),
+                                       ('/output/1/stereo', 'i', (1,)),
+                                       ('/mix/1/playback/1', 'fi', (0., 0)),
+                                       ('/output/1/volume', 'f', (-10.,))]
+
+
 # --------------------------------------------------------------------------
 # Outcome 2: applied, but it could not be checked -- with the list.
 # --------------------------------------------------------------------------

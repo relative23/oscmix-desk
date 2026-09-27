@@ -84,6 +84,7 @@ def test_a_stop_during_a_reconcile_writes_nothing(tmp_path):
                                 should_stop=lambda: True,
                                 backend=device) is False
     assert device.sent == []
+    assert device.dumps == 0
 
 def test_a_reconcile_corrects_what_the_register_table_pins(tmp_path,
                                                            monkeypatch):

@@ -160,6 +160,27 @@ def test_retention_summary_does_not_invent_confirmation(monkeypatch, caplog, val
     assert backend.sent == []
 
 
+@pytest.mark.parametrize(('reported', 'meaning'), [(6.099999904632568, '1 confirmed'),
+                                                 (0., '1 differing PIN'),
+                                                 (None, '1 not observed')])
+def test_reconcile_reports_the_selected_models_pin_and_gain_quantization(
+        tmp_path, caplog, reported, meaning):
+    path = tmp_path / 'routing.conf'
+    path.write_text('[input:1]\ngain = 6.19\n')
+    config = config_mod.load_config(path)
+    reports = [] if reported is None else [('/input/1/gain', 'f', (reported,))]
+    backend = RecordingBackend(lambda _: reports)
+    with caplog.at_level(logging.INFO):
+        assert verify.reconcile_now(config, 'measured gain conversion', backend=backend)
+    summary, = [record.message for record in caplog.records if 'confirmed;' in record.message]
+    assert meaning in summary
+    if reported:
+        assert '0 differing PIN' in summary
+    assert '0 kept by REMEMBER' in summary
+    assert backend.sent == [('/input/1/gain', 'f', (6.19,))]
+    assert backend.dumps == 1
+
+
 @pytest.mark.parametrize("policy", [PIN, REMEMBER])
 @pytest.mark.parametrize("missing", [True, False])
 def test_effective_policy_controls_missing_or_invalid_link_repair_summary(caplog, policy, missing):
