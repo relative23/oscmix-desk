@@ -1,0 +1,116 @@
+name: Verify and publish signed package repositories
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release or draft containing the reviewed complete site archive
+        required: true
+        type: string
+      source_commit:
+        description: Full qualified release source SHA
+        required: true
+        type: string
+      snapshot:
+        description: Immutable snapshot identifier from local signing
+        required: true
+        type: string
+      archive_sha256:
+        description: SHA256 from the reviewed local staging result
+        required: true
+        type: string
+      previous_publication_sha256:
+        description: Selected previous publication.json SHA256, or none for the first deployment
+        required: true
+        default: none
+        type: string
+      deploy:
+        description: Deploy the verified archive after creating its public provenance
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oscmix-package-repository-publication
+  cancel-in-progress: false
+
+jobs:
+  publication:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: https://relative23.github.io/oscmix-desk/
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      pages: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Install public verification tools
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y gnupg gpgv rpm
+      - name: Verify signed channels, original builds and the selected predecessor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          SNAPSHOT: ${{ inputs.snapshot }}
+          ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
+          PREVIOUS_SHA256: ${{ inputs.previous_publication_sha256 }}
+        run: |
+          python3 scripts/repository-publication.py prepare \
+            --release-tag "$RELEASE_TAG" --expected-commit "$SOURCE_COMMIT" \
+            --snapshot "$SNAPSHOT" --sha256 "$ARCHIVE_SHA256" \
+            --previous-sha256 "$PREVIOUS_SHA256" \
+            --public-key packaging/keys/oscmix-desk-archive.asc \
+            --output build/repository-publication
+      - name: Attest the final signed archive and each recoverable channel manifest
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: |
+            build/repository-publication/oscmix-repositories-*.tar.gz
+            build/repository-publication/site/publication.json
+            build/repository-publication/site/*/repository.json
+      - name: Retain the independent public recovery proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SNAPSHOT: ${{ inputs.snapshot }}
+          BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          proof="build/repository-publication/oscmix-repositories-$SNAPSHOT-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.attestation.jsonl"
+          cp "$BUNDLE" "$proof"
+          gh release upload "$RELEASE_TAG" "$proof" --repo "$GITHUB_REPOSITORY"
+      - name: Prepare one complete Pages artifact
+        if: inputs.deploy
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: build/repository-publication/site
+      - name: Recheck freshness and the live predecessor immediately before deployment
+        if: inputs.deploy
+        run: python3 scripts/repository-publication.py recheck --prepared build/repository-publication
+      - name: Deploy the verified complete site
+        if: inputs.deploy
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+      - name: Verify every published file and native conditional request
+        if: inputs.deploy
+        run: python3 scripts/repository-publication.py verify-remote --prepared build/repository-publication
+      - name: Preserve verification records
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repository-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            build/repository-publication/prepared.json
+            build/repository-publication/https-verification.json
+            build/repository-publication/*.attestation.jsonl
+          retention-days: 90

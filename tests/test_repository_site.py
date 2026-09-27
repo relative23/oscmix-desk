@@ -11,6 +11,23 @@ import pytest
 from support import repo_file
 
 
+def apt_index(site, directory, packages):
+    root = directory / 'dists/stable'
+    index = root / 'main/binary-amd64/Packages'
+    index.write_text('\n\n'.join(
+        'Package: ' + row['name'] + '\nVersion: ' + row['version']
+        + '\nArchitecture: amd64\nFilename: ' + row['path']
+        + '\nSize: ' + str((directory / row['path']).stat().st_size)
+        + '\nSHA256: ' + row['sha256'] for row in packages) + '\n\n')
+    index.with_suffix('.gz').write_bytes(gzip.compress(index.read_bytes(), mtime=0))
+    sums = ''.join(' %s %d main/binary-amd64/%s\n' % (
+        site.BUILDER.sha(path), path.stat().st_size, path.name)
+        for path in (index, index.with_suffix('.gz')))
+    (root / 'Release').write_text(
+        'Suite: stable\nCodename: stable\nArchitectures: amd64\nComponents: main\n'
+        'Acquire-By-Hash: yes\nSHA256:\n' + sums)
+
+
 def rpm_index(site, directory, packages):
     rows = []
     for row in packages:
@@ -41,6 +58,9 @@ def site(monkeypatch):
     def verify(signature, source=None):
         if signature.read_bytes() != b'signature':
             raise ValueError('invalid signature')
+        if source is None:
+            return signature.with_name('Release').read_bytes()
+        return None
 
     monkeypatch.setattr(module.BUILDER, 'Verifier', lambda *_: SimpleNamespace(
         fingerprints={'D' * 40}, verify=verify))
@@ -91,6 +111,8 @@ def channels(site, tmp_path):
             path.write_bytes(b'signature')
         if kind == 'rpm':
             rpm_index(site, directory, packages)
+        else:
+            apt_index(site, directory, packages)
         files = {str(path.relative_to(directory)): site.BUILDER.sha(path)
                  for path in directory.rglob('*') if path.is_file()}
         snapshot = dict(schema=1, files=files, packages=packages, target=target, snapshot='first',
@@ -263,6 +285,53 @@ def test_signed_native_index_cannot_expand_declared_entities(site, encoding):
     xml += '<!DOCTYPE metadata [<!ENTITY payload "expanded">]><metadata>&payload;</metadata>'
     with pytest.raises(ValueError, match='DTD or entities'):
         site.index_xml(xml.encode(encoding))
+
+
+@pytest.mark.parametrize('problem', ['foreign-download', 'duplicate', 'omit-version',
+                                   'changed-identity', 'different-compressed-index'])
+def test_apt_signed_indexes_must_select_exactly_the_authenticated_packages(
+        site, channels, problem):
+    directory = channels.channels / 'debian13'
+    manifest = directory / 'repository.json'
+    snapshot = json.loads(manifest.read_text())
+    indexed = list(snapshot['packages'])
+    if problem == 'foreign-download':
+        old = directory / indexed[0]['path']
+        foreign = directory / 'pool/foreign-download.deb'
+        foreign.write_bytes(old.read_bytes())
+        indexed[0] = dict(indexed[0], path=str(foreign.relative_to(directory)))
+    elif problem == 'duplicate':
+        indexed.append(indexed[0])
+    elif problem == 'omit-version':
+        indexed.pop()
+    elif problem == 'changed-identity':
+        indexed[0] = dict(indexed[0], version='0.8.0-999')
+    apt_index(site, directory, indexed)
+    if problem == 'different-compressed-index':
+        compressed = directory / 'dists/stable/main/binary-amd64/Packages.gz'
+        compressed.write_bytes(gzip.compress(b'different index'))
+        # Re-signing a self-consistent Release must not mask two index contents.
+        release = directory / 'dists/stable/Release'
+        lines = release.read_text().splitlines()
+        lines[-1] = ' %s %d main/binary-amd64/Packages.gz' % (
+            site.BUILDER.sha(compressed), compressed.stat().st_size)
+        release.write_text('\n'.join(lines) + '\n')
+    snapshot['files'] = {str(path.relative_to(directory)): site.BUILDER.sha(path)
+                         for path in directory.rglob('*') if path.is_file()
+                         and path.name not in ('repository.json', 'repository.json.asc')}
+    manifest.write_text(json.dumps(snapshot))
+    with pytest.raises(ValueError, match=r'APT|repository file'):
+        site.stage(channels)
+    assert not channels.output.exists()
+
+
+def test_distinct_valid_inrelease_and_release_cannot_select_different_indexes(
+        site, channels, monkeypatch):
+    monkeypatch.setattr(site.BUILDER, 'Verifier', lambda *_: SimpleNamespace(
+        fingerprints={'D' * 40}, verify=lambda *_: b'other authenticated cleartext'))
+    with pytest.raises(ValueError, match='InRelease and detached Release disagree'):
+        site.stage(channels)
+    assert not channels.output.exists()
 
 
 @pytest.mark.parametrize(('name', 'kind'), [

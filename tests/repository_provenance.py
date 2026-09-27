@@ -102,6 +102,17 @@ def exercise(args, private):
     row, record, _ = packages[target][0]
     selected = {target: [(row, record, True)]}
     manifest = root / target / row['build_manifest']
+    # A genuine release-build attestation is not an independent repository
+    # publication proof, even when its bytes and project identity are valid.
+    try:
+        SITE.BUILDER.verify_publication_provenance(
+            manifest, record['source_commit'], args.gh,
+            inputs / 'attestation.jsonl', args.trusted_root)
+    except subprocess.CalledProcessError:
+        result['checks'].append(dict(check='release-attestation-is-not-publication-proof',
+                                     refused=True))
+    else:
+        raise AssertionError('wrong workflow accepted as publication proof')
     original = manifest.read_bytes()
     manifest.write_bytes(original + b' ')
     refuse('altered-attested-manifest', selected)

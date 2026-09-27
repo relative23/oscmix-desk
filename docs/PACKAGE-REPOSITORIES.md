@@ -151,6 +151,71 @@ different RPM payload and an unsigned RPM with otherwise matching content.
 These checks do not qualify 0.8.0 payloads, Pages deployment, the final signed-output
 attestation or HTTPS publication; those remain mandatory before release.
 
+## Publishing and recovering a channel
+
+The manual `.github/workflows/repository-publication.yml` is implemented but has
+not yet run on GitHub. Pages, positive recovery with its actual publication proof,
+and all final HTTPS/native-client checks remain unqualified. The following is the
+maintainer interface being qualified, not an announcement of available channels.
+
+The tag workflow now leaves the complete build artifacts in a draft. After all
+local release gates and signature-custody requirements pass, authenticate those
+inputs and sign the channels locally. Attach the reviewed complete archive to
+that draft with its unique snapshot name, without overwriting an existing asset:
+
+```sh
+gh release upload "$release_tag" \
+  "/staging/oscmix-repositories-$snapshot_id.tar.gz" \
+  --repo relative23/oscmix-desk
+```
+
+Dispatch `repository-publication.yml` on `main`, specifying `release_tag`,
+`source_commit`, `snapshot`, `archive_sha256` and `previous_publication_sha256`.
+The last value is the digest of `publication.json` in the independently verified
+previous archive; use `none` only for the first deployment. `deploy=false`, the
+default, checks the input and retains a final signed-output attestation bundle
+as a uniquely named release asset. It does not deploy. Private signing material
+never enters the runner. Record the exact publisher workflow commit and keep the
+public attestation bundle with the immutable archive.
+
+With `deploy=true`, the workflow rechecks the live predecessor and metadata
+freshness immediately before deploying one complete Pages artifact. It rejects a
+changed predecessor, a non-advancing epoch, expired APT metadata and removal of
+previously referenced immutable files. Download verification then hashes every
+published file and checks both old ETag and Last-Modified validators for changed
+native entry points. A failure leaves the release in draft; HTTP success alone
+does not replace the five actual native package-manager gates. Publish the draft
+only after all final gates pass, and verify its public release downloads again.
+
+If deployment stops before changing Pages, the same reviewed input can be retried
+while its selected predecessor is still current. If Pages already serves the new
+publication but download verification failed, preserve the workflow's
+`prepared.json`, its archive and verification records. Reconstruct the checked
+`site` from that exact archive and use `scripts/repository-publication.py
+verify-remote --prepared DIR` after resolving the failure. Do not substitute a
+new predecessor digest to force an old promotion through. A correction is another
+complete, later snapshot. This recovery behavior still needs actual Pages testing.
+
+When a previous repository signature has expired or its subkey has been revoked,
+ordinary `--previous` correctly refuses it. Add these explicit inputs to the
+normal channel-staging command only after independently identifying the original
+publisher workflow commit and its public attestation:
+
+```sh
+--previous-publication-commit "$publisher_commit" \
+--previous-attestation /verified/publication.attestation.jsonl \
+--publication-trusted-root /verified/sigstore-trusted-root.jsonl
+```
+
+The last two options support offline verification; without them `gh` obtains the
+proof/trust through its normal verified service. Recovery authenticates the exact
+old channel manifest against this repository's publication workflow, `main`, its
+full source and signer commit, and a GitHub-hosted runner. All listed file hashes
+must still match before copying. New metadata and retained RPM versions receive
+the current valid signatures. The normal client rules continue rejecting expired
+and revoked signers. A release-build attestation cannot stand in for this separate
+publication proof, and a failed proof has no fallback to unchecked history.
+
 ## Subscription package
 
 The separate `oscmix-desk-repository` DEB/RPM installs the helpers and a public

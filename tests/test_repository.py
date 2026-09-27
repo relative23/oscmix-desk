@@ -246,3 +246,62 @@ def test_invalid_snapshot_digest_cannot_be_reused(builder, tmp_path, digest):
     (tmp_path / 'repository.json.asc').touch()
     with pytest.raises(ValueError, match='missing or altered file'):
         builder.read_snapshot(tmp_path, SimpleNamespace(verify=lambda *_: None))
+
+
+@pytest.mark.parametrize('proof', ['missing', 'unavailable', 'verified', 'changed-file'])
+def test_invalid_old_signature_needs_independent_publisher_proof_before_reuse(
+        builder, tmp_path, monkeypatch, proof):
+    previous = tmp_path / 'previous'
+    previous.mkdir()
+    payload = previous / 'payload'
+    payload.write_bytes(b'historical bytes')
+    record = dict(schema=1, files={'payload': builder.sha(payload)}, packages=[],
+                  target='debian13', development=False, snapshot='old', epoch=100,
+                  source_commit='a' * 40)
+    (previous / 'repository.json').write_text(json.dumps(record))
+    (previous / 'repository.json.asc').write_bytes(b'old invalid signature')
+    args = SimpleNamespace(previous=previous, packages=None, output=tmp_path / 'new',
+                           target='debian13', development=False, snapshot='renewed', epoch=101,
+                           expected_commit='a' * 40, gh='selected-gh',
+                           previous_publication_commit=None if proof == 'missing' else 'b' * 40,
+                           previous_attestation=tmp_path / 'publication.jsonl',
+                           publication_trusted_root=tmp_path / 'roots.jsonl')
+    calls = []
+
+    def invalid_signature(*_):
+        raise ValueError('old GPG signature expired or revoked')
+
+    def publisher(command):
+        calls.append(command)
+        if proof == 'unavailable':
+            raise builder.subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(builder, 'run', publisher)
+    if proof == 'changed-file':
+        payload.write_bytes(b'changed after attestation')
+    if proof == 'verified':
+        assert builder.restore_previous(args, SimpleNamespace(verify=invalid_signature)) == record
+        assert (args.output / 'payload').read_bytes() == b'historical bytes'
+    else:
+        with pytest.raises((ValueError, builder.subprocess.CalledProcessError)):
+            builder.restore_previous(args, SimpleNamespace(verify=invalid_signature))
+        assert not args.output.exists()
+    if proof == 'missing':
+        assert not calls  # No automatic fallback after a GPG failure.
+    else:
+        assert calls == [[
+            'selected-gh', 'attestation', 'verify', previous / 'repository.json',
+            '--repo', 'relative23/oscmix-desk', '--signer-workflow',
+            'relative23/oscmix-desk/.github/workflows/repository-publication.yml',
+            '--signer-digest', 'b' * 40, '--source-ref', 'refs/heads/main',
+            '--source-digest', 'b' * 40, '--predicate-type', 'https://slsa.dev/provenance/v1',
+            '--deny-self-hosted-runners', '--bundle', args.previous_attestation,
+            '--custom-trusted-root', args.publication_trusted_root]]
+
+
+@pytest.mark.parametrize('commit', ['', 'main', 'a' * 39, 'a' * 41, '--anything'])
+def test_publication_recovery_cannot_follow_a_moving_or_ambiguous_workflow(
+        builder, tmp_path, monkeypatch, commit):
+    monkeypatch.setattr(builder, 'run', lambda *_: pytest.fail('invalid identity reached gh'))
+    with pytest.raises(ValueError, match='full workflow commit'):
+        builder.verify_publication_provenance(tmp_path / 'repository.json', commit)

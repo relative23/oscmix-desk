@@ -162,6 +162,17 @@ workflow and release tag. That attestation identifies our build; it does
 not authenticate upstream's unsigned history or prove the locally
 compiled C binaries reproducible.
 
+For 0.8.0, the repository publisher separately verifies each attested native build,
+its actual indexed download identity and the final GPG-signed files. It attests the
+complete signed archive and each channel manifest, using an explicitly selected
+`main` workflow revision. Private GPG keys stay local. Recovery of an expired or
+revoked historical snapshot requires that independent publication proof and the
+exact source/signer workflow commit before reusing any file; live client checks
+remain strict. The publisher also binds updates to a selected live predecessor
+and preserves immutable downloads. The workflow is implemented but its real
+publication/recovery and HTTPS gates remain open; see
+[the operating procedure](PACKAGE-REPOSITORIES.md#publishing-and-recovering-a-channel).
+
 ## Not in scope
 
 Multi-user separation, remote access, and anything about the audio data

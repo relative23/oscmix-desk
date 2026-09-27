@@ -223,6 +223,22 @@ one that found all three defects in 0.1.3.
 
 ## 7. The installation artifact
 
+- [ ] The tag workflow leaves all artifacts in a draft. Authenticate the exact
+      build inputs, stage/sign a complete five-channel repository locally, attach
+      its uniquely named archive and run `repository-publication.yml` from the
+      qualified `main` workflow revision. Its default verifies/attests without
+      deployment; selecting deployment must pass predecessor and freshness checks.
+- [ ] Retain the final signed-output attestation bundle and exact publisher
+      workflow commit. Independently verify the archive and channel manifests;
+      exercise recovery after expiry/revocation with that actual publication proof.
+      A valid build attestation alone is insufficient for this recovery path.
+- [ ] Verify all published HTTPS bytes, changed ETag/Last-Modified requests and
+      all five actual native managers against the final channels. An interrupted
+      deployment or failed download check leaves the release in draft. Preserve
+      its prepared record for checked recovery; do not replace the old snapshot
+      expectation merely to make a stale promotion pass.
+- [ ] Publish the draft only after the complete final gates and repository
+      qualification pass, then verify the now-public release downloads again.
 - [ ] `scripts/build-release.py` builds twice from the selected commit
       with identical archive and manifest bytes. The archive's extracted
       installer tests pass. This measures source archive reproducibility,

@@ -30,6 +30,8 @@ TARGETS = {
 MANIFEST = 'repository.json'
 PACKAGE_NAMES = {'core': 'oscmix-desk', 'gtk': 'oscmix-desk-gtk',
                  'repository': 'oscmix-desk-repository'}
+PROJECT = 'relative23/oscmix-desk'
+PUBLICATION_WORKFLOW = PROJECT + '/.github/workflows/repository-publication.yml'
 
 
 def run(command, **kwargs):
@@ -98,17 +100,24 @@ class Verifier:
                              if line.startswith('fpr:')}
 
     def verify(self, signature, source=None):
-        status = run(['gpgv', '--homedir', self.verify_home, '--keyring', self.keyring,
-                      '--status-fd', '1', signature, *([source] if source else [])])
-        codes = [line.split()[1] for line in status.splitlines()
-                 if line.startswith('[GNUPG:] ') and len(line.split()) >= 2]
-        # gpgv can return success and VALIDSIG for expired or revoked keys.
-        # GOODSIG is replaced by EXPKEYSIG/REVKEYSIG in those cases. A plain
-        # KEYEXPIRED may refer to another, unused subkey in the certificate.
-        if (codes.count('VALIDSIG') != 1 or codes.count('GOODSIG') != 1
-                or any(code in codes for code in ('EXPSIG', 'EXPKEYSIG', 'REVKEYSIG',
-                                                 'BADSIG', 'ERRSIG', 'NO_PUBKEY'))):
-            raise ValueError('missing current, unrevoked signature: ' + str(signature))
+        cleartext = self.verify_home / 'verified-cleartext'
+        try:
+            status = run(['gpgv', '--homedir', self.verify_home, '--keyring', self.keyring,
+                          '--status-fd', '1', *([] if source else ['--output', cleartext]),
+                          signature, *([source] if source else [])])
+            codes = [line.split()[1] for line in status.splitlines()
+                     if line.startswith('[GNUPG:] ') and len(line.split()) >= 2]
+            # gpgv can return success and VALIDSIG for expired/revoked keys.
+            # GOODSIG becomes EXPKEYSIG/REVKEYSIG. KEYEXPIRED alone can refer
+            # to another, unused subkey in the same certificate.
+            if (codes.count('VALIDSIG') != 1 or codes.count('GOODSIG') != 1
+                    or any(code in codes for code in ('EXPSIG', 'EXPKEYSIG', 'REVKEYSIG',
+                                                     'BADSIG', 'ERRSIG', 'NO_PUBKEY'))):
+                raise ValueError('missing current, unrevoked signature: ' + str(signature))
+            return cleartext.read_bytes() if source is None else None
+        finally:
+            if source is None:
+                cleartext.unlink(missing_ok=True)
 
 
 class Signer(Verifier):
@@ -196,10 +205,30 @@ def read_packages(directory, target, development, commit):
     return packages
 
 
-def read_snapshot(directory, signer):
+def verify_publication_provenance(source, commit, gh='gh', bundle=None, trusted_root=None):
+    """Authenticate prior public bytes independently of an expired/revoked GPG key."""
+    if not re.fullmatch('[0-9a-f]{40}', commit):
+        raise ValueError('publication provenance requires its full workflow commit')
+    command = [gh, 'attestation', 'verify', source, '--repo', PROJECT,
+               '--signer-workflow', PUBLICATION_WORKFLOW, '--signer-digest', commit,
+               '--source-ref', 'refs/heads/main', '--source-digest', commit,
+               '--predicate-type', 'https://slsa.dev/provenance/v1',
+               '--deny-self-hosted-runners']
+    if bundle is not None:
+        command += ['--bundle', bundle]
+    if trusted_root is not None:
+        command += ['--custom-trusted-root', trusted_root]
+    run(command)
+
+
+def read_snapshot(directory, signer, *, publication_commit=None, gh='gh',
+                  bundle=None, trusted_root=None):
     """Authenticate every listed file before a snapshot can be reused or served."""
     manifest = relative_file(directory, MANIFEST)
-    signer.verify(relative_file(directory, MANIFEST + '.asc'), manifest)
+    if publication_commit is None:
+        signer.verify(relative_file(directory, MANIFEST + '.asc'), manifest)
+    else:
+        verify_publication_provenance(manifest, publication_commit, gh, bundle, trusted_root)
     record = json.loads(manifest.read_text())
     if (not isinstance(record, dict) or record.get('schema') != 1
             or not isinstance(record.get('files'), dict)):
@@ -213,8 +242,12 @@ def read_snapshot(directory, signer):
 
 def restore_previous(args, signer):
     if args.previous is None:
-        return [], []
-    previous = read_snapshot(args.previous, signer)
+        return None
+    previous = read_snapshot(args.previous, signer,
+                             publication_commit=getattr(args, 'previous_publication_commit', None),
+                             gh=getattr(args, 'gh', 'gh'),
+                             bundle=getattr(args, 'previous_attestation', None),
+                             trusted_root=getattr(args, 'publication_trusted_root', None))
     if previous['target'] != args.target or previous['development'] != args.development:
         raise ValueError('previous repository belongs to another channel')
     if previous['snapshot'] == args.snapshot:
@@ -228,7 +261,7 @@ def restore_previous(args, signer):
         destination = args.output / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
-    return previous['packages'], previous.get('retained_packages', [])
+    return previous
 
 
 def refresh_rpm_signatures(args, signer, records, retained, scratch):
@@ -311,7 +344,9 @@ def build(args):
     with tempfile.TemporaryDirectory(prefix='oscmix-sign-') as temporary:
         scratch = Path(temporary)
         signer = Signer(args, scratch)
-        records, retained = restore_previous(args, signer)
+        previous = restore_previous(args, signer)
+        records = previous['packages'] if previous else []
+        retained = previous.get('retained_packages', []) if previous else []
         available = {item['name'] for item in records} | {
             record['package_name'] for _, _, record in packages}
         if not set(PACKAGE_NAMES.values()) <= available:
@@ -349,6 +384,11 @@ def build(args):
                       generator_sha256=sha(Path(__file__).resolve()),
                       signing_key=args.signing_key, epoch=args.epoch,
                       packages=records, retained_packages=retained, files=files)
+        result['predecessor'] = (dict(
+            snapshot=previous['snapshot'], epoch=previous['epoch'],
+            manifest_sha256=sha(args.previous / MANIFEST),
+            publication_commit=getattr(args, 'previous_publication_commit', None))
+            if previous else None)
         manifest = args.output / MANIFEST
         manifest.write_text(json.dumps(result, indent=2) + '\n')
         signer.sign(manifest, manifest.with_suffix('.json.asc'))
@@ -372,6 +412,13 @@ def main():
     parser.add_argument('--packages', type=Path,
                         help='new core/GTK pair; omit only when renewing previous metadata')
     parser.add_argument('--previous', type=Path)
+    parser.add_argument('--previous-publication-commit',
+                        help='independent publisher workflow commit for expired/revoked history')
+    parser.add_argument('--previous-attestation', type=Path,
+                        help='offline publication attestation for the previous repository.json')
+    parser.add_argument('--publication-trusted-root', type=Path,
+                        help='authenticated gh attestation trusted roots for offline recovery')
+    parser.add_argument('--gh', default='gh', help='GitHub CLI with attestation support')
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--expected-commit', required=True)
     parser.add_argument('--snapshot', required=True)
@@ -385,6 +432,13 @@ def main():
     args = parser.parse_args()
     if not re.fullmatch('[0-9a-f]{40}', args.expected_commit):
         parser.error('--expected-commit must be a full source SHA')
+    if args.previous_publication_commit is not None and (
+            args.previous is None
+            or not re.fullmatch('[0-9a-f]{40}', args.previous_publication_commit)):
+        parser.error('publication verification requires --previous and its full workflow SHA')
+    if (args.previous_attestation or args.publication_trusted_root) and not (
+            args.previous_publication_commit):
+        parser.error('offline publication proof requires --previous-publication-commit')
     if not re.fullmatch('[0-9A-F]{40}', args.signing_key):
         parser.error('--signing-key must be the full uppercase signing fingerprint')
     if not re.fullmatch('[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}', args.snapshot):
@@ -393,7 +447,8 @@ def main():
         parser.error('expiry must be 1-90 days and epoch must be positive')
     if args.packages is None and args.previous is None:
         parser.error('provide --packages or --previous')
-    for name in ('packages', 'previous', 'output', 'gnupghome', 'public_key', 'passphrase_file'):
+    for name in ('packages', 'previous', 'output', 'gnupghome', 'public_key', 'passphrase_file',
+                 'previous_attestation', 'publication_trusted_root'):
         if getattr(args, name) is not None:
             setattr(args, name, getattr(args, name).absolute())
     try:

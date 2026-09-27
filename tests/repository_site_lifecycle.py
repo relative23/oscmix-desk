@@ -13,6 +13,8 @@ import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
+from repository_publication_http import exercise as exercise_http
+
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location('repository_site',
                                             ROOT / 'scripts/prepare-repository-site.py')
@@ -52,6 +54,7 @@ def exercise(args):
         record['checks'].append(dict(snapshot=name, reproducible=True,
                                      sha256=staged['sha256'], signatures_and_files_verified=True))
 
+    record['http_transition_checks'] = exercise_http(args.output)
     options.channels = args.output / 'first-inputs'
     options.snapshot, options.public_key = 'first', args.fixtures / 'certificates/original.asc'
     for label, development, key in [('production-refuses-development', False, 'original'),

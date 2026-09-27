@@ -24,7 +24,8 @@ APT uses signed `InRelease` and `Release.gpg`, SHA-256 indexes, repository-scope
 in the client. Signing must leave each RPM's immutable header and payload digests
 unchanged. The original unsigned build manifest is retained; the signed repository
 manifest maps its original checksum to the signed RPM's checksum and location.
-The release workflow must attest the final signed output as well as its inputs.
+The separate repository-publication workflow attests the final signed output;
+the release workflow attests its original build inputs.
 
 `scripts/prepare-repository-site.py` now prepares one complete public archive and
 verifies it before making a deployment directory available. It shares public-key,
@@ -35,7 +36,32 @@ authenticated original release artifacts and checked in an isolated RPM database
 Retained historical packages receive the same provenance checks as new packages.
 The tool neither signs nor deploys and cannot replace an existing snapshot archive.
 Public site assembly and verification are implemented; actual deployment and the
-final signed-output attestation remain open.
+final signed-output attestation remain open as qualification gates.
+
+The publication workflow is manual, restricted to `main` and serialized across
+all channels. It verifies the exact reviewed archive digest, release identity,
+all build provenance and the selected live predecessor before attesting the archive
+and every channel's `repository.json`. Deployment is a separate explicit input,
+false by default. Immediately before deploying, it rechecks metadata freshness and
+the live predecessor. A published update must retain every previously referenced
+content-addressed package, index and original build manifest. Afterwards it checks
+all downloaded bytes and both old HTTP validators for changed native entry points.
+The release workflow now leaves tagged artifacts in a draft until these and the
+remaining final gates pass. It does not publish merely because package builds pass.
+
+Ordinary reuse requires the previous GPG signature to be current and unrevoked.
+After expiry or revocation, an explicit `--previous-publication-commit` selects
+independent GitHub/Sigstore authentication of the exact previous channel manifest.
+That proof must identify this repository's publication workflow, `refs/heads/main`,
+the exact source and signer workflow commit, and a GitHub-hosted runner. An ordinary
+release-build attestation does not suffice. The manifest's file hashes are then
+checked before any file is copied. This is an operator recovery path; clients and
+current publication verification keep their strict GPG rules. The recovered channel
+receives new signatures and a recorded predecessor, never a verification bypass.
+
+Public CI has not yet executed this new workflow. Positive publication-proof
+recovery with real expired/revoked history, Pages deployment and final HTTPS/native
+client qualification remain open; mocked authority in a unit test cannot close them.
 
 An authenticated previous repository supplies old packages and metadata. All its
 listed file digests are checked before reuse. Package versions cannot acquire a
@@ -49,6 +75,9 @@ Both forms undergo independent build-provenance and payload checks; only the
 indexed form requires a currently accepted package signature. A retained blob
 cannot enter the current native index. Publication verifies the actual RPM primary
 index against the selected names, versions, architecture, paths, sizes and hashes.
+APT verification also requires the verified `InRelease` cleartext to equal `Release`,
+checks its native index hashes, requires identical plain/compressed package lists,
+and binds every indexed package identity and download path to its authenticated build.
 
 Metadata generation supplies an explicit package list to `createrepo_c`; scanning
 the whole retained pool would create ambiguous duplicate versions. The generator

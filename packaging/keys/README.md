@@ -49,6 +49,14 @@ fingerprint; an unauthenticated repository cannot bootstrap its own replacement.
 Expiration, wrong keys, revoked/rotated subkeys and altered metadata/packages
 must be tested with each actual package manager before publication.
 
+If an old publication can no longer pass current GPG verification, recover it
+only through its independent repository-publication attestation and exact
+publisher workflow commit. Keep that public proof with the immutable site archive
+and a recoverable `gh` trust-root export. The
+[recovery procedure](../../docs/PACKAGE-REPOSITORIES.md#publishing-and-recovering-a-channel)
+does not relax client signature checks. Its positive real-publication qualification
+is still pending for 0.8.0.
+
 Use repository-scoped APT `Signed-By` configuration and the corresponding
 explicit RPM repository key configuration. Never disable package or metadata
 signature checks to complete an upgrade. The final installation instructions

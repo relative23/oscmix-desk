@@ -4,22 +4,20 @@ on:
   push:
     branches: [feature/portable-install]
     tags: ['v*']
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.event.release.tag_name || github.ref_name }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   packages:
     uses: ./.github/workflows/distributions.yml
     with:
-      release_build: ${{ github.event_name == 'release' || github.ref_type == 'tag' }}
+      release_build: ${{ github.ref_type == 'tag' }}
     permissions:
       contents: write
       id-token: write
@@ -89,9 +87,9 @@ jobs:
           cd build/release
           sha256sum --check SHA256SUMS
       - name: Require the release tag and include its measured evidence
-        if: github.event_name == 'release' || github.ref_type == 'tag'
+        if: github.ref_type == 'tag'
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
           python - <<'PY'
           import hashlib, json, os, shutil
@@ -162,7 +160,7 @@ jobs:
           path: build/release/
           retention-days: 30
       - name: Create or resume a draft for the pushed tag
-        if: github.event_name == 'push' && github.ref_type == 'tag'
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
@@ -174,11 +172,3 @@ jobs:
               --title "$RELEASE_TAG" --notes-file build/release/release-notes.md
           fi
           gh release upload "$RELEASE_TAG" build/release/* --clobber
-          gh release edit "$RELEASE_TAG" --draft=false --latest \
-            --notes-file build/release/release-notes.md
-      - name: Attach to a release published through the UI
-        if: github.event_name == 'release'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$RELEASE_TAG" build/release/*

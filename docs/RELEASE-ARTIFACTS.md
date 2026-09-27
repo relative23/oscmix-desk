@@ -12,32 +12,44 @@ archive, manifest and checksums produced by this repository's workflow.
 Hardware evidence is measured locally and attached separately; it is not
 an audio test performed by a GitHub runner.
 
-From 0.7.1, pushing the annotated release tag also starts this workflow.
-After the archive checks, it requires the version's committed hardware
+Pushing the annotated release tag starts the release workflow. After the
+archive checks, it requires the version's committed hardware
 evidence and release notes, adds their checksums, and attests the files.
 It also requires the completed software gates to identify the exact
 runtime, tests and tools by file hash, plus a passing physical disconnect
 and reconnect record. Intermediate candidate records cannot qualify a tag.
-It creates a draft, uploads the complete asset set and then publishes it.
-A failed run leaves a draft that can be resumed; an already published
-release is not replaced by the tag path. Creating a release through the
-GitHub UI remains supported. Run the release checklist before pushing
-the tag: CI builds and attests the recorded measurements, not the device.
+For 0.8.0, it creates or resumes a draft and uploads the complete asset set.
+The draft remains unpublished while the separately signed package sources
+are verified and qualified. The repository-publication workflow verifies
+the native build provenance, current signatures and selected predecessor,
+then attests the signed output before an explicitly selected Pages deployment.
+Private signing keys remain local. Publish the draft only after the final
+repository, HTTPS and other release gates pass; verify the public release
+downloads afterwards. See the [repository procedure](PACKAGE-REPOSITORIES.md#publishing-and-recovering-a-channel)
+and [release checklist](RELEASE-CHECKLIST.md).
 
-The tag path uses the repository's existing Actions token. No local
-browser login or additional personal token is needed. A release published
-with that token does not trigger another release-event workflow; any
-additional package workflow must also handle the tag explicitly.
+A failed build leaves a draft that can be resumed. An already published
+release is never replaced by the tag path. The workflow no longer reacts
+to releases published through the GitHub UI. Complete the local release
+gates before pushing the tag: CI builds and attests the recorded
+measurements, not the device. The 0.8.0 publication workflow is implemented;
+its actual Pages, independent recovery-proof and HTTPS qualification is
+still pending.
 
-The 0.7.3 release workflow calls the distribution
-workflow directly and waits for all seven source targets and four native
-targets. Each native target supplies both core and optional GTK packages.
-It collects their packages, build metadata, logs and checksums into the
-same asset set before publishing. There is no dependency on a second
-release event. Pushes to the installation branch exercise this complete
+The tag path uses the repository's existing Actions token. The repository
+publication workflow is dispatched separately from the qualified `main`
+revision; it defaults to verification and attestation without deployment.
+
+The historical 0.7.3 release included all seven source targets and four
+native targets, each supplying core and optional GTK packages. In 0.8.0,
+native targets also include Debian 13 and Ubuntu 26.04. APT/RPM
+targets additionally build the separate repository-client package; the
+complete native bundle, build metadata, logs and checksums are attached to
+the draft. The release workflow calls the distribution workflow directly
+and waits for its result. Pushes to the installation branch exercise the
 build/collection path with development packages and retain CI artifacts;
 they do not create a release. Final package attestations require a matching
-release tag, and the tag path still requires fresh matching hardware evidence.
+release tag and fresh matching hardware evidence.
 
 ## Verify before installing
 

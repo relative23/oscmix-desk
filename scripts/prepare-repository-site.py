@@ -29,7 +29,7 @@ MAX_BYTES = 900 * 1024 * 1024  # Leave space below the published Pages site limi
 MAX_FILES = 50000
 PUBLICATION = 'publication.json'
 ROOT_FILES = {PUBLICATION, 'index.html', 'archive-key.asc'}
-PROJECT = 'relative23/oscmix-desk'
+PROJECT = BUILDER.PROJECT
 
 
 class IndexTreeBuilder(ET.TreeBuilder):
@@ -42,6 +42,70 @@ def index_xml(data):
         raise ValueError('RPM index exceeds the verification limit')
     parser = ET.XMLParser(target=IndexTreeBuilder())  # noqa: S314 -- DTD handler rejects entities
     return ET.fromstring(data, parser=parser)  # noqa: S314 -- bounded input; DTDs refused by parser
+
+
+def control_records(data):
+    """Read Debian control paragraphs, refusing ambiguous or unbounded fields."""
+    if len(data) > 16 * 1024 * 1024:
+        raise ValueError('APT control data exceeds the verification limit')
+    records = []
+    for paragraph in data.decode('utf-8').strip().split('\n\n'):
+        record, key = {}, None
+        for line in paragraph.splitlines():
+            if line.startswith((' ', '\t')) and key:
+                record[key] += '\n' + line.strip()
+                continue
+            key, separator, value = line.partition(':')
+            if not separator or not key or key in record:
+                raise ValueError('ambiguous APT control data')
+            record[key] = value.strip()
+        records.append(record)
+    return records
+
+
+def verify_apt_index(directory, snapshot):
+    release = control_records((directory / 'dists/stable/Release').read_bytes())
+    if len(release) != 1 or any(release[0].get(key) != value for key, value in {
+            'Suite': 'stable', 'Codename': 'stable', 'Architectures': 'amd64',
+            'Components': 'main', 'Acquire-By-Hash': 'yes'}.items()):
+        raise ValueError('APT release selects an unexpected channel')
+    sums = {}
+    for line in release[0].get('SHA256', '').splitlines():
+        if not line.strip():
+            continue
+        values = line.split()
+        if len(values) != 3 or values[2] in sums:
+            raise ValueError('ambiguous APT index checksums')
+        sums[values[2]] = values[:2]
+    required = {'main/binary-amd64/Packages', 'main/binary-amd64/Packages.gz'}
+    if set(sums) != required:
+        raise ValueError('APT release lacks its exact native indexes')
+    for name in required:
+        path = directory / 'dists/stable' / name
+        if sums[name] != [BUILDER.sha(path), str(path.stat().st_size)]:
+            raise ValueError('APT release checksum differs from the native index')
+    index = directory / 'dists/stable/main/binary-amd64/Packages'
+    data = index.read_bytes()
+    if len(data) > 16 * 1024 * 1024:
+        raise ValueError('APT native index exceeds the verification limit')
+    with gzip.open(index.with_suffix('.gz'), 'rb') as stream:
+        if stream.read(len(data) + 1) != data:
+            raise ValueError('compressed APT index differs from its plain form')
+    expected = {row['path']: row for row in snapshot['packages']}
+    seen = set()
+    for row in control_records(data):
+        name = row.get('Filename')
+        if name not in expected or name in seen:
+            raise ValueError('APT index selects an unlisted or repeated package')
+        package = expected[name]
+        if any(row.get(field) != value for field, value in {
+                'Package': package['name'], 'Version': package['version'],
+                'Architecture': 'amd64', 'SHA256': package['sha256'],
+                'Size': str((directory / name).stat().st_size)}.items()):
+            raise ValueError('APT index differs from the authenticated package identity')
+        seen.add(name)
+    if seen != expected.keys():
+        raise ValueError('APT index omits an authenticated package')
 
 
 def verify_rpm_index(directory, snapshot):
@@ -180,7 +244,9 @@ def channel_files(directory, verifier, args, target):
                         'main/binary-amd64/Packages.gz'))
         pattern = r'dists/stable/main/binary-amd64/by-hash/SHA256/([0-9a-f]{64})'
         verifier.verify(directory / 'dists/stable/Release.gpg', directory / 'dists/stable/Release')
-        verifier.verify(directory / 'dists/stable/InRelease')
+        cleartext = verifier.verify(directory / 'dists/stable/InRelease')
+        if cleartext != (directory / 'dists/stable/Release').read_bytes():
+            raise ValueError('APT InRelease and detached Release disagree')
     else:
         allowed.update('repodata/repomd.xml' + suffix for suffix in ('', '.asc', '.key'))
         pattern = r'repodata/([0-9a-f]{64})-(?:primary|filelists|other)\.xml\.(?:gz|zst)'
@@ -196,6 +262,8 @@ def channel_files(directory, verifier, args, target):
         raise ValueError('channel contains unlisted files')
     if kind == 'rpm':
         verify_rpm_index(directory, snapshot)
+    else:
+        verify_apt_index(directory, snapshot)
     return snapshot, names, packages
 
 
@@ -288,6 +356,18 @@ def unpack(archive, output):
             os.utime(destination, (entry.mtime, entry.mtime))
 
 
+def authenticate_manifest(manifest, tag, commit, gh, bundle=None, trusted_root=None):
+    command = [gh, 'attestation', 'verify', manifest, '--repo', PROJECT,
+               '--signer-workflow', PROJECT + '/.github/workflows/release.yml',
+               '--source-ref', 'refs/tags/' + tag,
+               '--source-digest', commit, '--deny-self-hosted-runners']
+    if bundle is not None:
+        command += ['--bundle', bundle]
+    if trusted_root is not None:
+        command += ['--custom-trusted-root', trusted_root]
+    BUILDER.run(command)
+
+
 def authenticate_builds(root, packages, public_key, gh, temporary,
                         release_inputs=None, trusted_root=None):
     """Authenticate original build manifests, including retained historical versions.
@@ -301,15 +381,8 @@ def authenticate_builds(root, packages, public_key, gh, temporary,
         for row, record, active in rows:
             manifest = root / target / row['build_manifest']
             tag = 'v' + record['version']
-            command = [gh, 'attestation', 'verify', manifest, '--repo', PROJECT,
-                       '--signer-workflow', PROJECT + '/.github/workflows/release.yml',
-                       '--source-ref', 'refs/tags/' + tag,
-                       '--source-digest', record['source_commit'], '--deny-self-hosted-runners']
-            if release_inputs is not None:
-                command += ['--bundle', release_inputs / tag / 'attestation.jsonl']
-            if trusted_root is not None:
-                command += ['--custom-trusted-root', trusted_root]
-            BUILDER.run(command)
+            bundle = release_inputs / tag / 'attestation.jsonl' if release_inputs else None
+            authenticate_manifest(manifest, tag, record['source_commit'], gh, bundle, trusted_root)
             artifact = root / target / row['path']
             if record['format'] == 'rpm':
                 if release_inputs is not None:
