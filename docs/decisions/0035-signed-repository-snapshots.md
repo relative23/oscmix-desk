@@ -38,9 +38,24 @@ Public site assembly and verification are implemented; actual deployment and the
 final signed-output attestation remain open.
 
 An authenticated previous repository supplies old packages and metadata. All its
-listed file digests are checked before reuse. Package versions cannot be replaced
-with new bytes; a new package revision is required. Package payload paths include
-their hashes. Old APT indexes and RPM metadata remain available so an in-flight
+listed file digests are checked before reuse. Package versions cannot acquire a
+different payload; a new package revision is required. An RPM signature may be
+renewed with the selected subkey only after verifying unchanged immutable-header
+and payload digests. Its newly signed bytes receive a new content-addressed path.
+The manifest's `packages` selects the current form of each version;
+`retained_packages` keeps superseded signature forms for in-flight downloads.
+Each retained form must refer to the same original build as an indexed version.
+Both forms undergo independent build-provenance and payload checks; only the
+indexed form requires a currently accepted package signature. A retained blob
+cannot enter the current native index. Publication verifies the actual RPM primary
+index against the selected names, versions, architecture, paths, sizes and hashes.
+
+Metadata generation supplies an explicit package list to `createrepo_c`; scanning
+the whole retained pool would create ambiguous duplicate versions. The generator
+uses `--general-compress-type gz`: its narrower `--compress-type` option does not
+control the primary/filelists/other indexes in the measured tool version. The
+publication parser bounds decompression and refuses XML DTD/entity declarations.
+Old APT indexes and RPM metadata remain available so an in-flight
 client can finish against the metadata it already authenticated. Explicit rollback
 selects a retained version from current metadata rather than disabling verification
 to use an expired repository snapshot.

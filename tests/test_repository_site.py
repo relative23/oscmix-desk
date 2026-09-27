@@ -1,5 +1,6 @@
 """A deployment must contain one complete, authenticated set of public channels."""
 
+import gzip
 import importlib.util
 import io
 import json
@@ -8,6 +9,26 @@ from types import SimpleNamespace
 
 import pytest
 from support import repo_file
+
+
+def rpm_index(site, directory, packages):
+    rows = []
+    for row in packages:
+        version, release = row['version'].split('-', 1)
+        rows.append('<package type="rpm"><name>' + row['name'] + '</name><arch>x86_64</arch>'
+                    '<version epoch="0" ver="' + version + '" rel="' + release + '"/>'
+                    '<checksum type="sha256">' + row['sha256'] + '</checksum>'
+                    '<size package="' + str((directory / row['path']).stat().st_size) + '"/>'
+                    '<location href="' + row['path'] + '"/></package>')
+    primary = gzip.compress(('<metadata xmlns="http://linux.duke.edu/metadata/common">'
+                             + ''.join(rows) + '</metadata>').encode(), mtime=0)
+    digest = site.hashlib.sha256(primary).hexdigest()
+    name = 'repodata/' + digest + '-primary.xml.gz'
+    (directory / name).write_bytes(primary)
+    (directory / 'repodata/repomd.xml').write_text(
+        '<repomd xmlns="http://linux.duke.edu/metadata/repo"><data type="primary">'
+        '<checksum type="sha256">' + digest + '</checksum><location href="' + name
+        + '"/></data></repomd>')
 
 
 @pytest.fixture
@@ -68,6 +89,8 @@ def channels(site, tmp_path):
             path = directory / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b'signature')
+        if kind == 'rpm':
+            rpm_index(site, directory, packages)
         files = {str(path.relative_to(directory)): site.BUILDER.sha(path)
                  for path in directory.rglob('*') if path.is_file()}
         snapshot = dict(schema=1, files=files, packages=packages, target=target, snapshot='first',
@@ -167,6 +190,79 @@ def test_existing_immutable_archive_is_never_replaced(site, channels):
     with pytest.raises(ValueError, match='replace an existing'):
         site.stage(channels)
     assert channels.output.read_bytes() == b'previous archive'
+
+
+def retain_old_rpm(site, channels):
+    directory = channels.channels / 'fedora44'
+    manifest = directory / 'repository.json'
+    snapshot = json.loads(manifest.read_text())
+    old = snapshot['packages'][0]
+    package = directory / old['path']
+    data = package.read_bytes() + b'new signature'
+    digest = site.hashlib.sha256(data).hexdigest()
+    replacement = directory / 'pool' / digest / package.name
+    replacement.parent.mkdir()
+    replacement.write_bytes(data)
+    snapshot['retained_packages'] = [old]
+    snapshot['packages'][0] = dict(old, path=str(replacement.relative_to(directory)),
+                                   sha256=digest)
+    rpm_index(site, directory, snapshot['packages'])
+    snapshot['files'] = {str(path.relative_to(directory)): site.BUILDER.sha(path)
+                         for path in directory.rglob('*') if path.is_file()
+                         and path.name not in ('repository.json', 'repository.json.asc')}
+    manifest.write_text(json.dumps(snapshot))
+    return directory, manifest, snapshot
+
+
+def test_replaced_rpm_signature_stays_downloadable_outside_the_current_index(site, channels):
+    directory, _, snapshot = retain_old_rpm(site, channels)
+    staged = site.stage(channels)
+    assert staged['sha256'] == site.BUILDER.sha(channels.output)
+    with tarfile.open(channels.output) as archive:
+        old = snapshot['retained_packages'][0]['path']
+        assert archive.extractfile('fedora44/' + old).read() == (directory / old).read_bytes()
+
+
+@pytest.mark.parametrize('problem', ['select-retained', 'duplicate', 'omit-version',
+                                   'changed-identity', 'unrelated-retained', 'repeated-retained'])
+def test_rpm_index_and_retention_cannot_select_ambiguous_or_unattested_content(
+        site, channels, problem):
+    directory, manifest, snapshot = retain_old_rpm(site, channels)
+    indexed = list(snapshot['packages'])
+    if problem == 'select-retained':
+        indexed[0] = snapshot['retained_packages'][0]
+    elif problem == 'duplicate':
+        indexed.append(indexed[0])
+    elif problem == 'omit-version':
+        indexed.pop()
+    elif problem == 'changed-identity':
+        indexed[0] = dict(indexed[0], version='0.8.0-999')
+    elif problem == 'unrelated-retained':
+        old = snapshot['retained_packages'][0]
+        original = directory / old['build_manifest']
+        record = json.loads(original.read_text())
+        record['source_commit'] = 'f' * 40
+        changed = original.with_name('different.rpm.json')
+        changed.write_text(json.dumps(record))
+        old['build_manifest'] = str(changed.relative_to(directory))
+    else:
+        snapshot['retained_packages'].append(snapshot['retained_packages'][0])
+    rpm_index(site, directory, indexed)
+    snapshot['files'] = {str(path.relative_to(directory)): site.BUILDER.sha(path)
+                         for path in directory.rglob('*') if path.is_file()
+                         and path.name not in ('repository.json', 'repository.json.asc')}
+    manifest.write_text(json.dumps(snapshot))
+    with pytest.raises(ValueError, match=r'RPM|package|signature'):
+        site.stage(channels)
+    assert not channels.output.exists()
+
+
+@pytest.mark.parametrize('encoding', ['utf-8', 'utf-16'])
+def test_signed_native_index_cannot_expand_declared_entities(site, encoding):
+    xml = '<?xml version="1.0" encoding="' + encoding + '"?>'
+    xml += '<!DOCTYPE metadata [<!ENTITY payload "expanded">]><metadata>&payload;</metadata>'
+    with pytest.raises(ValueError, match='DTD or entities'):
+        site.index_xml(xml.encode(encoding))
 
 
 @pytest.mark.parametrize(('name', 'kind'), [

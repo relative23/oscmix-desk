@@ -62,8 +62,13 @@ for the signed output.
 
 For an update, add `--previous /authenticated/current-channel`. Its signature
 and listed file hashes are verified before old packages and metadata are copied.
-A previously published package version cannot be replaced; increment the package
-revision instead. New packages use content-addressed paths, and old APT `by-hash`
+A previously published package version cannot change its payload; increment the
+package revision instead. RPM signature rotation verifies unchanged header/payload
+digests, gives the newly signed form a new content-addressed path and retains the
+previous bytes. `packages` names the currently indexed form; `retained_packages`
+names older signature forms available only for previously authenticated indexes.
+Publication checks the actual RPM primary index against that distinction and
+authenticates the original build of both forms. Old APT `by-hash`
 indexes and checksummed RPM metadata remain available to in-flight clients.
 Every update/renewal needs an epoch later than its predecessor; the mutable indexes
 and signatures receive that whole-second mtime. Preserve changed HTTP validators

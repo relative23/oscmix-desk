@@ -64,7 +64,7 @@ def exercise(args, private):
         row = dict(path=str(destination.relative_to(root / target)), sha256=digest,
                    unsigned_sha256=record['sha256'],
                    build_manifest=str(provenance.relative_to(root / target)))
-        packages.setdefault(target, []).append((row, record))
+        packages.setdefault(target, []).append((row, record, True))
 
     def authenticate(selected):
         with tempfile.TemporaryDirectory(dir=private) as temporary:
@@ -85,7 +85,7 @@ def exercise(args, private):
                   authenticated_build_manifests=accepted, checks=[], inputs={
                       record['artifact']: dict(sha256=record['sha256'],
                                                 source_commit=record['source_commit'])
-                      for rows in packages.values() for _, record in rows}, scripts={
+                      for rows in packages.values() for _, record, _ in rows}, scripts={
                       name: SITE.BUILDER.sha(ROOT / name) for name in
                       ('scripts/build-repository.py', 'scripts/prepare-repository-site.py',
                        'tests/repository_provenance.py')})
@@ -99,19 +99,19 @@ def exercise(args, private):
             raise AssertionError(label + ' was accepted')
 
     target = next(name for name in packages if SITE.BUILDER.TARGETS[name][1] == 'deb')
-    row, record = packages[target][0]
-    selected = {target: [(row, record)]}
+    row, record, _ = packages[target][0]
+    selected = {target: [(row, record, True)]}
     manifest = root / target / row['build_manifest']
     original = manifest.read_bytes()
     manifest.write_bytes(original + b' ')
     refuse('altered-attested-manifest', selected)
     manifest.write_bytes(original)
     changed = dict(record, source_commit='0' * 40)
-    refuse('wrong-source-commit', {target: [(row, changed)]})
+    refuse('wrong-source-commit', {target: [(row, changed, True)]})
     wrong_tag = args.release_inputs / 'v0.0.0'
     wrong_tag.mkdir()
     shutil.copyfile(inputs / 'attestation.jsonl', wrong_tag / 'attestation.jsonl')
-    refuse('wrong-source-tag', {target: [(row, dict(record, version='0.0.0'))]})
+    refuse('wrong-source-tag', {target: [(row, dict(record, version='0.0.0'), True)]})
     artifact = root / target / row['path']
     original = artifact.read_bytes()
     artifact.write_bytes(original + b'changed')
@@ -119,8 +119,8 @@ def exercise(args, private):
     artifact.write_bytes(original)
 
     target = next(name for name in packages if SITE.BUILDER.TARGETS[name][1] == 'rpm')
-    row, record = packages[target][0]
-    selected = {target: [(row, record)]}
+    row, record, _ = packages[target][0]
+    selected = {target: [(row, record, True)]}
     artifact = root / target / row['path']
     original = artifact.read_bytes()
     other = root / target / packages[target][1][0]['path']

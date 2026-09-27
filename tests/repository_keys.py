@@ -144,6 +144,13 @@ def exercise(args):
             checker.refresh(success=False)
             serve('rotated')
             checker.refresh()
+            # Both old and new versions must remain installable after the old
+            # subkey is revoked. RPM metadata must select the re-signed bytes.
+            first = json.loads((repositories / 'first/repository.json').read_text())
+            checker.install(version=first['packages'][0]['version'], downgrade=True)
+            check_installed(repositories / 'rotated', 1)
+            checker.run(checker.upgrade_command())
+            check_installed(repositories / 'rotated', 2)
 
         attempt('revoked-key', revoke)
 

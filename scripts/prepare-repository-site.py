@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +30,62 @@ MAX_FILES = 50000
 PUBLICATION = 'publication.json'
 ROOT_FILES = {PUBLICATION, 'index.html', 'archive-key.asc'}
 PROJECT = 'relative23/oscmix-desk'
+
+
+class IndexTreeBuilder(ET.TreeBuilder):
+    def doctype(self, _name, _pubid, _system):
+        raise ValueError('repository XML cannot declare a DTD or entities')
+
+
+def index_xml(data):
+    if len(data) > 16 * 1024 * 1024:
+        raise ValueError('RPM index exceeds the verification limit')
+    parser = ET.XMLParser(target=IndexTreeBuilder())  # noqa: S314 -- DTD handler rejects entities
+    return ET.fromstring(data, parser=parser)  # noqa: S314 -- bounded input; DTDs refused by parser
+
+
+def verify_rpm_index(directory, snapshot):
+    """Current metadata must select exactly one active signed form per version."""
+    repo_ns = '{http://linux.duke.edu/metadata/repo}'
+    package_ns = '{http://linux.duke.edu/metadata/common}'
+    try:
+        metadata = index_xml((directory / 'repodata/repomd.xml').read_bytes())
+        primary = [node for node in metadata.findall(repo_ns + 'data')
+                   if node.get('type') == 'primary']
+        if len(primary) != 1:
+            raise ValueError('RPM repository requires one primary index')
+        location = primary[0].find(repo_ns + 'location')
+        checksum = primary[0].find(repo_ns + 'checksum')
+        if (location is None or checksum is None or checksum.get('type') != 'sha256'
+                or snapshot['files'].get(location.get('href')) != checksum.text):
+            raise ValueError('RPM primary index differs from the signed file index')
+        path = BUILDER.relative_file(directory, location.get('href'))
+        if path.suffix != '.gz':
+            raise ValueError('the current RPM primary index must use gzip')
+        with gzip.open(path, 'rb') as stream:
+            data = stream.read(16 * 1024 * 1024 + 1)
+        rows = index_xml(data).findall(package_ns + 'package')
+        expected = {row['path']: row for row in snapshot['packages']}
+        seen = set()
+        for row in rows:
+            fields = {node.tag.removeprefix(package_ns): node for node in row}
+            path = fields['location'].get('href')
+            if path not in expected or path in seen:
+                raise ValueError('RPM index selects an unlisted or repeated package')
+            record = expected[path]
+            version = fields['version']
+            if (fields['name'].text != record['name']
+                    or fields['arch'].text != 'x86_64' or version.get('epoch') != '0'
+                    or version.get('ver', '') + '-' + version.get('rel', '') != record['version']
+                    or fields['checksum'].get('type') != 'sha256'
+                    or fields['checksum'].text != record['sha256']
+                    or fields['size'].get('package') != str((directory / path).stat().st_size)):
+                raise ValueError('RPM index differs from the authenticated package identity')
+            seen.add(path)
+        if seen != expected.keys():
+            raise ValueError('RPM index omits an authenticated package')
+    except (ET.ParseError, KeyError, gzip.BadGzipFile) as exc:
+        raise ValueError('invalid RPM repository index') from exc
 
 
 def regular_files(directory):
@@ -47,9 +104,11 @@ def regular_files(directory):
 def package_records(directory, snapshot, target, development):
     """Bind signed package paths to the original build manifests and exact pairs."""
     packages, pairs, allowed = [], {}, {'archive-key.asc'}
-    identities = set()
+    identities, paths = {}, set()
     os_target, kind, architecture = BUILDER.TARGETS[target]
-    for row in snapshot['packages']:
+    indexed = [(row, True) for row in snapshot['packages']]
+    retained = [(row, False) for row in snapshot.get('retained_packages', [])]
+    for row, active in indexed + retained:
         manifest = BUILDER.relative_file(directory, row['build_manifest'])
         record = json.loads(manifest.read_text())
         artifact = record['artifact']
@@ -76,20 +135,28 @@ def package_records(directory, snapshot, target, development):
         component = record['component']
         identity = row['name'], row['version']
         if (component not in BUILDER.PACKAGE_NAMES
-                or row['name'] != BUILDER.PACKAGE_NAMES[component] or identity in identities):
+                or row['name'] != BUILDER.PACKAGE_NAMES[component]
+                or row['path'] in paths or (active and identity in identities)):
             raise ValueError('duplicate or unknown native package component')
-        identities.add(identity)
-        if component in ('core', 'gtk'):
+        if active:
+            identities[identity] = row
+        elif (kind != 'rpm' or identity not in identities
+              or any(identities[identity][key] != row[key]
+                     for key in ('build_manifest', 'unsigned_sha256'))):
+            raise ValueError('retained signature has no matching indexed RPM build')
+        paths.add(row['path'])
+        if active and component in ('core', 'gtk'):
             pairs.setdefault(row['version'], {})[component] = record
         allowed.update((row['path'], row['build_manifest']))
-        packages.append((row, record))
-    if {record['component'] for _, record in packages} != set(BUILDER.PACKAGE_NAMES):
+        packages.append((row, record, active))
+    if {record['component'] for _, record, active in packages if active} != set(
+            BUILDER.PACKAGE_NAMES):
         raise ValueError('site is missing a required package component')
     for pair in pairs.values():
         if set(pair) != {'core', 'gtk'}:
             raise ValueError('site contains an incomplete core/GTK version pair')
         BUILDER.validate_pair(pair['core'], pair['gtk'])
-    if kind == 'deb' and any(row['sha256'] != row['unsigned_sha256'] for row, _ in packages):
+    if kind == 'deb' and any(row['sha256'] != row['unsigned_sha256'] for row, _, _ in packages):
         raise ValueError('DEB changed after its authenticated build')
     return packages, allowed
 
@@ -127,6 +194,8 @@ def channel_files(directory, verifier, args, target):
     names = set(snapshot['files']) | {BUILDER.MANIFEST, BUILDER.MANIFEST + '.asc'}
     if regular_files(directory) != names:
         raise ValueError('channel contains unlisted files')
+    if kind == 'rpm':
+        verify_rpm_index(directory, snapshot)
     return snapshot, names, packages
 
 
@@ -229,7 +298,7 @@ def authenticate_builds(root, packages, public_key, gh, temporary,
     """
     count = 0
     for target, rows in packages.items():
-        for row, record in rows:
+        for row, record, active in rows:
             manifest = root / target / row['build_manifest']
             tag = 'v' + record['version']
             command = [gh, 'attestation', 'verify', manifest, '--repo', PROJECT,
@@ -257,7 +326,11 @@ def authenticate_builds(root, packages, public_key, gh, temporary,
                 original_identity = BUILDER.rpm_payload_identity(original)
                 if original_identity != BUILDER.rpm_payload_identity(artifact):
                     raise ValueError('signed RPM changed its authenticated header or payload')
-                BUILDER.verify_rpm(artifact, public_key, temporary / 'rpmdb')
+                # Old signature bytes remain reachable for cached indexes, but
+                # only the freshly signed form enters current native metadata.
+                # Both forms must match the independently attested build.
+                if active:
+                    BUILDER.verify_rpm(artifact, public_key, temporary / 'rpmdb')
             elif BUILDER.sha(artifact) != record['sha256']:
                 raise ValueError('DEB differs from its authenticated build manifest')
             count += 1

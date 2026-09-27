@@ -41,3 +41,7 @@ _.applied                        # noqa: F821
 # rather than in a README, and the same test holds it to its evidence.
 VERIFY_CLASSES                   # noqa: F821
 _.supported                      # noqa: F821
+
+# ElementTree calls the repository index parser's DTD rejection hook. UTF-8
+# and UTF-16 entity declarations are both exercised by test_repository_site.
+_.doctype                        # noqa: F821

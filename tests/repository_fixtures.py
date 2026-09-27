@@ -115,7 +115,7 @@ def fault_rpm(inputs, channel, output, name, signing, trusted, certificate):
     core['path'] = str(destination.relative_to(output))
     args = arguments(manifest['target'], inputs, output, name, trusted, certificate)
     with tempfile.TemporaryDirectory(prefix='repo-fault-') as scratch:
-        BUILDER.rpm_metadata(args, BUILDER.Signer(args, Path(scratch)))
+        BUILDER.rpm_metadata(args, BUILDER.Signer(args, Path(scratch)), manifest['packages'])
     # This is a deliberately inconsistent fixture, never generator provenance.
     manifest['fault_fixture'] = name
     (output / 'repository.json').write_text(json.dumps(manifest, indent=2) + '\n')
@@ -199,7 +199,17 @@ def exercise(args, temporary):
         trusted.signing = rotated_signing
         options = arguments(target, inputs, output / 'rotated', 'rotated', trusted,
                             certificates / 'rotated.asc', output / 'first', inputs / 'upgraded')
-        BUILDER.build(options)
+        rotated = BUILDER.build(options)
+        if kind == 'rpm':
+            assert len(rotated['retained_packages']) == len(first['packages'])
+            for old in first['packages']:
+                assert old in rotated['retained_packages']
+                current = next(row for row in rotated['packages']
+                               if (row['name'], row['version']) == (old['name'], old['version']))
+                assert current['path'] != old['path']
+                assert BUILDER.sha(output / 'rotated' / old['path']) == old['sha256']
+                assert BUILDER.rpm_payload_identity(output / 'rotated' / old['path']) == (
+                    BUILDER.rpm_payload_identity(output / 'rotated' / current['path']))
         result['scenarios'][target] = dict(
             source_commit=first['source_commit'], original=BUILDER.sha(
                 output / 'first/repository.json'), rotated=BUILDER.sha(

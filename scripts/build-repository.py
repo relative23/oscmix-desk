@@ -213,7 +213,7 @@ def read_snapshot(directory, signer):
 
 def restore_previous(args, signer):
     if args.previous is None:
-        return []
+        return [], []
     previous = read_snapshot(args.previous, signer)
     if previous['target'] != args.target or previous['development'] != args.development:
         raise ValueError('previous repository belongs to another channel')
@@ -228,7 +228,27 @@ def restore_previous(args, signer):
         destination = args.output / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
-    return previous['packages']
+    return previous['packages'], previous.get('retained_packages', [])
+
+
+def refresh_rpm_signatures(args, signer, records, retained, scratch):
+    """Index the current signed form; preserve old bytes for in-flight readers."""
+    for index, record in enumerate(records):
+        source = relative_file(args.output, record['path'])
+        signed = scratch / source.name
+        shutil.copyfile(source, signed)
+        # rpmsign leaves an already matching signature unchanged. A new signing
+        # subkey changes only the signature, never the attested header/payload.
+        signer.rpm(signed)
+        digest = sha(signed)
+        if digest == record['sha256']:
+            continue
+        relative = Path('pool') / digest / source.name
+        destination = args.output / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(signed, destination)
+        retained.append(record)
+        records[index] = dict(record, path=str(relative), sha256=digest)
 
 
 def apt_metadata(args, signer):
@@ -258,10 +278,20 @@ def apt_metadata(args, signer):
     signer.sign(release, release.with_name('Release.gpg'))
 
 
-def rpm_metadata(args, signer):
-    run(['createrepo_c', '--unique-md-filenames', '--retain-old-md', '1',
-         '--checksum', 'sha256', '--compress-type', 'gz', '--no-database',
-         '--revision', str(args.epoch), '--set-timestamp-to-revision', args.output])
+def rpm_metadata(args, signer, records):
+    # The pool also retains superseded signatures. Scanning the whole pool
+    # would advertise duplicate versions and could select a revoked signer.
+    with tempfile.TemporaryDirectory(prefix='oscmix-rpm-index-') as temporary:
+        packages = Path(temporary) / 'packages.txt'
+        for record in records:
+            relative_file(args.output, record['path'])
+            if '\n' in record['path'] or '\r' in record['path']:
+                raise ValueError('invalid RPM index path')
+        packages.write_text(''.join(row['path'] + '\n' for row in records))
+        run(['createrepo_c', '--unique-md-filenames', '--retain-old-md', '1',
+             '--checksum', 'sha256', '--general-compress-type', 'gz', '--no-database',
+             '--pkglist', packages, '--revision', str(args.epoch),
+             '--set-timestamp-to-revision', args.output])
     metadata = args.output / 'repodata/repomd.xml'
     signer.sign(metadata, metadata.with_suffix('.xml.asc'))
     shutil.copyfile(args.public_key, metadata.with_suffix('.xml.key'))
@@ -281,11 +311,13 @@ def build(args):
     with tempfile.TemporaryDirectory(prefix='oscmix-sign-') as temporary:
         scratch = Path(temporary)
         signer = Signer(args, scratch)
-        records = restore_previous(args, signer)
+        records, retained = restore_previous(args, signer)
         available = {item['name'] for item in records} | {
             record['package_name'] for _, _, record in packages}
         if not set(PACKAGE_NAMES.values()) <= available:
             raise ValueError('repository snapshot would lack a required package component')
+        if TARGETS[args.target][1] == 'rpm':
+            refresh_rpm_signatures(args, signer, records, retained, scratch)
         for artifact, manifest, record in packages:
             identity = record['package_name'], record['package_version']
             if any((item['name'], item['version']) == identity for item in records):
@@ -309,14 +341,14 @@ def build(args):
         if TARGETS[args.target][1] == 'deb':
             apt_metadata(args, signer)
         else:
-            rpm_metadata(args, signer)
+            rpm_metadata(args, signer, records)
         files = {str(path.relative_to(args.output)): sha(path)
                  for path in sorted(args.output.rglob('*')) if path.is_file()}
         result = dict(schema=1, target=args.target, snapshot=args.snapshot,
                       development=args.development, source_commit=args.expected_commit,
                       generator_sha256=sha(Path(__file__).resolve()),
                       signing_key=args.signing_key, epoch=args.epoch,
-                      packages=records, files=files)
+                      packages=records, retained_packages=retained, files=files)
         manifest = args.output / MANIFEST
         manifest.write_text(json.dumps(result, indent=2) + '\n')
         signer.sign(manifest, manifest.with_suffix('.json.asc'))
