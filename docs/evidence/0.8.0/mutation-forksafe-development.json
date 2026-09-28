@@ -1,0 +1,201 @@
+{
+  "schema": 1,
+  "kind": "Development mutation measurement, not final release qualification",
+  "recorded_utc": "2026-09-28T10:24:23.332290+00:00",
+  "supersedes_as_measurement": [
+    "mutation-full-development.json",
+    "mutation-followup-development.json",
+    "mutation-assessment-development.json"
+  ],
+  "reason": "Earlier 0.8.0 runs counted every mutant covered by two fork-unsafe device-identity tests as killed. Both runs here start with the suite passing before and after a fork.",
+  "fresh_full_generation": {
+    "code_commit": "c975cc07fb036c9e57a6b6d7b94b6aee6e741c96",
+    "command": [
+      "make",
+      "mutation"
+    ],
+    "started_utc": "2026-09-28T02:48:53.605175+00:00",
+    "seconds": 11855.04,
+    "includes_fork_check": true,
+    "cache": "mutants/ moved aside; no reused verdicts",
+    "counts": {
+      "total": 11173,
+      "killed": 9221,
+      "survived": 1939,
+      "timeout": 13,
+      "not_covered": 0,
+      "unresolved": 0
+    },
+    "score": 0.8262544802867383,
+    "archive_sha256": "00141c1a92a7a6cc76557e9e7f58ccc0be973fe00c5889b2f3cbe8d77e04102a",
+    "inputs_manifest_sha256": "01d216c36e0242f2a22e7aac2ad6b548aa486cd11b3c0186d37cc4cdc20dcb5d"
+  },
+  "rejudgments": [
+    {
+      "code_commit": "e73f82ea92dec9dd417aa3823d21f4d247d089d6",
+      "reason": "Tests added for survivors the corrected run exposed",
+      "changed_test_functions": 119,
+      "changed_source_files": 0,
+      "functions": 143,
+      "mutants": 5233,
+      "manifest_sha256": "306b7b5964c606e43504b8745737c927cfb1a94f9a0f088d5fb6b8d7fbf0d33e",
+      "commands": [
+        {
+          "step": "fork-check",
+          "started_utc": "2026-09-28T06:43:30.278908+00:00",
+          "seconds": 373.625,
+          "exit_code": 0,
+          "log_sha256": "a89be19fd6d64f22e996ec1a543eb40f2e489d3e7bbd52cd2b43f9f8e9f4556d"
+        },
+        {
+          "step": "fresh-attribution",
+          "started_utc": "2026-09-28T06:49:43.909509+00:00",
+          "seconds": 165.842,
+          "exit_code": 0,
+          "log_sha256": "e9202991aa147f6de70af6e73be2bbf91299d136fc993410bcca00ca8702b9e6"
+        },
+        {
+          "step": "affected-functions",
+          "started_utc": "2026-09-28T06:52:29.775664+00:00",
+          "seconds": 7517.791,
+          "exit_code": 0,
+          "log_sha256": "769ef141370f1242367b404b558382d877fa941f50e01951d0935ab439913dfa"
+        },
+        {
+          "step": "complete-policy",
+          "started_utc": "2026-09-28T08:57:47.568067+00:00",
+          "seconds": 0.314,
+          "exit_code": 0,
+          "log_sha256": "a77d87c8be58e7ab8f702e71dc36b111627ed637311b9c0be587c66283054d4a"
+        }
+      ],
+      "counts": {
+        "1": 9563,
+        "0": 1597,
+        "-24": 13
+      },
+      "archive_sha256": "549c79a6f38edb3bb4ab58d4df6bc2e162afb10fe6fb177463b4a7ef38d527db",
+      "inputs_manifest_sha256": "570c41a08fedf8fa197202ab079fbccb5f03947a0aec8aaa7c7fcd672de3857c"
+    },
+    {
+      "code_commit": "ea63e297282a2bbc270af7d4f833de74ddeef659",
+      "reason": "Tests added for survivors the corrected run exposed",
+      "changed_test_functions": 4,
+      "changed_source_files": 0,
+      "functions": 71,
+      "mutants": 2481,
+      "manifest_sha256": "d7d4d967a992f119135f54551c3a56fcb8baf11e76157126e72b4ae49539190f",
+      "commands": [
+        {
+          "step": "fork-check",
+          "started_utc": "2026-09-28T09:03:28.250329+00:00",
+          "seconds": 347.784,
+          "exit_code": 0,
+          "log_sha256": "2a07754335a535d14d9e3a3d76c7eb0860068a58aacd2d6836a3162558c10b56"
+        },
+        {
+          "step": "fresh-attribution",
+          "started_utc": "2026-09-28T09:09:16.039851+00:00",
+          "seconds": 158.135,
+          "exit_code": 0,
+          "log_sha256": "045605e1bc4bd55e8c0de330d6908dae035c34fc6fcc112be1d2ae7d87a50e75"
+        },
+        {
+          "step": "affected-functions",
+          "started_utc": "2026-09-28T09:11:54.194529+00:00",
+          "seconds": 2465.461,
+          "exit_code": 0,
+          "log_sha256": "a70d04c937a1013b372d07649317f32bf07097f4f3c318165c20ab4ac7b281bc"
+        },
+        {
+          "step": "complete-policy",
+          "started_utc": "2026-09-28T09:52:59.656562+00:00",
+          "seconds": 0.364,
+          "exit_code": 0,
+          "log_sha256": "8384bf1732fe62a29ee0cf05fcbebacc1014347d963427a06b382c4a8146ee0b"
+        }
+      ],
+      "counts": {
+        "1": 9567,
+        "0": 1593,
+        "-24": 13
+      },
+      "archive_sha256": "c8f4ba002ffed476f202a7660da9c3ef20ad15dc26318a151ff6e3d529edf4b0",
+      "inputs_manifest_sha256": "88431d1307ff82fce2bd7031e99cbe75140dac57bd4cd885f6a0d463c3b729b4"
+    },
+    {
+      "code_commit": "faba036521d5a995be44100ba4ba1d03c03396d8",
+      "reason": "Tests added for survivors the corrected run exposed",
+      "changed_test_functions": 1,
+      "changed_source_files": 0,
+      "functions": 41,
+      "mutants": 1365,
+      "manifest_sha256": "8f5e4b3a4df150ef26e5b0f14fe5883071bf7a15ed1ae747a2b06d64dafc7dab",
+      "commands": [
+        {
+          "step": "fork-check",
+          "started_utc": "2026-09-28T09:54:17.033574+00:00",
+          "seconds": 338.43,
+          "exit_code": 0,
+          "log_sha256": "40ae50903912693389bddb2e275c176d237c06375b7de313ebf4ad9bf0467843"
+        },
+        {
+          "step": "fresh-attribution",
+          "started_utc": "2026-09-28T09:59:55.469573+00:00",
+          "seconds": 154.389,
+          "exit_code": 0,
+          "log_sha256": "73856cddda5515c699e0e58744b0b304b5113c033b319399fef3d5ca0eeba5b3"
+        },
+        {
+          "step": "affected-functions",
+          "started_utc": "2026-09-28T10:02:29.878339+00:00",
+          "seconds": 1260.828,
+          "exit_code": 0,
+          "log_sha256": "0151be5c0891a30072cad0cc016b2e83866184135147ce3cd83e401d39a3be2b"
+        },
+        {
+          "step": "complete-policy",
+          "started_utc": "2026-09-28T10:23:30.706347+00:00",
+          "seconds": 0.264,
+          "exit_code": 0,
+          "log_sha256": "7d7990c40f7d20bdf38e5def4d780401cef9e3d23830ec116d7a2ac8f8ca065f"
+        }
+      ],
+      "counts": {
+        "1": 9568,
+        "0": 1592,
+        "-24": 13
+      },
+      "archive_sha256": "b8d4e8a1724fc555948dc67da07ca64d4f05ba52856893ef85784171863d4f7c",
+      "inputs_manifest_sha256": "8ab5f09d35c17564402cbca32a66325d3bc2f618b8d12862c9a2efcfe7067785"
+    }
+  ],
+  "combined_counts": {
+    "total": 11173,
+    "killed": 9568,
+    "survived": 1592,
+    "timeout": 13,
+    "not_covered": 0,
+    "unresolved": 0
+  },
+  "score": 0.8573476702508961,
+  "address_space_limit_bytes": 2147483648,
+  "max_children": 4,
+  "deadlines_unchanged": true,
+  "unselected_verdicts_unchanged": true,
+  "assessment": {
+    "remaining_cases": 1605,
+    "reviewed_at_06d8197_unchanged": 993,
+    "reviewed_in_this_round": 612,
+    "summary": "Every remaining survivor and timeout was reviewed by diff and call path; the notes are private. Cases hidden by the fork defect included real assertion gaps in backend identity, the control client, retention and matching decisions, command-line desks and start cleanup; tests for them are in 21a5ac1..faba036 and are counted above. The remaining cases change only messages or logs, are equivalent under the code and register table, or are checked only by subprocess lifecycle tests. No production correctness defect was found."
+  },
+  "execution_complete": true,
+  "hardware": false,
+  "release_complete": false,
+  "limits": [
+    "Development commits; the runtime still reports 0.7.3.",
+    "Subprocess lifecycle tests load the original source and cannot kill mutants; behaviour they check still counts as survived here.",
+    "Timeouts are retained as timeouts, never counted as killed.",
+    "The final candidate still requires its own fresh full run."
+  ]
+}

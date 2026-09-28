@@ -18,8 +18,18 @@ covered was counted as killed. The same defect inflates the earlier 0.8.0
 scores below (0.897 and 0.909). The tests now resolve the PID when they run,
 and `make mutation` first requires the suite to pass in a forked child. The
 [execution record](evidence/0.8.0/mutation-assessment-development.json)
-retains the run and the invalidation; the floor stays at 0.79 until a
-corrected fresh measurement.
+retains the run and the invalidation.
+The corrected fresh full run at `c975cc0` (3.3 h, fork check included)
+measured 9221 killed, 1939 survived and 13 timed out (0.826). Reviewing the
+959 survivors the defect had hidden found real assertion gaps: backend
+identity outcomes, control-protocol limits and roles, the N1 partner guard,
+report matching, `--device` desks re-read by profiles and reloads, and start
+and reload cleanup. No production defect was found. 157 tests close those
+gaps; three rejudgments of the functions they reach bring `faba036` to 9568
+killed, 1592 survived and 13 timed out (0.857), none uncovered or unresolved.
+The [corrected record](evidence/0.8.0/mutation-forksafe-development.json)
+identifies each run and archive. The floor rises from 0.79 to 0.85; the final
+candidate still needs its own fresh full run.
 The current backend/GTK series also passes all
 [six native package targets](evidence/0.8.0/series9-native-development.json),
 [Alpine/OpenRC and Void/runit service lifecycles](evidence/0.8.0/series9-native-services-development.json)
