@@ -785,3 +785,77 @@ def test_failed_restoration_prevents_acquiring_another_operation(sweep, monkeypa
     assert len(operations) == 1
     assert unrestored == [path]
     assert failure == 'restoration failed'
+
+
+def test_an_incomplete_dump_is_read_once_more_and_merged(sweep, monkeypatch):
+    first, second = sweep.Readback(), sweep.Readback()
+    first['/output/1/volume'] = 0.
+    first.messages['/output/1/volume'] = ('f', (0.,))
+    second['/mix/11/input/9'] = float('-inf')
+    second.messages['/mix/11/input/9'] = ('fi', (float('-inf'), 0))
+    reads = iter([first, second])
+    monkeypatch.setattr(sweep, 'read_all', lambda *_args: next(reads))
+    seen = sweep.read_complete(None, None, {'/output/1/volume', '/mix/11/input/9'})
+    assert seen.messages == {'/output/1/volume': ('f', (0.,)),
+                             '/mix/11/input/9': ('fi', (float('-inf'), 0))}
+    assert seen == {'/output/1/volume': 0., '/mix/11/input/9': float('-inf')}
+
+
+def test_a_complete_dump_is_not_read_again(sweep, monkeypatch):
+    calls = []
+    monkeypatch.setattr(sweep, 'read_all',
+                        lambda *_args: calls.append(1) or {'/output/1/volume': 0.})
+    assert sweep.read_complete(None, None, {'/output/1/volume'}) == {'/output/1/volume': 0.}
+    assert sweep.read_complete(None, None) == {'/output/1/volume': 0.}
+    assert calls == [1, 1]
+
+
+def test_a_path_without_a_baseline_is_not_called_moved(sweep):
+    path = '/mix/11/input/9'
+    assert sweep.drifted({}, {path: float('-inf')}) == []
+    assert sweep.drifted({path: float('-inf')}, {}) == [path]
+
+
+def test_a_baseline_missing_a_withheld_mix_report_does_not_fail_the_lease(sweep, monkeypatch):
+    """Measured on a UCX II: the 23rd baseline lacked /mix/11/input/9.
+
+    The next read reported it, the pass repair counted it as moved,
+    spent its rounds on a register it could not write, and the 90-second
+    lease expired before restoration was confirmed.
+    """
+    probed = '/input/9/dynamics/release'
+    other = '/input/10/dynamics/release'
+    withheld = '/mix/11/input/9'
+    state = {probed: 100., other: 100., withheld: float('-inf')}
+    pending = []
+
+    class Device:
+        def begin(self):
+            pass
+
+        def finish(self):
+            pending.append('withhold')  # from the next operation's baseline
+
+        def send(self, messages, **_options):
+            for path, _tags, args in messages:
+                state[path] = args[0]
+
+    def read(*_args):
+        if pending == ['withhold']:
+            pending.append('done')
+            return {p: v for p, v in state.items() if p != withheld}
+        return dict(state)
+
+    monkeypatch.setattr(sweep, 'read_all', read)
+    monkeypatch.setattr(sweep.time, 'sleep', lambda *_args: None)
+    monkeypatch.setattr(sweep, 'STEPS', (0.01,))
+    monkeypatch.setattr(sweep, 'UNBOUNDED_STEPS', (1.0,))
+    targets = [(path, R.register_at(sweep.devices.UCX2, path)) for path in (probed, other)]
+    findings, operations, unrestored, failure = sweep.measure_chunks(Device(), targets)
+    assert failure is None
+    assert unrestored == []
+    assert sweep.summarise(findings) == {'confirmed': 2}
+    assert [op['before'] == op['after'] for op in operations] == [True, True]
+    assert withheld in operations[1]['before']
+    assert pending == ['withhold', 'done', 'withhold']
+    assert state[withheld] == float('-inf')

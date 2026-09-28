@@ -28,7 +28,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Collection, Dict, List, Optional, Sequence, Set, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -321,6 +321,26 @@ def read_all(device, listener, seconds: float = 6.0) -> Dict[str, object]:
     return seen
 
 
+def read_complete(device, listener, expected: Collection[str] = ()) -> Dict[str, object]:
+    """A dump, requested once more when it left out a path it should hold.
+
+    A refresh can end without some reports: the backend withholds an
+    input-mix cell until the level and pan it depends on have arrived.
+    Measured on a UCX II: one of 23 lease baselines lacked
+    `/mix/11/input/9`, the next read reported it, and the restoration
+    check took the difference for a register the sweep had moved. One
+    more dump costs one read window; the lease has room for it.
+    """
+    seen = read_all(device, listener)
+    if not set(expected) - set(getattr(seen, "messages", seen)):
+        return seen
+    again = read_all(device, listener)
+    if isinstance(seen, Readback) and isinstance(again, Readback):
+        seen.messages.update(again.messages)
+    seen.update(again)
+    return seen
+
+
 def as_tag(value: object, tags: str) -> object:
     """Coerce a candidate to the type its register's tag declares.
 
@@ -423,7 +443,7 @@ def _pass(device, listener, group: Sequence[Tuple[str, R.Register]],
         if got is not None and not _unchanged(state[path], got):
             settled.append(path)
     write_batch(device, [(p, r, state[p]) for p, r, _v, _s in writes], restoring=True)
-    return read_all(device, listener), settled
+    return read_complete(device, listener, known(state)), settled
 
 
 def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
@@ -504,9 +524,16 @@ def drifted(before: Dict[str, object],
     """
     original = before.messages if isinstance(before, Readback) else before
     current = after.messages if isinstance(after, Readback) else after
-    return sorted(path for path in set(original) | set(current)
+    # Only what has a baseline: a path the first read never carried has
+    # no value to return to, and rewriting cannot make it match.
+    return sorted(path for path in original
                   if original.get(path) != current.get(path)
                   and not path.endswith(STREAMING))
+
+
+def known(state: Dict[str, object]) -> Set[str]:
+    """The paths a read has carried, whichever view of it this is."""
+    return set(state.messages if isinstance(state, Readback) else state)
 
 
 def repair(device, listener, reference: Dict[str, object],
@@ -536,7 +563,8 @@ def repair(device, listener, reference: Dict[str, object],
                     continue
                 writes.append((path, register, reference[path]))
         write_batch(device, writes, restoring=True)
-        current = (readback or read_all)(device, listener)
+        current = (readback(device, listener) if readback is not None
+                   else read_complete(device, listener, known(reference)))
     return current, drifted(reference, current)
 
 
@@ -636,7 +664,7 @@ def measure_and_restore(device, listener, targets, before, note=None, step=0):
             signal.signal(sig, signal.SIG_IGN)
         try:
             after, unrestored = repair(device, listener, before,
-                                      read_all(device, listener))
+                                      read_complete(device, listener, known(before)))
         except (Exception, KeyboardInterrupt) as exc:
             error = "%s; restoration failed: %s: %s" % (
                 error or "probe finished", type(exc).__name__, exc)
@@ -656,6 +684,7 @@ def measure_chunks(device, targets, note=None):
     findings, history, transactions = {}, {}, []
     failure = None
     unrestored = []
+    surface: Set[str] = set()
     for step in range(max(len(STEPS), len(UNBOUNDED_STEPS))):
         pending = [(path, register) for path, register in targets
                    if path not in findings or findings[path]['verdict'] == 'ignored'
@@ -671,7 +700,8 @@ def measure_chunks(device, targets, note=None):
                 transactions.append(record)
                 try:
                     device.begin()
-                    before = read_all(device, device)
+                    before = read_complete(device, device, surface)
+                    surface |= known(before)
                     record['before'] = before
                     record['before_messages'] = getattr(before, 'messages', {})
                     if not before:
