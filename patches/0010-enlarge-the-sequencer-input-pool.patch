@@ -1,0 +1,16 @@
+diff --git a/alsaseqio.c b/alsaseqio.c
+--- a/alsaseqio.c
++++ b/alsaseqio.c
+@@ -100,6 +100,12 @@
+ 		fprintf(stderr, "snd_seq_open: %s\n", snd_strerror(err));
+ 		return 1;
+ 	}
++	/* A refresh can deliver more MIDI frames than the default 200-event
++	 * input pool holds; losing any of them ends the bridge, so give the
++	 * kernel the most room it allows. */
++	err = snd_seq_set_client_pool_input(seq, 2000);
++	if (err)
++		fprintf(stderr, "snd_seq_set_client_pool_input: %s\n", snd_strerror(err));
+ 	err = snd_seq_set_client_name(seq, "alsaseq");
+ 	if (err) {
+ 		fprintf(stderr, "snd_seq_set_client_name: %s\n", snd_strerror(err));

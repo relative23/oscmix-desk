@@ -30,6 +30,10 @@
     {
       "file": "0009-bound-observation-queues-by-actual-payload-size.patch",
       "sha256": "945143f38eb8074446d8085851bc5da6268905edff15584f86a4a1fdfcb9b0ea"
+    },
+    {
+      "file": "0010-enlarge-the-sequencer-input-pool.patch",
+      "sha256": "55987385720fa6b8d198de420b259da886dcc3677c8489c9335d9936603d811c"
     }
   ]
 }

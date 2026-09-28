@@ -319,12 +319,11 @@ can inspect reportable state, while playback-matrix state remains unknown.
   reading. A dropped register could include a link contradiction; continued
   meter traffic would not make that observation window reliable again.
   The kernel counts the damage in `/proc/asound/seq/clients` under the
-  client's `Input pool` (`Alloc failures`). Measured 2026-08-28: even a
-  ten-dump `/refresh` flood under four parallel test suites peaks at
-  96 of the 200 cells with zero failures -- the overflows are rare
-  scheduling events observed under that historical load. This does not
-  establish the absence of loss on another build or host. Check the current
-  backend identity and surrounding journal before retrying a failed operation.
+  client's `Input pool` (`Alloc failures`). The bridge asks for 2000 cells,
+  the kernel's maximum; with the former default of 200, refreshes on a busy
+  host used up to 138 of them and overflowed now and then. If `Pool size` shows
+  200, the running bridge is an older build. Check the backend identity and
+  the surrounding journal before retrying a failed operation.
 - `ignoring unknown sysex packet (mfr=200d ...)` -- the device sends a
   vendor SysEx that oscmix does not decode. Ignored by design.
 - `unexpected enum value -1` -- a register reports a value outside its

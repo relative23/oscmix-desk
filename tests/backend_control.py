@@ -85,6 +85,18 @@ def test_alsa_input_loss_terminates_the_actual_bridge_reader(binary, tmp_path):
     assert result.stdout == b'', 'bridge continued reading after known lost MIDI events'
 
 
+def test_the_actual_bridge_asks_for_the_largest_input_pool(binary, tmp_path):
+    """A refresh delivers up to 541 MIDI frames in 150 ms; 200 cells overflowed."""
+    probe = tmp_path / 'bridge-input-pool'
+    subprocess.run(['cc', '-std=c11', '-I', str(binary.parent),
+                    str(repo_file('tests/alsaseq_input_pool.c')),
+                    '-lasound', '-pthread', '-o', str(probe)],
+                   check=True, capture_output=True, timeout=30)
+    result = subprocess.run([str(probe)], capture_output=True, timeout=3)
+    assert result.stdout == b'input-pool=2000\n'
+    assert result.returncode == 1
+
+
 def test_gtk_observations_do_not_notify_global_connection_properties(binary, tmp_path):
     """Value delivery must not repeatedly rebind the entire GTK window."""
     probe = tmp_path / 'gtk-notifications'

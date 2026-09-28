@@ -29,7 +29,8 @@
 - A malformed OSC delivery invalidates the operation instead of confirming a
   partial prefix.
 - Lost MIDI input or a MIDI hangup ends the backend operation before further
-  reports or writes are used.
+  reports or writes are used. The ALSA bridge asks for the largest sequencer
+  input pool; the default one overflowed during device refreshes.
 - Input-mix reports are withheld until all their dependencies were observed.
 - An invalid nested channel number is a configuration error, also on reload.
 - PipeWire target names containing quotes or backslashes are encoded exactly.

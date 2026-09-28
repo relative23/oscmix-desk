@@ -205,3 +205,18 @@ allocation-failure cleanup. The former code fails the burst case. The real
 backend's stalled-client test now sends 4096 reports, beyond the new bound,
 and still requires that another writer can proceed. Combined GTK, hardware
 and platform qualification must identify this new series.
+
+## 0010 -- give the sequencer input the largest pool
+
+The bridge left its sequencer client at ALSA's default input pool of 200
+events. A refresh delivers up to 541 MIDI frames in 150 ms; on a UCX II,
+refreshes with every CPU busy used up to 138 cells, and the overflow that
+patch 0006 turns into a stopped backend happened twice within two minutes. Patch 0010
+asks the kernel for 2000 cells, its maximum, before the port exists. A
+refused request is reported and the default stays in effect; lost input
+still ends the bridge.
+
+A probe compiles the actual prepared bridge with the ALSA calls before the
+first port substituted and records the requested pool size. The former
+code does not request one. No hardware is opened by the test.
+
