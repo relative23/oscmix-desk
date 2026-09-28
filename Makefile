@@ -65,7 +65,10 @@ verify-hardware:
 # Answers what coverage cannot: whether the assertions catch a wrong
 # value or merely execute the line. A full run takes hours, so it is not part of
 # `check`; the baseline in quality/ turns the result into a ratchet.
+# mutmut forks a child per mutant after importing the tests, so the suite
+# must first pass in a forked child too; otherwise its failures read as kills.
 mutation:
+	$(PYTHON) scripts/mutation-fork-check.py
 	ulimit -v $(MUTATION_VMEM_KB) && $(PYTHON) -m mutmut run --max-children 4
 	$(PYTHON) scripts/mutation-policy.py
 

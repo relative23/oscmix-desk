@@ -108,15 +108,20 @@ def test_lost_finish_acknowledgement_cannot_be_a_successful_operation(peer):
         client.close()
 
 
+# Built at run time: a PID taken at import names the collecting process,
+# which is not the one running the test under a forking runner. Each case
+# must then reach its own condition instead of failing the PID check first.
 @pytest.mark.parametrize('handshake', [
-    b'', EPOCH, EPOCH + struct.pack('>II', os.getpid(), 2) + b'name\0',
-    EPOCH + struct.pack('>II', os.getpid() + 1, 1) + b'name\0',
-    EPOCH + struct.pack('>II', os.getpid(), 1) + b'name',
-    EPOCH + struct.pack('>II', os.getpid(), 1) + b'a\0b\0',
-    EPOCH + struct.pack('>II', os.getpid(), 1) + b'\xff\0',
+    pytest.param(lambda pid: b'', id='empty'),
+    pytest.param(lambda pid: EPOCH, id='epoch-only'),
+    pytest.param(lambda pid: EPOCH + struct.pack('>II', pid, 2) + b'name\0', id='version'),
+    pytest.param(lambda pid: EPOCH + struct.pack('>II', pid + 1, 1) + b'name\0', id='pid'),
+    pytest.param(lambda pid: EPOCH + struct.pack('>II', pid, 1) + b'name', id='unterminated'),
+    pytest.param(lambda pid: EPOCH + struct.pack('>II', pid, 1) + b'a\0b\0', id='two-names'),
+    pytest.param(lambda pid: EPOCH + struct.pack('>II', pid, 1) + b'\xff\0', id='not-utf8'),
 ])
 def test_incompatible_handshake_fails_before_acquisition_or_writes(peer, handshake):
-    server = peer(handshake=handshake)
+    server = peer(handshake=handshake(os.getpid()))
     with pytest.raises(OSError, match=r'handshake|incompatible'):
         backend.Control(server.path, os.getpid())
     assert server.requests == [HELLO]

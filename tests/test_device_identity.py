@@ -36,8 +36,14 @@ KEY_B = "2a39-3fd9-99887766"
 class _Child:
     """A backend that is up for as long as the test needs it."""
 
-    pid = os.getpid()
     returncode = None
+
+    @property
+    def pid(self):
+        # The control peer is served by the process running the test. A PID
+        # taken at import names the collecting process instead, which differs
+        # under a forking runner and makes the start refuse the endpoint.
+        return os.getpid()
 
     def poll(self):
         return None
