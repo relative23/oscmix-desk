@@ -149,9 +149,12 @@ def test_a_start_without_a_runtime_directory_locks_beside_its_desk(
     monkeypatch.setenv("OSCMIX_LOCK_DIR", str(tmp_path / "absent"))
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
+    during = []
+    monkeypatch.setattr(session_module, "apply_routing",
+                        lambda *_a, **_k: during.append(_free(start)))
     verifier = session_module._apply_and_verify(RunningChild(), load_config(start),
                                                 {"stop": False}, start)
     verifier.join(timeout=5)
     assert locking.device_lock_path(start, device_key(start)).parent == start.parent
-    assert recording_backend.operations[0] == "begin"
+    assert during == [False], "the lock beside the desk is held while writing"
     assert _free(start)
