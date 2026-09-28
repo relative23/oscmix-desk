@@ -142,3 +142,16 @@ def test_a_failed_operation_closes_its_connection_and_releases_the_lock(
                                          {"stop": False}, start)
     assert recording_backend.operations == ["begin", "close"]
     assert _free(start)
+
+
+def test_a_start_without_a_runtime_directory_locks_beside_its_desk(
+        start, monkeypatch, tmp_path, recording_backend):
+    monkeypatch.setenv("OSCMIX_LOCK_DIR", str(tmp_path / "absent"))
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
+    verifier = session_module._apply_and_verify(RunningChild(), load_config(start),
+                                                {"stop": False}, start)
+    verifier.join(timeout=5)
+    assert locking.device_lock_path(start, device_key(start)).parent == start.parent
+    assert recording_backend.operations[0] == "begin"
+    assert _free(start)

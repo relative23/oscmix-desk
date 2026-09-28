@@ -108,6 +108,20 @@ def test_plan_writes_carry_the_declared_message_and_its_reason():
         ("/output/5/volume", "f", (-6.0,)), ("/output/5/mute", "i", (1,))]
 
 
+def test_a_blind_or_reestablished_write_carries_the_declared_message():
+    from oscmix_desk.reconcile import REWRITE, UNCONDITIONAL
+
+    volume = reconcile.Entry("/output/5/volume", "f", (-6.0,), Phase.CHANNEL)
+    matrix = reconcile.Entry("/mix/5/playback/1", "fi", (-6.0, 0), Phase.MIX)
+    blind = reconcile.plan((volume,), None, UCX2)
+    assert blind.writes == (Write("/output/5/volume", "f", (-6.0,), Phase.CHANNEL,
+                                  UNCONDITIONAL),)
+    rewritten = reconcile.plan((matrix,), {}, UCX2)
+    assert rewritten.writes == (Write("/mix/5/playback/1", "fi", (-6.0, 0), Phase.MIX,
+                                      REWRITE),)
+    assert rewritten.unverifiable == ("/mix/5/playback/1",)
+
+
 def test_plan_honours_an_explicit_tolerance_for_an_unmodelled_value():
     # A modelled register keeps its own encoding; see test_numeric.py.
     entries = (reconcile.Entry("/output/5/volume", "f", (-6.0,), Phase.CHANNEL),)
@@ -128,6 +142,7 @@ def test_plan_honours_an_explicit_tolerance_for_an_unmodelled_value():
     ("/output/5/stereo", ("i", (1,)), (2,)),                        # link neither 0 nor 1
     ("/output/5/reflevel", ("i", (1,)), (9,)),                      # outside the domain
     ("/output/5/volume", ("s", ("x",)), ("x",)),                    # uncomparable type
+    ("/input/1/48v", ("s", ("x",)), ("x",)),                        # ... without a domain
 ])
 def test_invalid_feedback_is_classified_apart_and_a_valid_report_restores(
         path, expected, reported):

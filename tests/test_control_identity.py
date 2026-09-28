@@ -202,3 +202,14 @@ def test_a_listener_that_is_not_this_backend_is_named_but_not_coordinated(endpoi
     _config, path, proc = endpoint
     command(proc / "101", [word.replace("PATH", str(path)) for word in words])
     assert process.control_holder(path, proc) == process.BackendOwner(101, False, None, None)
+
+
+def test_another_child_of_the_backend_does_not_hide_its_bridge(endpoint):
+    config, path, proc = endpoint
+    shutil.copytree(proc / "102", proc / "100", symlinks=True)
+    (proc / "100/stat").write_text("100 (sleep) S 101 0 0\n")
+    command(proc / "100", ["sleep", "60"])
+    (proc / "100/exe").unlink()
+    (proc / "100/exe").symlink_to("/usr/bin/sleep")
+    assert process.control_holder(path, proc) == process.BackendOwner(101, True, 24, "24216011")
+    assert diagnostics.backend_status(config, proc).state == "ready"
