@@ -347,3 +347,45 @@ def test_verifiers_mix_reapply_also_checks_the_live_mode(proc, recording_backend
     with pytest.raises(OSError, match="failed the measured"):
         routing.send_mix(routed(), recording_backend)
     assert recording_backend.sent == []
+
+
+# ---------------------------------------------------------------------------
+# The stream is looked for across every card, not only the first.
+
+def test_a_card_entry_that_is_not_a_card_does_not_end_the_search(proc):
+    stray = proc / "asound" / "card1x"
+    stray.mkdir(parents=True)
+    (stray / "stream0").write_text("not a card\n")
+    write_card(proc, recorded())
+    assert streams.read_playback(routed(), proc).card == 2
+
+
+def test_a_damaged_unrelated_card_before_the_ucx_does_not_hide_it(proc):
+    other = write_card(proc, recorded(), number=1)
+    (other / "usbid").write_text("ffff:ffff\n")
+    (other / "stream0").write_bytes(b"\xff\xfe not UTF-8 and no header\n")
+    write_card(proc, recorded(), number=2)
+    assert streams.read_playback(routed(), proc).card == 2
+
+
+def test_the_selected_serial_is_found_after_another_ucx(proc):
+    write_card(proc, recorded(), number=1, serial="99887766")
+    write_card(proc, recorded(), number=2, serial="24216011")
+    state = streams.read_playback(replace(routed(), serial="24216011"), proc)
+    assert (state.card, state.serial) == (2, "24216011")
+
+
+def test_no_playback_stream_keeps_the_desk_serial(proc):
+    (proc / "asound").mkdir()
+    state = streams.read_playback(replace(routed(), serial="24216011"), proc)
+    assert state == streams.PlaybackState(None, "24216011", None)
+
+
+def test_the_guard_reads_the_machine_proc_by_default(monkeypatch):
+    seen = []
+    monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
+    monkeypatch.setattr(streams, "read_playback",
+                        lambda config, root: seen.append(root) or
+                        streams.PlaybackState(None, config.serial, None))
+    streams.PlaybackGuard(routed()).check()
+    assert seen == [Path("/proc")]

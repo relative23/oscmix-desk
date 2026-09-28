@@ -236,3 +236,33 @@ def test_a_start_says_when_the_firmware_is_not_the_one_that_was_measured(
                 "table for 'Fireface UCX II' was recorded on 3.01")
     assert (expected in caplog.text) is said
     assert bool(caplog.text) is said
+
+
+def test_interface_entries_without_identity_do_not_end_the_device_search(fake_sysfs):
+    # Real sysfs lists interfaces beside devices, in no particular order.
+    for number in range(8):
+        (fake_sysfs / ("5-2:1.%d" % (number + 1))).mkdir()
+        (fake_sysfs / ("usb%d" % number)).mkdir()
+    assert discovery.usb_device_present("2a39:3fd9", fake_sysfs)
+    assert discovery.usb_revision("2a39:3fd9", fake_sysfs) == "3.01"
+
+
+def test_an_unnamed_device_does_not_end_the_serial_selection(usb_pair):
+    for number in range(8):
+        unnamed = usb_pair / ("6-%d" % number)
+        unnamed.mkdir()
+        (unnamed / "idVendor").write_text("2a39\n")
+        (unnamed / "idProduct").write_text("3fd9\n")
+    assert discovery.usb_revision("2a39:3fd9", usb_pair, serial="99887766") == "3.02"
+
+
+def test_an_interface_named_without_a_serial_has_no_invented_serial(tmp_path):
+    from support import fake_proc
+
+    proc = fake_proc(tmp_path / "proc")
+    (proc / "asound/seq/clients").write_text('Client  24 : "Fireface UCX II" [Kernel]\n')
+    (proc / "asound/cards").write_text(
+        " 2 [II             ]: USB-Audio - Fireface UCX II\n"
+        "      RME Fireface UCX II at usb-0000:77:00.0-1\n")
+    device = discovery.resolve_device("2a39:3fd9", "Fireface UCX II", "", proc)
+    assert (device.serial, device.client) == ("", 24)

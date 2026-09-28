@@ -203,3 +203,47 @@ def test_a_lock_directory_that_cannot_be_searched_says_permission_and_group(
                   if "cannot open the device lock" in r.getMessage())
     assert record.endswith(": Permission denied; %s belongs to group %s"
                            % (shared, locking._group_of(shared)))
+
+
+def test_a_lock_that_cannot_be_taken_for_another_reason_closes_its_file(
+        tmp_path, monkeypatch, caplog):
+    lock_dir(tmp_path, monkeypatch)
+    opened = []
+    actual_open = os.open
+
+    def recorded_open(*args, **kwargs):
+        fd = actual_open(*args, **kwargs)
+        opened.append(fd)
+        return fd
+
+    def unsupported(_fd, _operation):
+        raise OSError(errno.ENOLCK, "No locks available")
+
+    monkeypatch.setattr(locking.os, "open", recorded_open)
+    monkeypatch.setattr(locking.fcntl, "flock", unsupported)
+    with caplog.at_level("ERROR"):
+        assert _take("2a39-3fd9-24216011") is None
+    assert "No locks available" in caplog.text
+    assert opened
+    for fd in opened:
+        with pytest.raises(OSError, match="Bad file descriptor"):
+            os.fstat(fd)
+
+
+@pytest.mark.parametrize(("length", "accepted"), [(107, True), (108, False)])
+def test_the_control_endpoint_fits_the_unix_socket_path_limit(
+        tmp_path, monkeypatch, length, accepted):
+    key = "2a39-3fd9-24216011"
+    base = tmp_path.resolve()
+    pad = length - len(os.fsencode(base)) - len("/" + key + ".control") - 1
+    assert pad > 0
+    shared = base / ("d" * pad)
+    shared.mkdir()
+    monkeypatch.setenv("OSCMIX_LOCK_DIR", str(shared))
+    if accepted:
+        path = locking.control_path(None, key)
+        assert len(os.fsencode(path)) == length
+    else:
+        with pytest.raises(OSError, match="Unix socket limit") as refused:
+            locking.control_path(None, key)
+        assert refused.value.errno == errno.ENAMETOOLONG
