@@ -1,0 +1,301 @@
+{
+  "schema": 1,
+  "date": "2026-09-27",
+  "source_commit": "39800b71a80d4b3af584ca6594739c141762b683",
+  "scope": "Current software checks and added export, identity and cancellation boundaries",
+  "final_candidate": false,
+  "hardware": false,
+  "release_complete": false,
+  "check": {
+    "passed": true,
+    "inputs_unchanged": true,
+    "inputs_sha256": "632540821cf950524e23cdfc3ceec89c25b9feba80dba72855e5c4be1020d99f",
+    "environment": {
+      "python": "3.13.13 (main, Jun  2 2026, 22:27:49) [Clang 22.1.3 ]",
+      "executable": "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python313/bin/python",
+      "packages": {
+        "pytest": "9.1.1",
+        "hypothesis": "6.168.0",
+        "coverage": "7.16.1"
+      }
+    },
+    "runs": [
+      {
+        "command": [
+          "make",
+          "check",
+          "PYTHON=/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python313/bin/python"
+        ],
+        "exit_code": 0,
+        "seconds": 164.963,
+        "started_utc": "2026-09-27T19:46:07.257397+00:00",
+        "log": "build/0.8.0-software-qa/check-assessment-1/check.log",
+        "log_sha256": "06665c013e7aaa8ebde65885b22f05114ae40570327dbb4827e7a38ba2837fd4"
+      }
+    ],
+    "pytest_summary": "2629 passed, 2 skipped in 162.54s (0:02:42)"
+  },
+  "coverage": {
+    "passed": true,
+    "inputs_unchanged": true,
+    "inputs_sha256": "632540821cf950524e23cdfc3ceec89c25b9feba80dba72855e5c4be1020d99f",
+    "environment": {
+      "python": "3.13.13 (main, Jun  2 2026, 22:27:49) [Clang 22.1.3 ]",
+      "executable": "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python313/bin/python",
+      "packages": {
+        "pytest": "9.1.1",
+        "hypothesis": "6.168.0",
+        "coverage": "7.16.1"
+      }
+    },
+    "runs": [
+      {
+        "command": [
+          "make",
+          "coverage",
+          "PYTHON=/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python313/bin/python"
+        ],
+        "exit_code": 0,
+        "seconds": 204.063,
+        "started_utc": "2026-09-27T19:53:33.164769+00:00",
+        "log": "build/0.8.0-software-qa/coverage-assessment-1/coverage.log",
+        "log_sha256": "ac474d5b4b676e500b59f93a3b72608e8559615e72d53e74a5759538abc5fff6"
+      },
+      {
+        "command": [
+          "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python313/bin/python",
+          "-m",
+          "coverage",
+          "json",
+          "-o",
+          "/home/relative/dev/projects/oscmix-desk/build/0.8.0-software-qa/coverage-assessment-1/coverage-report.json"
+        ],
+        "exit_code": 0,
+        "seconds": 0.265,
+        "started_utc": "2026-09-27T19:56:57.227681+00:00",
+        "log": "build/0.8.0-software-qa/coverage-assessment-1/coverage-json.log",
+        "log_sha256": "918ed8c6fc9a50ff00941b99c26846c7e9cc122eceb34693c8e85082536be4c6"
+      }
+    ],
+    "pytest_summary": "2629 passed, 2 skipped in 203.41s (0:03:23)",
+    "measured": {
+      "covered_lines": 4228,
+      "num_statements": 4298,
+      "percent_covered": 97.88804945054945,
+      "percent_covered_display": "98",
+      "missing_lines": 70,
+      "excluded_lines": 6,
+      "percent_statements_covered": 98.37133550488599,
+      "percent_statements_covered_display": "98",
+      "num_branches": 1526,
+      "num_partial_branches": 51,
+      "covered_branches": 1473,
+      "missing_branches": 53,
+      "percent_branches_covered": 96.52686762778507,
+      "percent_branches_covered_display": "97"
+    },
+    "fail_under": 97,
+    "report_sha256": "1a84f3766b18011fb0cdce05a99de3d0114c87547124682d3226a0131fea3b5a"
+  },
+  "targeted_boundaries": [
+    {
+      "attempt": 1,
+      "passed": false,
+      "inputs_unchanged": true,
+      "inputs_sha256": "0627595f30e1335b1a6071eff8a50fec64d480af1ad5668d3c33d350f408d1db",
+      "runs": [
+        {
+          "command": [
+            "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python39/bin/python",
+            "-m",
+            "pytest",
+            "-q",
+            "-ra",
+            "tests/test_cli_args.py",
+            "tests/test_channel_sections.py",
+            "tests/test_dump_config_cli.py",
+            "tests/test_dump_limits.py",
+            "tests/test_hostservice.py",
+            "tests/test_numeric.py",
+            "tests/test_remember_ownership.py",
+            "tests/test_verify_order.py",
+            "tests/test_verify.py",
+            "tests/test_diff_cli.py",
+            "--basetemp",
+            "/tmp/odk080-assessment1-39"
+          ],
+          "started_utc": "2026-09-27T17:53:04.590977+00:00",
+          "seconds": 2.769,
+          "exit_code": 1,
+          "log_sha256": "32b6fe7186190e2fabb5236dd509cd72af2a7371aa4bdbd6ad7835c5f75feeca",
+          "version": "Python 3.9.25",
+          "pytest_summary": "41 failed, 464 passed in 2.54s"
+        },
+        {
+          "command": [
+            "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python314/bin/python",
+            "-m",
+            "pytest",
+            "-q",
+            "-ra",
+            "tests/test_cli_args.py",
+            "tests/test_channel_sections.py",
+            "tests/test_dump_config_cli.py",
+            "tests/test_dump_limits.py",
+            "tests/test_hostservice.py",
+            "tests/test_numeric.py",
+            "tests/test_remember_ownership.py",
+            "tests/test_verify_order.py",
+            "tests/test_verify.py",
+            "tests/test_diff_cli.py",
+            "--basetemp",
+            "/tmp/odk080-assessment1-314"
+          ],
+          "started_utc": "2026-09-27T17:53:04.591144+00:00",
+          "seconds": 2.269,
+          "exit_code": 1,
+          "log_sha256": "9988924ca7dae2f1696c8447802a1244584bfa1ecc7cc2000f8bac5b3784532b",
+          "version": "Python 3.14.4",
+          "pytest_summary": "41 failed, 464 passed in 2.09s"
+        }
+      ],
+      "final_test_inputs": false,
+      "note": "Socket creation was denied by the execution sandbox; failures are retained."
+    },
+    {
+      "attempt": 2,
+      "passed": true,
+      "inputs_unchanged": true,
+      "inputs_sha256": "14338119af08cd037d752506ab5098a0c9dd584cd6c9cc7c9c69a2547784f811",
+      "runs": [
+        {
+          "command": [
+            "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python39/bin/python",
+            "-m",
+            "pytest",
+            "-q",
+            "-ra",
+            "tests/test_cli_args.py",
+            "tests/test_channel_sections.py",
+            "tests/test_dump_config_cli.py",
+            "tests/test_dump_limits.py",
+            "tests/test_hostservice.py",
+            "tests/test_numeric.py",
+            "tests/test_remember_ownership.py",
+            "tests/test_verify_order.py",
+            "tests/test_verify.py",
+            "tests/test_diff_cli.py",
+            "--basetemp",
+            "/tmp/odk080-mutation-assessment-tests-2-39"
+          ],
+          "started_utc": "2026-09-27T18:15:13.636128+00:00",
+          "seconds": 30.176,
+          "exit_code": 0,
+          "log_sha256": "01a8962d39c31b3a4a89d52681b7b3966b2d24145b700d72b9e6b13945953418",
+          "version": "Python 3.9.25",
+          "pytest_summary": "508 passed in 29.98s"
+        },
+        {
+          "command": [
+            "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python314/bin/python",
+            "-m",
+            "pytest",
+            "-q",
+            "-ra",
+            "tests/test_cli_args.py",
+            "tests/test_channel_sections.py",
+            "tests/test_dump_config_cli.py",
+            "tests/test_dump_limits.py",
+            "tests/test_hostservice.py",
+            "tests/test_numeric.py",
+            "tests/test_remember_ownership.py",
+            "tests/test_verify_order.py",
+            "tests/test_verify.py",
+            "tests/test_diff_cli.py",
+            "--basetemp",
+            "/tmp/odk080-mutation-assessment-tests-2-314"
+          ],
+          "started_utc": "2026-09-27T18:15:13.636298+00:00",
+          "seconds": 29.87,
+          "exit_code": 0,
+          "log_sha256": "9b4dd47f85ceb294f14ebf71eb967248e20b0c0c712b4571fa98980f33954019",
+          "version": "Python 3.14.4",
+          "pytest_summary": "508 passed in 29.73s"
+        }
+      ],
+      "final_test_inputs": false,
+      "note": "Authorized execution outside the socket-restricted sandbox."
+    },
+    {
+      "attempt": 3,
+      "passed": true,
+      "inputs_unchanged": true,
+      "inputs_sha256": "09f7fe75506a5138e32115259793cf5ef14ba6d6f360f1133bfc054f2e510eeb",
+      "runs": [
+        {
+          "command": [
+            "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python39/bin/python",
+            "-m",
+            "pytest",
+            "-q",
+            "-ra",
+            "tests/test_cli_args.py",
+            "tests/test_channel_sections.py",
+            "tests/test_dump_config_cli.py",
+            "tests/test_dump_limits.py",
+            "tests/test_hostservice.py",
+            "tests/test_numeric.py",
+            "tests/test_remember_ownership.py",
+            "tests/test_verify_order.py",
+            "tests/test_verify.py",
+            "tests/test_diff_cli.py",
+            "--basetemp",
+            "/tmp/odk080-mutation-assessment-tests-3-39"
+          ],
+          "started_utc": "2026-09-27T18:16:20.411702+00:00",
+          "seconds": 30.107,
+          "exit_code": 0,
+          "log_sha256": "bdfd2a6b14ec5eda62bba9ca90baaee297fba73448d91a41d5fa2e2f8995da95",
+          "version": "Python 3.9.25",
+          "pytest_summary": "511 passed in 29.98s"
+        },
+        {
+          "command": [
+            "/home/relative/dev/projects/oscmix-desk/build/qualification-0.7.0/python314/bin/python",
+            "-m",
+            "pytest",
+            "-q",
+            "-ra",
+            "tests/test_cli_args.py",
+            "tests/test_channel_sections.py",
+            "tests/test_dump_config_cli.py",
+            "tests/test_dump_limits.py",
+            "tests/test_hostservice.py",
+            "tests/test_numeric.py",
+            "tests/test_remember_ownership.py",
+            "tests/test_verify_order.py",
+            "tests/test_verify.py",
+            "tests/test_diff_cli.py",
+            "--basetemp",
+            "/tmp/odk080-mutation-assessment-tests-3-314"
+          ],
+          "started_utc": "2026-09-27T18:16:20.411910+00:00",
+          "seconds": 29.854,
+          "exit_code": 0,
+          "log_sha256": "b6fe04561ca110cc6b2f5b6729b1d136fd437d7d9412a29740ce30ef1aa8856f",
+          "version": "Python 3.14.4",
+          "pytest_summary": "511 passed in 29.69s"
+        }
+      ],
+      "final_test_inputs": true,
+      "note": "Authorized execution outside the socket-restricted sandbox."
+    }
+  ],
+  "skips": "Two existing empty parameter sets in read-only subfamily tests; no hardware-qualified result is inferred.",
+  "limitations": [
+    "This records software tests at the named development revision, not final N8 qualification.",
+    "The new boundary tests use simulated observations, including synthetic normally unreported integer feedback; they establish no new hardware read-back capability.",
+    "The earlier six-version matrix, full repeats and soaks have their own exact-revision evidence; they are not relabelled as runs on this revision.",
+    "Mutation rejudgment, final backend/routing measurements and release-version transitions have separate records."
+  ]
+}

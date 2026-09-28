@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "date": "2026-09-27",
+  "scope": "Current backend/GTK series in actual Alpine/OpenRC and Void/runit service environments",
+  "source_commit": "39800b71a80d4b3af584ca6594739c141762b683",
+  "source_archive_sha256": "0ed11c9baa5f04da01c2d2852323ac6b3fd8d47ab59ab29c079e0989b05b089a",
+  "backend_series_sha256": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+  "hardware": false,
+  "final_candidate": false,
+  "isolated_overlays": true,
+  "guest_probes_sha256": {
+    "native-series9-setup.py": "3ff778d815b417e39f4363cfe3053f6875c9de958d73ec3bdabb24feb0de850e",
+    "qualify-native-series9.py": "ceae9365b8ec01e1f89e892f6a0586a6a6cdcc637bde0c5c1ef57f944f6f2b69"
+  },
+  "platforms": {
+    "alpine": {
+      "installed": {
+        "source_commit": "39800b71a80d4b3af584ca6594739c141762b683",
+        "backend_series_sha256": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+        "binaries": {
+          "oscmix": "784254df6771829f05d7721b45a77c2817d66a9ca3457479a54cd2ba3684840c",
+          "alsaseqio": "b8419ebad782861daae3a447a090e93ccdb452e1eb745518cd70b25f730502a0",
+          "oscmix-gtk": "818747ff732b5051d98dba6303b18bbd09af53f734c001f644081b28d395a637"
+        },
+        "platform": "NAME=\"Alpine Linux\"\nID=alpine\nVERSION_ID=3.24.2\nPRETTY_NAME=\"Alpine Linux v3.24\"\nHOME_URL=\"https://alpinelinux.org/\"\nBUG_REPORT_URL=\"https://gitlab.alpinelinux.org/alpine/aports/-/issues\"\n",
+        "kernel": "6.18.53-0-lts",
+        "user_state_preserved": true,
+        "installed_modules_verified": true,
+        "hardware": false
+      },
+      "lifecycle": {
+        "schema": 1,
+        "scope": "development, actual manager, no connected audio hardware",
+        "manager": "openrc",
+        "kernel": "6.18.53-0-lts",
+        "boot_before": "6622238e-ba77-489e-9aba-2429c4d10b63",
+        "process": {
+          "pid": 3151,
+          "uid": 12510,
+          "groups": [
+            "18",
+            "12510"
+          ],
+          "no_new_privs": "0",
+          "seccomp": "0",
+          "effective_capabilities": "0000000000000000",
+          "argv": [
+            "python3",
+            "/home/tester/.local/bin/oscmix-session",
+            "--config",
+            "/home/tester/.config/oscmix/routing.conf"
+          ]
+        },
+        "crash_restarts": [
+          {
+            "before": 3151,
+            "after": 3219,
+            "seconds": 5.561
+          },
+          {
+            "before": 3219,
+            "after": 3261,
+            "seconds": 5.323
+          },
+          {
+            "before": 3261,
+            "after": 3307,
+            "seconds": 5.614
+          }
+        ],
+        "user_state": {
+          "/home/tester/.config/oscmix/routing.conf": {
+            "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+            "uid": 12510,
+            "gid": 12510
+          },
+          "/home/tester/.config/oscmix/profiles/qa-state.conf": {
+            "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+            "uid": 12510,
+            "gid": 12510
+          },
+          "/home/tester/.config/oscmix/active-profile": {
+            "sha256": "df43eb0a3af4839eda15dd85ca851c01490ac850b9a9ba33fd84a1ad3c2f7716",
+            "uid": 12510,
+            "gid": 12510
+          }
+        },
+        "reload_during_discovery": true,
+        "activation_during_maintenance_refused": true,
+        "source_replacement_while_running_refused": true,
+        "source_and_adapter_replacement_while_fenced": true,
+        "phase": "passed",
+        "maintenance_survived_reboot": true,
+        "stop_seconds": 0.069,
+        "resume_kept_stopped": true,
+        "disable_remove_and_reregister_preserved_user_state": true,
+        "final_boot": "ab742ba1-3447-4e7d-baf8-5c9bd1359225",
+        "final_kernel": "6.18.53-0-lts"
+      },
+      "archive_sha256": "0e0f1733f383167a7086c4b8dd4057934c4cde044736d222094afa92be185af9",
+      "serial_sha256": "55adc109f111ce8021af79db3c71e43df992cca2d715eb49f6421d861b11b5fc",
+      "clean_poweroff": true,
+      "qemu_exit_code": 0
+    },
+    "void": {
+      "installed": {
+        "source_commit": "39800b71a80d4b3af584ca6594739c141762b683",
+        "backend_series_sha256": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+        "binaries": {
+          "oscmix": "355b0e987cc4cbc3d21bc602dfe78b0602d11d221dedd0777242c4f0329f2ca7",
+          "alsaseqio": "8167e10e32e29757e9b7b0ff99f5295c450faef1175729e80c5d89b731c3acda",
+          "oscmix-gtk": "642c820c225ed3d9f31a2657b1b4447f4cdbbd3aa98954a8c4372f6d8db83016"
+        },
+        "platform": "NAME=\"Void\"\nID=\"void\"\nPRETTY_NAME=\"Void Linux\"\nHOME_URL=\"https://voidlinux.org/\"\nDOCUMENTATION_URL=\"https://docs.voidlinux.org/\"\nLOGO=\"void-logo\"\nANSI_COLOR=\"0;38;2;71;128;97\"\n\nDISTRIB_ID=\"void\"\n",
+        "kernel": "6.18.53_1",
+        "user_state_preserved": true,
+        "installed_modules_verified": true,
+        "hardware": false
+      },
+      "lifecycle": {
+        "schema": 1,
+        "scope": "development, actual manager, no connected audio hardware",
+        "manager": "runit",
+        "kernel": "6.18.53_1",
+        "boot_before": "9d9e2bde-2da2-4eff-b7e2-e6a14981a625",
+        "process": {
+          "pid": 874,
+          "uid": 12510,
+          "groups": [
+            "12",
+            "12510"
+          ],
+          "no_new_privs": "0",
+          "seccomp": "0",
+          "effective_capabilities": "0000000000000000",
+          "argv": [
+            "python3",
+            "/home/tester/.local/bin/oscmix-session",
+            "--config",
+            "/home/tester/.config/oscmix/routing.conf"
+          ]
+        },
+        "crash_restarts": [
+          {
+            "before": 874,
+            "after": 936,
+            "seconds": 5.186
+          },
+          {
+            "before": 936,
+            "after": 975,
+            "seconds": 5.212
+          },
+          {
+            "before": 975,
+            "after": 1022,
+            "seconds": 5.18
+          }
+        ],
+        "user_state": {
+          "/home/tester/.config/oscmix/routing.conf": {
+            "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+            "uid": 12510,
+            "gid": 12510
+          },
+          "/home/tester/.config/oscmix/profiles/qa-state.conf": {
+            "sha256": "37b640913de9980fc13f88da2dfd8c6efe1ddfdc613e28efebad1e13e882e9bd",
+            "uid": 12510,
+            "gid": 12510
+          },
+          "/home/tester/.config/oscmix/active-profile": {
+            "sha256": "df43eb0a3af4839eda15dd85ca851c01490ac850b9a9ba33fd84a1ad3c2f7716",
+            "uid": 12510,
+            "gid": 12510
+          }
+        },
+        "reload_during_discovery": true,
+        "activation_during_maintenance_refused": true,
+        "source_replacement_while_running_refused": true,
+        "source_and_adapter_replacement_while_fenced": true,
+        "phase": "passed",
+        "maintenance_survived_reboot": true,
+        "stop_seconds": 5.174,
+        "resume_kept_stopped": true,
+        "disable_remove_and_reregister_preserved_user_state": true,
+        "final_boot": "9ea7e0ed-3c03-41bd-bd7e-7d333e3cc082",
+        "final_kernel": "6.18.53_1"
+      },
+      "archive_sha256": "1b9426854c91e21e38a135c7f4ae923be45c6cf20b25b90e5c50428dae581cf1",
+      "serial_sha256": "8b2900e0a0e952d59e588b0b9cb671d77d22cf21e42a725366ecc929683a6cb3",
+      "clean_poweroff": true,
+      "qemu_exit_code": 0
+    }
+  },
+  "limitations": [
+    "Both guests use writable overlays of the preserved earlier QA systems; no host audio device is exposed.",
+    "The runtime still reports 0.7.3 with current development code; final release-version transitions remain open.",
+    "The actual managers and session processes exercised discovery reload, three crash restarts, persistent maintenance across reboot, stop/resume, disable/removal and registration preserving user files.",
+    "Native services have no effective capabilities, but NoNewPrivs and Seccomp remain zero as documented for these managers.",
+    "Hardware hotplug, audio and device restoration require their separate final qualification."
+  ]
+}

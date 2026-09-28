@@ -1,0 +1,559 @@
+{
+  "schema": 1,
+  "date": "2026-09-27",
+  "scope": "Current committed core/backend/GTK pair in six actual native package managers",
+  "source_commit": "39800b71a80d4b3af584ca6594739c141762b683",
+  "backend_series_sha256": "c34d061f7ffb3a0f565087934fb2289fa2c7717cf21c95ca40870f34e3454e5f",
+  "hardware": false,
+  "service_manager": false,
+  "final_candidate": false,
+  "published_repository": false,
+  "targets": {
+    "fedora44": {
+      "result": "passed",
+      "image": "sha256:b183482f7847b2e4f304a6881cc39f628d40e5ea9c2861498283b6e1f5f83eed",
+      "base_digests": [
+        "fedora@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80"
+      ],
+      "seconds": 191.68,
+      "started_utc": "2026-09-27T20:02:08.242159+00:00",
+      "previous_source_commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "repeats": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "first": "5a4e2dfb8f067bfa7318587a5bb4c35fbcab3b8f1770fa1037eb4c65f76bdc77",
+          "repeated": "5a4e2dfb8f067bfa7318587a5bb4c35fbcab3b8f1770fa1037eb4c65f76bdc77"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "first": "a703c57c939c125602f39cecf192ccb9980db15b3ab6f2569594c8391d87e7d8",
+          "repeated": "a703c57c939c125602f39cecf192ccb9980db15b3ab6f2569594c8391d87e7d8"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "first": "a9cccea79e739ac69ca6263cfe1550e1849a88d6ef127a51b3c334ad15b978d7",
+          "repeated": "a9cccea79e739ac69ca6263cfe1550e1849a88d6ef127a51b3c334ad15b978d7"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk-0.7.3-1.x86_64_fedora44.rpm"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "5a4e2dfb8f067bfa7318587a5bb4c35fbcab3b8f1770fa1037eb4c65f76bdc77",
+          "component": "core",
+          "package_version": "0.7.3-0.dev.1"
+        },
+        {
+          "artifact": "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "a703c57c939c125602f39cecf192ccb9980db15b3ab6f2569594c8391d87e7d8",
+          "component": "gtk",
+          "package_version": "0.7.3-0.dev.1"
+        },
+        {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_fedora44.rpm",
+          "sha256": "a9cccea79e739ac69ca6263cfe1550e1849a88d6ef127a51b3c334ad15b978d7",
+          "component": "repository",
+          "package_version": "0.7.3-0.dev.1"
+        }
+      ],
+      "gtk": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "session": "/usr/bin/oscmix-session",
+        "launcher": "/usr/bin/oscmix-launch",
+        "ok": true,
+        "backend": "/usr/bin/oscmix",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "nested_desktops": [],
+      "log_sha256": "cca571550eea7768eeb5c9a352e668907d91218c00f8cbd2b0f01c2beeab7738",
+      "result_sha256": "4d99730a6b1630be7f8e00cd93e677c5698bbabbf8084fb99a461a98ff9a584e"
+    },
+    "opensuse16": {
+      "result": "passed",
+      "image": "sha256:330669ff8d5d260519fa424d86cff5a8301361b75c3d16ae3caeecbc82669444",
+      "base_digests": [
+        "opensuse/leap@sha256:1e710a28227dea189500dd49a9ccd2b9f218e059329354abdb1297ee94d2dcd4"
+      ],
+      "seconds": 171.99,
+      "started_utc": "2026-09-27T20:02:08.243200+00:00",
+      "previous_source_commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "repeats": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "first": "4f865b33623f0211b01301e765d270737c5f67e82db52e3bd9f1e5df33120ef9",
+          "repeated": "4f865b33623f0211b01301e765d270737c5f67e82db52e3bd9f1e5df33120ef9"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "first": "a683c1f948c4028823c2ce62e606d1d9a5bd035d29d7971dd59c66824f318394",
+          "repeated": "a683c1f948c4028823c2ce62e606d1d9a5bd035d29d7971dd59c66824f318394"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "first": "f5ea627b697887da781b635390febd7d97e9d4fe5200950936315922f9796bec",
+          "repeated": "f5ea627b697887da781b635390febd7d97e9d4fe5200950936315922f9796bec"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk-0.7.3-1.x86_64_opensuse-leap16.0.rpm"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "4f865b33623f0211b01301e765d270737c5f67e82db52e3bd9f1e5df33120ef9",
+          "component": "core",
+          "package_version": "0.7.3-0.dev.1"
+        },
+        {
+          "artifact": "oscmix-desk-gtk-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "a683c1f948c4028823c2ce62e606d1d9a5bd035d29d7971dd59c66824f318394",
+          "component": "gtk",
+          "package_version": "0.7.3-0.dev.1"
+        },
+        {
+          "artifact": "oscmix-desk-repository-0.7.3-0.dev.1.x86_64_opensuse-leap16.0.rpm",
+          "sha256": "f5ea627b697887da781b635390febd7d97e9d4fe5200950936315922f9796bec",
+          "component": "repository",
+          "package_version": "0.7.3-0.dev.1"
+        }
+      ],
+      "gtk": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "session": "/usr/bin/oscmix-session",
+        "launcher": "/usr/bin/oscmix-launch",
+        "ok": true,
+        "backend": "/usr/bin/oscmix",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "nested_desktops": [],
+      "log_sha256": "98fc41fa3678d25a44959fcadb87a303ac8c3e55962e809e6fb256e88fb14241",
+      "result_sha256": "361396d6830cb44e12c985c86e81065aac63851b53cd666376a2b1718e947977"
+    },
+    "debian13": {
+      "result": "passed",
+      "image": "sha256:cd4da210933c3893e69df4f4e5c74c4c71af81541d97bc1d0253fb111ba72a01",
+      "base_digests": [
+        "debian@sha256:9cc080028c43b27d2074d63a5f9caf7166d731494965616c1a6d2827a004585c"
+      ],
+      "seconds": 166.48,
+      "started_utc": "2026-09-27T20:05:00.333842+00:00",
+      "previous_source_commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "repeats": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_debian13.deb",
+          "first": "f46bbffc8e520fb351a86105d2698610579767ef99e8b0e7cfe3b87910a96524",
+          "repeated": "f46bbffc8e520fb351a86105d2698610579767ef99e8b0e7cfe3b87910a96524"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_debian13.deb",
+          "first": "2160e6834090595a8e2ee59f4dd9834d50708aa334f467b104ba96da1593f102",
+          "repeated": "2160e6834090595a8e2ee59f4dd9834d50708aa334f467b104ba96da1593f102"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_debian13.deb",
+          "first": "cb858c16d0d7b3a7ff399ce1aa529be91cb614f202c034f4034feeea4cd6c4c5",
+          "repeated": "cb858c16d0d7b3a7ff399ce1aa529be91cb614f202c034f4034feeea4cd6c4c5"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk_0.7.3-1_amd64_debian13.deb"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_debian13.deb",
+          "sha256": "2160e6834090595a8e2ee59f4dd9834d50708aa334f467b104ba96da1593f102",
+          "component": "gtk",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_debian13.deb",
+          "sha256": "cb858c16d0d7b3a7ff399ce1aa529be91cb614f202c034f4034feeea4cd6c4c5",
+          "component": "repository",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_debian13.deb",
+          "sha256": "f46bbffc8e520fb351a86105d2698610579767ef99e8b0e7cfe3b87910a96524",
+          "component": "core",
+          "package_version": "0.7.3~dev-1"
+        }
+      ],
+      "gtk": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "session": "/usr/bin/oscmix-session",
+        "launcher": "/usr/bin/oscmix-launch",
+        "ok": true,
+        "backend": "/usr/bin/oscmix",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "nested_desktops": [],
+      "log_sha256": "23262d64de8c856282ffcd6582fe9567f97555e25d50780412b580f0a0114975",
+      "result_sha256": "648fda67f7a329ea12ff542300ae592b75d92e1fdf2122797f3260a84d9d097b"
+    },
+    "ubuntu2604": {
+      "result": "passed",
+      "image": "sha256:91bc000a926cd9e6fabb07898f4fa343bb805715eb6ed1dadd6bad7f2c07db92",
+      "base_digests": [
+        "ubuntu@sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78"
+      ],
+      "seconds": 173.12,
+      "started_utc": "2026-09-27T20:05:20.110486+00:00",
+      "previous_source_commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "repeats": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "first": "73c1c05f3e6bed2c7492bb3a247c0449d4a776c7c457d05273a62011946ad95c",
+          "repeated": "73c1c05f3e6bed2c7492bb3a247c0449d4a776c7c457d05273a62011946ad95c"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "first": "5e3f052331d9c97f9619348abdef5907653309dc8a8bbb01b21064d061d46982",
+          "repeated": "5e3f052331d9c97f9619348abdef5907653309dc8a8bbb01b21064d061d46982"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "first": "49723b8607b90c9b51b32dde873f739fc0a1491fe3ee15c0b2fa64bf966827bf",
+          "repeated": "49723b8607b90c9b51b32dde873f739fc0a1491fe3ee15c0b2fa64bf966827bf"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk_0.7.3-1_amd64_ubuntu26.04.deb"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "sha256": "5e3f052331d9c97f9619348abdef5907653309dc8a8bbb01b21064d061d46982",
+          "component": "gtk",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "sha256": "49723b8607b90c9b51b32dde873f739fc0a1491fe3ee15c0b2fa64bf966827bf",
+          "component": "repository",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_ubuntu26.04.deb",
+          "sha256": "73c1c05f3e6bed2c7492bb3a247c0449d4a776c7c457d05273a62011946ad95c",
+          "component": "core",
+          "package_version": "0.7.3~dev-1"
+        }
+      ],
+      "gtk": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "session": "/usr/bin/oscmix-session",
+        "launcher": "/usr/bin/oscmix-launch",
+        "ok": true,
+        "backend": "/usr/bin/oscmix",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "nested_desktops": [],
+      "log_sha256": "830681e3d66b4110ab06810ad3c1743455dd8b0852fc4e1a89872f8a2f81cd55",
+      "result_sha256": "348ba0caf7e441d1cd791efb07e5ac0626253ee1b39765638c77bee81c7254fd"
+    },
+    "arch": {
+      "result": "passed",
+      "image": "sha256:5f3d36a77c91a20f5dbd5d932d57062b8a77308130c3c9ef7e72ec2f8381ee12",
+      "base_digests": [
+        "archlinux@sha256:f3691b4dde62ba4c4b6f0ae2c1fbf28e8c0c8c4b9a35c7e06dc1f70e21aa29f6"
+      ],
+      "seconds": 191.84,
+      "started_utc": "2026-09-27T20:07:46.872325+00:00",
+      "previous_source_commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "repeats": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-0.7.3.dev-1-x86_64.pkg.tar.zst",
+          "first": "5685410228015a3d93221698bc028b781378238d5d0bfeb4edb7b183eff16a36",
+          "repeated": "5685410228015a3d93221698bc028b781378238d5d0bfeb4edb7b183eff16a36"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk-0.7.3.dev-1-x86_64.pkg.tar.zst",
+          "first": "49b7e98c20b2656935a405c3075b667a040c55a4df98a15bac21ac1cfedad528",
+          "repeated": "49b7e98c20b2656935a405c3075b667a040c55a4df98a15bac21ac1cfedad528"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk-0.7.3-1-x86_64.pkg.tar.zst"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-0.7.3.dev-1-x86_64.pkg.tar.zst",
+          "sha256": "5685410228015a3d93221698bc028b781378238d5d0bfeb4edb7b183eff16a36",
+          "component": "core",
+          "package_version": "0.7.3.dev-1"
+        },
+        {
+          "artifact": "oscmix-desk-gtk-0.7.3.dev-1-x86_64.pkg.tar.zst",
+          "sha256": "49b7e98c20b2656935a405c3075b667a040c55a4df98a15bac21ac1cfedad528",
+          "component": "gtk",
+          "package_version": "0.7.3.dev-1"
+        }
+      ],
+      "gtk": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "session": "/usr/bin/oscmix-session",
+        "launcher": "/usr/bin/oscmix-launch",
+        "ok": true,
+        "backend": "/usr/bin/oscmix",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "nested_desktops": [],
+      "log_sha256": "7911910303f42cff7fb4d43e8d487d3c8ab86f3bd9a7ef6f4f5551263a275dda",
+      "result_sha256": "63e3c4fc372c16e083404cb565b0b8d6ae07a6ae6e272e2e2ab5cc7b51576aff"
+    },
+    "ubuntu2404": {
+      "result": "passed",
+      "image": "sha256:5718d13bcebb3bd7083d94161f2b9906ed3c5ec5c2f9e1cc97a08de2601d7c74",
+      "base_digests": [
+        "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3"
+      ],
+      "seconds": 514.81,
+      "started_utc": "2026-09-27T20:08:13.333121+00:00",
+      "previous_source_commit": "3397ecba8e5f948a79d145334c1b2f32f28f12e5",
+      "repeats": [
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "first": "046683551982fe340eff2f59e7f9a52d5ef0c68d8c9374cea887c1bb6c232779",
+          "repeated": "046683551982fe340eff2f59e7f9a52d5ef0c68d8c9374cea887c1bb6c232779"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "first": "45b42b359357dbe2d3fbf90545e90efeee413bef5aefe6a00c348dc01d9fc458",
+          "repeated": "45b42b359357dbe2d3fbf90545e90efeee413bef5aefe6a00c348dc01d9fc458"
+        },
+        {
+          "reproducible": true,
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "first": "e9975c739cc4e0631e2b7c7d77c25942f00d12595c96cfe1094030f89e4dc5a7",
+          "repeated": "e9975c739cc4e0631e2b7c7d77c25942f00d12595c96cfe1094030f89e4dc5a7"
+        }
+      ],
+      "lifecycle": {
+        "lifecycle": "passed",
+        "reproducible": true,
+        "companion": true,
+        "actual_previous_version": "oscmix-desk_0.7.3-1_amd64_ubuntu24.04.deb"
+      },
+      "packages": [
+        {
+          "artifact": "oscmix-desk-gtk_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "45b42b359357dbe2d3fbf90545e90efeee413bef5aefe6a00c348dc01d9fc458",
+          "component": "gtk",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk-repository_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "e9975c739cc4e0631e2b7c7d77c25942f00d12595c96cfe1094030f89e4dc5a7",
+          "component": "repository",
+          "package_version": "0.7.3~dev-1"
+        },
+        {
+          "artifact": "oscmix-desk_0.7.3~dev-1_amd64_ubuntu24.04.deb",
+          "sha256": "046683551982fe340eff2f59e7f9a52d5ef0c68d8c9374cea887c1bb6c232779",
+          "component": "core",
+          "package_version": "0.7.3~dev-1"
+        }
+      ],
+      "gtk": {
+        "gtk_edit": "output 5 -40 dB emitted through real backend",
+        "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+        "desk_first": "GTK subscribed while lease held; received fresh state after release",
+        "backend_loss": "visible disconnected state; no automatic replay",
+        "wrong-pid": "refused before refresh or writes",
+        "wrong-serial": "refused before refresh or writes",
+        "symlink": "refused before refresh or writes",
+        "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+        "session": "/usr/bin/oscmix-session",
+        "launcher": "/usr/bin/oscmix-launch",
+        "ok": true,
+        "backend": "/usr/bin/oscmix",
+        "gtk": "/usr/bin/oscmix-gtk",
+        "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+        "display_backend": "x11",
+        "desktop": "Xvfb"
+      },
+      "nested_desktops": [
+        {
+          "desktop": "GNOME",
+          "version": "GNOME Shell 46.0",
+          "command": [
+            "gnome-shell",
+            "--wayland",
+            "--wayland-display=wayland-test",
+            "--no-x11",
+            "--nested"
+          ],
+          "ok": true,
+          "rendering": "software, nested in Xvfb; GTK uses wayland",
+          "gtk": {
+            "gtk_edit": "output 5 -40 dB emitted through real backend",
+            "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+            "desk_first": "GTK subscribed while lease held; received fresh state after release",
+            "backend_loss": "visible disconnected state; no automatic replay",
+            "wrong-pid": "refused before refresh or writes",
+            "wrong-serial": "refused before refresh or writes",
+            "symlink": "refused before refresh or writes",
+            "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+            "session": "/usr/bin/oscmix-session",
+            "launcher": "/usr/bin/oscmix-launch",
+            "ok": true,
+            "backend": "/usr/bin/oscmix",
+            "gtk": "/usr/bin/oscmix-gtk",
+            "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+            "display_backend": "wayland",
+            "desktop": "GNOME"
+          }
+        },
+        {
+          "desktop": "KDE",
+          "version": "kwin 5.27.11",
+          "command": [
+            "kwin_wayland",
+            "--x11-display=:99",
+            "--socket=wayland-test",
+            "--no-lockscreen",
+            "--no-global-shortcuts"
+          ],
+          "ok": true,
+          "rendering": "software, nested in Xvfb; GTK uses wayland",
+          "gtk": {
+            "gtk_edit": "output 5 -40 dB emitted through real backend",
+            "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+            "desk_first": "GTK subscribed while lease held; received fresh state after release",
+            "backend_loss": "visible disconnected state; no automatic replay",
+            "wrong-pid": "refused before refresh or writes",
+            "wrong-serial": "refused before refresh or writes",
+            "symlink": "refused before refresh or writes",
+            "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+            "session": "/usr/bin/oscmix-session",
+            "launcher": "/usr/bin/oscmix-launch",
+            "ok": true,
+            "backend": "/usr/bin/oscmix",
+            "gtk": "/usr/bin/oscmix-gtk",
+            "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+            "display_backend": "wayland",
+            "desktop": "KDE"
+          }
+        },
+        {
+          "desktop": "XFCE",
+          "version": "xfce4-session 4.18.3 (Xfce 4.18)\n\nCopyright (c) 2003-2023\n\tThe Xfce development team. All rights reserved.\n\nPlease report bugs to <https://gitlab.xfce.org/xfce/xfce4-session>.",
+          "command": [
+            "xfce4-session"
+          ],
+          "ok": true,
+          "rendering": "software, nested in Xvfb; GTK uses x11",
+          "gtk": {
+            "gtk_edit": "output 5 -40 dB emitted through real backend",
+            "whole_operation": "GTK disabled; competing desk refused; rejected edit not replayed",
+            "desk_first": "GTK subscribed while lease held; received fresh state after release",
+            "backend_loss": "visible disconnected state; no automatic replay",
+            "wrong-pid": "refused before refresh or writes",
+            "wrong-serial": "refused before refresh or writes",
+            "symlink": "refused before refresh or writes",
+            "desk_cli_and_gtk": "two CLI profiles serialized through hardware reports; GTK inhibited without replay; marker retained on backend loss; new epoch and both actual process startup orders checked",
+            "session": "/usr/bin/oscmix-session",
+            "launcher": "/usr/bin/oscmix-launch",
+            "ok": true,
+            "backend": "/usr/bin/oscmix",
+            "gtk": "/usr/bin/oscmix-gtk",
+            "transport": "ODK1 with simulated MIDI; no ALSA, USB or PCM",
+            "display_backend": "x11",
+            "desktop": "XFCE"
+          }
+        }
+      ],
+      "log_sha256": "67be7cfb15831f3ec9c46655a6beb9716b1b00798f3039cd806852f481d39431",
+      "result_sha256": "42d91275991153a2222d273f2629c6119137d4bd482eb130423172dfd06d49a6"
+    }
+  },
+  "limitations": [
+    "The runtime is still 0.7.3 with development package revisions; final 0.7.3-to-0.8.0 transitions remain open.",
+    "Actual managers and installed binaries run in isolated containers with simulated MIDI, without host audio, display or service-bus mounts.",
+    "All six targets run actual GTK under Xvfb; only Ubuntu 24.04 additionally runs GNOME/KDE Wayland and Xfce X11 desktop sessions.",
+    "Signatures, published HTTPS, actual service managers and device measurements have separate qualification gates."
+  ]
+}

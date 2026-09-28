@@ -65,6 +65,11 @@ package, GTK variant or activation settings. The fence survives an interrupted
 switch and reboot. An actual NixOS rollback restores the previous immutable
 payload and integration while retaining user configuration, profiles and marker.
 Keep the module imported until its disabled/removal transition has completed.
+If activation fails, the selected profile may already have changed. Keep
+maintenance active until the intended generation and payload are verified.
+Choose a saved generation explicitly when older retained generations intervene;
+the [NixOS execution record](evidence/0.8.0/series9-nixos-development.json)
+retains a failed historical traversal and its verified recovery.
 
 On Fedora Silverblue, follow the [deployment maintenance procedure](SILVERBLUE.md#upgrade-interruption-and-rollback).
 Run the common guard on the booted host before replacement or rollback. Leave

@@ -3,6 +3,26 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
+The newest software check at `39800b7` passes 2629 tests with the same two
+empty parameter skips; coverage is 97.89% against the unchanged 97% gate.
+The added export, identity and cancellation boundary tests pass on Python
+3.9 and 3.14. The [boundary-check record](evidence/0.8.0/software-boundaries-development.json)
+retains exact inputs and the initial socket-restricted execution failure.
+The current backend/GTK series also passes all
+[six native package targets](evidence/0.8.0/series9-native-development.json),
+[Alpine/OpenRC and Void/runit service lifecycles](evidence/0.8.0/series9-native-services-development.json)
+and the [Silverblue deployment, resume and rollback checks](evidence/0.8.0/series9-silverblue-development.json).
+The [NixOS run](evidence/0.8.0/series9-nixos-development.json) passes installation,
+activation and six resume cases. Further traversal of older retained test
+generations failed on a vanished logind user; the maintenance fence and user
+files survived, and explicit selection of the saved generation restored the
+original system. That failed invocation remains recorded. These are development
+checks, with runtime version 0.7.3; genuine playback read-back and the final
+release gates remain open.
+The [five current repository matrices](evidence/0.8.0/series9-repositories-development.json)
+also pass strict native-client signature, key-lifecycle and packaged-bootstrap
+checks using the new packages. They use disposable test certificates and
+loopback HTTP; production signing custody and published HTTPS remain open.
 The integrated follow-up at `06d8197` passes `make check` with
 2604 tests (two empty parameter sets skipped), coverage at 97.85%, all six
 Python versions, five complete repeats, the 200-cycle soak (195.94 s), and
@@ -484,7 +504,8 @@ remain unchanged. Completed work:
   unavailable-source refusals. The same modes pass 65 known-route checks
   through PipeWire Pro Audio with recorded AUX mapping and restoration.
 - [x] Qualify the final register sweep and all five routes: 1,888 confirmed
-  entries, 14 protected skips and all 2,252 readable messages restored.
+  entries, 14 protected skips and all 2,252 reported values restored. This
+  legacy comparison includes backend-cached playback link reports.
 - [x] Upgrade the actual installation to 0.7.2; verify readiness, SIGHUP,
   the full suite with the interface physically off and automatic startup
   after power-on. The returned readable state matches exactly.
@@ -601,8 +622,10 @@ Detailed plan: [UCX II sample-rate qualification](plans/high-sample-rates.md).
   baseline; preserve and verify the original configuration and state.
   **Results:** the [0.7.2 recordings](evidence/0.7.2/) cover
   13 direct-ALSA modes, 52 linked/unlinked gain/mute cases and 12 refused
-  unavailable playback sources. All restore the 2,252 readable values and
-  known main route. The same 13 modes then pass 65 checks through the
+  unavailable playback sources. All restore the 2,252 reported values and
+  known main route. Those legacy totals include cached playback link reports,
+  not playback-matrix hardware read-back. The same 13 modes then pass 65 checks
+  through the
   three named PipeWire sinks, with the expected AUX links and full
   device/graph restoration. One direct-ALSA 176.4-kHz / 14-channel startup
   xrun is retained, followed by two successful unchanged repeats. The

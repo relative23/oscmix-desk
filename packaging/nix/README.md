@@ -97,6 +97,28 @@ For rollback, follow the same stop/fence sequence and run
 subsequent rebuilds should continue to use it. A generation rollback restores
 code and system integration, not mixer state, profiles or GTK preferences.
 
+If the saved generation is not the immediately preceding profile, choose it
+explicitly. Repeated `--rollback` calls can traverse other retained test or
+deployment branches. Keep maintenance active, list the generations, and replace
+`NUMBER` below with the saved generation number:
+
+```sh
+sudo nix-env --profile /nix/var/nix/profiles/system --list-generations
+sudo nix-env --profile /nix/var/nix/profiles/system --switch-generation NUMBER
+sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
+```
+
+A failed activation may already have changed the selected profile and some
+system files. Leave the fence in place, complete activation of the selected
+known generation, and verify `/run/current-system` and the expected mixer
+integration before finishing maintenance with the saved guard. Preserve the
+matching source configuration for later rebuilds. In the qualified NixOS
+26.05.10529.c508844df6c2 VM, traversal of an older generation failed with
+`Failed to get GID for tester` after that user disappeared from logind.
+The fence retained protection; explicit restoration of the saved generation
+preserved all user files. The [execution record](../../docs/evidence/0.8.0/series9-nixos-development.json)
+retains both the failure and successful recovery.
+
 To disable, keep the module imported, set `activate = false`, and switch while
 fenced. Finish maintenance and leave the unit stopped. To remove integration,
 set `enable = false` in a further fenced switch. Keep the old guard's store
