@@ -112,6 +112,19 @@ def test_a_name_that_escapes_the_directory_is_refused(tmp_path,
     assert recording_backend.sent == []
 
 
+def test_an_escaping_name_is_refused_even_when_its_target_exists(tmp_path,
+                                                                 recording_backend):
+    # ../routing would name routing.conf itself. The name rule refuses it,
+    # not the absence of a file.
+    write_config(tmp_path / "routing.conf", GOOD)
+    outcome = profiles.switch_profile("../routing",
+                                      config_path=tmp_path / "routing.conf",
+                                      backend=recording_backend)
+    assert outcome.state == outcome_mod.REFUSED
+    assert "not a profile name" in outcome.reason
+    assert recording_backend.sent == []
+
+
 # --------------------------------------------------------------------------
 # Outcome 1: applied and verified.
 # --------------------------------------------------------------------------
@@ -571,3 +584,73 @@ def test_target_resolution_uses_host_defaults_without_overrides(monkeypatch):
     present[0] = False
     with pytest.raises(profiles._Refused, match="not connected"):
         profiles._target(Config(), reach=True)
+
+
+# --------------------------------------------------------------------------
+# An operation the backend did not finish, and the connection it used.
+# --------------------------------------------------------------------------
+
+def test_an_operation_the_backend_did_not_finish_is_unverified_and_not_remembered(
+        tmp_path, recording_backend, monkeypatch):
+    from oscmix_desk.errors import ReceivePortError
+    from oscmix_desk.marker import active_profile
+    from oscmix_desk.verify import expected_registers
+
+    write_config(tmp_path / "profiles" / "tracking.conf", GOOD)
+
+    def lost():
+        recording_backend.operations.append("finish")
+        raise ReceivePortError(104, "backend disconnected; observations invalid")
+
+    monkeypatch.setattr(recording_backend, "finish", lost)
+    outcome = profiles.switch_profile("tracking", config_path=tmp_path / "routing.conf",
+                                      backend=recording_backend, verify=False)
+    desk = profiles.load_profile("tracking", tmp_path / "routing.conf")
+    assert outcome == outcome_mod.Outcome(
+        state=outcome_mod.APPLIED_UNVERIFIED, name="tracking",
+        reason="backend operation did not finish: [Errno 104] backend "
+               "disconnected; observations invalid",
+        unverified=sorted(expected_registers(desk)), persisted=False, read_back=False)
+    assert recording_backend.sent, "every write went out before the finish failed"
+    assert recording_backend.operations[-2:] == ["finish", "close"]
+    assert active_profile(tmp_path / "routing.conf") is None
+
+
+def test_a_refusal_before_any_write_names_the_profile(tmp_path, recording_backend,
+                                                      monkeypatch):
+    from oscmix_desk.errors import WriteFailed
+
+    write_config(tmp_path / "profiles" / "tracking.conf", GOOD)
+
+    def refused(messages):
+        paths = [message[0] for message in messages]
+        raise WriteFailed(OSError(16, "busy"), [], paths)
+
+    monkeypatch.setattr(recording_backend, "send", refused)
+    outcome = profiles.switch_profile("tracking", config_path=tmp_path / "routing.conf",
+                                      backend=recording_backend, verify=False)
+    assert (outcome.state, outcome.name) == (outcome_mod.REFUSED, "tracking")
+    assert outcome.reason == "cannot complete backend writes (busy)"
+
+
+def test_a_switch_connects_for_its_desk_and_the_resolved_interface(
+        tmp_path, recording_backend, monkeypatch):
+    from two_boxes import lock_dir
+
+    from oscmix_desk.discovery import Device
+
+    lock_dir(tmp_path, monkeypatch)
+    path = write_config(tmp_path / "routing.conf", GOOD)
+    write_config(tmp_path / "profiles" / "tracking.conf", GOOD)
+    target = Device("2a39:3fd9", "24216011", 24)
+    monkeypatch.setattr(profiles, "_target", lambda _config, reach: target)
+    connected = []
+
+    def connect(config, config_path):
+        connected.append((config.serial, config_path))
+        return recording_backend
+
+    monkeypatch.setattr(profiles, "connect_backend", connect)
+    outcome = profiles.switch_profile("tracking", config_path=path, verify=False)
+    assert outcome.applied is True
+    assert connected == [("24216011", path)]
