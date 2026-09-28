@@ -200,12 +200,16 @@ class ScriptedControl:
     def __init__(self, path, *, handshake=None, refuse_write=0, lose_reply=0,
                  begin_busy=False, refresh_busy=False, reports=(), echo=False,
                  disconnect_after=None, close_after_dump=False, hello_code=OK,
-                 busy_begins=0, silent=(), delay=None, after_hello=(), after_begin=()):
+                 busy_begins=0, silent=(), delay=None, after_hello=(), after_begin=(),
+                 derived=()):
         # silent: kinds never answered while the connection stays open.
         # delay: {kind: seconds} before a reply. after_hello/after_begin: raw
         # packets (bytes) or (kind, code, sequence, payload) frames sent after
         # that reply; a sequence of None means the current generation.
+        # derived: payloads a refresh answers from the backend's own view,
+        # before the device reports.
         self.path = path
+        self.derived = derived
         self.hello_code = hello_code
         self.busy_begins = busy_begins
         self.silent = silent
@@ -314,6 +318,9 @@ class ScriptedControl:
                     event, event_code, sequence, data = frame
                     self.emit(event, 0, event_code, sequence, data)
             if kind == REFRESH and code == OK:
+                for report in self.derived:
+                    self.sequence += 1
+                    self.emit(OBSERVATION, code=DERIVED, sequence=self.sequence, payload=report)
                 for report in self.reports:
                     self.sequence += 1
                     self.emit(OBSERVATION, code=DEVICE, sequence=self.sequence, payload=report)

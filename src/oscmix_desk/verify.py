@@ -73,21 +73,22 @@ def expected_registers(config: Config) -> Registers:
 
 def register_ever_reported(path: str,
                            device: Optional[Device] = None) -> bool:
-    """Whether this backend reports the register *at all*.
+    """Whether the device reports the register *at all*.
 
-    One family never appears, measured: the playback *mix matrix*,
-    ``/mix/<out>/playback/<pb>``. Anything the register model calls
+    Two families never do: the playback *mix matrix*,
+    ``/mix/<out>/playback/<pb>``, and the playback link flags,
+    ``/playback/<n>/stereo``. Anything the register model calls
     write-only is excluded too.
 
-    Note the shape of that path. This rule used to exclude everything
-    under ``/playback/`` as well, which is wrong and was wrong in a
-    released version: the recorded dump carries 42 registers under
-    ``/playback/``, including every ``/playback/<n>/stereo`` -- the
-    input-side link flags, which arrive first, at 0.0 s. Excluding them
-    meant a lost link write was never counted as a problem and never
-    retried, on the exact register family the stereo-link race is about.
+    The link flags are in the recorded dumps, first and at 0.0 s,
+    because the backend answers a refresh with its own view of them
+    before the device says anything. The coordinated backend labels that
+    view backend-derived and the client drops it, so waiting for it
+    counted every start as incomplete. The mix registers still depend
+    on the flags; the backend applies a link write before the next
+    message on the same connection.
 
-    ``tests/test_verify.py`` now holds this function against
+    ``tests/test_verify.py`` holds this function against
     ``tests/data/refresh-dump.json`` register by register, so the rule
     cannot drift away from the recording again.
 
@@ -110,8 +111,10 @@ def register_ever_reported(path: str,
             # playback matrix was excluded by a string rule *beside* the
             # table that already classed it -- two places for one fact.
             return klass == VERIFIABLE
-    # Without a model, the one hand-written rule left: the playback
-    # matrix, measured never to appear (ADR 0002).
+    # Without a model, the hand-written rule left: the playback matrix,
+    # measured never to appear, and the backend's own link flags.
+    if path.startswith("/playback/") and path.endswith("/stereo"):
+        return False
     return not (path.startswith("/mix/") and "/playback/" in path)
 
 
@@ -435,7 +438,8 @@ def verify_and_repair(config: Config, backend: Control,
                 return False
             continue
         if not wrong_links and links:
-            missing = links.intersection(result.unobserved)
+            missing = {path for path in links.intersection(result.unobserved)
+                       if register_ever_reported(path, device)}
             if missing:
                 log.warning("dump never reported %s; re-applying mix without confirmation",
                             ", ".join(sorted(missing)))

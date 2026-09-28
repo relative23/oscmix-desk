@@ -149,10 +149,11 @@ def test_a_register_already_at_its_value_is_not_written(session_mod):
     seen = {e.path: e.args for e in entries}
     result = reconcile.plan(entries, seen, devices.UCX2)
     written = {w.path for w in result.writes}
-    # The playback matrix is rewritten regardless -- it is unverifiable.
-    assert written == {"/mix/5/playback/1"}
+    # The playback matrix and the backend's playback link are rewritten
+    # regardless -- neither is reported by the device.
+    assert written == {"/playback/1/stereo", "/mix/5/playback/1"}
     assert "/output/5/stereo" in result.confirmed
-    assert "/mix/5/playback/1" in result.unverifiable
+    assert set(result.unverifiable) == {"/playback/1/stereo", "/mix/5/playback/1"}
 
 
 def test_a_mismatched_register_is_written_and_says_so(session_mod):

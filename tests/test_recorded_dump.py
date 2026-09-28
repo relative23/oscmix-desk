@@ -184,20 +184,12 @@ def test_the_measured_dump_disagrees_with_the_prose_and_says_so(
     assert dump["dump_seconds"] < 5.0, (
         "the dump took %.1fs; the 15-20s figure in constants.py and the "
         "roadmap may be describing this after all" % dump["dump_seconds"])
-    # Now classified prompt, and this is the measurement that decided it.
-    #
-    # The line above used to assert False, with the note that changing it
-    # was a decision rather than a tidy-up because the hotplug case had
-    # not been measured. It has been now, from
-    # tests/data/cold-plug-timeline.json: all 20 /playback/<n>/stereo
-    # come back after a cold USB replug, every one of them at 0.00 s --
-    # complete, and earlier than /output/<n>/stereo, which takes 2.26 s.
-    # See test_playback_stereo_survives_a_cold_plug_completely below.
-    #
-    # What the old classification cost: a lost /playback/<n>/stereo was
-    # never counted as a problem and so never re-sent, on precisely the
-    # register family the two-phase apply exists to get right.
-    assert verify.register_promptly_reported("/playback/1/stereo") is True
+    # At 0.0 s because the backend sends them itself: setrefresh() emits
+    # its own view of the playback links before the device answers. The
+    # coordinated backend labels that view backend-derived, so it is no
+    # hardware evidence and the verifier does not wait for it. See
+    # test_playback_links_in_a_cold_plug_come_from_the_backend below.
+    assert verify.register_promptly_reported("/playback/1/stereo") is False
 
 
 # --------------------------------------------------------------------------
@@ -305,18 +297,16 @@ def test_the_cold_dump_is_incomplete_and_that_matters_for_0_3_0(cold, dump):
 
 
 
-def test_playback_stereo_survives_a_cold_plug_completely(cold):
-    """The evidence for classifying /playback/*/stereo as promptly reported.
+def test_playback_links_in_a_cold_plug_come_from_the_backend(cold):
+    """Why /playback/*/stereo is re-established, not verified.
 
     A cold plug is where the dump is *incomplete* -- 1234 of 1932
     non-meter registers, and `/output/<n>/mute` came back for channels
-    1, 2, 3, 8, 9 and 10 but not 4-7 or 11-20. So "the device reports it
-    in a warm dump" is not on its own enough to call a register prompt;
-    the hotplug case is where the classification actually bites.
-
-    The input-side link flags pass that test outright: all twenty, at
-    t=0.00 s, before anything else. They are the first thing the device
-    says after it comes back.
+    1, 2, 3, 8, 9 and 10 but not 4-7 or 11-20. The playback link flags
+    came back all twenty, at t=0.00 s, before anything else: no device
+    register backs them, and setrefresh() sends the backend's own view
+    before the device says anything. The coordinated backend labels that
+    view backend-derived, which the desk never counts as confirmation.
     """
     first = cold["first_report_seconds"]
     stereo = {path: seen for path, seen in first.items()

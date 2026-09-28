@@ -44,9 +44,11 @@ class VerifyClass(str, Enum):
     #: `/output/*/name`, `/output/*/loopback`, all confirmed absent from a
     #: full dump.
     WRITE_ONLY = "write-only"
-    #: Unverifiable *and* dependent on link state, so it is rewritten from
-    #: a known-good state rather than checked. The playback mix matrix is
-    #: the only member: a `/mix` write draws no reply and the dump omits it.
+    #: Never reported by the device and part of the link-dependent
+    #: routing, so it is rewritten from the declared state rather than
+    #: checked. The playback mix matrix (a `/mix` write draws no reply and
+    #: the dump omits it) and the playback link flags, which only the
+    #: backend holds and reports as backend-derived.
     REESTABLISHED = "re-established"
 
 

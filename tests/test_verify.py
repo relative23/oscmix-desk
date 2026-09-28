@@ -38,12 +38,12 @@ def test_prompt_reporting_hint(session_mod):
     # awaited. The audible /output/* path arrives early.
     prompt = verify.register_promptly_reported
     assert prompt("/mix/5/playback/1") is False
-    # Reported, and promptly: it is in the recording, at 0.0 s. This
-    # line asserted False for two releases and is why the rule drifted
-    # -- a test written from the same wrong belief as the code cannot
-    # catch it. test_never_reported_agrees_with_the_recorded_dump
-    # asserts against the dump instead, which cannot hold a belief.
-    assert prompt("/playback/1/stereo") is True
+    # In the recording at 0.0 s, but sent by the backend from its own
+    # view: the coordinated backend labels it backend-derived, so the
+    # device never reports it. test_never_reported_agrees_with_the_
+    # recorded_dump holds every other register against the recording.
+    assert prompt("/playback/1/stereo") is False
+    assert prompt("/playback/1/stereo", UCX2) is False
     assert prompt("/mix/5/input/3") is True
     assert prompt("/output/5/volume") is True
     assert prompt("/output/5/stereo") is True
@@ -105,6 +105,42 @@ def test_cancel_before_read_keeps_all_expectations_unobserved():
     assert result == verify.VerifyResult([], [], ["/output/1/volume", "/output/5/volume"])
     assert backend.dumps == 0
     assert backend.sent == []
+
+
+def test_backend_derived_playback_links_do_not_leave_a_start_incomplete(tmp_path, caplog):
+    """Measured on a UCX II with the first 0.8.0 build: every start ended
+    "verifier incomplete", because the playback links were awaited as
+    device reports. The backend only sends its own view of them, labelled
+    backend-derived, which the desk never counts as confirmation.
+    """
+    from oscmix_desk.model import Config, Route
+
+    config = Config(routes=[Route("a", playback=(1, 2), output=(5, 6)),
+                            Route("b", playback=(1, 2), output=(7, 8))])
+    expected = verify.expected_registers(config)
+    assert sorted(expected) == ["/mix/5/playback/1", "/mix/7/playback/1",
+                                "/output/5/stereo", "/output/7/stereo",
+                                "/playback/1/stereo"]
+    device = [osc.encode_osc("/output/5/stereo", "i", 1),
+              osc.encode_osc("/output/7/stereo", "i", 1)]
+    derived = [osc.encode_osc("/playback/1/stereo", "i", 1),
+               osc.encode_osc("/playback/2/stereo", "i", 1)]
+    server = ScriptedControl(tmp_path / "control.sock", reports=device, derived=derived)
+    client = Control(server.path, os.getpid())
+    caplog.set_level("INFO")
+    try:
+        client.begin()
+        assert verify.verify_and_repair(config, client) is True
+        client.finish()
+    finally:
+        client.close()
+        server.close()
+    assert server.requests.count(REFRESH) == 1
+    assert server.order == ["/refresh", "/mix/5/playback/1", "/mix/7/playback/1"]
+    assert [r.getMessage() for r in caplog.records
+            if r.levelname == "WARNING" and r.module == "verify"] == []
+    assert any("0 missing prompt" in r.getMessage() and "3 backend-unreportable"
+               in r.getMessage() for r in caplog.records)
 
 
 def test_read_window_closes_after_every_reportable_path_even_with_write_only_left(monkeypatch):
@@ -255,11 +291,11 @@ def test_never_reported_agrees_with_the_recorded_dump(session_mod):
     """Every register the device actually sent must count as reportable.
 
     The rule was written from memory and drifted: it excluded everything
-    under `/playback/`, while the recording carries 42 registers there,
-    every `/playback/<n>/stereo` among them. Those are the input-side
-    link flags. Calling them unreportable meant a lost link write was
-    never a problem and never retried -- on the one register family the
-    whole two-phase apply exists for.
+    under `/playback/`, while the recording carries 42 registers there.
+    Twenty of them are the playback link flags, which the recording
+    holds only because the backend sends its own view of them on a
+    refresh; the coordinated backend labels that view backend-derived.
+    Everything else in the recording must count as reportable.
 
     Asserting against the recording rather than against a list keeps the
     rule and the evidence in one place.
@@ -272,11 +308,15 @@ def test_never_reported_agrees_with_the_recorded_dump(session_mod):
     dump = json.loads(repo_file("tests", "data", "refresh-dump.json"
                                 ).read_text())
     device = device_for_name("Fireface UCX II")
+    links = {path for path in dump["registers"]
+             if path.startswith("/playback/") and path.endswith("/stereo")}
+    assert len(links) == 20
     denied = [path for path in dump["registers"]
-              if not register_ever_reported(path, device)]
+              if path not in links and not register_ever_reported(path, device)]
     assert denied == [], (
         "the device reported these, but the rule says it never does: %s"
         % denied[:10])
+    assert not any(register_ever_reported(path, device) for path in links)
 
 
 def test_the_playback_mix_matrix_is_the_family_that_is_absent(session_mod):

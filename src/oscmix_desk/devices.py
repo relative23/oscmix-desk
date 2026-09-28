@@ -250,7 +250,13 @@ UCX2 = Device(
     },
     registers=(
         # --- what 0.2.0 already writes ---------------------------------
-        Register("/playback/{ch}/stereo", "i", VERIFIABLE, "playback",
+        # The playback link flags exist only in the backend: no device
+        # register backs them, `setinputstereo()` updates its own view on
+        # the write, and a refresh answers with that view, labelled
+        # backend-derived. Nothing the device says can confirm them, so
+        # they are re-established on every apply like the matrix they
+        # shape.
+        Register("/playback/{ch}/stereo", "i", REESTABLISHED, "playback",
                  policy=PIN),
         Register("/output/{ch}/stereo", "i", VERIFIABLE, "output",
                  policy=PIN),
@@ -484,12 +490,13 @@ UCX2 = Device(
         Register("/output/{ch}/loopback", "i", WRITE_ONLY, "output"),
     ),
     supported=True,
-    # Measured across a real USB replug: the stereo flags arrive for all
-    # 20 channels within ~2.3 s, and nothing else does. /output/N/mute
-    # came back for channels 1,2,3,8,9,10 and not for 4-7 or 11-20 --
-    # a truncated stream rather than a rule, which is exactly why this
-    # is a list of what IS complete rather than a flag on what is not.
-    complete_after_cold_plug=("/output/{ch}/stereo", "/playback/{ch}/stereo"),
+    # Measured across a real USB replug: the output stereo flags arrive
+    # for all 20 channels within ~2.3 s, and nothing else does.
+    # /output/N/mute came back for channels 1,2,3,8,9,10 and not for 4-7
+    # or 11-20 -- a truncated stream rather than a rule, which is exactly
+    # why this is a list of what IS complete rather than a flag on what
+    # is not.
+    complete_after_cold_plug=("/output/{ch}/stereo",),
     evidence="hardware-evidence.json attached to v0.2.0",
     firmware="3.01",
 )

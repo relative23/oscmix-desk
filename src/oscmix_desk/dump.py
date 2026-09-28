@@ -318,8 +318,9 @@ def render_config(config: Config, device: Optional[Device] = None,
         lines += [
             "#",
             "# A `/mix` write to the playback matrix draws no reply and the",
-            "# state dump omits it, so software routing cannot be read back",
-            "# -- only re-established from a config. If you had playback",
+            "# state dump omits it, and the playback link flags exist only in",
+            "# the backend, so software routing cannot be read back -- only",
+            "# re-established from a config. If you had playback",
             "# routes, they are not below and this file will not restore",
             "# them. Merge, do not replace.",
         ]

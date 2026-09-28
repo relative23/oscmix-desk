@@ -16,6 +16,9 @@
   from a fixed patch series and must be upgraded together.
 - `--status --json` reports schema 2: the control socket replaces the removed
   receive-port section.
+- Playback link flags are backend state, not device state: they are written
+  on every apply, like the playback matrix, and no longer awaited or counted
+  as verified.
 - Resume reloads wait until the user services have been thawed after sleep.
 
 ### Fixed

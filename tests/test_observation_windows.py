@@ -8,7 +8,7 @@ from backend_doubles import RecordingBackend
 from oscmix_desk import routing, verify
 from oscmix_desk.backend import OSCMIX
 from oscmix_desk.errors import WriteFailed
-from oscmix_desk.model import Config, Route
+from oscmix_desk.model import ChannelSetting, Config, Route
 
 A, B = "/output/5/stereo", "/output/7/stereo"
 
@@ -100,12 +100,16 @@ def test_background_sync_never_writes_through_known_wrong_links(
         clocked, monkeypatch, batched, last):
     reports = ([report(A, 1), report(B, 1), report(A, 0)] if last else
                [report(A, 1), report(A, 0), report(B, 1)])
-    # Keep the first window open through A's final separate delivery too.
-    reports.append(report("/playback/1/stereo", 1))
+    # Keep the first window open through A's final separate delivery too:
+    # a reported register the desk also expects, arriving last.
+    mute = "/output/5/mute"
+    reports.append(report(mute, 0))
     backend = Deliveries([[reports] if batched else [[r] for r in reports],
                           [[report(A, 0), report(B, 1)]]])
+    config = Config(routes=desk().routes,
+                    channels=(ChannelSetting("output", 5, "mute", False),))
     try:
-        verify.verify_and_repair(desk(), backend)
+        verify.verify_and_repair(config, backend)
     except WriteFailed:
         pass  # A bounded link repair may itself be refused in part.
     assert [p for p, _t, _a in backend.sent if p.startswith("/mix/")] == []

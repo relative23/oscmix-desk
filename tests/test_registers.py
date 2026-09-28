@@ -164,11 +164,13 @@ def test_every_write_only_register_really_is_absent(warm):
         "started dumping these, the verifier may confirm them" % present[:8])
 
 
-def test_the_playback_matrix_is_the_only_re_established_family(warm):
+def test_the_playback_matrix_and_links_are_the_re_established_families(warm):
     reest = [r for r in devices.UCX2.registers
              if r.verify == registers.REESTABLISHED]
-    assert [r.template for r in reest] == ["/mix/{out}/playback/{pb}"]
-    # ... and it is absent, which is what forces the class.
+    assert [r.template for r in reest] == ["/playback/{ch}/stereo",
+                                           "/mix/{out}/playback/{pb}"]
+    # The links are in the recording only as the backend's own view; the
+    # matrix is absent, which is what forces its class.
     assert not [p for p in warm["registers"]
                 if p.startswith("/mix/") and "/playback/" in p]
 
@@ -270,11 +272,14 @@ def test_what_0_2_0_verifies_survives_a_cold_plug(cold):
     # The reason this gap went unnoticed for two releases: everything
     # this release actually checks is in the fast, complete part.
     reported = set(cold["first_report_seconds"])
-    for path in ("/output/1/stereo", "/output/5/stereo", "/output/7/stereo",
-                 "/playback/1/stereo"):
+    for path in ("/output/1/stereo", "/output/5/stereo", "/output/7/stereo"):
         assert path in reported, "%s missing from a cold plug" % path
         assert registers.verify_class(devices.UCX2, path) == registers.VERIFIABLE
         assert registers.cold_plug_complete(devices.UCX2, path)
+    # The backend's own playback links are not device state at all.
+    assert registers.verify_class(devices.UCX2, "/playback/1/stereo") == \
+        registers.REESTABLISHED
+    assert not registers.cold_plug_complete(devices.UCX2, "/playback/1/stereo")
 
 
 def test_an_unmeasured_register_is_never_called_complete():
