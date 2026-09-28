@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "kind": "Development mutation rejudgment, not final release qualification",
+  "recorded_utc": "2026-09-27T21:42:22.601071+00:00",
+  "code_commit": "39800b71a80d4b3af584ca6594739c141762b683",
+  "predecessor_commit": "06d8197803aaf27da91cf0d1a951e1ed8c1a4650",
+  "predecessor_archive_sha256": "48f272f836bd29e36cd18f06602ec399d2c2cfde34554f71a5841815b6a1e842",
+  "predecessor_evidence": "mutation-followup-development.json",
+  "fresh_full_generation_commit": "28b2dc4a469835c33005820a64cf4c329073ce7d",
+  "fresh_full_generation_evidence": "mutation-full-development.json",
+  "selection": {
+    "changed_test_attribution": "Union of old and fresh call-path attribution for every changed test function, all changed source modules and all unjudged functions",
+    "changed_test_functions": 25,
+    "changed_source_files": 0,
+    "functions": 112,
+    "mutants": 4629,
+    "manifest_sha256": "3c2f2e14955578ce5cc28915ac52c764ed24ac3431152fc5d16f0bdbad960e07"
+  },
+  "combined_counts": {
+    "total": 11173,
+    "killed": 10179,
+    "survived": 982,
+    "timeout": 12,
+    "not_covered": 0,
+    "unresolved": 0
+  },
+  "score": 0.9120150524146582,
+  "interruption": {
+    "stopped_utc": "2026-09-27T21:07:35.062569+00:00",
+    "reason": "Stopped at the maintainer's explicit request before completion; no result was produced by the first invocation.",
+    "interim_counts_are_not_results": true,
+    "interrupted_tree_archive_sha256": "63f519eb181d38519a5eff9bda2cb171e173103237db60f91425de447807a7d4",
+    "interrupted_tree_independently_verified": true,
+    "judged_before_stop": 4627,
+    "judged_before_stop_transitions": {
+      "1->1": 4180,
+      "0->0": 412,
+      "0->1": 35
+    },
+    "rejudged_after_resumption": {
+      "oscmix_desk.backend.x\u01c1Control\u01c1_receive__mutmut_1": -24,
+      "oscmix_desk.backend.x\u01c1Control\u01c1next_delivery__mutmut_9": -24
+    },
+    "resumption_method": "A selected mutant whose recorded duration differs from the verified 06d archive was judged by the interrupted run; an unchanged duration means its 06d verdict was retained and it is rejudged here."
+  },
+  "commands": [
+    {
+      "step": "fresh-attribution",
+      "started_utc": "2026-09-27T19:53:03.041851+00:00",
+      "seconds": 157.309,
+      "exit_code": 0,
+      "log_sha256": "e373de053bc5514e4bd7a5cfdf9b6dcf677caa4c3ddecb35612f40e4b63a371f"
+    },
+    {
+      "step": "affected-functions",
+      "started_utc": null,
+      "seconds": null,
+      "exit_code": null,
+      "interrupted": true,
+      "note": "Stopped on request; completed children were retained by mutmut as they finished and are identified by their changed durations."
+    },
+    {
+      "step": "remaining-mutants",
+      "started_utc": "2026-09-27T21:23:34.512517+00:00",
+      "seconds": 1065.306,
+      "exit_code": 0,
+      "log_sha256": "39747323d749aa54c2ea0c027e06726d47e006396640b0a187175c1b36de60ed"
+    },
+    {
+      "step": "complete-policy",
+      "started_utc": "2026-09-27T21:41:19.826635+00:00",
+      "seconds": 0.518,
+      "exit_code": 0,
+      "log_sha256": "c112fa5fc7413077367d2976214907d2bed0abf8e8c0cdb73b8005fccfb1c5f7"
+    }
+  ],
+  "inputs_unchanged": true,
+  "inputs_manifest_sha256": "632540821cf950524e23cdfc3ceec89c25b9feba80dba72855e5c4be1020d99f",
+  "unselected_verdicts_unchanged": true,
+  "address_space_limit_bytes": 2147483648,
+  "max_children": 4,
+  "deadlines_and_score_floor_unchanged": true,
+  "archive": {
+    "archived_utc": "2026-09-27T21:41:33.974435+00:00",
+    "archive_sha256": "159897d9ea85fc6721bdc263a8915d7ba0bd541623139097423bff81cf7187ce",
+    "entries": 1285,
+    "regular_files": 1270,
+    "independently_verified": true
+  },
+  "execution_complete": true,
+  "assessment_complete": true,
+  "assessment": {
+    "remaining_cases": 994,
+    "identical_to_previously_assessed": 994,
+    "new_or_changed": 0,
+    "previously_surviving_now_killed": 35,
+    "summary": "Every remaining survivor and timeout was reviewed by its source diff and call path; the review notes are private. Survivors that only change log, exception or help wording remain counted as survivors. The concrete assertion gaps found were covered by the tests at this commit; no remaining case showed a production correctness defect."
+  },
+  "hardware": false,
+  "release_complete": false,
+  "limits": [
+    "This supplements the retained fresh full generation; it is not another fresh full run.",
+    "The final candidate still requires a fresh full run after removing the mutants tree.",
+    "Timeouts are retained as timeouts, never counted as killed."
+  ]
+}

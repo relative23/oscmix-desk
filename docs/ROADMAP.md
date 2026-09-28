@@ -8,6 +8,15 @@ empty parameter skips; coverage is 97.89% against the unchanged 97% gate.
 The added export, identity and cancellation boundary tests pass on Python
 3.9 and 3.14. The [boundary-check record](evidence/0.8.0/software-boundaries-development.json)
 retains exact inputs and the initial socket-restricted execution failure.
+Rejudgment of the 112 functions (4629 mutants) those tests reach is complete:
+10179 killed, 982 survived and 12 timed out, none uncovered or unresolved
+(score 0.912). Its first invocation was stopped on request; the interrupted
+tree was archived, and only the two mutants still running at the stop were
+run again with unchanged inputs and limits. Every remaining survivor and
+timeout is identical to a previously reviewed case. The
+[execution record](evidence/0.8.0/mutation-assessment-development.json)
+identifies the inputs, interruption and verified archive. The mutation floor
+rises from 0.79 to 0.91; the final candidate still needs a fresh full run.
 The current backend/GTK series also passes all
 [six native package targets](evidence/0.8.0/series9-native-development.json),
 [Alpine/OpenRC and Void/runit service lifecycles](evidence/0.8.0/series9-native-services-development.json)
@@ -67,8 +76,8 @@ identifies the original inputs and independently verified complete archive.
 Rejudgment of 203 affected functions (8345 mutants) after the follow-up is
 complete: 10144 killed, 1017 survived and 12 timed out, with no uncovered or
 unresolved cases. The [follow-up mutation record](evidence/0.8.0/mutation-followup-development.json)
-identifies the unchanged inputs and independently verified archive. Full
-survivor assessment remains open.
+identifies the unchanged inputs and independently verified archive. Its
+survivor review is complete at `39800b7` (above).
 A later source review reproduced partial confirmation from a malformed OSC
 bundle. The receiver and measurement tools now validate the whole encoded
 delivery before exposing observations. Nine production-client cases fail
