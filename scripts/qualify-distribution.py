@@ -148,7 +148,10 @@ def qualify(args, root):
             else:
                 command += ['--cap-drop=ALL', '--security-opt=no-new-privileges', image,
                             'bash', 'scripts/test-distribution.sh']
-            run(*command, timeout=600)
+            # The native lifecycle on Ubuntu 24.04 also starts nested GNOME,
+            # KDE and Xfce sessions. On a two-CPU CI runner it needs about
+            # 600 s, so a 600 s limit failed it once.
+            run(*command, timeout=1200 if args.native else 600)
             if args.native:
                 identifier = read('docker', 'create', image)
                 try:
