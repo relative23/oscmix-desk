@@ -8,15 +8,18 @@ empty parameter skips; coverage is 97.89% against the unchanged 97% gate.
 The added export, identity and cancellation boundary tests pass on Python
 3.9 and 3.14. The [boundary-check record](evidence/0.8.0/software-boundaries-development.json)
 retains exact inputs and the initial socket-restricted execution failure.
-Rejudgment of the 112 functions (4629 mutants) those tests reach is complete:
-10179 killed, 982 survived and 12 timed out, none uncovered or unresolved
-(score 0.912). Its first invocation was stopped on request; the interrupted
-tree was archived, and only the two mutants still running at the stop were
-run again with unchanged inputs and limits. Every remaining survivor and
-timeout is identical to a previously reviewed case. The
+Rejudgment of the 112 functions (4629 mutants) those tests reach ran to
+completion after a requested interruption: 10179 killed, 982 survived, 12
+timed out. **That score (0.912) is not a valid measurement.** Two
+device-identity tests stored the importing process's PID as the fake
+backend's. mutmut runs each mutant in a forked child, where the session
+correctly refused that endpoint; every one of the 4737 mutants those tests
+covered was counted as killed. The same defect inflates the earlier 0.8.0
+scores below (0.897 and 0.909). The tests now resolve the PID when they run,
+and `make mutation` first requires the suite to pass in a forked child. The
 [execution record](evidence/0.8.0/mutation-assessment-development.json)
-identifies the inputs, interruption and verified archive. The mutation floor
-rises from 0.79 to 0.91; the final candidate still needs a fresh full run.
+retains the run and the invalidation; the floor stays at 0.79 until a
+corrected fresh measurement.
 The current backend/GTK series also passes all
 [six native package targets](evidence/0.8.0/series9-native-development.json),
 [Alpine/OpenRC and Void/runit service lifecycles](evidence/0.8.0/series9-native-services-development.json)
@@ -77,7 +80,7 @@ Rejudgment of 203 affected functions (8345 mutants) after the follow-up is
 complete: 10144 killed, 1017 survived and 12 timed out, with no uncovered or
 unresolved cases. The [follow-up mutation record](evidence/0.8.0/mutation-followup-development.json)
 identifies the unchanged inputs and independently verified archive. Its
-survivor review is complete at `39800b7` (above).
+counts are inflated by the forked-child test defect described above.
 A later source review reproduced partial confirmation from a malformed OSC
 bundle. The receiver and measurement tools now validate the whole encoded
 delivery before exposing observations. Nine production-client cases fail

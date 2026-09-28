@@ -88,7 +88,7 @@
     "independently_verified": true
   },
   "execution_complete": true,
-  "assessment_complete": true,
+  "assessment_complete": false,
   "assessment": {
     "remaining_cases": 994,
     "identical_to_previously_assessed": 994,
@@ -102,5 +102,27 @@
     "This supplements the retained fresh full generation; it is not another fresh full run.",
     "The final candidate still requires a fresh full run after removing the mutants tree.",
     "Timeouts are retained as timeouts, never counted as killed."
-  ]
+  ],
+  "measurement_valid": false,
+  "invalidated": {
+    "found_utc": "2026-09-28T02:35:42+00:00",
+    "cause": "tests/test_device_identity.py stored the importing process PID as the fake backend's. mutmut imports tests, runs the clean suite in its own process and forks one child per mutant. In each child the session correctly refused a control endpoint owned by a different PID, so two tests failed without any mutation and every mutant they covered was counted as killed.",
+    "reproduced": "Unmutated suite: 2629 passed in the importing process; 2627 passed and these two failed in a forked child.",
+    "tests": [
+      "tests/test_device_identity.py::test_every_path_takes_b_s_lock_and_reaches_only_b",
+      "tests/test_device_identity.py::test_one_box_gives_the_unit_and_a_switch_the_same_key"
+    ],
+    "affected": {
+      "functions": 126,
+      "mutants": 4737,
+      "killed": 4730,
+      "timeout": 7,
+      "survived": 0
+    },
+    "also_affected": [
+      "mutation-full-development.json",
+      "mutation-followup-development.json"
+    ],
+    "consequence": "The counts above are what ran, not a measure of the assertions. They are not used for the score floor. The survivor review covers only cases that were visible."
+  }
 }
