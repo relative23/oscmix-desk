@@ -1,8 +1,7 @@
 # NixOS package and opt-in integration
 
-Development for 0.8.0. Final release qualification is still open; the runtime's
-version has not yet been advanced from 0.7.3. These expressions are shipped by
-oscmix-desk, not part of the NixOS package collection.
+These expressions are shipped by oscmix-desk, not part of the NixOS package
+collection.
 
 `nix-build packaging/nix` uses the pinned NixOS 26.05 package set
 `c508844df6c28fa6dabc1b6af70f3ccbd65c5201`. `--arg withGtk false` builds only the
