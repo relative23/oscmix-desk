@@ -22,7 +22,12 @@ python3 -m pytest -q tests/test_install_sh.py tests/test_install_modes.py \
     tests/test_two_processes.py tests/test_status.py tests/test_diagnostics.py \
     tests/test_launcher.py tests/test_launcher_flow.py tests/test_preview.py
 stage="$(mktemp -d)"
-bash scripts/stage-install.sh --destdir "$stage" --backend build/oscmix
+# The installer builds the patched series in its own directory; build/oscmix
+# only keeps the upstream object store. Stage exactly that one build.
+builds=(build/coordinated.*)
+[ "${#builds[@]}" = 1 ] && [ -d "${builds[0]}" ] \
+    || { echo "expected exactly one coordinated backend build" >&2; exit 2; }
+bash scripts/stage-install.sh --destdir "$stage" --backend "${builds[0]}"
 "$stage/usr/bin/oscmix-session" --version
 "$stage/usr/bin/oscmix-session" --dry-run --timeout 0
 ./uninstall.sh
