@@ -107,7 +107,9 @@ exclude_lines = [
 # raise it now rather than next release. The rise is the profile code's
 # error branches, each driven by a test since the marker and lock work.
 # 96 -> 97 (0.7.0): the complete suite now measures above 97 percent.
-fail_under = 97
+# 97 -> 98 (0.8.0 development, 7960bed): 98.54 percent, after tests for the
+# decisions a fork-unsafe mutation run had hidden -- more than a point above.
+fail_under = 98
 
 [tool.mutmut]
 # Mutation testing answers the question coverage cannot: do the assertions
