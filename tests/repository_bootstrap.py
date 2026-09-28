@@ -16,6 +16,7 @@ import signal
 import subprocess
 import threading
 import time
+import urllib.parse
 from pathlib import Path
 
 from repository_client_setup import CLIENT, container
@@ -155,7 +156,9 @@ def exercise(args):
     for pattern in patterns:
         for path in Path('/').glob(pattern.lstrip('/')):
             if path.is_file():
-                destination = held / str(path).lstrip('/').replace('/', '_')
+                # Quoted: upload-artifact refuses names with ':' such as
+                # openSUSE's repository definitions.
+                destination = held / urllib.parse.quote(str(path).lstrip('/'), safe='')
                 preserved[destination] = path.read_bytes()
                 path.rename(destination)
     try:

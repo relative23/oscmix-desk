@@ -13,6 +13,7 @@ import os
 import shutil
 import signal
 import subprocess
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -33,8 +34,10 @@ class Client:
             source.write_text('Types: deb\nURIs: ' + url + '\nSuites: stable\n'
                               'Components: main\nArchitectures: amd64\nSigned-By: ' + str(key)
                               + '\n')
-            lists = output / 'lists'
-            (lists / 'partial').mkdir(parents=True)
+            # APT's cache, not evidence, and outside the output: its file
+            # names carry the loopback port's ':' that upload-artifact refuses.
+            lists = Path(tempfile.mkdtemp(prefix='apt-lists-'))
+            (lists / 'partial').mkdir()
             self.command = ['apt-get', '-y', '-o', 'Dir::Etc::sourcelist=' + str(source),
                             '-o', 'Dir::Etc::sourceparts=-',
                             '-o', 'Dir::State::lists=' + str(lists),
