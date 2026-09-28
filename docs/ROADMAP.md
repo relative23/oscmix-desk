@@ -3,8 +3,15 @@
 Next milestone: **0.8.0**, started 2026-09-25 with the maintainer's explicit
 implementation instruction. The N9 historical source assessment is recorded
 privately; N0/N1 corrections and production-path regressions are implemented.
-The newest software check at `39800b7` passes 2629 tests with the same two
-empty parameter skips; coverage is 97.89% against the unchanged 97% gate.
+The newest software gates at `7960bed` pass: `make check` and Python
+3.10–3.14 run 2789 tests with the same two empty parameter skips (Python 3.9
+skips 38 more standard-library inventory cases), five complete repeats, the
+200-cycle soak and fifteen fault-suite repeats. Coverage is 98.54%, so the
+ratchet rises from 97 to 98 (98.51% at `1be7116`). The
+[software record](evidence/0.8.0/software-forksafe-development.json) also
+retains a failed coverage/repeat attempt at `b52c550`: a new test's inner
+pytest inherited the gates' temporary-directory option.
+The earlier check at `39800b7` passed 2629 tests; coverage was 97.89%.
 The added export, identity and cancellation boundary tests pass on Python
 3.9 and 3.14. The [boundary-check record](evidence/0.8.0/software-boundaries-development.json)
 retains exact inputs and the initial socket-restricted execution failure.
