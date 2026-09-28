@@ -41,8 +41,8 @@ def log_desk_notices(config: "Config") -> None:
     they have in hand; a switch, a restore and a SIGHUP reload about
     theirs. The first placement asked once in the CLI about the desk *in
     effect*, which for ``--profile`` and ``--no-profile`` is not the one
-    being written, and a reload never passed it at all (found by review,
-    0.6.11). A start asks again under the device lock when the desk it
+    being written, and a reload never passed it at all. A start asks again
+    under the device lock when the desk it
     re-read there is another one (``reload._desk_under_the_lock``).
     """
     message = unchecked_routes_warning(config)

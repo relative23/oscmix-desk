@@ -1,9 +1,9 @@
 """What goes on the wire for a desk of every route shape, written out.
 
-A third outside review found that the oracle the reconciler is held
+The oracle the reconciler is held
 against (`tests/oracle.py`) built its messages with the reconciler's own
-`link_messages` and `mix_messages`: a wrong register there would have
-been wrong on both sides of the comparison, and the comparison green.
+`link_messages` and `mix_messages` until 0.7.0: a wrong register there would
+have been wrong on both sides of the comparison, and the comparison green.
 
 These are the registers, type tags, values and order, as literals. Where
 they come from is not the code: the pair register and its balance are

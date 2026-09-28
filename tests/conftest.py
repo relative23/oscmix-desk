@@ -214,7 +214,7 @@ def _no_real_backend(monkeypatch):
     A desk with no `[osc]` section resolves to UDP 7222 and 8222, where
     the developer's oscmix listens: a test that ran `--dump-config`
     unstubbed read the UCX II through it on every run, and on a machine
-    without one waited out the read instead (0.6.11, found by review).
+    without one waited out the read instead.
     In-process only: the guard cannot see a subprocess, and those tests
     stay offline by what they run -- a dry run, a desk that declares
     nothing, a stub for a backend. The refusal is raised *and* held

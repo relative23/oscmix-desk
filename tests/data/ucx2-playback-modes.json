@@ -1,5 +1,5 @@
 {
-  "source": "docs/evidence/0.7.1/sample-rates.json",
+  "source": "v0.7.1:docs/evidence/0.7.1/sample-rates.json",
   "source_sha256": "080d9e29f96591d52fdd635fa39cde4650e85e5aae4fda97183a7449683c38cb",
   "note": "First actual ALSA observation of each measured mode. No synthetic hardware results.",
   "cases": [

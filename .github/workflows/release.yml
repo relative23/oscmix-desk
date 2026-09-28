@@ -86,6 +86,21 @@ jobs:
           PY
           cd build/release
           sha256sum --check SHA256SUMS
+      - name: Collect the evidence attached to the draft release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          # Measured evidence is not kept in the repository. It is attached
+          # to the draft before the tag is pushed and checked here against
+          # the tagged sources before anything is attested or published.
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          mkdir build/evidence
+          for name in release-notes.md software-qualification.json lifecycle.json \
+                      hardware-evidence.json write-sweep-ucx2.json; do
+            gh release download "$RELEASE_TAG" --pattern "$name" --dir build/evidence
+          done
       - name: Require the release tag and include its measured evidence
         if: github.ref_type == 'tag'
         env:
@@ -97,7 +112,7 @@ jobs:
           output = Path('build/release')
           manifest = json.loads((output / 'release-manifest.json').read_text())
           assert os.environ['RELEASE_TAG'] == 'v' + manifest['version']
-          evidence = Path('docs/evidence') / manifest['version']
+          evidence = Path('build/evidence')
           assert (evidence / 'release-notes.md').is_file(), 'Release notes are required before tagging'
           software = json.loads((evidence / 'software-qualification.json').read_text())
           assert software['candidate'] == manifest['version'] and software['status'] == 'qualified'
@@ -136,8 +151,10 @@ jobs:
           for record in (hardware, sweep):
               assert record['oscmix_revision'] == manifest['oscmix_revision']
               assert record['desk_source']['runtime_sha256'] == runtime, 'Hardware evidence predates this runtime'
-          for source in sorted(evidence.glob('*.json')):
-              shutil.copy2(source, output / source.name)
+          for name in ('software-qualification.json', 'lifecycle.json',
+                       'hardware-evidence.json', 'write-sweep-ucx2.json'):
+              assert not (output / name).exists(), 'Duplicate asset name: ' + name
+              shutil.copy2(evidence / name, output / name)
           shutil.copy2(evidence / 'release-notes.md', output / 'release-notes.md')
           (output / 'SHA256SUMS').write_text(''.join(
               hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name + '\n'

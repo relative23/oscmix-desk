@@ -348,7 +348,7 @@ def reconcile_now(config: Config, reason: str, backend: Control,
     decide REMEMBER ownership. An unavailable receiver refuses this
     operation; contradictions and unsafe indirect writes raise WriteFailed.
     Returns True after the selected plan completes, including an empty one.
-    Triggers are enumerated and never a timer: docs/decisions/0013.
+    Triggers are enumerated and never a timer.
     """
     device = device_for_name(config.device_name)
     result = verify_routing(expected_registers(config), backend, VERIFY_TIMEOUT,

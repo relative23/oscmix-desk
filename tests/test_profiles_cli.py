@@ -390,7 +390,7 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
     assert "could not tell which desk oscmix.service runs" in caplog.text
     # A unit that was read and resolves no config has no desk to re-apply:
     # that None is an answer, not a guess. A command line this parser
-    # cannot read is a guess again (both found by review).
+    # cannot read is a guess again.
     from oscmix_desk.process import UnitProcess
 
     for argv, guessed in ((("oscmix-session",), False),

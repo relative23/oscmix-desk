@@ -83,7 +83,7 @@ def _kept_for_this_process(fresh: Config, running: Config
     would apply here, and refuses what a restart would take somewhere
     else. The first cuts compared the bare file: they refused the
     session's own desk under ``--osc-port``, with advice to restart that
-    a restart did not follow (found by review, 0.6.11).
+    a restart did not follow.
 
     Only ``routing.conf`` can name another machine since 0.7.0 -- a
     profile that does is refused where it is loaded, and the desk in

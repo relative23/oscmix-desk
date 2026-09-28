@@ -1,7 +1,6 @@
 # Fedora Silverblue host installation
 
-Development for 0.8.0. The final release and repository qualification are still
-open. These instructions use host RPM layering, with the ordinary systemd user
+These instructions use host RPM layering, with the ordinary systemd user
 service and matching upstream GTK companion. Installation and maintenance take
 place on the Silverblue host. Configuration and profiles remain in the user's
 writable home directory.
@@ -69,7 +68,7 @@ running host's mixer processes or manage its persistent `/var` state. The
 package guard therefore defers those actions only for its explicit RPM-hook
 invocation when rpm-ostree supplies both `/run/ostree-booted` and
 `SYSTEMD_OFFLINE=1`. Ordinary guard commands on the booted host retain their
-checks. See [ADR 0034](decisions/0034-rpm-ostree-maintenance.md).
+checks.
 
 Before any deployment change affecting desk, close GTK and manual sessions,
 stop the user service, and set the host's maintenance fence:
@@ -116,12 +115,12 @@ configuration, GTK preferences and later hardware changes are not rolled back.
 Keep the source of the intended package pair for later updates.
 
 Use deployment/reboot transitions for this installation path. Live replacement
-and an unlocked `/usr` are outside the qualified workflow.
+and an unlocked `/usr` are not supported.
 
 ## Removal
 
 Disable control with `oscmix-setup --disable`, close all mixer processes, and set
-the fence. Save the reviewed guard before removing its package, so maintenance
+the fence. Save the guard before removing its package, so maintenance
 can be completed after the next boot:
 
 ```sh
@@ -146,11 +145,3 @@ can bypass this procedure; the maintenance workflow does not constrain root.
 The [rpm-ostree administration handbook](https://coreos.github.io/rpm-ostree/administrator-handbook/)
 describes the underlying deployment, layering and rollback commands. The package
 adapter uses the [2026.1 script sandbox contract](https://github.com/coreos/rpm-ostree/blob/v2026.1/src/libpriv/rpmostree-scripts.cxx).
-
-The [development evidence](evidence/0.8.0/silverblue-development.json) records the
-tested image, package payloads, SELinux state and lifecycle results.
-`tests/silverblue_lifecycle.py` reproduces the five phases around four actual
-VM reboots, including full installed-file checks against the package manifests.
-Its docstring gives the isolated VM setup and invocation. Device I/O, physical
-hotplug, suspend/resume, desktop GTK, signed repositories and the final 0.8.0
-payload require their remaining qualification.

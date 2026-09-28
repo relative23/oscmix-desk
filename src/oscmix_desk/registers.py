@@ -32,7 +32,7 @@ from typing import Dict, Mapping, Optional, Sequence, Set, Tuple
 
 class VerifyClass(str, Enum):
     """How a register can be checked. A closed set since it was named;
-    an enum since 0.7.0, like the two below (first outside review). All
+    an enum since 0.7.0, like the two below. All
     three compare as the strings they were, and are printed by ``.value``:
     what ``str()`` makes of a string enum differs between Python versions.
     """
@@ -111,7 +111,7 @@ BOOL, ENUM = Domain.BOOL, Domain.ENUM
 #: The capability a register names when it has no channel dimension at
 #: all -- `/echo/delay`, `/clock/source`, `/controlroom/dim`. There are
 #: 42 of these on a UCX II across five families, and they are the half
-#: of 0.4.0 that needs no config-format decision (docs/ROADMAP.md).
+#: of 0.4.0 that needs no config-format decision.
 #:
 #: Not a channel list of length one: a global register has no channel,
 #: and giving it a fake one would put `/echo/delay/1` within reach of

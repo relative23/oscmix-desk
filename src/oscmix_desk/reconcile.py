@@ -45,7 +45,7 @@ the backend folds their addresses onto a neighbouring channel.
 
 This module used to carry the note that nothing in the runtime wrote
 through it yet. It was true for one release and then not, and it stayed
-for three more -- an outside review found it. A claim about what the
+for three more. A claim about what the
 rest of the code does belongs next to a test that would fail when it
 stops being true, or it belongs nowhere.
 """
@@ -169,7 +169,7 @@ class Phase(IntEnum):
     a reference level landing before the routing exists would be audible
     for the width of it.
 
-    An enum since 0.7.0 (first outside review): a phase was an ``int``,
+    An enum since 0.7.0: a phase was an ``int``,
     and nothing stopped a fourth value or a swapped argument.
     """
 

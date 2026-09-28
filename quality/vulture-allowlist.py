@@ -3,7 +3,7 @@
 The dead-code gate ran at `--min-confidence 80` until 0.6.2, and 80 is
 the level at which vulture reports only what it is nearly certain of --
 unreachable code after a return, an unused import. Everything below it
-was invisible, and the audit that followed an outside review found
+was invisible, and an audit then found
 three functions there with no caller at all (`routes_of`,
 `unreachable`, `channel_limit`) and three backend traits the docstring
 promised the control flow would read and nothing read.

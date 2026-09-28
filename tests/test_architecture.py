@@ -257,7 +257,7 @@ def test_the_declared_layer_is_what_the_module_imports(path):
     """The other direction. An edge nothing uses is a permission nobody
     reviewed: `routing -> osc`, `verify -> osc` and `pipewire -> log` sat
     in the map long after the imports were gone, and the package
-    docstring described a graph from 0.2.0 (found by review, 0.6.11)."""
+    docstring described a graph from 0.2.0."""
     _, relative = imports_of(path)
     allowed = ALLOWED_IMPORTS[path.stem]
     assert allowed <= relative, (
@@ -462,17 +462,17 @@ def test_the_architecture_page_invents_no_modules():
 
 
 def test_the_page_carries_no_history():
-    """Chronicle belongs in the roadmap, decisions in the ADRs.
+    """The page describes how it works now, not how it got there.
 
     Not style policing: the page rotted because it mixed "how it works"
     with "how we got here", and the second kind of sentence is the kind
     nobody updates. Version numbers in prose are the tell.
     """
     text = repo_file("docs", "ARCHITECTURE.md").read_text()
-    body = text[text.index("## The system it sits in"):text.index("## Design decisions")]
+    body = text[text.index("## The system it sits in"):text.index("## Design constraints")]
     dated = re.findall(r"\b0\.\d\.\d\b", body)
     assert dated == [], (
-        "version numbers in the architecture body belong in the roadmap: %s"
+        "version numbers do not belong in the architecture body: %s"
         % dated)
 
 
@@ -496,7 +496,7 @@ def test_a_patch_that_nothing_reads_fails_the_test(monkeypatch):
 
 def test_the_supported_surface_is_this_and_grows_by_decision(session_mod):
     """78 names until 0.7.0, most of them internals, each one something a
-    caller could come to depend on (third outside review). What is left is
+    caller could come to depend on. What is left is
     what somebody scripting their desk needs: read a config, apply and
     verify it, switch profiles, the errors and outcomes those produce, the
     two entry points. A name more is a decision, made here."""

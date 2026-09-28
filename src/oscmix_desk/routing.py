@@ -26,7 +26,7 @@ from .reconcile import (
 from .streams import PlaybackGuard
 
 # Asked before every write and between every phase of the background
-# verifier. See docs/decisions/0009-verifier-stop-contract.md: the
+# verifier. The
 # verifier may run for two verification windows plus a blind delay after
 # READY=1, and everything it does in that time is a write to a device
 # somebody may just have asked to stop.

@@ -1,13 +1,9 @@
 # Architecture
 
-How oscmix-desk is built, in the present tense. It carries no history:
-why a thing is the way it is lives in [the decision
-records](decisions/), measurements live in [the evidence guide](HARDWARE-EVIDENCE.md)
-and [history](history/), and future work lives in [the roadmap](ROADMAP.md).
+How oscmix-desk is built, in the present tense.
 
 `tests/test_architecture.py` checks the runtime module inventory against this
-page and enforces the dependency rules. These checks do not establish that
-every behavioral description is accurate; those still require source review.
+page and enforces the dependency rules.
 
 ## The system it sits in
 
@@ -137,7 +133,7 @@ Two consequences run through everything else:
   dropped, and changes nothing.
 
 The table itself is exempt from mutation testing and checked against
-recorded device dumps instead ([ADR 0015](decisions/0015-the-register-table-is-not-mutated.md)).
+recorded device dumps instead.
 
 ## Who wins: pin and remember
 
@@ -151,9 +147,7 @@ as confirmations. Indirect link/partner changes are checked before writing.
 
 PIN is enforced only at the enumerated startup, repair and reload/resume
 operations. Device reports outside those windows do not trigger a continuous
-reconciliation loop
-([ADR 0012](decisions/0012-pin-and-remember.md),
-[ADR 0013](decisions/0013-reconcile-triggers.md)).
+reconciliation loop.
 
 ## The two-phase apply
 
@@ -161,7 +155,7 @@ Channel links are written before the mix matrix, with a barrier between
 them. Sending both in one burst silences every even output, because
 oscmix only learns a pair is linked when the device echoes the change
 back over MIDI, and a `/mix` write that overtakes that echo is evaluated
-against the stale flag ([ADR 0001](decisions/0001-two-phase-routing-apply.md)).
+against the stale flag.
 
 The barrier waits for device-origin reports on the operation connection.
 GTK has its own subscription and cannot take away the desk receive path.
@@ -185,7 +179,7 @@ keeps both across every write, observation and repair. Routing and verification
 never select a transport, reconnect or acquire another lease. Profile switch
 and main-desk restore use one activation path; the acknowledged operation end
 precedes marker persistence under the still-held file lock. Disconnect/failed
-completion leaves that marker unchanged. See [ADR 0030](decisions/0030-backend-owned-control.md).
+completion leaves that marker unchanged.
 
 The connection filters backend-derived cache reports out of hardware
 observations and preserves each decoded delivery until its consumer finishes
@@ -221,7 +215,7 @@ because 1 already means a failure. A caller has to be able to tell *the
 desk drifted* from *the backend never answered*: conflating them makes a
 monitoring check report healthy silence while the backend is down.
 
-## Design decisions
+## Design constraints
 
 - **Python, standard library only.** The original implementation was shell
   + inline Python. A single Python process gives testable pure functions,
@@ -234,7 +228,7 @@ monitoring check report healthy silence while the backend is down.
   system locations. Configuration, profiles and the active marker remain
   with the selected user. Root installs host activation/resume adapters and
   the shared runtime directory. A source install with `--no-udev` omits those
-  host changes and uses the per-user runtime fallback (ADR 0023). Installation
+  host changes and uses the per-user runtime fallback. Installation
   and explicit hardware activation remain separate operations on every target.
 
 - **`oscmix-launch` shares the read-only identity checks.** It uses the
@@ -251,7 +245,7 @@ monitoring check report healthy silence while the backend is down.
 - **udev remove matches `ENV{PRODUCT}`.** At remove time the sysfs
   attributes are already gone, so an `ATTR{idVendor}` match never fires.
   What ends the service on unplug is not this rule but the backend
-  exiting with its device (ADR 0013); the remove match is what lets the
+  exiting with its device; the remove match is what lets the
   user manager retire the device unit it tagged on add.
 
 - **Stale cleanup identifies the control owner.** The listening SEQPACKET
@@ -261,7 +255,7 @@ monitoring check report healthy silence while the backend is down.
   process and the association is checked again before signalling. A live desk,
   another device or uncertain ownership is a refusal. The backend handles
   abandoned socket files under its own owner lock; desk does not kill an old
-  UDP session to make room (ADR 0021, ADR 0030).
+  UDP session to make room.
 
 - **One interface, resolved once.** `discovery.resolve_device` answers
   which interface a desk is for -- serial, sequencer client and lock key
@@ -272,7 +266,7 @@ monitoring check report healthy silence while the backend is down.
   connects to the matching kernel peer, and acquires the whole-operation
   lease while holding the device file lock. The shared runtime directory
   belongs to `root:audio`; filesystem access, process identity and operation
-  ownership are distinct checks (ADR 0024, ADR 0030).
+  ownership are distinct checks.
 
 - **Named PipeWire sinks are generated, not hardcoded.**
   `oscmix-session --pipewire-sinks` derives one loopback sink per stereo
@@ -288,13 +282,13 @@ module adapts the existing systemd user unit, udev rules and shared lock directo
 Deployment identity lives in a generation-owned file; the ordinary persistent
 package fence protects changes of that identity. Configuration, profiles and
 marker stay in the user's writable configuration directory. No additional
-runtime manager or protocol implementation is introduced (ADR 0033).
+runtime manager or protocol implementation is introduced.
 
 Silverblue layers the ordinary Fedora RPM pair into its immutable deployment.
 The common systemd user service and setup opt-in remain the runtime interface.
 Its RPM composition sandbox defers package-maintenance hooks; the operator uses
 the common guard on the booted host before deployment changes and finishes the
-persistent fence only after checking the new booted payload (ADR 0034).
+persistent fence only after checking the new booted payload.
 
 The source-installation layout is:
 

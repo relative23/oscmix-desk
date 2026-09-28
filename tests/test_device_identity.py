@@ -252,7 +252,7 @@ def test_hardware_evidence_refuses_to_name_one_of_two_boxes(tmp_path,
 
 
 # --------------------------------------------------------------------------
-# What an independent review of this release found before it shipped.
+# Cases found before 0.6.9 shipped.
 # --------------------------------------------------------------------------
 
 

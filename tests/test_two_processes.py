@@ -1,4 +1,4 @@
-"""Two real processes switching at once (second outside review).
+"""Two real processes switching at once.
 
 The lock, the marker's temporary file and the path both are found under
 are each computed by the process that uses them. Threads in one process

@@ -298,7 +298,7 @@ def _terminate(pid: int, still_stale: Callable[[], bool]) -> bool:
     block it -- and then nothing is signalled. Until 0.7.0 that case fell
     back to os.kill, which is the race this function exists to avoid, and
     it took the fallback for a process that had merely exited as well
-    (second outside review).
+   .
     """
     try:
         fd = os.pidfd_open(pid)

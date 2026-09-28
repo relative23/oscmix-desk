@@ -38,7 +38,7 @@ def serial_in(name: str) -> Optional[str]:
 #: the first quote and the last quote before it. A client name is chosen
 #: by whoever opens the sequencer and may carry quotes and brackets of its
 #: own -- `Fireface UCX II (99887766)" [Kernel` passed an unanchored match
-#: and bound a user-space client (found by review, 0.6.9).
+#: and bound a user-space client.
 _CLIENT_LINE_RE = re.compile(
     r'^Client\s+(\d+)\s*:\s*"(.*)"\s*\[(\w+)[^\]\n]*\]\s*$', re.MULTILINE)
 _CLIENT_NUMBER_RE = re.compile(r"^Client\s+(\d+)\s*:", re.MULTILINE)
@@ -51,7 +51,7 @@ def _kernel_clients(text: str) -> List[Tuple[int, str]]:
     more than one line was forged -- a client name may contain a newline --
     and nothing in the file says which of the lines is real, so that is a
     refusal with its reason rather than a guess, or a silent drop that
-    made the real interface vanish (found by review, 0.6.9).
+    made the real interface vanish.
     """
     numbers = collections.Counter(
         int(number) for number in _CLIENT_NUMBER_RE.findall(text))
@@ -78,7 +78,7 @@ def _named(names: Sequence[str], device_name: str) -> List[int]:
     `[device] name` has always been a substring match, and stays one; but
     a model whose name is the start of another's -- `Fireface 802` beside
     a `Fireface 802 FS` -- is matched exactly first, so it is not two
-    candidates (found by review, 0.6.9).
+    candidates.
     """
     exact = [i for i, name in enumerate(names)
              if name == device_name or _model(name) == device_name]
@@ -384,8 +384,8 @@ def device_serials(cards: Path = Path("/proc/asound/cards"),
 
     Matched on the model the way the sequencer clients are, so a Fireface
     802 beside a UCX II is not a second UCX II -- counting every "Fireface"
-    line made that machine ambiguous for either desk (found by review,
-    0.6.9). One entry per card: its second line repeats the serial, and
+    line made that machine ambiguous for either desk. One entry per card:
+    its second line repeats the serial, and
     counting lines made one interface look like two (measured, 0.6.8).
 
     More than one means the machine has more than one box, and nothing

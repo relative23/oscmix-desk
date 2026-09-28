@@ -160,7 +160,7 @@ class Machine(NamedTuple):
         looks for it as a substring: another spelling that finds the
         same client is refused until a restart. The first cuts compared the bare file and refused
         the session's own desk: the pinned box once routing.conf named
-        it, then a file under ``--osc-port`` (found by review, 0.6.11).
+        it, then a file under ``--osc-port``.
         """
         mine = self if self.serial else self._replace(serial=live.serial)
         return mine.differs_from(live)
@@ -170,7 +170,7 @@ class Machine(NamedTuple):
 class Config:
     """A desk, parsed and validated, and not changed after that.
 
-    Frozen since 0.7.0 (first outside review). It was built by assignment
+    Frozen since 0.7.0. It was built by assignment
     and then assigned to from four more places -- the command line's
     overrides, the serial a start pins, a running session keeping its
     machine settings, a profile's base -- so "the config" was whatever

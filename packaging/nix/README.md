@@ -112,12 +112,10 @@ A failed activation may already have changed the selected profile and some
 system files. Leave the fence in place, complete activation of the selected
 known generation, and verify `/run/current-system` and the expected mixer
 integration before finishing maintenance with the saved guard. Preserve the
-matching source configuration for later rebuilds. In the qualified NixOS
-26.05.10529.c508844df6c2 VM, traversal of an older generation failed with
-`Failed to get GID for tester` after that user disappeared from logind.
-The fence retained protection; explicit restoration of the saved generation
-preserved all user files. The [execution record](../../docs/evidence/0.8.0/series9-nixos-development.json)
-retains both the failure and successful recovery.
+matching source configuration for later rebuilds. Traversing an older
+generation can fail, for example with `Failed to get GID for <user>` after
+that user's session has ended; the fence keeps protecting the installation,
+and selecting the saved generation explicitly restores it.
 
 To disable, keep the module imported, set `activate = false`, and switch while
 fenced. Finish maintenance and leave the unit stopped. To remove integration,

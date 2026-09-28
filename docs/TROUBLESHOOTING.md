@@ -1,9 +1,7 @@
 # Troubleshooting
 
-Work through the layers in order -- each one has a quick check.
-This page follows the 0.8.0 development control path. For the installed 0.7.3
-release, use its tagged documentation; the transports and recovery semantics
-differ as described in [UPGRADING](UPGRADING.md).
+Work through the layers in order -- each one has a quick check. For releases
+before 0.8.0, use the documentation of that release tag.
 
 ## 1. Is the device on the bus?
 
@@ -56,7 +54,7 @@ oscmix-session --dry-run        # inspect config/device and preview planned writ
 
 Registered OpenRC/runit installations use `oscmix-service status` and their
 native service logs in place of the systemd commands above. See the
-[host integration guide](INSTALLATION.md#alpineopenrc-and-voidrunit-080-development).
+[host integration guide](INSTALLATION.md#alpineopenrc-and-voidrunit).
 
 Common findings in the journal:
 
@@ -105,8 +103,7 @@ Common findings in the journal:
   another model and routes to channels `<B>` does not have. Exit 2,
   nothing written. (0.6.11 validated for the file's device and warned
   that `--device` had replaced the name afterwards.)
-- `no active UCX II hardware playback stream is observable` (0.7.2
-  development) -- the PCM is stopped or absent, so the desk can check
+- `no active UCX II hardware playback stream is observable` -- the PCM is stopped or absent, so the desk can check
   register addresses but cannot validate a live USB mode. This is normal
   at boot before playback starts; it is not evidence of a 48-kHz stream.
 - `route ... needs playback ... but ... carries playback 1..N` or
@@ -114,7 +111,7 @@ Common findings in the journal:
   playback channel or a measured hardware stream. Check the UCX II's
   `/proc/asound/cardN/stream0` and `pcm0p/sub0/hw_params`; a PipeWire client's
   requested rate can differ from the hardware rate. See the
-  [measured mode table](evidence/0.7.1/sample-rates.md).
+  [per-mode table](FEATURE-SURFACE.md#hardware-boundary).
 - `cannot validate the active USB playback mode` or `USB playback mode
   or identity changed during the apply` -- let the stream settle, then
   retry. A refusal before the first write changes nothing; a later
@@ -136,12 +133,11 @@ Common findings in the journal:
   2 and leaves the hardware untouched.
 - `profile '<name>' names another backend or interface than
   .../routing.conf -- <what differs>` -- a profile is the desk, not the
-  machine (ADR 0026), so one whose `[osc]` or `[device]` resolve to
+  machine, so one whose `[osc]` or `[device]` resolve to
   something else than `routing.conf`'s is refused: a switch to it exits
-  2 and writes nothing, a listing shows it as broken, and if it was
-  still the active profile from 0.6.x -- where it won -- the start and
-  every reload apply `routing.conf` and say `ignoring ...` with this
-  reason. A profile made with `--dump-config` restates the main config's
+  2 and writes nothing, a listing shows it as broken, and if it is
+  still the active profile, the start and every reload apply
+  `routing.conf` and say `ignoring ...` with this reason. A profile made with `--dump-config` restates the main config's
   values and is not meant -- until `routing.conf`'s port or device
   changes, after which the dump names the old one. Taking `[osc]` and
   `[device]` out of the profile is the remedy either way; a desk that
@@ -171,8 +167,8 @@ during a desk lease and while refreshing after it. It never replays an edit
 rejected while busy or disconnected. The old `OSCMIX_LINK_SYNC_DELAY` workaround
 for a GUI-held UDP receiver no longer applies.
 
-`systemctl --user status oscmix.service` also shows a `Status:` line
-since 0.6.3: `applying routing`, `verifying routing`, `reconciling
+`systemctl --user status oscmix.service` also shows a `Status:` line:
+`applying routing`, `verifying routing`, `reconciling
 (SIGHUP)`, `running; verifier finished at HH:MM:SS`, `running;
 verifier failed at HH:MM:SS`, `running; reconciled at HH:MM:SS`, or
 `running; reconcile skipped at HH:MM:SS`. "Skipped" means the reconcile
@@ -182,20 +178,17 @@ could not be reached. The journal and partial-apply details distinguish
 refusal before writes from failure after submissions. "Verifier failed"
 does not erase the initial application or certify its values. The status
 line describes activity, not ownership or a complete hardware snapshot.
-The unit takes the same file lock a
-switch takes (ADR 0019), and since 0.6.7 that lock is named after the
-interface (ADR 0022). Since 0.6.8 it lives in `/run/oscmix-desk/`,
-which does not depend on the environment, the user or the config
-directory the way `$XDG_RUNTIME_DIR` did (ADR 0023), so a
-profile switch right after a replug waits for the start-up verifier's
-lock and says so. Past `SWITCH_LOCK_WAIT` (30 s) it refuses
-and writes nothing. Since 0.6.6 both the unit and a switch read the
-desk *inside* that lock (ADR 0020), so whichever of them gets it first,
-the other applies what was committed rather than what it read earlier.
+The unit takes the same file lock a switch takes. It is named after the
+interface and lives in `/run/oscmix-desk/`, independent of the environment,
+the user or the config directory, so a profile switch right after a replug
+waits for the start-up verifier's lock and says so. Past `SWITCH_LOCK_WAIT`
+(30 s) it refuses and writes nothing. Both the unit and a switch read the desk
+*inside* that lock, so whichever gets it first, the other applies what was
+committed rather than what it read earlier.
 
-Since 0.6.9 a start that cannot take the lock fails instead of reporting
-ready, and systemd tries again after a few seconds (ADR 0024). Four
-refusals name their cause in the journal and on the command line:
+A start that cannot take the lock fails instead of reporting ready, and
+systemd tries again after a few seconds. Four refusals name their cause in
+the journal and on the command line:
 
 ```
 cannot open the device lock at /run/oscmix-desk/2a39-3fd9-24216011.lock:
@@ -470,9 +463,9 @@ stays where you put it. `[pin] output.volume` does not change this: it
 decides who wins for a value the config declares, not whether the
 config declares it.
 
-A profile, by contrast, survives all of this since 0.6.3: the switch
+A profile, by contrast, survives all of this: the switch
 remembers it beside `routing.conf`, and starts and reloads apply the
 remembered profile. If the desk came back as `routing.conf` anyway,
 the journal's start line says why -- the marker names a profile that
 no longer loads -- and `--no-profile` or fixing the file ends it. See
-*Profiles* in the README and ADR 0018.
+*Profiles* in the README.

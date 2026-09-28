@@ -457,7 +457,7 @@ if [ "$DO_UDEV" = 1 ]; then
 else
     info "skipping the root steps (--no-udev): no hotplug autostart, no"
     info "reconcile after resume, and the device lock falls back to the"
-    info "per-user runtime directory (ADR 0023)"
+    info "per-user runtime directory"
 fi
 
 # --------------------------------------------------------------------------

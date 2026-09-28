@@ -1,9 +1,8 @@
 # Coordinated backend wire contract (ODK1)
 
-This is the local protocol introduced by the 0.8.0 development patch series.
-It uses one Linux `AF_UNIX/SOCK_SEQPACKET` connection; each packet contains
-one frame. It is not an additional hardware protocol. See
-[ADR 0030](decisions/0030-backend-owned-control.md) for ownership and limits.
+The local protocol between the patched oscmix backend, the desk and the GTK
+mixer. It uses one Linux `AF_UNIX/SOCK_SEQPACKET` connection; each packet
+contains one frame. It is not an additional hardware protocol.
 
 All integers are unsigned big-endian. The 24-byte header is:
 
@@ -60,10 +59,9 @@ when the backend becomes free. Readers cannot write or acquire leases.
 
 Origin describes the backend path producing the report. It does not add
 hardware generation tags, atomic snapshots or capabilities absent from the
-register model. Computed fields still require their dependencies to be
-qualified. Input-mix reports are suppressed until their level, pan, links and
-required stereo partner have been observed since the last command/refresh;
-see [ADR 0031](decisions/0031-complete-input-mix-observations.md).
+register model. Input-mix reports are suppressed until their level, pan,
+links and required stereo partner have been observed since the last
+command/refresh.
 A cached playback stereo flag is never hardware confirmation
 merely because it arrived over this connection.
 
@@ -82,7 +80,7 @@ so a known gap cannot silently leave old observations or a writer lease valid.
 An observed MIDI hangup/error takes precedence over buffered reports and queued
 client writes, even when the pipe also reports readable tail data.
 
-## Reproducing the software qualification
+## Testing a backend build
 
 The manifest pins the upstream commit and each patch's SHA-256. Preparation
 exports that commit without using upstream worktree edits:
@@ -95,13 +93,7 @@ OSCMIX_CONTROL_BINARY=/path/to/new-build/oscmix \
     python3 -m pytest tests/backend_control.py
 ```
 
-`tests/gtk_control.py` uses the actual GTK executable, a private display/bus,
-and the same backend with anonymous simulated MIDI pipes. It requires
-`OSCMIX_QUALIFY_DESKTOP=1`, `--backend`, `--gtk`, a new `--output` directory,
-and system Python's GI/AT-SPI packages. Run under Xvfb and a private
-`dbus-run-session` with a private runtime directory and clean environment.
-It changes only simulated output-volume registers. These software tests do
-not qualify the UCX II or installation targets. The same harness runs actual
-desk CLI profiles against the C backend and GTK, checking serialization through
-read-back and marker persistence, both process startup orders, backend loss
-and replacement. `--cli-only` selects those cases during development.
+`tests/gtk_control.py` runs the actual GTK executable against the same
+backend with simulated MIDI. It requires `OSCMIX_QUALIFY_DESKTOP=1`,
+`--backend`, `--gtk`, a new `--output` directory and the system Python's
+GI/AT-SPI packages, under Xvfb and a private `dbus-run-session`.

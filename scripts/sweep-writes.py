@@ -446,7 +446,7 @@ def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
     reference = state
     for path, register in targets:
         if not permitted(path, register):
-            findings.append(skipped(path, "write not permitted: ADR 0016"))
+            findings.append(skipped(path, "write not permitted for this register"))
         elif path not in state:
             findings.append({"path": path, "verdict": "undetermined",
                              "detail": "device did not report it"})

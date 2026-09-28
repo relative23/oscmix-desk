@@ -154,7 +154,7 @@ def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():
     over: the pinned box once routing.conf named it, the port given on the
     command line once the file named that, and any other port under
     `--osc-port`, with advice to restart that a restart would not have
-    followed (all found by review)."""
+    followed."""
     from oscmix_desk import CommandLine
     from oscmix_desk.model import Machine
 

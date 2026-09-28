@@ -1,12 +1,9 @@
 # Which layer provides which features
 
-This inventory describes the 0.8.0 development implementation: upstream
-`f2fdd5ec78338848754aad32cc07f3440de63395` plus the exact
+What the desk configures and verifies, compared with the pinned upstream
+backend `f2fdd5ec78338848754aad32cc07f3440de63395` plus the
 [backend/GTK patch series](../patches/backend-series.json). Listed GTK controls
 describe source bindings, not a claim that every control was hardware-tested.
-The [development records](evidence/0.8.0/) and [0.7.3 release evidence](evidence/0.7.3/)
-identify their distinct builds and measurements. Final 0.8.0 qualification
-and genuine playback-matrix read-back remain open release conditions.
 
 ## Mixer state
 
@@ -15,7 +12,7 @@ and genuine playback-matrix read-back remain open release conditions.
 | Input and playback routing | Mono channels or odd/even stereo pairs, route level, linked/unlinked outputs and optional output volume. Conflicting pair requirements are refused. Input matrix reports can be checked; playback writes remain unverifiable. | The backend accepts mix level/pan messages. GTK provides output selection and mix faders. It does not edit desk route declarations or run the desk's validation. |
 | Arbitrary pan or a complete matrix editor | No general pan field or arbitrary matrix syntax. Export omits states the route syntax cannot reproduce. | Backend mix messages include pan. GTK's output-pan control is separate from a complete declarative matrix. |
 | Channel faders and switches | The register table defines which flat input/output options are writable on each channel. Some reports, such as output mute, are unreliable and retain that classification. | GTK binds faders, mute, stereo, phase, FX and other channel controls where its channel flags enable them. |
-| Microphone and instrument inputs | Gain, autoset, hi-Z and supported reference levels have channel-specific domains. 48 V is observed but has no writable config domain. | Backend and GTK expose phantom-power writes. Connecting a microphone does not make desk enable 48 V. The 0.7.1 BETA 58A test kept it off. |
+| Microphone and instrument inputs | Gain, autoset, hi-Z and supported reference levels have channel-specific domains. 48 V is observed but has no writable config domain. | Backend and GTK expose phantom-power writes. Connecting a microphone does not make desk enable 48 V. |
 | Three-band EQ and low cut | Nested input/output sections configure the supported parameters. These use REMEMBER by default; declaring a value supplies an initial setting. | Backend handlers and GTK parameter controls exist for both families. |
 | Dynamics and auto level | Nested sections expose the register-table parameters, including thresholds, times and gains. | The backend exposes the parameters. GTK binds the enable switches; its channel code does not bind the nested parameter editors. |
 | Room EQ and crossfeed | Supported output settings and nine-band Room EQ are configurable. Delay uses the backend's OSC units. | Backend handlers exist. No Room EQ or crossfeed controls are bound by the pinned GTK channel code. |
@@ -46,10 +43,9 @@ are separate sources of capability information.
 | Lifecycle | The user service handles start, hotplug/resume and SIGHUP reload, with device identity checks and cooperating-writer locks. Verification follows the initial apply. There is no continuous reconciliation loop. |
 | Metering | The backend streams meters and GTK displays them. Release measurement scripts consume them; there is no desk live-meter UI or recording application. |
 | Desktop audio | `--pipewire-sinks` generates named stereo sinks mapped onto hardware playback channels. PipeWire routes application audio; desk configures the hardware mixer. Neither replaces the other. |
-| Installation | Source installation has preflight, manual operation and explicit activation. DEB/RPM/Arch packages share payload staging and maintenance rules. Additional OpenRC/runit adapters, the opt-in NixOS module, Silverblue layering and signed APT/RPM sources have their own recorded development checks and remaining final gates. |
+| Installation | Source installation has preflight, manual operation and explicit activation. DEB/RPM/Arch packages share payload staging and maintenance rules, as do the OpenRC/runit adapters, the opt-in NixOS module, Silverblue layering and the signed APT/RPM repositories. |
 | Playback mode | UCX II playback writes validate the exact active ALSA/USB mode before each write phase. Known incompatible modes are refused; idle playback is explicitly reported as unvalidated. |
-| Existing mixer | Matching `oscmix-desk-gtk` packages provide the coordinated upstream GTK. The launcher checks protocol and exact backend identity. Desk and GTK share observations; GTK edits are inhibited during whole desk operations and are never replayed after busy/disconnect. Actual GTK and concurrent CLI processes are exercised with simulated MIDI. |
-| Desk desktop application | Deferred; profiles, previews, outcomes and setup remain CLI operations. |
+| Existing mixer | Matching `oscmix-desk-gtk` packages provide the coordinated upstream GTK. The launcher checks protocol and exact backend identity. Desk and GTK share observations; GTK edits are inhibited during whole desk operations and are never replayed after busy/disconnect. |
 
 The coordinated GTK uses the backend lease, while desk also holds its file
 lock for configuration and marker decisions. The old standalone UDP mode is
@@ -60,15 +56,18 @@ state or replaced by PIN on an applicable desk operation; they never rewrite
 
 ## Hardware boundary
 
-The measured device is one UCX II with USB firmware 3.01 / DSP 36.
+Hardware measurements come from one UCX II with USB firmware 3.01 / DSP 36.
 Input/output numbering at Single Speed is analog 1–8, S/PDIF 9/10,
-AES 11/12 and ADAT 13–20; headphones are outputs 7/8. Register addresses,
-USB stream channels and usable physical digital channels differ at higher
-rates. Use the [measured per-mode table](evidence/0.7.1/sample-rates.md).
-The runtime checks live USB playback modes against the recorded capacity
-table. Rate selection belongs to the audio application or audio server.
+AES 11/12 and ADAT 13–20; headphones are outputs 7/8. Usable USB playback
+channels per mode (channels / USB alternate setting):
 
-Register read-back establishes reported state. The routing measurements
-establish effects at the device's meters, and the microphone experiment
-also captures actual ALSA PCM. Identity and concurrent-writer checks use
-simulated devices and real CLI processes.
+| Rate | 20 / alt 1 | 16 / alt 2 | 14 / alt 3 | 8 / alt 4 |
+| --- | --- | --- | --- | --- |
+| 44.1, 48 kHz | 1–20 | 1–16 | 1–14 | 1–8 |
+| 88.2, 96 kHz | only 1–16 carry audio | 1–16 | 1–14 | 1–8 |
+| 176.4, 192 kHz | fails | fails | 1–14 | 1–8 |
+
+The runtime checks the live USB playback mode against this table before
+writing. Rate selection belongs to the audio application or audio server.
+Register read-back establishes reported state, not audio; routing effects are
+measured at the device's meters.

@@ -64,8 +64,7 @@ def _has_register_model(device_name: str) -> bool:
 def _warn_unknown_section(section: str, device_name: str) -> None:
     """Say that a section is ignored, and say the right why.
 
-    A warning, not an error. See
-    docs/decisions/0006-routing-conf-compatibility.md: a section this
+    A warning, not an error: a section this
     version does not know is how a *newer* version adds a feature, and
     refusing the whole file over it leaves the device in whatever state
     the last boot left it, with no restart (RestartPreventExitStatus=2).

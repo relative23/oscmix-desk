@@ -65,7 +65,7 @@ def test_a_profile_that_states_another_machine_setting_is_refused(
         profiles.load_profile("one", path)
     assert str(refused.value) == (
         "profile 'one' names another backend or interface than %s -- %s %r "
-        "(not %r). A profile is the desk, not the machine (ADR 0026): take "
+        "(not %r). A profile is the desk, not the machine: take "
         "[osc] and [device] out of %s"
         % (path, attr.replace("_", " "), stated, getattr(main, attr), other))
 
@@ -211,7 +211,7 @@ def test_a_profile_that_names_another_machine_changes_nothing_anywhere(
     assert marker_mod.active_profile(path) is None
     listed = "\n".join(profiles.describe_profiles(path))
     assert "there" in listed
-    assert "ADR 0026" in listed
+    assert "not the machine" in listed
 
     (tmp_path / "active-profile").write_text("there\n")
     with caplog.at_level("WARNING"):

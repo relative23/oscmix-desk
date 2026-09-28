@@ -205,8 +205,7 @@ level = 0.0
 #
 # A refusal costs nothing -- the config is parsed and validated in full
 # before the first datagram, so a typo costs you an error message and
-# not your monitoring. See
-# docs/decisions/0011-a-profile-switch-states-its-outcome.md.
+# not your monitoring.
 
 # ---------------------------------------------------------------------
 # Pin and remember
@@ -233,5 +232,3 @@ level = 0.0
 # announces only channel links when they change -- measured. Everything
 # else is silent until a full state dump is requested. Pinning means
 # this session insists, through the read-back after start.
-#
-# See docs/decisions/0012-pin-and-remember.md.

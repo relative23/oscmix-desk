@@ -369,7 +369,7 @@ def test_a_verdict_records_the_source_it_was_measured_from(harness):
 def test_the_evidence_carries_every_field_the_checklist_names():
     """A checklist item nobody can perform is not a check.
 
-    `docs/RELEASE-CHECKLIST.md` requires the artifact's `sink_channels`
+    `CONTRIBUTING.md` requires the artifact's `sink_channels`
     to read `["FL", "FR"]` -- the guard against measuring a stereo tone
     into the interface's raw 20-channel `Direct` sink, which produced
     three convincing FAILs during the 0.2.0 release run with nothing
@@ -387,7 +387,7 @@ def test_the_evidence_carries_every_field_the_checklist_names():
     import ast
     import re
 
-    checklist = repo_file("docs", "RELEASE-CHECKLIST.md").read_text()
+    checklist = repo_file("CONTRIBUTING.md").read_text()
     required = set(re.findall(r"artifact's `(\w+)`", checklist))
     required |= {"complete", "unmeasured", "oscmix_revision", "routes"}
     assert "sink_channels" in required, (

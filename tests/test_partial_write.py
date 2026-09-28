@@ -1,4 +1,4 @@
-"""A write that fails part of the way (third outside review, ADR 0027).
+"""A write that fails part of the way.
 
 A switch promises an outcome and never an exception (ADR 0011). Until
 0.7.0 a socket error after some of the registers had gone was a

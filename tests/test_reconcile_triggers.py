@@ -218,8 +218,6 @@ def test_no_sample_rate_trigger_exists_and_that_is_deliberate():
     nothing measured for it to repair, and this test exists so that
     stays a decision rather than becoming an oversight -- if somebody
     adds the handler, they have to come here and say what loss it fixes.
-
-    docs/decisions/0013-reconcile-triggers.md, "Alternatives considered".
     """
     import ast
 

@@ -12,7 +12,7 @@ here, next to the tests that are their only reason to exist.
 **It builds its own messages.** Until 0.7.0 it imported
 ``link_messages`` and ``mix_messages`` from the reconciler it is the
 oracle for, so a wrong register there was wrong on both sides of every
-comparison (third outside review). What is below is written from what
+comparison. What is below is written from what
 the device and upstream do, not from that code, and
 ``tests/test_golden_messages.py`` holds both to the same literals.
 """

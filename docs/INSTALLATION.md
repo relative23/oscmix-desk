@@ -1,8 +1,6 @@
 # Installation and package recovery
 
-These instructions are being updated for 0.8.0; qualification remains open
-in the [release plan](plans/0.8.0-reliability-integration.md). Use the instructions
-for the version you downloaded; 0.7.0/0.7.1 installers do not have the `--check`,
+Use the instructions for the version you downloaded; 0.7.0/0.7.1 installers do not have the `--check`,
 `--manual`, `--enable` or `oscmix-setup` interface.
 
 The common runtime needs Python 3.9 or newer and the pinned `oscmix` C
@@ -99,14 +97,10 @@ systems, use the distribution's boot-time directory mechanism. Without this
 directory, the per-user fallback does not coordinate different users.
 `--no-udev` skips all root integration, including provisioning this lock.
 
-The source path is exercised on Debian 13, Ubuntu 24.04/26.04, Fedora 44,
-openSUSE Leap 16, Arch and Alpine 3.22/musl. Container tests cover building,
-installation, the CLI and simulated lifecycle. They do not qualify every
-desktop, init adapter, CPU architecture or actual hardware configuration.
-The additional 0.8.0 OpenRC/runit adapters are described below; their final VM
-qualification remains separate from these historical container results.
+The source installer is tested on Debian 13, Ubuntu 24.04/26.04, Fedora 44,
+openSUSE Leap 16, Arch and Alpine 3.22 (musl).
 
-## Alpine/OpenRC and Void/runit (0.8.0 development)
+## Alpine/OpenRC and Void/runit
 
 Install the ordinary source payload as the intended audio user. The host kernel
 must provide ALSA sequencer support (`/dev/snd/seq`); a cloud kernel without the
@@ -181,19 +175,7 @@ payload should also be removed. The shared lock directory and user desk are
 preserved. These adapters use UID/group isolation; they do not provide the
 systemd unit's sandbox.
 
-`tests/native_service_lifecycle.py` is the reproducible absent-device lifecycle
-check for the disposable qualification VMs. Its two phases surround a real
-reboot with maintenance left open. It refuses a non-qualification host, another
-runtime account or a connected RME USB device. This covers native supervision
-and state retention, not physical-device routing or the remaining VM fault cases.
-`tests/native_reload_startup.py --output /root/early-reload.json` separately
-holds the registered child before handler installation and checks all reload
-entry points, followed by successful reload after resuming the same child.
-It has the same disposable-VM, user and absent-device restrictions and leaves
-the service stopped. The [development record](evidence/0.8.0/native-reload-development.json)
-records the reproduced failure and corrected Alpine/Void results.
-
-## NixOS (0.8.0 development)
+## NixOS
 
 The [Nix package and module](../packaging/nix/README.md) build the common payload
 in one immutable store output, with or without the matching upstream GTK mixer.
@@ -203,11 +185,8 @@ the marker remain writable user files. The module uses the existing systemd
 user service, shared lock rules and persistent package-maintenance fence.
 
 Follow that guide for generation switches, reboot, rollback and removal.
-`tests/nixos_lifecycle.py` checks these operations in two phases around an
-actual VM reboot. Development VM checks do not replace the final 0.8.0 software,
-device-I/O and release qualification.
 
-## Fedora Silverblue (0.8.0 development)
+## Fedora Silverblue
 
 Use the [host RPM-layering procedure](SILVERBLUE.md) with the matching Fedora
 core/GTK pair. It keeps the common systemd user unit, explicit setup opt-in and
@@ -217,17 +196,14 @@ sandbox cannot own it. The guide includes audio-group provisioning and removal.
 
 ## Native packages
 
-Use a package built for your distribution release and architecture. The
-published 0.7.3 targets are Ubuntu 24.04 DEB, Fedora 44 RPM,
-openSUSE Leap 16 RPM and Arch on x86_64. A Fedora RPM is not an openSUSE
-binary, and a new Ubuntu binary is not implicitly compatible with an older
-Ubuntu libc. A published artifact must carry its checksum and authenticated
-build provenance. The 0.8.0 development matrix adds Debian 13 and Ubuntu 26.04
-DEBs; all six targets now pass their
-[development package checks](evidence/0.8.0/native-development.json).
-Final-candidate checks and signed APT/RPM qualification remain required before
-publication. [Repository staging and recovery](PACKAGE-REPOSITORIES.md) describes
-the implemented generator and actual client tests. The product has no embedded updater.
+Use a package built for your distribution release and architecture: Debian 13
+and Ubuntu 24.04/26.04 DEBs, Fedora 44 and openSUSE Leap 16 RPMs, and Arch, all
+x86_64 (releases before 0.8.0 cover Ubuntu 24.04, Fedora 44, openSUSE Leap 16
+and Arch). A Fedora RPM is not an openSUSE binary, and a newer Ubuntu binary is
+not compatible with an older Ubuntu. Verify downloaded packages as described in
+[release artifacts](RELEASE-ARTIFACTS.md), or use the
+[signed package repositories](PACKAGE-REPOSITORIES.md). There is no built-in
+updater.
 
 Use the native package manager (`apt install ./...deb`, `dnf install
 ./...rpm`, `zypper install ./...rpm`, or `pacman -U ./...pkg.tar.zst`). The
@@ -321,22 +297,13 @@ Repairing GTK never clears an incomplete core transaction, or vice versa.
 Finish or reinstall the selected package using the package manager before
 enabling the service. Do not remove the marker merely to bypass a failure.
 
-DEB/RPM/Arch lifecycle qualification includes first installation, refusal
-with a running mixer, upgrade, recovery with a retained marker, downgrade,
-removal and preservation of desk/profile/active-marker files. Actual
-0.7.0 source-to-native-and-back file migration passes on every native
-target using the installed setup CLI and a simulated user bus. The vendor
-unit and the migration are additionally tested in an Ubuntu VM with a real
-user manager and a simulated backend; its persistent maintenance fence is
-also checked across a VM reboot.
-File rollback cannot undo emitted audio or establish hardware restoration.
+A package rollback restores files, not mixer state or audio already played.
 
 ## Building a native artifact
 
 Run the build on the target distribution with its packaging tools installed,
 as an ordinary build user. Both project and backend inputs are Git revisions;
-release builds require a clean project checkout. `--development` produces
-explicit qualification artifacts from an unfinished tree.
+release builds require a clean project checkout.
 
 ```sh
 python3 scripts/build-package.py --format deb \
@@ -354,39 +321,3 @@ Add `--with-gtk` to build both packages from the same pin and build metadata.
 It produces a separate companion, not an alternative core package with
 overlapping files. The installed companion manifest is
 `/usr/share/oscmix-desk/gtk-package.json`.
-
-## Repeating distribution qualification
-
-From a clean commit on a Linux host with Docker:
-
-```sh
-python3 scripts/qualify-distribution.py --target alpine322 --output build/alpine-source
-python3 scripts/qualify-distribution.py --target ubuntu2404 --native \
-  --development --output build/ubuntu-packages
-```
-
-Each run creates a new output directory with its log, resolved image identity,
-source/backend revisions and result. The Docker context contains a Git bundle,
-not the host home or local Git configuration. Containers have no sound devices,
-host service bus or runtime network access. Native checks build twice, verify
-identical artifacts and exercise the actual package manager's transitions.
-Native checks also launch the installed GTK, launcher and desk CLI against
-the installed C backend with anonymous simulated MIDI pipes and a private
-display/bus. They check shared observations, exclusion over the whole desk
-operation, disconnect and both startup orders, then exercise actual
-previous-version upgrade/rollback. Every native target runs this test on Xvfb;
-Ubuntu 24.04 additionally retains nested GNOME/KDE Wayland and Xfce/X11 sessions.
-For 0.7.3, nested GNOME and KDE Wayland sessions and Xfce/X11 also pass
-the receive-port contention and close/read-back/reopen checks;
-[desktop evidence](evidence/0.7.3/desktop-integration.json) records the actual
-compositor versions, software rendering and fresh received labels.
-`--previous-tag` selects the transition baseline (now 0.7.3 for 0.8.0 development).
-They do not replace VM or hardware qualification.
-
-The [distribution workflow](../.github/workflows/distributions.yml) runs this
-same path for seven source targets and six native targets. Release runs
-require the tag to match the source version, generate GitHub attestations and
-attach only qualified artifacts. Development runs label their packages and
-do not publish them as releases. Verify downloaded provenance with
-`gh attestation verify FILE --repo relative23/oscmix-desk`, as described in
-[GitHub's attestation guide](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).

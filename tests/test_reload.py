@@ -128,7 +128,7 @@ def test_the_box_a_start_pinned_is_not_another_box_when_the_file_names_it(
     """A start pins the serial of the interface it found. Adding that very
     serial to routing.conf -- what TROUBLESHOOTING tells a user with two
     boxes to do -- was read as a desk for another box and refused until a
-    restart (found by review). Naming no serial means "the only one", which
+    restart. Naming no serial means "the only one", which
     is also this one; naming another is elsewhere."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
@@ -152,7 +152,7 @@ def test_a_file_that_appears_is_resolved_like_the_one_a_start_reads(
     refused the file that appeared later and named nothing -- the same
     file present at its start is applied. One for a box with 42 outputs on
     another port is not; it used to be, pinned to this session, without a
-    word (both found by review)."""
+    word."""
     running = started_with(profiles.load_config(None), osc_port=9000)
     path = tmp_path / "routing.conf"
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
@@ -171,7 +171,7 @@ def test_a_file_under_an_override_is_not_a_desk_for_elsewhere(tmp_path,
     """`--osc-port 9000` over a file that moves from 7222 to 9500: the file's
     port was never used and is not used now. It was refused with "restart
     the session to follow it", and a restart with the same command line
-    stays on 9000 (found by review)."""
+    stays on 9000."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     running = started_with(profiles.load_config(path), osc_port=9000)
@@ -269,7 +269,7 @@ def test_another_desk_under_the_lock_is_spoken_about_even_in_the_same_words(
     """The notice about unchecked routes names their number, not the desk.
     Compared by their text, a switch between two profiles of one route each
     during the start left the second unannounced; it is the desk that is
-    compared (found by review)."""
+    compared."""
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Some Box\n"
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
@@ -312,7 +312,7 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     the device and the lock. A file with no routes in it, given some in
     that time, went to an interface nobody modelled unannounced: another
     desk under the lock is spoken about there, and the same one is not
-    spoken about twice (found by review)."""
+    spoken about twice."""
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Some Box\n")
     started = profiles.load_config(path)

@@ -1,931 +1,141 @@
 # Changelog
 
-## 0.7.3 -- 2026-09-24
+## Unreleased
+
+### Changed
+
+- Repair and later reload/resume checks keep every remembered value (volume,
+  mute, phase) after a session's first application, even when the device does
+  not report it. A new session and an explicit profile or `--no-profile`
+  selection still write the declared starting values. `[pin] input.stereo` and
+  `output.stereo` choose the policy of route links.
+- The desk and the upstream GTK mixer share one backend over a local control
+  socket. Both receive device reports, and a desk operation holds the backend
+  until its read-back is done, so mixer edits cannot interleave with it. The
+  old UDP-only backend is refused; backend, ALSA bridge and GTK mixer are built
+  from a fixed patch series and must be upgraded together.
+- `--status --json` reports schema 2: the control socket replaces the removed
+  receive-port section.
+- Resume reloads wait until the user services have been thawed after sleep.
 
 ### Fixed
 
-- Classify each expected register by its latest decoded report in the open
-  observation window. A matching report followed by a differing report
-  previously left a stale confirmation. PIN repair, REMEMBER preservation
-  and strict profile outcomes now see the later value.
-- Check the GTK executable, schema and saved connection before starting
-  a service. Associate an existing backend with the exact desk/device and
-  reply destination, including oscmix's modified `/proc` command line.
-  Reuse matching manual sessions; refuse unrelated listeners, disabled or
-  custom service starts and incomplete package maintenance.
-- Remove the launcher's obsolete fallback to profile-specific machine
-  settings. Profiles inherit the main desk's interface and ports.
-- Pass the chosen C compiler into the upstream GTK sub-build as well as
-  the backend. This fixes builds on systems without a `c99` executable,
-  including openSUSE Leap 16, without changing the backend pin.
-- Explain partial profiles and policy-compliant verification precisely in
-  the README. The desk lock coordinates cooperating desk writers.
-- Increase the nightly mutation job's time budget from 180 to 240 minutes
-  after two scheduled runs exhausted the old limit. Keep the complete-run
-  requirement, score floor and the other jobs' timeout limits unchanged.
+- A later contradictory or invalid report revokes an earlier confirmation,
+  including at the end of an OSC bundle; a wrong or unconfirmed link stops the
+  writes that depend on it.
+- A malformed OSC delivery invalidates the operation instead of confirming a
+  partial prefix.
+- Lost MIDI input or a MIDI hangup ends the backend operation before further
+  reports or writes are used.
+- Input-mix reports are withheld until all their dependencies were observed.
+- An invalid nested channel number is a configuration error, also on reload.
+- PipeWire target names containing quotes or backslashes are encoded exactly.
+- Native reloads wait until the session can handle SIGHUP.
 
 ### Added
 
-- `oscmix-session --status [--json]`: read-only configuration, process,
-  package, GTK, playback-mode and receive-port diagnosis. JSON schema 1
-  keeps service readiness separate from hardware verification and compares
-  the running backend executable with the resolved file.
-- Profile transition previews identify previously declared crosspoints
-  omitted by the requested desk and explain link/partner effects.
-- Verification summaries separate matching values, REMEMBER differences,
-  differing PIN values, missing prompt reports, other unobserved settings
-  and backend-unreportable settings. Outcome states and exit codes are unchanged.
-- Optional `oscmix-desk-gtk` native companion packages with exact core
-  dependencies, distinct file ownership and separate persistent maintenance
-  fences. `build-package.py --with-gtk` builds both core and companion.
-- Real GTK/fake-backend integration checks for both launch orders,
-  receiver contention and deliberate recovery preserving REMEMBER values.
-  Native qualification includes companion add/remove, paired upgrade and
-  downgrade, dependency refusal, repeat builds and actual 0.7.2 transitions.
+- OpenRC (Alpine) and runit (Void) supervision, a NixOS package and module,
+  and Fedora Silverblue installation by RPM layering.
+- Native packages for Debian 13 and Ubuntu 26.04.
+- Signed APT and RPM repositories with a subscription helper that refuses
+  expired or revoked signing keys.
 
-### Qualification
+## 0.7.3 -- 2026-09-24
 
-- Pass all 27 release software gates on the final source: 1,933 tests with
-  two regular skips on Python 3.10–3.14; Python 3.9 passes 1,897 tests with
-  36 additional standard-library introspection skips. Five complete repeats,
-  the 200-cycle soak and fifteen fault-suite repeats pass.
-- Measure 97.81% combined statement/branch coverage of the runtime and
-  entry points. Complete 9,867 mutants: 7,803 killed,
-  2,048 survived, 16 timeouts, 0 uncovered;
-  score 0.792102. The fresh full run is followed by explicitly named
-  rejudgments with refreshed stats for tests added during qualification.
-- Pass seven source/manual distribution targets and four native targets,
-  including paired core/GTK package upgrades, dependency refusal and actual
-  0.7.2 rollback. Repeated native/source builds are byte-identical in each
-  recorded environment; 55 installer tests pass from the extracted archive.
-- Exercise real upstream GTK with a simulated backend on GNOME/KDE Wayland
-  and Xfce/X11, plus isolated X11 on all four native targets. Fresh accessible
-  sample-rate labels prove receipt before and after reopening; recovery
-  preserves REMEMBER values.
-- Repeat the UCX II sweep and all five routes: 1,888 entries confirmed,
-  14 protected skips and all 2,252 readable states restored exactly. The real
-  0.7.2 → 0.7.3 installation preserves the desk; startup, SIGHUP, a complete
-  test run with the interface off and automatic power-on startup all pass.
+### Added
 
-## 0.7.2 -- 2026-09-24
+- `oscmix-session --status [--json]`: a read-only diagnosis of configuration,
+  installation, device, backend, playback mode and mixer.
+- `--dry-run --profile NAME` names previously declared routes the target
+  profile leaves undeclared and the link changes it causes.
+- Verification summaries separate matching values, kept remembered values,
+  differing pinned values, missing reports and unreportable settings.
+- Optional `oscmix-desk-gtk` packages with the upstream GTK mixer.
 
 ### Fixed
 
-- Spell the optional GTK staging prerequisite as an explicit conditional
-  accepted by both local and CI ShellCheck versions. Missing companion or
-  schema still refuses the operation before staging files.
-- Exclude generated Python bytecode from release qualification's supporting
-  file fingerprints. Testing the package helpers under several Python
-  versions must not make unchanged installation sources appear different.
-- Read backend revision metadata only from its own Git directory. A
-  broken nested checkout could previously report the containing desk
-  repository's commit; an unborn checkout could report the word `HEAD`.
-  Both now report an unknown revision, while linked worktrees still work.
-- Refuse incomplete mutation runs even when their partial score passes.
-  The policy now requires every generated mutant to have a completed
-  outcome and rejects skipped/interrupted/error outcomes and stale exports.
-  An interrupted local run exposed the previous false success.
-- Preserve each measured peak in the hardware evidence report independently.
-  A right-tone peak of exactly 0 dBFS or a missing right-tone report could
-  replace the even output's recorded left-tone value with 0 or null. The
-  verdict already used the original observations; the JSON now does too.
-- Check the active UCX II USB playback stream before writes, using its
-  exact ALSA card/serial, alternate setting and hardware PCM parameters.
-  Reject playback channels beyond the measured stream capacity and the
-  16/20-channel Quad-Speed modes which failed audio-transfer measurements.
-  Double-Speed 20-channel streams retain their measured playback 1--16;
-  OSC register addresses and physical digital-port claims stay separate.
-- Recheck before each nonempty apply phase and before the verifier's mix
-  reapply. Refuse inconsistent observations; a mode/identity change between
-  phases reports the exact writes already sent and leaves the profile
-  marker unchanged. This cannot lock a DAW's clock or prevent a later change.
-- Preserve idle/startup routing while explicitly reporting that a stopped
-  or unobservable PCM has no validated live mode. Offline previews make
-  the same limit clear. The desk does not select a rate or open a PCM.
+- The latest report in a read-back window decides a register's result.
+- The launcher checks the GTK executable, schema and connection before
+  starting a service and reuses a matching manual session.
+- The GTK mixer builds with the selected C compiler (openSUSE Leap 16).
 
-### Qualification
+## 0.7.2 -- 2026-09-24
 
-- Pass all 27 software gates on the final versioned runtime: 1,798 tests,
-  Python 3.9–3.14, five full repeats, the 200-cycle soak and fifteen
-  fault-suite repeats. Coverage is 97.61%. A fresh, complete
-  8,752-mutant run scores 0.799291: 6,985 killed,
-  1,754 survived, 13 timeouts and 0 uncovered.
-  Preserve exact source and log hashes; timeouts remain separate from
-  the score, and incomplete earlier runs are not qualification evidence.
-- Measure 13 USB/rate combinations with direct ALSA: 52 linked/unlinked
-  gain/mute cases and 12 unavailable-source refusals. Retain one startup
-  xrun and its two successful unchanged repeats. A separate PipeWire
-  Pro Audio run passes all 65 known-route checks across the same modes.
-- Repeat the register sweep and all five declared routes on the final
-  runtime: 1,888 confirmed entries and 14 protected skips. Restore all
-  2,252 readable messages exactly, including their type tags and arguments.
-- Upgrade the real installation from 0.7.1 to 0.7.2 and verify readiness
-  and SIGHUP. The full check passes with the UCX II physically off;
-  power-on starts the installed 0.7.2 service automatically and restores
-  the original readable state.
-- Pass seven source/manual and four native-package container targets,
-  including package recovery and reproducible builds. Actual 0.7.1
-  upgrade/rollback passes in both file layouts; 51 installer tests also
-  pass from the extracted source archive.
+### Added
 
-### Installation
+- `install.sh --check` (read-only preflight) and `--manual` foreground mode;
+  source and native installations share one payload.
+- `oscmix-setup` for explicit per-user setup, migration from a source
+  installation and recovery; activation stays opt-in.
 
-- Add a read-only installer preflight and manual foreground mode. Separate
-  a fresh file installation from explicit service activation; preserve an
-  existing service state during upgrades. Keep the standard-library core.
-- Stage source and native installations from a common payload. Build
-  distribution-specific DEB/RPM/Arch artifacts with the pinned backend,
-  checksums, file manifests and reproducible-build/lifecycle checks.
-- Add explicit native setup, source migration and recovery. Preserve user
-  desks and profiles, refuse changes while mixer processes run, and keep
-  automatic startup blocked across an interrupted update and reboot.
-- Qualify seven source targets and four native targets in the reusable CI
-  workflow. The recorded Ubuntu VM additionally exercises the real user
-  service, source/package migration and reboot recovery.
-- Keep native activation opt-in. The tag workflow builds and collects all
-  qualified packages with the source archive, authenticates their checksum
-  manifest and publishes the complete asset set together.
+### Fixed
+
+- The active USB playback mode of the UCX II is checked before writing and
+  before every apply phase; an idle stream is reported as unvalidated.
 
 ## 0.7.1 -- 2026-09-23
 
 ### Fixed
 
-- Unlink both source and destination pairs before applying a mono route.
-  Previously, an existing stereo link could fold a single-channel address
-  onto its odd neighbour and change additional mix cells. Reject conflicting
-  mono/stereo requirements across routes before the first write.
-- Preserve digital mute on unlinked stereo routes: `level = -65` no
-  longer receives the positive gain compensation that left a small
-  nonzero signal. Reject unlinked-pair boosts above 0 dB instead of
-  silently reducing the requested level to unity.
-
-- Compare scalar values using their register encoding, including Float32
-  rounding and input-gain truncation. The mix-level tolerance and mute
-  sentinel no longer confirm unrelated delays, ratios or thresholds.
-- Reject nonfinite numbers, fractional integer settings and wire/storage
-  overflow during config validation. Invalid numeric/link reports cannot
-  cause a traceback or false confirmation.
-- Preserve sub-tenth values in config exports and snapshots. Export only
-  matrix routes supported by known link, pan and level state; show omitted
-  or malformed observations instead of inventing a route.
-- Restrict sweep restoration and retries to permitted writable registers.
-  Record raw probe/readback details and failed restoration, including on
-  interruption; recheck the backend/interface identity before writes.
-- Preserve every argument and type tag in sweep baseline/final reports;
-  a changed mix pan can no longer be hidden by an unchanged first value.
-  Reject empty selections and nonpositive limits before device access,
-  restore after SIGINT/SIGTERM, and report unrestored state even when the
-  evidence file cannot be saved. Evidence identifies the comparison code
-  and rejects source changes during measurement.
-- Restore and check the whole readable state between sweep passes. A lost
-  partner-channel restoration can no longer become the next probe's
-  baseline; unresolved drift stops probing before another group is written.
-- Match both `HOME` and `XDG_CONFIG_HOME` before installer service actions.
-  Refuse installation through a mismatched or unidentified user manager,
-  including its root integration steps. An uninstall using another config
-  under the same home refuses before removing the shared runtime.
+- Mono routes unlink both the source and the destination pair.
+- `level = -65` keeps digital mute on unlinked stereo routes.
+- Values are compared in their register encoding; non-finite and fractional
+  integer values are refused; exports keep sub-tenth precision.
+- The installer compares `HOME` and `XDG_CONFIG_HOME` before touching the
+  service.
 
 ### Documentation
 
-- Correct UCX II headphone numbering (7/8), supported config options,
-  partial-state/profile behavior, PIN/REMEMBER semantics and four outcomes.
-- Distinguish backend numeric units from measured physical quantities.
-  Room EQ delay's previous seconds label is unsubstantiated; its existing
-  numeric range is retained as OSC units pending independent measurement.
-- State the precision/tolerance limits of historical snapshots and sweeps.
-  See [numeric contracts](docs/NUMERIC-CONTRACT.md).
-- Distinguish the supported desk, backend and GTK capabilities in the
-  [feature inventory](docs/FEATURE-SURFACE.md).
-
-### Qualification and distribution
-
-- Fresh corrected UCX II sweep: 1,888 confirmed, 14 protected entries
-  skipped, all 2,252 readable messages restored exactly. Separate checks
-  cover mono input/playback, linked/unlinked gain and mute, and actual
-  24-bit/48-kHz microphone capture with phantom power off.
-- Measure 24 USB/ALSA rate/mode combinations: 18 pass and six are
-  incomplete or fail. Publish those limits; automatic live-rate validation
-  and physical digital-port qualification remain open.
-- Complete the 1,677-test suite on Python 3.9–3.14, repeated fault and
-  lifecycle gates, a fresh 8,248-mutant run and the physical off/on test.
-  The release evidence records counts, durations and source identities.
-- A pushed version tag requires matching completed software and hardware
-  records before creating a draft, attaching checksummed and attested
-  assets, and publishing it. 0.7.1 retains the source installer.
+- The UCX II's front headphones are outputs 7/8. Room EQ delay is in OSC units,
+  not seconds.
 
 ## 0.7.0 -- 2026-09-22
 
-Module boundaries, explicit write outcomes and
-configuration invariants, followed by installation and hardware qualification.
+### Changed
+
+- Releases carry a reproducible source archive, checksums and a GitHub build
+  attestation.
+- A profile that names another interface or port is refused.
+- A desk is validated for the interface `--device` names.
+- A dry run shows its plan without the interface.
+- A start reports a firmware that differs from the measured one.
 
 ### Fixed
 
-- **A pidfd is followed by another identity check.** The PID could be
-  recycled before the handle was opened. The port holder, process and
-  supervising session are now checked after opening it; a changed target
-  is left alone. Regression cases cover a replaced program, lost socket
-  and newly supervising session.
-- **Frozen config policies cannot be mutated through a dict alias.** The
-  config copies its policy mapping and exposes it read-only.
-- **An interrupted installation can be completed by rerunning it.** The
-  package is staged before the service stops, installers for one home
-  are serialised, and activation retains the previous package until the
-  installation succeeds. Tests cover a failed copy, SIGKILL between
-  renames and the real 0.6.11 → 0.7.0 → 0.6.11 transition in both layouts.
-  This does not make the whole installation atomic. See
-  [upgrade and recovery](docs/UPGRADING.md).
-- **Unit verification fails when its verifier fails.** A systemd-analyze
-  failure without the unit's filename used to produce a false pass.
+- A switch that fails part of the way reports what was and was not written.
+- A stale backend is only signalled through a pidfd after its identity is
+  checked again.
+- An interrupted installation completes when run again.
 
-- **A switch whose write gives out part of the way says how far it
-  came.** A third outside review asked what a switch reports when the
-  wire fails half-way. Measured: nothing -- `OSError` went out of
-  `switch_profile` as a traceback from `--profile`, with some of the
-  profile on the device and no word on which part, from the one function
-  whose contract is "an outcome, never an exception". The backend now
-  accounts for every burst (`WriteFailed`, an `OSError` carrying what was
-  handed to the kernel and what was not), the apply extends that to its
-  whole plan, and a switch turns it into an outcome: nothing written is
-  a refusal and exit 2; something written is a fourth state,
-  `written-in-part`, with both lists, the marker left alone, exit 1, and
-  the unit asked to reload -- its reconcile writes the desk in effect
-  back, which is the repair. A read-back whose request cannot be sent is
-  "applied, not read back" with the cause. A start, a verifier and a
-  reconcile stand down as before. ADR 0027. "Switched as a transaction"
-  is gone from the README and the architecture page: there is none on
-  this wire, and ADR 0011 always said so.
+## 0.6.11 -- 2026-09-19
 
-- **A stale backend is never signalled by its number.** The cleanup
-  signals through a pidfd, so that a process which exited in between is
-  not mistaken for whatever got its number. Where no pidfd could be had
-  -- a seccomp policy, a system without `pidfd_open` -- it fell back to
-  `os.kill`, the race the pidfd exists to avoid, and it took that
-  fallback for a process that had merely exited as well. Nothing is
-  signalled then: the start says so, names the process to stop by hand,
-  and exits 2, since a restart cannot change what the machine allows
-  (second outside review).
-- **A receive port that cannot be read is not a quiet backend.** The
-  listener treated every socket error like a timeout and yielded
-  nothing; since an error returns at once where a timeout waits, every
-  reader then spun -- measured, 1.3 million reads in half a second --
-  for the 8 s of a `--dump-config` or the 10 s of a read-back, and ended
-  by asking whether oscmix was running. A timeout is still how a wait
-  ends; any other error is a `ReceivePortError` naming the port and the
-  cause, which the barrier, the verifier, the reconcile, the switch and
-  the three reads already handle (ADR 0025, amended). Found by the same
-  review.
+- A receive port that cannot be bound is no longer reported as busy.
+- A profile is validated for the desk's device.
+- A running session does not apply a desk that names another machine.
+- `--device` and `--osc-port` are refused with profile actions.
+- `--pipewire-sinks` tolerates PipeWire objects without properties.
 
-### Changed
+## 0.6.10 -- 2026-09-17
 
-- A reproducible source archive, SHA-256 manifest and GitHub build
-  attestation workflow accompany the installer. Verification includes
-  the source commit and pinned backend. This is not a binary package.
-- The coverage ratchet rises from 96% to 97%. Hardware and support
-  descriptions distinguish confirmed, skipped and unverifiable state,
-  and local UDP reachability from user authentication.
+- A second session no longer stops the running session's backend.
+- Switching the profile of another desk does not reload the unit.
+- Conflicting actions and `--profile ''` are refused; section order in a
+  config no longer matters.
+- Ctrl-C and other reachable errors exit with a message, not a traceback.
+- A USB device the kernel has not authorized is named at start.
+- Route names with quotes work in generated PipeWire sinks; a relative
+  `XDG_CONFIG_HOME` is ignored.
 
-- **A profile that names another machine is refused. A file that loaded
-  in 0.6.x now does not.** A profile is the desk, not the machine (ADR
-  0026; 0.6.11 warned): one whose `[osc]` or `[device]` resolve to
-  another port, receive port, device name, usb id or serial than its
-  `routing.conf` raises a `ConfigError` naming the profile, the setting
-  that differs and the remedy -- take the two sections out. A switch to
-  it exits 2 and writes nothing; a marker that still points at one
-  falls back to `routing.conf` with a warning at the next start or
-  reload, as for any active profile that no longer loads (ADR 0018).
-  Restating `routing.conf`'s own values stays accepted, since
-  `--dump-config > profiles/x.conf` writes them into every profile.
-  With it go the 0.6.11 warning, `Config.main` and the advice by cause
-  of a refused reload: only `routing.conf` can name another machine
-  now, and a restart follows it. A desk that really is for another
-  backend needs its own directory and `--config`.
-- **A register value has a type, and no `type: ignore` is left.** A
-  value on the wire was `object`, and so was the device handed to the
-  section parsers; 24 `type: ignore` marked the places that cast past
-  the checker (first outside review). `osc.Value`, `Args` and `Message`
-  name what oscmix's `,i` `,f` `,s` carry, `model.SettingValue` what a
-  setting may hold, and the parsers take `Optional[Device]` and
-  `Register`. With the real types mypy asked two questions the ignores
-  had answered for it -- whether the device can be `None` where its
-  channels and its name are read -- and both now say so in the code.
-- **A start says when the firmware is not the one that was measured.**
-  The register table, the hardware evidence and the write sweep were
-  recorded on USB release 3.01, and nothing anywhere said that the box
-  on a desk was not the box that was measured. `registers.Device` records
-  it (`firmware`), and a start warns once when the interface reports
-  another release. A notice and not a refusal: every register is still
-  read back, and a firmware update must not take the desk down (second
-  outside review).
-- **A dry run shows its plan without the interface.** What would be sent
-  does not depend on the box being switched on, and a config is often
-  written on a machine where it is not; such a dry run printed nothing.
-  It prints `would run: alsaseqio <client>:1 oscmix` and every write,
-  and exits as a start would have: 0 for an interface that is not
-  connected, 1 for one that shows no sequencer client. Two boxes and no
-  serial stay a configuration error with no plan.
-- **A desk is validated for the interface `--device` names. A
-  combination that loaded in 0.6.x now does not.** The override arrived
-  after the file had been checked for the device *it* names, so outputs
-  29/30 of an 802 desk reached a UCX II, which has twenty, and 0.6.11
-  could only warn. The parser takes the command line now
-  (`load_config(path, base=None, said=None)`, and the same through
-  `effective_config` and `load_profile`): routes, channel sections and
-  pins are held to the device the desk goes to, a desk that does not fit
-  is a configuration error, exit 2, and a running session reads a file
-  again under the command line it was started with -- so a reload
-  refuses what a restart would refuse and keeps the running desk. The
-  0.6.11 warning and `cli._override_device` are gone; `Config.loaded`
-  is what the file said and `Config.overrides` what the command line
-  put over it.
-- **Two real processes switching at once are held to the lock.** The
-  one test of two concurrent switches ran them as threads, which share
-  an environment and an interpreter; the lock path, the lock and the
-  marker's temporary file are each computed by the process that uses
-  them. `tests/test_two_processes.py` starts two `oscmix-session
-  --profile` together against one recorded port: every register of both
-  arrives once, neither switch's registers sit inside the other's, and
-  the marker names whichever wrote last with no temporary file left.
-  With the lock disabled it fails every time (second outside review).
-- **The package root exports what is supported, and 40 names left it.**
-  `oscmix_desk.__all__` listed 78 names, most of them internals -- the
-  OSC codec, the message shapes, the sequencer search, the process scan,
-  the constants -- and every one was something a caller could come to
-  depend on (third outside review). It lists 38: reading a config,
-  applying and verifying it, switching profiles, the errors and
-  outcomes those produce, the two entry points, the three exit codes
-  and the version; `GlobalSetting` joined, since a `Config` holds them.
-  Everything else is reachable through its module as it always was
-  (`oscmix_desk.osc.encode_osc`), and is implementation. **A caller
-  that imported an internal from the root has to import it from its
-  module.** A test holds the set, so that it grows by decision.
-- **A `Config` is frozen.** The parser builds a private draft and returns
-  a `Config` that is not assigned to again: its routes and settings are
-  tuples, and the four places that changed one after the fact -- the
-  command line's overrides, the serial a start pins, a running session
-  keeping its machine settings, a profile's base -- make a new one
-  (`dataclasses.replace`). `session._find_client` wrote the pinned
-  serial into its argument, which is how a caller's config came to
-  change under it; it returns the interface now. Code that built a
-  `Config` and then set fields on it has to pass them in (first outside
-  review).
-- **The closed sets are enums.** `reconcile.Phase` (an `IntEnum`, so
-  its order is still the order of an apply) and `reconcile.WriteReason`;
-  `registers.VerifyClass`, `Policy` and `Domain`, which every row of the
-  register table is now held to -- a misspelt class used to be a row no
-  code branched on, never verified and never failing. `PHASE_LINK`,
-  `MISSING`, `PIN`, `VERIFIABLE` and the rest are the same objects under
-  their old names, and compare, hash and join as the numbers and strings
-  they were; a `[pin]` line becomes a `Policy` where it is parsed. `--diff` prints a reason by its `.value`, because
-  what `str()` makes of a string enum differs between the Python
-  versions this runs on (first outside review).
-- **The wait for the link echo answers with a name.** `await_link_echo`
-  returned `True`, `False` or `None` -- arrived, timed out, port held --
-  told apart by an `is None` and a `not` that the mutation run had
-  swapped without a test noticing. It returns `routing.LinkEcho`
-  (`CONFIRMED`, `SILENT`, `UNOBSERVABLE`), truthy only when confirmed,
-  so `if await_link_echo(...)` means what it meant; a caller that
-  compared with `None` or `False` has to compare with the member. Each
-  answer's consequence at the barrier has its own test (first outside
-  review).
-- **The oracle builds its own messages, and both sides are held to
-  literals.** `tests/oracle.py`, which the reconciler is compared
-  against, imported `link_messages` and `mix_messages` from the
-  reconciler: a wrong register there was wrong on both sides and the
-  comparison green (third outside review). It is written from what the
-  device and upstream do now, and `tests/test_golden_messages.py` spells
-  out registers, type tags, values and order for a desk of every route
-  shape -- a linked pair, two routes into one pair, unlinked pairs below
-  and above unity, a mono route, an input source, channel and global
-  state. Panning the left half of an unlinked pair right fails three
-  tests where it failed none that did not share the mistake.
-- **No source module is over 600 lines.** Six were, up to 1038. Split at
-  seams that were already there: `devices` (the register tables, with
-  their mutation exemption, ADR 0015) out of `registers`; `locking`,
-  `marker` and `outcome` out of `profiles`, which keeps the order of a
-  switch and nothing else; `model`, `paths`, `sections` and `notices`
-  out of `config`, which keeps the loader; `dump` out of `reconcile`;
-  `reload` out of `session`; `reads` out of `cli`. The import graph got
-  simpler with it -- the reconciler, the router, the verifier and the
-  sink generator depended on the parser only for the dataclasses and
-  depend on `model` now. Nothing a `routing.conf` means changes, and
-  the package root exports the names it did.
-- **The tests follow their subjects.** The five largest test files were
-  in the order the review rounds arrived, up to 1869 lines; they are
-  split by what they test, which after the source split is mostly by
-  module -- `test_locking`, `test_marker`, `test_reload`, `test_sighup`
-  and so on -- with what they share in small helper modules, and
-  `conftest` reduced to the isolation and the fixtures. 1468 tests
-  before and after.
-- **The roadmap and the changelog keep what is ahead and what changed
-  lately.** Their history is in `docs/history/`, unchanged: the
-  roadmap's chapters for 0.2.0 to 0.5.0 and the status of every 0.6
-  release, and the changelog before 0.6.9.
-- **A test's patch that nothing reads fails the test.** The suite
-  isolates itself from the machine, and steers the code under test, by
-  replacing module attributes, some three hundred times. A function
-  that moves takes its reads with it while the patch on the old module
-  still succeeds and changes nothing, which is how tests reached the
-  machine's lock directory and user manager before. `monkeypatch.setattr`
-  on one of this project's modules now fails when no code in that module
-  reads the name. It found no inert patch in 0.6.11 and caught the
-  suite's own lock-directory isolation the moment the lock moved; the
-  socket guard of 0.6.11 caught the one case it cannot see, a name two
-  modules read.
+## 0.6.9 -- 2026-09-16
 
-## 0.6.11 (2026-09-19)
-
-What two outside reviews of 0.6.10 named, checked against the tree
-before anything changed, and cut in two: the defects and the small
-repairs here, the tighter types -- enums for phases and write reasons, a
-named result instead of `Optional[bool]`, a frozen `Config`, modules a
-person can read -- in 0.7.0, because they change public names. The pin
-does not move and the register table has no new row.
-
-### Fixed
-
-- **A receive port that cannot be bound is no longer reported as a busy
-  one.** `Backend.listen` answered `None` for every `OSError`, and
-  `None` means "the mixer GUI has the port" to every caller. Measured:
-  `[osc] recv-port = 80` fails with `EACCES`, and the desk ran
-  unverified for good under `UDP 80 in use (mixer GUI running?)`. `None`
-  is `EADDRINUSE` alone now; anything else is a `ReceivePortError` with
-  the real cause, and the status line reads `verifier failed` rather
-  than `verifier finished`. The review's own remedy -- re-raise --
-  would have ended an apply between its phases, pairs linked and no mix,
-  because the barrier binds the port after the links are on the wire:
-  the barrier waits blind instead, the verifier re-establishes the mix
-  before it reports the failure, and the three reads exit 1 with the
-  cause rather than a traceback. ADR 0025.
-
-- **A switch nobody could read back says so.** With the receive port
-  held or unbindable the outcome line read `N register(s) unconfirmed`,
-  which is what a read-back that ran and came up short says. It reads
-  `not read back (<why>), so none of its N register(s) is confirmed`.
-
-- **`--pipewire-sinks` survives an object without properties.** pw-dump
-  prints `"info": null` for an object that went away, and the sink
-  search raised `AttributeError` on it.
-
-- **A profile is validated for the desk's device, not the default one.**
-  A profile inherits `[device]` from `routing.conf`, but it was parsed
-  first and given the name afterwards -- so it was checked against the
-  UCX II whatever the desk was for. Measured on a desk naming another
-  interface: a profile routing to output 25/26 was refused because
-  "channel 25 does not exist on a Fireface UCX II", and a profile's
-  `[output:1] volume` was accepted through the UCX II's table and would
-  have been written, while the same section in `routing.conf` has been
-  ignored with a warning since 0.6.2. The profile is read onto the main
-  config's machine settings now; the second parser that decided what a
-  profile "states" is gone with the patching it served. A third effect
-  follows the same rule `routing.conf` has always had: on a desk for the
-  802 or an unmodelled interface, a profile with a `[pin]` section is
-  refused, where it used to load against the UCX II's options -- and an
-  *active* profile that no longer loads falls back to `routing.conf`
-  with a warning at the next start (ADR 0018).
-
-- **`verify-hardware.py` and `record-dump.py` skip only for a held
-  port.** Any failure to bind was a skip (exit 77) with "close the mixer
-  GUI"; another cause is an error now.
-
-### Changed
-
-- **Routes on a device nobody modelled are unchecked out loud.** A
-  channel section on such a device has warned since 0.6.2, while its
-  routes went to the hardware without a channel check and without a
-  word. Still no opinion (ADR 0006); the warning names the device, the
-  number of routes and what is modelled, and comes from the places that
-  load a desk to write or show it -- a start, a switch, a restore, a
-  SIGHUP reload, the dry runs, `--diff` and `--pipewire-sinks` -- about
-  that desk. A listing shows no route and `--dump-config` shows the
-  device's, so neither is warned about the file's.
-- **A desk for somewhere else is not applied here.** A running session
-  keeps the backend and interface it was started for, and until now it
-  pinned whatever it re-read to them and wrote it. Measured by review:
-  `routing.conf` edited to name another box with `output = 41/42`,
-  reloaded under a session bound to a UCX II, sent `/output/41/stereo`
-  to an interface with twenty outputs. And from a second outside review:
-  a profile stating its own port and serial was written to its
-  interface by the switch, and then to the unit's by the reload the
-  switch sent -- one persisted profile meant one target for a switch,
-  another for a reload, and the first again after a restart. A re-read
-  desk whose file resolves to another device name, usb id, serial or
-  port is refused now: `reconcile skipped`, and an error naming what
-  differs and what to do -- a restart for a `routing.conf` that moved;
-  for a profile that itself names another machine, taking the sections
-  out and then reloading, because a restart would move the unit off its
-  interface, with `--no-profile` named only where it can work. The
-  re-read file is resolved the way a restart would resolve it: a
-  `Config` records what its file said (`Config.loaded`) and what the
-  command line replaced (`Config.overrides`), so a file under `--device`
-  or `--osc-port`, or one that names the box the start pinned, is the
-  session's own. Two differences from a restart are left. The session
-  does not count the boxes again, so with a second one plugged in
-  since, a desk naming no serial still goes to the pinned box, where a
-  restart would ask which. And a device name is compared as written,
-  where a start looks for it as a substring, so another spelling that
-  finds the same client is refused until a restart. The switch still
-  reloads the unit and leaves the decision to it, and says so.
-- **`--device` over a file for another model says so**, with the other
-  notices about a desk: at a start, a reload, a dry run, `--diff` and
-  `--pipewire-sinks`. The override arrives after the file was
-  validated, so the channels were checked for one interface and written
-  to another in silence. A start says it before it looks for the
-  interface, and again under the device lock when the desk it re-read
-  there is another one by then. Validating *for* the override needs the
-  parser to know it, which is part of 0.7.0.
-- **The marker's temporary file has a name of its own.** Two switches
-  holding different device locks shared `active-profile.tmp`, and one
-  could rename the file the other was still writing.
-- **A marker that may not survive a power cut says so in the outcome.**
-  When the directory cannot be synced the marker is in effect and the
-  unit is reloaded as before; that the change may not have reached the
-  disk was a log line only, and is now part of the outcome line and of
-  `Outcome.durable`.
-- **A reload sent without knowing the unit's desk says it guessed.**
-  When the unit's `/proc` entry cannot be read the reload still goes
-  out -- nearly every switch is for the unit's own desk, and an untold
-  unit lets its verifier re-apply the old one -- but with a warning. A
-  unit that was read and resolves no config is not a guess; one whose
-  command line this version cannot parse is.
-- **An empty `[device] name` is a configuration error.** The name is a
-  substring match, and the empty string is a substring of every name.
-  Measured on the start path: with one MIDI-capable card `name =`
-  selected it, with a second one -- a USB keyboard beside the interface
-  -- the start refused as "2 interfaces match ''" and pointed at
-  `serial`; and either way the desk had no model, so nothing in it was
-  checked. **A file that worked this way now exits 2**, naming the
-  option; write the interface's name. ADR 0006 is amended for it.
-- **`--device` and `--osc-port` are refused with `--profile` and
-  `--no-profile`.** A switch and a restore take their interface and
-  ports from the config; the overrides were dropped on that path without
-  a word, while the dry run of the same switch looked for the interface
-  `--device` named and so showed something the switch would not do.
-  Exit 2, naming the pair. An empty `--device ''` is refused as well --
-  it was skipped in silence -- and a given name is stripped like the
-  file's, where padding used to find no client.
-- **A dry run shows the desk as the switch would load it.** The device
-  name and ports of the desk *in effect* were written over it first, and
-  the name is what a dry run acts on: a profile naming its own interface
-  was looked for, and warned about, as the active desk's.
-- **One rule for what a re-read desk may not change.** The start's
-  re-read under the lock and the SIGHUP's each assigned the five machine
-  settings by hand; both go through `profiles.keep_machine_settings`,
-  which walks the table a test already holds against `Config`.
-- **A profile that names another machine is told that 0.7.0 refuses
-  it.** It still wins for the switch in 0.6.x. A profile is the desk,
-  not the machine: with profiles able to name a backend, one marker per
-  config directory cannot say which desk is where, and two such profiles
-  hold two device locks over that one marker. ADR 0026. A profile that
-  restates its `routing.conf`'s own `[osc]` and `[device]` -- every one
-  made with `--dump-config`, until `routing.conf` changes them -- is not
-  meant and stays accepted. One main config per directory is now a
-  stated rule for the same reason: the marker and `profiles/` belong to
-  the directory, not to the file.
-- **The public surface grows, and nothing in it changes shape.**
-  `ReceivePortError`, since `await_link_echo`, `verify_routing` and
-  `verify_and_repair` raise it; `Machine` and `CommandLine`, and with
-  them `Config.loaded`, `Config.main` and `Config.overrides`;
-  `Outcome.read_back` and `Outcome.durable`; `load_config(path,
-  base=None)`; and `blind_reapply_mix(config, should_stop, why=None)`.
-  No existing signature changes. Behaviour behind existing names
-  changes where this section and Fixed say so: `verify_routing` and
-  `await_link_echo` raise where `None` used to cover every failure to
-  bind, `load_config` refuses an empty `[device] name`, and
-  `load_profile` validates for the desk's device.
-- **The mutation run's survivors were read.** They showed missing
-  assertions and no defect, among them both halves of what the marker
-  functions answer and the temporary file beside the marker, the port
-  and timeout the link barrier hands the echo wait, the two ends of the
-  `--osc-port` range, the config `--no-profile` hands the reload
-  decision, and a sink found by the desk's own name rather than because
-  every sink in the tests was a Fireface. Score 0.794 on 7485 mutants,
-  the not-covered bucket still empty, `min_score` 0.77 -> 0.79. The full
-  run used a mutant tree removed beforehand; ten functions were
-  re-judged by name afterwards.
-- **Two integration tests wait for what they assert.** They stopped the
-  session the moment the verifier's `/refresh` was on the wire, and a
-  verifier that is told to stop does not judge the answer: the
-  "verified" line they look for was then never written. One run in five
-  of the nightly flakiness gate on 0.6.10 (2026-09-18). They wait for
-  the line, then stop the session.
-- **No test opens the machine's `/dev/snd/seq`.** The device wait opens
-  it to make the kernel load `snd-seq`; read-only and harmless, and
-  still the machine's. The suite points `OSCMIX_SEQ_DEV` at nothing.
-- **No test talks to the machine's backend.** A desk with no `[osc]`
-  section resolves to UDP 7222 and 8222, where a developer's oscmix
-  listens; a test written during this cycle ran `--dump-config`
-  unstubbed and read the interface through it (found by review before
-  any release). An autouse guard now fails a test that binds, connects
-  or sends to either default port.
-- **The layer map is exact.** `tests/test_architecture.py` held every
-  module to the imports it is allowed; it now also fails on an allowed
-  edge nothing uses. Three had outlived their imports, and the package
-  docstring described the graph of 0.2.0.
-- **CI uploads artifacts on Node 24.** `actions/upload-artifact` moves
-  from the v5 pin, which targets the deprecated Node 20, to v7.0.1.
-
-## 0.6.10 (2026-09-17)
-
-What a full check of the released 0.6.9 found -- gates, the live desk,
-and independent reviews of the whole tree rather than of a diff. Two
-behaviours were wrong in ways a user meets; behind them a layer of
-smaller defects nothing had exercised, and documentation that described
-an earlier release. The pin does not move and the register table has no
-new row.
-
-### Fixed
-
-- **A second session no longer kills the running one's backend.** The
-  stale-backend cleanup treated every `oscmix` of this user on the port
-  as stale. Measured: `oscmix-session` started by hand terminated the
-  unit's backend, the unit restarted and terminated the manual one. A
-  backend whose parent is a live `oscmix-session` is somebody's desk; the
-  newcomer exits 2 and says whose.
-
-- **A switch of another desk does not reload the unit.** `--config X
-  --profile Y` asked the unit to reconcile, and the unit re-applied its
-  own `routing.conf` over the switch. The reload is sent only when the
-  switch is for the config the unit runs -- worked out as the unit did,
-  from `--config` on its command line and its own environment, read
-  from `/proc/<MainPID>/`, since the shell's `OSCMIX_CONFIG`,
-  `XDG_CONFIG_HOME` or `HOME` can name another file.
-
-- **Every pair of actions is refused, not three.** `--no-profile --diff`
-  restored the desk and never diffed; `--profile X --snapshot` switched
-  and printed nothing; `--list-profiles --profile X` listed and did not
-  switch. One action per invocation now, and `--dry-run` only with a
-  start, a switch or a restore. The refusal comes before any file is
-  read: after it, a broken `routing.conf` answered a conflicting pair
-  with a configuration error that named neither flag.
-
-- **`--profile ''` is a switch, and refused.** The empty name was falsy,
-  fell through every action and started a session; it is exit 2 now,
-  like any name that is not a profile.
-
-- **A config reads the same whatever the order of its sections.**
-  `[pin]` or `[clock]` above `[device]` was checked against the default
-  model: accepted or refused for the wrong reason. `[device]` is read
-  first wherever it stands.
-
-- **Ctrl-C is an exit code, not a traceback.** Before the backend runs --
-  the device wait, a lock wait, a read of the device -- an interrupt
-  printed a stack trace. It exits 130 now. `--timeout nan` never expired
-  and `--timeout -1` never waited; both are refused.
-
-- **Four tracebacks a user could reach are handled.** A profile marker
-  that is not UTF-8 raised past the OSError guard on every start; it is
-  a warning now, and the start applies `routing.conf`. A backend the
-  socket cannot reach raised out of the start, the background verifier
-  and the SIGHUP reconcile. The start fails with exit 1 and stops its
-  backend. The verifier and the reconcile log the reason and stand down.
-  `systemctl status` then shows `running; verifier failed at ...` or
-  `running; reconcile skipped at ...`.
-
-- **Every reconcile that stands down says so.** Only a held receive port
-  changed the status line to `reconcile skipped`; the device lock held
-  elsewhere, a start-up verifier still running after the wait and a
-  config that no longer parses returned before it, and `systemctl
-  status` went on showing the previous line -- often `verifier finished`,
-  which reads as all well.
-
-- **A start names an interface the kernel has not authorized.** With
-  `authorized=0` -- USBGuard, a policy, a hand -- the device keeps its
-  sysfs entry and no driver binds, and every start said "is
-  snd-usb-audio loaded?". It says what it is now. The unit still retries
-  every half minute, which is what brings the desk up by itself once the
-  device is allowed: authorizing adds interfaces, not the device, so udev
-  starts nothing (measured on the desk).
-
-- **A route name with a quote no longer breaks the generated PipeWire
-  conf**; the description is escaped.
-
-- **`--pipewire-sinks --pipewire-target X` warns when it cannot vouch for
-  X.** The 7.1 layout it prints for a target it did not find is still
-  printed, with a warning that says so -- and that tells "no sink named
-  X" from "pw-dump could not be read".
-
-- **The launcher polls the port the backend runs on.** A profile that
-  states its own `[osc] port` runs the backend there; the launcher read
-  `routing.conf` only, warned that the backend was unreachable, and
-  notified a failure that had not happened. It polls the active
-  profile's port, then `routing.conf`'s, which is where the backend runs
-  if that profile no longer loads. It finds its config by the backend's
-  rule too: a missing `OSCMIX_CONFIG` is not a reason to read another
-  file, and an empty `HOME` is looked up rather than read as `/`.
-
-- **A relative `XDG_CONFIG_HOME` is ignored**, as the XDG specification
-  says, by the session, the launcher, the installer and the uninstaller
-  alike. Each resolved it against its own working directory: the
-  installer wrote `relative-config/oscmix/routing.conf` into whatever
-  directory it was run from, and a session started elsewhere never found
-  it. Both scripts refuse a `HOME` that is empty or relative, which
-  `set -u` lets through and which would have put every file under `/` or
-  the working directory.
-
-- **The installer survives a start that fails**, and prints its advice
-  instead of dying under `set -e`; the uninstaller survives a missing user
-  bus. Run as root, the test suite reached the real system: the udev
-  rule, the resume hook and the tmpfiles.d entry through their paths,
-  and `/run/oscmix-desk` through `systemd-tmpfiles --create`. The three
-  paths point into the test's scratch directory now and
-  `systemd-tmpfiles` is stubbed, and a test fails if a command either
-  script runs through `$SUDO` is neither stubbed nor confined to those
-  paths.
-
-### Changed
-
-- **`StopWhenUnneeded` is described as what it is.** The udev rule, the
-  unit, the architecture page and ADR 0013 said it stops the service on
-  unplug. An enabled unit is wanted by `default.target` and never
-  unneeded; what ends the service is the backend exiting with its device.
-  The directive stays, the story is corrected.
-- **Ten decision records carry an amendment** where a later release, or
-  this one, changed what they describe: the removed `route_messages`
-  (0001), the recorded dump time (0002, 0007), the exit codes (0011), the
-  unplug story (0013), the lock's location, ownership and fallback
-  (0018, 0022, 0023), the reload rule (0019) and what counts as a stale
-  backend (0021).
-- **The public surface names the resolver.** `find_seq_client` and
-  `wait_for_seq_client`, superseded in 0.6.9 and called by nothing, are
-  gone; `resolve_device`, `wait_for_device`, `select_seq_client`,
-  `Device`, `lock_key`, `take_device_lock`, `port_holder`,
-  `DeviceAmbiguous` and `DeviceLockUnavailable` are exported.
-- **Documentation catches up with 0.6.9.** The unit file, the installer
-  and the architecture page described the lock, the root steps and the
-  installed files of earlier releases; the security model listed half of
-  the hardening the unit declares and the unit's own comment contradicted
-  it; the README counted seventeen decision records of twenty-four; the
-  release checklist gains the cleared mutant tree, the `audio` group and
-  the check with the interface switched off. Exit code 2 is described
-  everywhere as the refusal it has become -- an ambiguous interface, a
-  session already running -- not only as a `routing.conf` error.
-- **The upstream record states what the pin carries.** All five issues
-  this project filed are fixed at the pinned revision, and have been
-  since 0.6.0; `docs/upstream-issues.md` still listed output phase as
-  filed and the Analog 5-8 gain fix as newer than the pin.
-- **The mutation run's survivors were read.** They showed missing
-  assertions and no defect, among them the READY line a start sends, the
-  path the reconcile locks, MainPID asked for with `--value`, argv[2] and
-  pid 1 told apart from a session, the refusal's `--timeout 0` boundary,
-  and the pw-dump call itself. Score 0.777 on 7118 mutants, the
-  not-covered bucket still empty, `min_score` 0.76 -> 0.77. The full run
-  used a mutant tree removed beforehand; the survivors of eighteen
-  functions and two functions changed after it were re-judged by name.
-- **A test can no longer put the machine's lock directories back in
-  effect.** A stand-down test added in this release called
-  `monkeypatch.undo()`, which reverts every autouse fixture, and took a
-  real lock file in `/run/oscmix-desk` on each run; the suite now fails
-  any test that ends that way.
-- **The tests no longer read the developer's desk.** The action-pair
-  tests resolved `~/.config/oscmix/routing.conf` and its marker; every
-  test now starts from an empty config home and no system config, the
-  sessions and launchers the suite starts as subprocesses included
-  (`OSCMIX_SYSTEM_CONFIG`, a test seam like `OSCMIX_LOCK_DIR`).
-- **CI finishes again.** The installer tests inherited the suite's fake
-  interface once `install.sh` honoured `OSCMIX_SYSFS_USB`, took the
-  restart path and its 2 s sleep on every install, and pushed the
-  flakiness gate past its 15-minute timeout on the 0.6.10 push; they get
-  an empty sysfs unless a test plugs one in. Two restore tests waited out
-  the full 10 s read-back window against a double that never answers.
-  The suite takes 112 s instead of 160 locally. The nightly mutation
-  job had hit its 90-minute timeout every night since 2026-09-12 without
-  turning anything red; the workflow's timings are re-measured, the
-  flakiness gate gets 25 minutes and the mutation job 180.
-
-## 0.6.9 (2026-09-16)
-
-What a review of the 0.6.8 device lock found, in the order a second
-reviewer put it. Six defects, each reproduced by a probe before it was
-fixed, and each probe a regression test now -- together with the
-architecture test that review asked for. The pin does not move and the
-register table has no new row.
-
-### Fixed
-
-- **The interface is resolved once.** Serial, sequencer client and lock
-  key come from one answer, `discovery.resolve_device`: the service binds
-  and pins from it, a switch and a restore check against it, and a
-  reconcile uses the serial the service pinned. 0.6.8 worked it out four
-  times: with two identical interfaces and no `[device] serial` the
-  service keyed on `2a39-3fd9-24216011` while a switch keyed on
-  `2a39-3fd9-ambiguous`, two lock files over one desk, and a config
-  naming box B still bound box A. `[device] serial` now selects the
-  client the backend bridges; without it, more than one candidate is a
-  configuration error for all of them -- exit 2 for the service, which
-  `RestartPreventExitStatus` keeps from looping. ADR 0024.
-
-- **A switch writes only to the backend of its interface.** A bound OSC
-  port was enough: a plain Python socket on it received a whole routing,
-  the switch reported `applied-unverified` and recorded the marker. The
-  holder has to be an `oscmix` of this user now, and when the
-  `alsaseqio` beside it names the client it bridges, that has to be the
-  resolved interface.
-
-- **A start without the device lock fails.** 0.6.7 and 0.6.8 refused to
-  write and then sent `READY=1`, so systemd reported a desk that had
-  never been written and nothing retried -- while ADR 0022 said the start
-  fails. It does: the backend is stopped, the exit code is 1, and
-  `Restart=on-failure` tries again. `READY=1` follows only an apply that
-  returned, in the same block.
-
-- **A FIFO at the lock path no longer hangs every writer.** The read-only
-  fallback blocked in `open()` until a writer appeared; the probe was
-  still blocked after 25 s, the 30 s lock wait never reached, and the
-  service's start would have hung the same way. Lock files are opened
-  `O_NONBLOCK` and accepted only when `fstat` says regular file.
-
-- **A symlink at the lock path is refused, not followed.** 0.6.8 followed
-  a planted link and chmod'ed its target to 0666; only
-  `fs.protected_symlinks` stood in the way. `O_NOFOLLOW`, and a lock
-  file's mode and group change only when this process owns it and it
-  has exactly one link.
-
-- **The lock directory's trust circle is the group `audio`.**
-  `/run/oscmix-desk` is 3770 root:audio instead of 1777, and lock files
-  are 0660 with the directory's group. With 1777 any local account could
-  pre-create a lock file nobody else could open, or hold one for ever.
-
-- **The unit can write the lock directory wherever its sandbox applies.**
-  `ReadWritePaths=` was empty. Ubuntu's user manager drops the mount
-  sandbox without a word -- AppArmor denies it a mount namespace -- so the
-  desk worked here, but under a manager that applies
-  `ProtectSystem=strict` `/run` is read-only: measured under the system
-  manager, the 0.6.8 unit
-  could not create a lock file and every start would have been refused.
-  `ReadWritePaths=-/run/oscmix-desk` now, and a refusal in a read-only
-  directory names that directive instead of "No such file or directory".
-
-- **The start budget includes the lock wait.** `startup_budget()` had no
-  term for the 30 s the start has waited for the device lock since 0.6.5,
-  so the test against `TimeoutStartSec` could not see it. It is in the
-  sum, and `TimeoutStartSec` is 100 to keep 10 s of margin.
-
-- **A reload keeps the interface of the running process.** The desk read
-  under the lock took `usb-id` and `serial` from the file while keeping
-  the running ports, so a profile naming another box described a
-  different interface than the lock and the backend belonged to.
-
-- **A scratch-home uninstall leaves the system files alone.** It reached
-  for the udev rule, the resume hook and the tmpfiles.d entry the
-  session's own installation depends on. It now skips them, with a
-  warning, whenever systemd's session serves another home -- as it already
-  did for the service.
-
-- **What an independent review of this release found before it shipped.**
-  A switch checked the port holder before a lock wait of up to 30 s and
-  never after it; it checks again once the lock is held. Any process whose
-  kernel-truncated name was not valid UTF-8 made every switch raise; /proc
-  is decoded leniently. A backend left without its card and client took a
-  switch keyed on `unknown` beside the unit's lock; an interface with no
-  visible sequencer client is refused. A Fireface of another model beside
-  a UCX II made both ambiguous; the card list is matched on the model. A
-  configured serial that was not plugged in, beside another box of the
-  model, looped the start; it is the clean no-op now. Only a kernel
-  sequencer client named exactly like a card counts as an interface, a
-  client number listed twice is refused as forged, a
-  model is matched exactly before it is matched as a substring, a serial
-  must be digits, the
-  start binds and pins from one read of the machine, and the snapshot
-  header names the box it actually read.
-
-### Changed
-
-- **The mutation run's survivors were read.** They showed missing
-  assertions and no defect, among them the serial read from a client when
-  the card list is unreadable, the restore's re-check after the lock, the
-  start's no-client path against a real sysfs, and the port holder's
-  detection by program as well as by name. Score 0.762 on 6649 mutants,
-  the not-covered bucket still empty, `min_score` 0.74 -> 0.76. The full
-  run used a mutant tree removed beforehand; thirteen functions were
-  re-judged by name.
-
-- **The security model says what applies.** On Ubuntu the user manager
-  silently skips `ProtectSystem`, `ProtectHome` and `PrivateTmp`;
-  `NoNewPrivileges` and the seccomp filter do apply. The document says
-  so, and how to check a machine.
-- **`[device] serial` selects the interface**, not only the name of its
-  lock, and is required when two identical interfaces are connected.
-- **A lock that cannot be opened says why:** a missing group
-  membership, a symbolic link, something that is not a regular file.
-- **The installer warns when the user is not in `audio`.**
-- **Upgrading from 0.6.8:** the user running the desk has to be in
-  `audio`. The installer's root step turns the directory into 3770
-  root:audio and regroups a lock file 0.6.8 left behind; the unit cannot
-  do the latter itself, because a sandboxed user service runs in a user
-  namespace where `audio` is not mapped and `fchown` fails with EINVAL.
-- **The write sweep resolves its interface** and refuses to run with two.
-- **`device_key` and `device_serial` are gone.** Once every path
-  resolves the interface, a second way to name it is the split this
-  release removes. The hardware evidence and the write sweep name the
-  resolved box, the snapshot header names the box its backend drives,
-  and the evidence tool refuses a machine with two it cannot tell apart.
-- **The layering gains two edges:** `discovery` imports `errors`, and
-  `profiles` imports `process`. Both point at a leaf or down the graph.
+- The interface (serial, sequencer client, lock) is resolved once, and a
+  switch writes only to that interface's backend.
+- `[device] serial` selects among identical interfaces.
+- A start that cannot take the device lock fails. The lock directory
+  `/run/oscmix-desk` belongs to the group `audio`: **add the desk's user to
+  `audio`** when upgrading. Symlinks and FIFOs at the lock path are refused.
+- An uninstall in a scratch home leaves the system files alone.
 
 ## Earlier releases
 
-In [docs/history/](docs/history/), unchanged:
-[0.6.0 -- 0.6.8](docs/history/changelog-0.6.0-0.6.8.md),
-[0.5.0 -- 0.5.2](docs/history/changelog-0.5.md),
-[0.1.0 -- 0.4.0](docs/history/changelog-0.1-0.4.md). This file keeps the
-release in progress and the three before it.
+Releases before 0.6.9 are described in their release notes on GitHub.

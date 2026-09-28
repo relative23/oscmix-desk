@@ -107,7 +107,7 @@ def _config():
 def test_the_rewrites_are_named_in_the_output(session_mod, capsys, tmp_path, read_peer):
     _code, out, _ = run_diff(session_mod, capsys, tmp_path, IN_SYNC, read_peer=read_peer)
     assert "rewritten regardless" in out
-    assert "ADR 0002" in out
+    assert "cannot tell whether they are already" in out
 
 
 # --------------------------------------------------------------------------

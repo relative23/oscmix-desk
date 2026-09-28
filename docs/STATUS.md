@@ -1,7 +1,6 @@
 # Runtime status and the upstream mixer
 
-The 0.8.0 development runtime supports these commands in source and native
-installations. Final qualification is tracked in the [release plan](plans/0.8.0-reliability-integration.md).
+These commands work in source and native installations.
 
 ```sh
 oscmix-session --status
@@ -67,7 +66,7 @@ and device serial; GTK checks the connected peer before requesting state.
 The old UDP GSettings no longer select a connection. An unmodified upstream
 or old companion must be upgraded together with the backend and bridge.
 
-A matching manual backend is reused. If none is running, start the reviewed
+A matching manual backend is reused. If none is running, start the
 desk with `oscmix-session` in a terminal, or explicitly enable automatic
 operation using the installation guide. The launcher starts only an enabled
 default service whose user/config paths agree. Custom service commands or
@@ -99,7 +98,6 @@ can still refuse a write that would change it indirectly.
 
 A disconnected or replaced backend invalidates the connection. Inspect the
 reported sent/pending paths and use a new explicit operation after recovery;
-there is no automatic write replay or hardware rollback. Shared replies do
-not make the playback matrix readable. See the
-[ownership contract](decisions/0030-backend-owned-control.md) and
-[measured capability limits](evidence/0.8.0/backend-capabilities.json).
+there is no automatic write replay or hardware rollback. The playback mix
+matrix is never reported by the device and stays unverified. The control
+connection is described in [the backend control protocol](BACKEND-CONTROL.md).

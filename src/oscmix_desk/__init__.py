@@ -5,7 +5,7 @@ reading a config, applying and verifying it, switching profiles, the
 errors and outcomes those produce, and the two entry points. Until 0.7.0
 it listed 78 names, most of them internals -- the OSC codec, the message
 shapes, the sequencer search, the process scan -- which made every one of
-them something a caller could come to depend on (third outside review).
+them something a caller could come to depend on.
 The modules are importable as they always were, and are implementation:
 they change without notice.
 

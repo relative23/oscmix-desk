@@ -177,8 +177,7 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
     stop before exiting. It used to read ``stop_requested`` and
     ``child.poll()`` exactly once, here, before starting -- and then run
     for two verification windows plus a blind delay, writing routing at
-    three points, with nobody looking again. See
-    docs/decisions/0009-verifier-stop-contract.md.
+    three points, with nobody looking again.
     """
     # One transaction, from the first write to the verifier's last: a
     # switch that landed between them would be overwritten by the retry
@@ -346,7 +345,7 @@ def _firmware_notice(config: Config, sysfs_usb: Path) -> None:
     The register table, the hardware evidence and the write sweep were
     recorded on one USB release. A newer firmware may move or add
     registers, and until 0.7.0 nothing anywhere said that the box on the
-    desk was not the box that was measured (second outside review). A
+    desk was not the box that was measured. A
     notice and not a refusal: the read-back still verifies every register
     it can, and a firmware update must not take the desk down.
     """
@@ -368,7 +367,7 @@ def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
     Not connected is the clean no-op it has always been. That includes a
     configured serial the machine does not show while another box of the
     model is plugged in: USB presence alone said "connected" there, and the
-    start failed and was restarted for ever (found by review, 0.6.9).
+    start failed and was restarted for ever.
     """
     cards = proc_root / "asound" / "cards"
     # Against every card, not the configured model: a desk whose

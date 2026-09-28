@@ -1,6 +1,6 @@
 # Upgrade and recovery
 
-## Upgrading to 0.8.0 (in development)
+## Upgrading to 0.8.0
 
 Initial session application and explicit profile/main-desk selection still
 write declared starting values. Repair and later SIGHUP/resume reconcile now
@@ -51,7 +51,7 @@ Hardware values that changed after the backup are not restored by a package
 rollback. Preserve readable state and known declared playback routes separately.
 
 Registered OpenRC/runit installations use the explicit
-[host maintenance procedure](INSTALLATION.md#alpineopenrc-and-voidrunit-080-development).
+[host maintenance procedure](INSTALLATION.md#alpineopenrc-and-voidrunit).
 Both the user payload and root-owned adapters must be updated while the
 persistent fence is present. A failed or interrupted update does not authorize
 manual activation; repeat the failed step and then finish maintenance. Explicit
@@ -67,18 +67,12 @@ payload and integration while retaining user configuration, profiles and marker.
 Keep the module imported until its disabled/removal transition has completed.
 If activation fails, the selected profile may already have changed. Keep
 maintenance active until the intended generation and payload are verified.
-Choose a saved generation explicitly when older retained generations intervene;
-the [NixOS execution record](evidence/0.8.0/series9-nixos-development.json)
-retains a failed historical traversal and its verified recovery.
+Choose a saved generation explicitly when older retained generations intervene.
 
 On Fedora Silverblue, follow the [deployment maintenance procedure](SILVERBLUE.md#upgrade-interruption-and-rollback).
 Run the common guard on the booted host before replacement or rollback. Leave
 the fence in place through the reboot and check the selected deployment before
 finishing maintenance. The RPM composition hooks do not clear that host fence.
-
-The remaining 0.8.0 integration and qualification work is tracked in the
-[release plan](plans/0.8.0-reliability-integration.md); this section is not a
-claim that the development version is ready to install.
 
 ## Upgrading to 0.7.3
 
@@ -126,7 +120,7 @@ A stopped or absent PCM remains usable for boot/offline routing, with an
 explicit warning that its live mode is unvalidated. An unreadable or
 inconsistent identified UCX II stream is refused. `--dry-run` checks the
 config and register plan, not a future active stream. `--diff` remains a
-register comparison, not an audio-transfer or physical-port qualification.
+register comparison, not an audio test.
 
 The mode is rechecked before each write phase. If it changes mid-apply,
 the result names the writes already sent and leaves the profile marker
@@ -171,15 +165,11 @@ initial setting, not a policy override.
 
 Room EQ delay retains its OSC values, but the old seconds label was not
 established by physical measurement. Do not infer physical duration from
-it; see [numeric contracts and evidence limits](NUMERIC-CONTRACT.md).
-Retain old evidence as historical data. Older snapshots rounded to one
-decimal place and cannot establish that smaller values were unchanged.
+it; see [numeric values](NUMERIC-CONTRACT.md). Snapshots before 0.7.1
+rounded to one decimal place and cannot show smaller differences.
 
-The actual 0.6.11 and 0.7.0 → 0.7.1 → original-version installation
-transitions pass in isolated rootless and redirected system-file layouts.
-They check installed entry points/module inventory and preservation of
-config, profiles and the marker; see [qualification](evidence/0.7.1/).
-These software checks do not establish a hardware rollback.
+Upgrading and rolling back keep the config, profiles and the marker. A
+software rollback does not restore mixer state.
 
 ## The 0.7.0 transition
 

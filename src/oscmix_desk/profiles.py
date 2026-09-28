@@ -118,7 +118,7 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     if theirs is not None and ours is not None and theirs != ours:
         raise ConfigError(
             "profile %r names another backend or interface than %s -- %s. A "
-            "profile is the desk, not the machine (ADR 0026): take [osc] "
+            "profile is the desk, not the machine: take [osc] "
             "and [device] out of %s"
             % (name, config_path, theirs.differs_from(ours), path))
     return profile
@@ -309,7 +309,7 @@ def _written(name: str, config: Config, device: Control
     A switch promises an outcome and never an exception (ADR 0011), and
     until 0.7.0 a socket error part of the way broke that promise as a
     traceback, with some of the profile on the device and nothing said
-    about which part (third outside review). Nothing gone out is a
+    about which part. Nothing gone out is a
     refusal like any other: the desk is untouched. Some of it gone out is
     its own state, with both lists, and the marker is left alone -- the
     desk in effect remains the previous one. Reload repairs only PIN;

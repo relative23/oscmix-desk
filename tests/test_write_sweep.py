@@ -405,7 +405,7 @@ def test_the_artifact_covers_every_settable_register(sweep):
     from support import repo_file
 
     artifact = json.loads(
-        repo_file("docs", "evidence", "write-sweep-ucx2.json").read_text())
+        repo_file("tests", "data", "write-sweep-ucx2.json").read_text())
     covered = {f["path"] for f in artifact["findings"]}
     declared = {path for path, _r in sweep.settable()}
     assert covered == declared
@@ -426,7 +426,7 @@ def test_the_artifact_names_the_device_and_the_pin(sweep):
     from support import repo_file
 
     artifact = json.loads(
-        repo_file("docs", "evidence", "write-sweep-ucx2.json").read_text())
+        repo_file("tests", "data", "write-sweep-ucx2.json").read_text())
     assert "24216011" in artifact["device"]
     assert len(artifact["oscmix_revision"]) == 40
     assert artifact["taken"].startswith("20")

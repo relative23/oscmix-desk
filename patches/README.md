@@ -61,8 +61,7 @@ between takes the unlinked branch, writes `mix[0]` and never touches
 That was the original **every even output silent** defect. The historical
 workaround used three constants --
 `LINK_ECHO_TIMEOUT`, `LINK_SETTLE` and `LINK_SYNC_BLIND_DELAY` -- along
-with the two-phase apply and the barrier between the phases
-([ADR 0001](../docs/decisions/0001-two-phase-routing-apply.md)).
+with the two-phase apply and the barrier between the phases.
 The 0.8.0 path retains the output-link barrier and bounded verification;
 the old GUI-held-receiver blind delay no longer applies.
 
@@ -93,8 +92,7 @@ The instrumentation is not part of the patch.
 
 ### What acceptance would allow here
 
-Not a deletion, and not immediately. [ADR 0008](../docs/decisions/0008-pinned-upstream-revision.md)
-fixes the order: **bump the pin, measure on hardware, then** remove
+Not a deletion, and not immediately. The order is fixed: **bump the pin, measure on hardware, then** remove
 `LINK_ECHO_TIMEOUT`, `LINK_SETTLE` and `LINK_SYNC_BLIND_DELAY`. Doing it
 the other way round would delete the workaround for a fix this project
 has not yet shipped against.
@@ -120,9 +118,7 @@ Reported as [michaelforney/oscmix#32][32]. Filed with a measurement
 rather than a description, because this symptom has already been
 mistaken once: a client that keeps the *first* reported value sees every
 Room EQ gain at 0.0 dB, one that keeps the *last* sees +30 and +40 dB at
-50 Hz. Both readings are half of a double report, and
-`docs/upstream-issues.md` records the earlier withdrawal that came of
-reading only one half.
+50 Hz. Both readings are half of a double report.
 
 Measured on a UCX II (serial 24216011) against the pinned revision, one
 `/refresh` before and after:

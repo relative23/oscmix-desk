@@ -184,7 +184,7 @@ def _diff(config: Config, config_path: Optional[Path] = None) -> int:
         sys.stdout.write(
             "%d more would be rewritten regardless: a dump never reports "
             "them, so\nan apply cannot tell whether they are already "
-            "right (ADR 0002).\n" % len(rewritten))
+            "right.\n" % len(rewritten))
     return EXIT_DIFFERS if differing else EXIT_OK
 
 

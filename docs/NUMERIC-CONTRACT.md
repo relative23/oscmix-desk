@@ -36,7 +36,6 @@ compensation has already consumed the available boost.
 A matching register report proves the requested backend state was
 reported. It does not prove physical gain, delay, frequency response or
 delivery through a particular connector. Those need signal measurements.
-The unchanged backend pin and firmware remain part of that evidence.
 
 ## Physical units and RME limits
 
@@ -54,17 +53,17 @@ measurement. Its output-address parser assigns `param.out`, but the setter
 uses the untouched `param.in`. An isolated run of the actual C backend
 produced the same MIDI message for enable/disable on outputs 1, 5, 6 and 20.
 Those messages were not sent to the device. Loopback has no config domain
-in oscmix-desk. An external return cable or a separately corrected and
-qualified backend is needed before using loopback as delay evidence.
+in oscmix-desk. An external return cable or a corrected backend is needed
+before loopback can measure delay.
 
 The same manual says Room EQ's enable button controls EQ; nonzero delay
 and volume calibration remain active independently. Its UCX II chapter
 limits Room EQ to 16 mono/8 stereo channels. Register-address coverage
 does not prove that every DSP block can run simultaneously. At higher
-rates, physical ADAT capacity and USB alternate settings also differ;
-see the [rate qualification plan](plans/high-sample-rates.md).
+rates, physical ADAT capacity and USB alternate settings also differ; see
+[the per-mode table](FEATURE-SURFACE.md#hardware-boundary).
 
-## Export and evidence
+## Export and write sweeps
 
 `--dump-config` keeps the precision of each scalar step, including
 remembered comments. It omits malformed scalar reports and matrix states
@@ -92,6 +91,4 @@ restorable by this process.
 
 Restoration shares the probe permission checks: protected,
 read-only, invalid or no-longer-identifiable state is left explicitly
-unrestored. Historical sweep counts used the old tolerance and lack raw
-reports for confirmations; keep those artifacts as historical results,
-not as evidence under the corrected comparison.
+unrestored.

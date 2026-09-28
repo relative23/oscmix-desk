@@ -69,24 +69,21 @@ Two properties make this awkward to wait out, both measured on a UCX II:
   unmeasured when this paragraph was written -- has since been recorded
   too (`tests/data/cold-plug-timeline.json`): the link registers come
   back **0.01 s after the `/refresh`** that asks for them, and the dump
-  is over in ~4 s. These are historical measurements of their recorded
-  backend, not qualification of a changed patch series (ADR 0010).
+  is over in ~4 s.
 
 Desk sends links, waits at the link barrier, and only then sends the matrix.
 The later verification window can authorize a PIN repair or mix reapply.
 A complete decoded delivery determines the latest link state: a contradiction
 at its end revokes an earlier match. Malformed feedback or connection loss
 stops the operation; a known wrong link cannot be bypassed by timeout or
-blind reapply. An unchanged, silent link remains a distinct unconfirmed case;
-see [ADR 0029](decisions/0029-revocable-observations.md).
+blind reapply. An unchanged, silent link remains a distinct unconfirmed case.
 
 `setinputstereo()` updates the backend's playback flags synchronously, but
 that cached value is not hardware confirmation. The current patch series
 labels it as derived state. Computed input-matrix reports are withheld until
-their required device inputs are observed ([ADR 0031](decisions/0031-complete-input-mix-observations.md)).
-The investigated backend/UCX-II refresh path returns input-matrix reports but
-no playback-matrix coefficients. Re-establishing a declared playback route
-does not read it back; true playback read-back remains a 0.8.0 release gate.
+their required device inputs are observed. A refresh returns input-matrix
+reports but no playback-matrix coefficients, so a re-established playback route
+is not read back.
 
 ## Other useful addresses
 
