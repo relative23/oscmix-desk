@@ -4,24 +4,30 @@ import errno
 import os
 import socket
 import struct
+import time
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 from control_peer import (
     BEGIN,
     BUSY,
     DERIVED,
+    DESK,
     DEVICE,
     END,
     EVENT,
     HELLO,
+    INVALID,
     KEEPALIVE,
     METERS,
     OBSERVATION,
+    READER,
     REFRESH,
     REPLY,
     WRITE,
     ScriptedControl,
+    wait_for,
 )
 
 from oscmix_desk import backend
@@ -485,3 +491,275 @@ def test_a_definite_refresh_refusal_is_not_retried_or_misreported_as_a_dump(cont
     assert refused.value.errno == errno.EBUSY
     assert server.requests == [HELLO, REFRESH]
     assert server.writes == []
+
+
+# ----------------------------------------------------------------------------
+# Wire conformance. The scripted peer records every request, so the fields a
+# real backend authorizes on -- role, subscription, numbering, empty operation
+# requests -- are checked here as well as against the C backend
+# (backend_control.py), which the mutation suite cannot run.
+# ----------------------------------------------------------------------------
+
+@pytest.mark.parametrize(('options', 'role', 'sources'), [
+    ({}, DESK, 3),
+    ({'reader': False, 'sources': 1}, DESK, 1),
+    ({'reader': True, 'sources': 7}, READER, 7),
+    ({'reader': True, 'sources': 4}, READER, 4),
+])
+def test_the_hello_announces_role_and_subscription(peer, options, role, sources):
+    server = peer()
+    client = backend.Control(server.path, os.getpid(), **options)
+    try:
+        assert server.wire == [(HELLO, 1, role, 0, struct.pack('>I', sources))]
+    finally:
+        client.close()
+
+
+def test_operation_requests_are_numbered_once_and_carry_only_the_lease(control, monkeypatch):
+    server, client = control
+    client.begin()
+    lease = server.generation
+    client.request_dump(timeout=.5)
+    monkeypatch.setattr(backend, 'CONTROL_HEARTBEAT', 0)
+    client.heartbeat()
+    monkeypatch.setattr(backend, 'CONTROL_HEARTBEAT', 60)
+    client.send([('/output/5/volume', 'f', (-40.0,))])
+    client.finish()
+    assert [row[:4] for row in server.wire] == [
+        (HELLO, 1, DESK, 0), (BEGIN, 2, 0, 1), (REFRESH, 3, 0, lease),
+        (KEEPALIVE, 4, 0, lease), (WRITE, 5, 0, lease), (END, 6, 0, lease)]
+    assert [row[4] for row in server.wire[1:4] + server.wire[5:]] == [b''] * 4
+    assert server.wire[4][4] == encode_osc('/output/5/volume', 'f', -40.0)
+
+
+def test_a_handshake_reply_with_an_error_code_is_refused(peer):
+    server = peer(hello_code=INVALID)
+    with pytest.raises(OSError, match='handshake'):
+        backend.Control(server.path, os.getpid())
+    assert server.requests == [HELLO]
+
+
+@pytest.mark.parametrize('name', [b'\0name\0', b'name\0\0'])
+def test_a_nul_at_either_end_of_the_backend_name_is_refused(peer, name):
+    server = peer(handshake=EPOCH + struct.pack('>II', os.getpid(), 1) + name)
+    with pytest.raises(OSError, match='handshake'):
+        backend.Control(server.path, os.getpid())
+    assert server.requests == [HELLO]
+
+
+def test_a_request_payload_may_fill_but_not_exceed_the_protocol_limit(control):
+    server, client = control
+    client._send_request(KEEPALIVE, payload=bytes(backend.CONTROL_PAYLOAD))
+    with pytest.raises(OSError, match='protocol limits') as refused:
+        client._send_request(KEEPALIVE, payload=bytes(backend.CONTROL_PAYLOAD + 1))
+    assert refused.value.errno == errno.EOVERFLOW
+    wait_for(lambda: len(server.wire) == 2)
+    assert len(server.wire[1][4]) == backend.CONTROL_PAYLOAD
+    with pytest.raises(ReceivePortError, match='no longer valid'):
+        client.next_delivery(0)
+
+
+def test_a_late_acknowledgement_within_its_deadline_is_accepted(peer):
+    server = peer(delay={HELLO: 1.2})
+    client = backend.Control(server.path, os.getpid())
+    try:
+        assert client.epoch == EPOCH
+    finally:
+        client.close()
+
+
+def test_a_silent_backend_fails_the_handshake_at_its_deadline(peer, monkeypatch):
+    monkeypatch.setattr(backend, 'CONTROL_ACK_TIMEOUT', .3)
+    server = peer(silent=(HELLO,))
+    started = time.monotonic()
+    with pytest.raises(ReceivePortError, match='timed out') as failed:
+        backend.Control(server.path, os.getpid())
+    assert failed.value.errno == errno.ETIMEDOUT
+    assert time.monotonic() - started < 1.5
+
+
+@pytest.mark.parametrize(('size', 'accepted'), [
+    (backend.CONTROL_PAYLOAD, True), (backend.CONTROL_PAYLOAD + 4, False)])
+def test_a_frame_may_fill_but_not_exceed_the_protocol_limit(control, size, accepted):
+    server, client = control
+    server.emit(OBSERVATION, code=DEVICE, sequence=1, payload=bytes(size))
+    if accepted:
+        assert client.next_delivery(.5) == backend.Delivery(DEVICE, 1, EPOCH, bytes(size))
+    else:
+        with pytest.raises(ReceivePortError, match='packet size'):
+            client.next_delivery(.5)
+
+
+def test_a_frame_shorter_than_its_header_is_a_protocol_error(control):
+    server, client = control
+    server.peer.sendall(b'ODK1' + bytes(10))
+    with pytest.raises(ReceivePortError, match='packet size'):
+        client.next_delivery(.5)
+
+
+@pytest.mark.parametrize('code', [0, 1])
+def test_refresh_window_notices_are_accepted(control, code):
+    server, client = control
+    server.emit(18, code=code, sequence=1)
+    client.wait(.1)
+    assert client.next_delivery(0) is None
+
+
+def test_a_repeated_notice_of_the_current_generation_is_not_an_error(control):
+    server, client = control
+    server.emit(EVENT, code=0, sequence=server.generation)
+    client.wait(.1)
+    client.begin()
+    assert server.requests == [HELLO, BEGIN]
+
+
+def test_a_repeated_grant_of_the_same_lease_keeps_the_operation(peer):
+    server = peer(after_begin=[(EVENT, 1, None, b'')])
+    client = backend.Control(server.path, os.getpid())
+    try:
+        client.begin()
+        client.wait(.1)
+        client.send([('/output/5/volume', 'f', (-40.0,))])
+        client.finish()
+        assert server.requests == [HELLO, BEGIN, WRITE, END]
+    finally:
+        client.close()
+
+
+def test_a_release_notice_during_an_operation_invalidates_it(peer):
+    server = peer(after_begin=[(EVENT, 0, None, b'')])
+    client = backend.Control(server.path, os.getpid())
+    try:
+        client.begin()
+        with pytest.raises(ReceivePortError, match='changed unexpectedly'):
+            client.wait(.2)
+        with pytest.raises(WriteFailed):
+            client.send([('/output/5/volume', 'f', (-40.0,))])
+        assert server.writes == []
+    finally:
+        client.close()
+
+
+def test_a_lease_notice_after_finishing_is_ordinary_traffic(control):
+    server, client = control
+    client.begin()
+    client.finish()
+    server.emit(EVENT, code=1, sequence=server.generation + 1)
+    client.wait(.1)
+    assert client.next_delivery(0) is None
+
+
+def test_begin_waits_while_the_lease_is_busy_and_acquires_it_when_free(peer):
+    server = peer(busy_begins=2)
+    client = backend.Control(server.path, os.getpid())
+    try:
+        client.begin(timeout=5)
+        client.send([('/output/5/volume', 'f', (-40.0,))])
+        assert server.requests == [HELLO, BEGIN, BEGIN, BEGIN, WRITE]
+        assert server.wire[-1][3] == server.generation
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize('role', ['desk', 'reader'])
+def test_the_observation_queue_accounts_packets_and_bytes_exactly(peer, monkeypatch, role):
+    # A payload longer than the header distinguishes adding, subtracting and
+    # replacing the byte count; a reader never discards at begin().
+    value = encode_osc('/output/5/volume/xx', 'f', -30.0)
+    assert len(value) > backend.CONTROL_HEADER.size
+    assert len(value) % 4 == 0
+    size = backend.CONTROL_HEADER.size + len(value)
+    monkeypatch.setattr(backend, 'CONTROL_QUEUE_BYTES', 2 * size)
+    server = peer()
+    client = backend.Control(server.path, os.getpid(), reader=role == 'reader')
+    sequence = iter(range(1, 100))
+    try:
+        if role == 'desk':
+            client.begin()
+        for _ in range(2):
+            server.emit(OBSERVATION, code=DEVICE, sequence=next(sequence), payload=value)
+        client.wait(.2)  # exactly at the byte limit
+        assert client.next_delivery(0) is not None
+        assert client.next_delivery(0) is not None
+        for _ in range(2):
+            server.emit(OBSERVATION, code=DEVICE, sequence=next(sequence), payload=value)
+        client.wait(.2)  # drained completely, so the limit is available again
+        server.emit(OBSERVATION, code=DEVICE, sequence=next(sequence), payload=value)
+        with pytest.raises(ReceivePortError, match='overflowed'):
+            client.wait(.2)
+    finally:
+        client.close()
+
+
+def test_the_observation_queue_holds_exactly_its_packet_limit(control, monkeypatch):
+    server, client = control
+    monkeypatch.setattr(backend, 'CONTROL_QUEUE_PACKETS', 3)
+    value = encode_osc('/output/5/stereo', 'i', 1)
+    for sequence in (1, 2, 3):
+        server.emit(OBSERVATION, code=DEVICE, sequence=sequence, payload=value)
+    client.wait(.2)
+    server.emit(OBSERVATION, code=DEVICE, sequence=4, payload=value)
+    with pytest.raises(ReceivePortError, match='overflowed'):
+        client.wait(.2)
+
+
+@pytest.mark.parametrize(('options', 'role', 'sources'), [
+    ({}, DESK, 3), ({'reader': True, 'sources': 4}, READER, 4)])
+def test_the_factory_passes_role_and_subscription_to_the_connection(
+        peer, monkeypatch, options, role, sources):
+    server = peer()
+    monkeypatch.setattr(backend, 'backend_status', lambda *_a: ready(server))
+    client = backend.connect_backend(Config(serial='00000000'), **options)
+    try:
+        assert server.wire == [(HELLO, 1, role, 0, struct.pack('>I', sources))]
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize('field', ['uid', 'gid'])
+def test_the_factory_requires_the_checked_owner_credentials(peer, monkeypatch, field):
+    server = peer()
+    identity = ready(server)
+    identity = replace(identity, **{field: getattr(identity, field) + 1})
+    monkeypatch.setattr(backend, 'backend_status', lambda *_a: identity)
+    with pytest.raises(OSError, match='peer does not match'):
+        backend.connect_backend(Config(serial='00000000'))
+    assert server.requests == []
+
+
+@pytest.mark.parametrize('missing', ['pid', 'endpoint', 'device'])
+def test_the_factory_refuses_a_ready_status_without_complete_evidence(
+        peer, monkeypatch, missing):
+    server = peer()
+    identity = replace(ready(server), **{missing: None})
+    monkeypatch.setattr(backend, 'backend_status', lambda *_a: identity)
+    with pytest.raises(OSError, match='checked') as refused:
+        backend.connect_backend(Config(serial='00000000'))
+    assert refused.value.errno == errno.ENOTCONN
+    assert server.requests == []
+
+
+def test_the_factory_checks_identity_for_the_desk_under_the_default_proc(
+        peer, monkeypatch, tmp_path):
+    server = peer()
+    checked = []
+
+    def status(config, proc_root, config_path):
+        checked.append((proc_root, config_path))
+        return ready(server)
+
+    monkeypatch.delenv('OSCMIX_PROC_ROOT', raising=False)
+    monkeypatch.setattr(backend, 'backend_status', status)
+    client = backend.connect_backend(Config(serial='00000000'), tmp_path / 'routing.conf')
+    try:
+        assert checked == [(Path('/proc'), tmp_path / 'routing.conf')] * 2
+    finally:
+        client.close()
+
+
+def test_the_factory_honours_a_stop_before_its_first_request(peer, monkeypatch):
+    server = peer()
+    monkeypatch.setattr(backend, 'backend_status', lambda *_a: ready(server))
+    with pytest.raises(ReceivePortError, match='cancelled'):
+        backend.connect_backend(Config(serial='00000000'), should_stop=lambda: True)
+    assert server.requests == []

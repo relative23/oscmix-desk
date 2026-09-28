@@ -199,8 +199,19 @@ class Peer:
 class ScriptedControl:
     def __init__(self, path, *, handshake=None, refuse_write=0, lose_reply=0,
                  begin_busy=False, refresh_busy=False, reports=(), echo=False,
-                 disconnect_after=None, close_after_dump=False):
+                 disconnect_after=None, close_after_dump=False, hello_code=OK,
+                 busy_begins=0, silent=(), delay=None, after_hello=(), after_begin=()):
+        # silent: kinds never answered while the connection stays open.
+        # delay: {kind: seconds} before a reply. after_hello/after_begin: raw
+        # packets (bytes) or (kind, code, sequence, payload) frames sent after
+        # that reply; a sequence of None means the current generation.
         self.path = path
+        self.hello_code = hello_code
+        self.busy_begins = busy_begins
+        self.silent = silent
+        self.delay = delay or {}
+        self.after_hello = after_hello
+        self.after_begin = after_begin
         self.reports = reports
         self.echo = echo
         self.disconnect_after = disconnect_after
@@ -215,6 +226,7 @@ class ScriptedControl:
         self.writes = []
         self.order = []
         self.requests = []
+        self.wire = []  # (kind, request, code, token, payload) as received
         self.error = None
         self.done = threading.Event()
         self.listener = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
@@ -254,9 +266,10 @@ class ScriptedControl:
                 continue
             if not data:
                 return
-            magic, kind, request, _code, _token = HEADER.unpack_from(data)
+            magic, kind, request, request_code, token = HEADER.unpack_from(data)
             assert magic == b'ODK1'
             self.requests.append(kind)
+            self.wire.append((kind, request, request_code, token, data[HEADER.size:]))
             code = OK
             payload = b''
             if kind == HELLO:
@@ -264,8 +277,12 @@ class ScriptedControl:
                            + b'Fireface UCX II (00000000)\0')
                 if self.handshake is not None:
                     payload = self.handshake
+                code = self.hello_code
             elif kind == BEGIN:
                 code = BUSY if self.begin_busy else OK
+                if self.busy_begins:
+                    self.busy_begins -= 1
+                    code = BUSY
                 if code == OK:
                     self.generation += 1
             elif kind == END:
@@ -284,7 +301,18 @@ class ScriptedControl:
             if (kind == self.lose_reply or (kind == WRITE and self.order
                                            and self.order[-1] == self.disconnect_after)):
                 return
+            if kind in self.silent:
+                continue
+            time.sleep(self.delay.get(kind, 0))
             self.emit(kind | REPLY, request, code, payload=payload)
+            follow = (self.after_hello if kind == HELLO else
+                      self.after_begin if kind == BEGIN and code == OK else ())
+            for frame in follow:
+                if isinstance(frame, bytes):
+                    self.peer.sendall(frame)
+                else:
+                    event, event_code, sequence, data = frame
+                    self.emit(event, 0, event_code, sequence, data)
             if kind == REFRESH and code == OK:
                 for report in self.reports:
                     self.sequence += 1

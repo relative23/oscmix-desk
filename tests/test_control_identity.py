@@ -152,3 +152,53 @@ def test_too_long_endpoint_is_refused_before_socket_io(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / ("long" * 40)))
     with pytest.raises(OSError, match="Unix socket limit"):
         locking.control_path(None, "key")
+
+
+def test_two_listening_sockets_with_one_pathname_refuse_association(endpoint):
+    _config, path, proc = endpoint
+    table = (proc / "net/unix").read_text()
+    (proc / "net/unix").write_text(table + "1: 2 0 00010000 0005 01 100502 " + str(path) + "\n")
+    with pytest.raises(OSError, match="multiple listening control endpoints"):
+        process.control_socket_owner(path, proc)
+
+
+def test_the_shortest_bridge_command_qualifies(endpoint):
+    config, _path, proc = endpoint
+    command(proc / "102", ["alsaseqio", "-x", "24:1", "oscmix"])
+    assert diagnostics.backend_status(config, proc).state == "ready"
+
+
+def test_a_bridge_without_the_exclusive_option_never_qualifies(endpoint):
+    config, _path, proc = endpoint
+    command(proc / "102", ["alsaseqio", "-y", "24:1", "oscmix"])
+    assert diagnostics.backend_status(config, proc).state == "unknown"
+
+
+@pytest.mark.parametrize("missing", ["cmdline", "exe"])
+def test_an_unreadable_process_beside_the_backend_does_not_hide_its_bridge(endpoint, missing):
+    config, path, proc = endpoint
+    # Sorted before the bridge (102) and also a child of the backend (101).
+    shutil.copytree(proc / "102", proc / "100", symlinks=True)
+    (proc / "100/stat").write_text("100 (alsaseqio) S 101 0 0\n")
+    (proc / "100" / missing).unlink()
+    assert process.control_holder(path, proc) == process.BackendOwner(101, True, 24, "24216011")
+    assert diagnostics.backend_status(config, proc).state == "ready"
+
+
+def test_an_unreadable_descriptor_does_not_hide_the_socket_owner(endpoint):
+    _config, path, proc = endpoint
+    for number in (0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12):
+        (proc / "101/fd" / str(number)).write_text("")  # readlink fails on a file
+    assert process.control_socket_owner(path, proc) == 101
+
+
+@pytest.mark.parametrize("words", [
+    ["another", "-c", "PATH"],
+    ["oscmix", "-z", "-c", "PATH"],
+    ["oscmix", "-c", "/another.control"],
+    ["oscmix", "-c", "PATH", "extra"],
+])
+def test_a_listener_that_is_not_this_backend_is_named_but_not_coordinated(endpoint, words):
+    _config, path, proc = endpoint
+    command(proc / "101", [word.replace("PATH", str(path)) for word in words])
+    assert process.control_holder(path, proc) == process.BackendOwner(101, False, None, None)
