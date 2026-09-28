@@ -158,3 +158,19 @@ def test_the_workflow_is_scheduled_at_all():
     head = text[:text.index("\njobs:")]
     assert "schedule:" in head
     assert re.search(r"cron:", head)
+
+
+def test_the_release_check_reads_the_sweep_format_the_tool_writes():
+    # The release workflow still checked schema 2 and top-level
+    # before/after states after the sweep moved to one transaction per
+    # lease; only the tag build would have noticed.
+    workflow = repo_file(".github", "workflows", "release.yml").read_text()
+    tool = repo_file("scripts", "sweep-writes.py").read_text()
+    checked = re.findall(r"sweep\['schema'\] == (\d+)", workflow)
+    written = re.findall(r'"schema": (\d+),', tool)
+    assert checked
+    assert checked == written
+    for field in ("transactions", "complete", "not_restored", "before_messages",
+                  "after_messages"):
+        assert "'%s'" % field in workflow, field
+        assert re.search(r"""['"]%s['"]|\b%s=""" % (field, field), tool), field
