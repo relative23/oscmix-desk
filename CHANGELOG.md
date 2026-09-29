@@ -66,6 +66,9 @@
   package's service and remove the system files the package owns. Without a
   reachable user manager it now removes the service's enable links and, for
   the account's own home, the system files; it left both behind.
+- A package installation keeps its own files when another package tool is
+  also installed: every available package database is asked whether it owns
+  a system file, not only the first one found.
 - Backend peer credentials are read as unsigned uid and gid.
 - `--list-profiles` counts channel settings, not sections.
 - Tests that bind Unix sockets no longer fail when `TMPDIR` is long.

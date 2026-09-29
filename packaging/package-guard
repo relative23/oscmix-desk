@@ -47,11 +47,18 @@ def require_stopped():
 
 
 def owned(path):
+    """Whether any package database on the host claims ``path``.
+
+    Every available tool is asked: a Fedora host with dpkg installed for
+    other reasons answered from dpkg's empty database, and this package's
+    own files were then moved aside as unowned legacy (until 0.8.1).
+    """
     for tool, arguments in (('dpkg-query', ['-S']), ('rpm', ['-qf']), ('pacman', ['-Qo'])):
         if shutil.which(tool):
             result = subprocess.run([tool, *arguments, str(path)], capture_output=True,
                                     check=False, timeout=20)
-            return result.returncode == 0
+            if result.returncode == 0:
+                return True
     return False
 
 

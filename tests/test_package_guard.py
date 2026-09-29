@@ -117,6 +117,24 @@ def test_unowned_system_files_are_copied_with_modes_and_manifest(guard, tmp_path
     assert item['original'] == str(legacy)
 
 
+def test_a_file_is_owned_when_any_package_database_claims_it(guard, monkeypatch):
+    # A Fedora host with dpkg installed answered from dpkg's empty database,
+    # and the package's own files were moved aside as legacy (until 0.8.1).
+    asked = []
+
+    def run(command, **_kwargs):
+        asked.append(command[0])
+        return guard.subprocess.CompletedProcess(command, 0 if command[0] == 'rpm' else 1)
+
+    monkeypatch.setattr(guard.shutil, 'which', lambda tool: '/usr/bin/' + tool)
+    monkeypatch.setattr(guard.subprocess, 'run', run)
+    assert guard.owned(guard.Path('/usr/bin/oscmix-session'))
+    assert asked == ['dpkg-query', 'rpm']
+    monkeypatch.setattr(guard.subprocess, 'run',
+                        lambda command, **_k: guard.subprocess.CompletedProcess(command, 1))
+    assert not guard.owned(guard.Path('/usr/bin/oscmix-session'))
+
+
 def test_unreadable_proc_data_cannot_be_taken_as_no_running_mixer(guard, tmp_path):
     loader = importlib.machinery.SourceFileLoader(
         'guard_process_scan', str(repo_file('packaging', 'package-guard')))
