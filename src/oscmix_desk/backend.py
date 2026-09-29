@@ -121,6 +121,13 @@ class Control:
     The operation owner drives this object from one thread at a time.
     Reading or waiting here maintains its lease. A caller must use wait()
     instead of a long unserviced sleep while it owns an operation.
+
+    Every failure that closes the connection -- sending, receiving, a
+    protocol violation, a cancelled operation -- raises ReceivePortError
+    (since 0.8.1; a failed send was a plain OSError). So does a refresh
+    window that stays unavailable, since no observation can follow. A
+    refusal that leaves the connection usable, such as a busy lease, is a
+    plain OSError, and so is a failure to connect at all.
     """
 
     traits = OSCMIX
@@ -203,7 +210,7 @@ class Control:
         self._check()
         if len(payload) > PAYLOAD or self._request_id == 0xffffffff:
             self.close()
-            raise OSError(errno.EOVERFLOW, "control request exceeds protocol limits")
+            raise ReceivePortError(errno.EOVERFLOW, "control request exceeds protocol limits")
         self._request_id += 1
         packet = HEADER.pack(
             MAGIC, kind, self._request_id, code,
@@ -211,12 +218,12 @@ class Control:
         try:
             self._sock.settimeout(CONTROL_ACK_TIMEOUT)
             sent = self._sock.send(packet)
-        except OSError:
+        except OSError as exc:
             self.close()
-            raise
+            raise ReceivePortError(exc.errno, "backend send failed: %s" % exc) from exc
         if sent != len(packet):
             self.close()
-            raise OSError(errno.EIO, "incomplete control request")
+            raise ReceivePortError(errno.EIO, "incomplete control request")
         return self._request_id
 
     def _receive(self, timeout: float) -> Optional[Tuple[int, int, int, int, bytes]]:

@@ -551,13 +551,24 @@ def test_a_nul_at_either_end_of_the_backend_name_is_refused(peer, name):
 def test_a_request_payload_may_fill_but_not_exceed_the_protocol_limit(control):
     server, client = control
     client._send_request(KEEPALIVE, payload=bytes(protocol.PAYLOAD))
-    with pytest.raises(OSError, match='protocol limits') as refused:
+    with pytest.raises(ReceivePortError, match='protocol limits') as refused:
         client._send_request(KEEPALIVE, payload=bytes(protocol.PAYLOAD + 1))
     assert refused.value.errno == errno.EOVERFLOW
     wait_for(lambda: len(server.wire) == 2)
     assert len(server.wire[1][4]) == protocol.PAYLOAD
     with pytest.raises(ReceivePortError, match='no longer valid'):
         client.next_delivery(0)
+
+
+def test_a_failed_send_closes_the_connection_like_a_failed_receive(control):
+    # Both end the connection, so both are ReceivePortError; until 0.8.1 a
+    # failed send was a plain OSError and callers told them apart by type.
+    _server, client = control
+    client._sock.shutdown(socket.SHUT_WR)
+    with pytest.raises(ReceivePortError, match="backend send failed") as failed:
+        client._send_request(KEEPALIVE)
+    assert failed.value.errno == errno.EPIPE
+    assert client._closed
 
 
 def test_a_late_acknowledgement_within_its_deadline_is_accepted(peer):
