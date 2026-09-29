@@ -145,6 +145,22 @@ Common findings in the journal:
 - `unconfirmed after retry: ...` -- PIN values remain mismatched or lack
   expected feedback. Inspect the per-register result and backend/device
   identity. A GUI label or working audio does not confirm every register.
+- `the device lock is not available (<reason>); not applying routing` --
+  the start could not take the lock and fails, so systemd retries. The
+  reason is the lock's own: another writer still holding it after 30 s, or
+  a lock file or directory this process cannot use (see the lock refusals
+  below). Until 0.8.1 every case read as another writer holding it.
+- `stop requested during the start; routing not completed (...)` or `the
+  backend exited during the start; ...` -- a warning, not a failed start:
+  the stop, or the backend's own exit (an unplug, most often), is reported
+  next and decides the exit code.
+- `verifier did not repair the routing: ...` -- the read-back found a
+  difference, and the repair was refused before it was sent: a remembered
+  value it could not keep, a link it could not trust, or a playback mode
+  that changed. The backend connection was fine.
+- `verifier read the routing back, but its backend operation did not end
+  cleanly (...)` -- the result above it stands; only the end of the lease
+  was not acknowledged.
 
 - `no link change reported within ...` -- the window was silent. This is
   expected for an unchanged link but does not prove its value.
@@ -168,16 +184,21 @@ rejected while busy or disconnected. The old `OSCMIX_LINK_SYNC_DELAY` workaround
 for a GUI-held UDP receiver no longer applies.
 
 `systemctl --user status oscmix.service` also shows a `Status:` line:
-`applying routing`, `verifying routing`, `reconciling
-(SIGHUP)`, `running; verifier finished at HH:MM:SS`, `running;
-verifier failed at HH:MM:SS`, `running; reconciled at HH:MM:SS`, or
-`running; reconcile skipped at HH:MM:SS`. "Skipped" means the reconcile
-stood down: another writer held the device lock/lease, the startup verifier
-was still running after the wait, the config no longer parses, or the backend
-could not be reached. The journal and partial-apply details distinguish
-refusal before writes from failure after submissions. "Verifier failed"
-does not erase the initial application or certify its values. The status
-line describes activity, not ownership or a complete hardware snapshot.
+`applying routing`, `verifying routing`, `reconciling (SIGHUP)`, or
+`running; <result> at HH:MM:SS` with one of these results:
+
+| Result | Meaning |
+|---|---|
+| `verifier finished` | the start-up read-back and any repair completed |
+| `verifier incomplete` | registers stayed unconfirmed after the one repair, or a link was contradicted; the journal names them |
+| `verifier failed` | the read-back, the repair or the end of the backend operation failed; the journal says which |
+| `reconciled` | a reload re-read the desk and applied it |
+| `reconcile skipped` | a reload stood down before sending anything: the device lock or lease was held elsewhere, the start-up verifier was still running, the config no longer parses, the backend could not be reached, or the plan refused to write |
+| `reconcile incomplete` | a reload sent writes and then ended early; the journal lists what was sent and what was pending |
+
+"Verifier failed" does not erase the initial application or certify its
+values. The status line describes activity, not ownership or a complete
+hardware snapshot.
 The unit takes the same file lock a switch takes. It is named after the
 interface and lives in `/run/oscmix-desk/`, independent of the environment,
 the user or the config directory, so a profile switch right after a replug
@@ -236,11 +257,16 @@ backend in turn). If the newcomer was the unit, `RestartPreventExitStatus`
 keeps it down until the next plug-in event or `systemctl --user start
 oscmix.service`; stop the manual session first.
 
-## 4. Does the backend accept OSC?
+## 4. Is the backend's control socket there?
 
 ```sh
-ss -ulnp | grep 7222            # oscmix should be listening
+oscmix-session --status         # under "backend:": state ready, pid, endpoint
+ss -xlp | grep oscmix-desk      # u_seq LISTEN ... <interface>.control, "oscmix"
 ```
+
+The backend listens on a local socket in `/run/oscmix-desk/` (or the runtime
+directory), named after the interface. There is no UDP port to check since
+0.8.0.
 
 ## 5. Sound on the wrong outputs / no sound
 
@@ -267,7 +293,8 @@ fastest way to see it, and `systemctl --user reload oscmix.service`
 re-applies the config without a restart. `oscmix-session --snapshot`
 prints the complete register state -- all of it, including what a
 config cannot express -- which is what to save before and after an
-experiment. Both need the mixer GUI closed; they share its port.
+experiment. Both read through the backend's control socket, so the mixer GUI
+can stay open; a GUI edit during the read is part of what they see.
 
 ## 6. Service does not start on hotplug
 
@@ -446,21 +473,20 @@ down, then the output faders in the mixer, by ear. On an audio interface
 the digital path belongs at unity; listening level is what the hardware
 faders are for.
 
-## 11. A fader moves back by itself after a replug, restart or wake
+## 11. A fader moves back by itself after a replug or restart
 
 Symptom: an output fader set in the mixer GUI returns to a fixed value
-after the interface is replugged, the service restarts, or the machine
-wakes from suspend.
+after the interface is replugged or the service restarts.
 
-That is a route with a `volume =` line. Declaring it pins the output
-fader (README, *Configure your routing*): every backend start writes it,
-and so does every reload -- including the one the resume hook sends
-after a suspend. Nothing is drifting; the config is doing what it says.
-If the fader is one you set by hand, delete the `volume =` line from
-that route. The session then never writes that register, and the fader
-stays where you put it. `[pin] output.volume` does not change this: it
-decides who wins for a value the config declares, not whether the
-config declares it.
+That is a route with a `volume =` line. Output volume is *remembered*
+(README, *Who wins: pin and remember*): the declared value is the starting
+value of every new session, and a replug or a restart starts one. A reload,
+including the one the resume hook sends after a suspend, keeps the fader
+where it is. Nothing is drifting; the config is doing what it says. If the
+fader is one you set by hand, delete the `volume =` line from that route;
+the session then never writes that register. `[pin] output.volume = pin`
+does the opposite: reloads and resumes restore the declared value too.
+Until 0.8.0 volume was pinned, and every reload wrote it.
 
 A profile, by contrast, survives all of this: the switch
 remembers it beside `routing.conf`, and starts and reloads apply the

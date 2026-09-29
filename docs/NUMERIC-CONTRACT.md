@@ -80,9 +80,12 @@ export into the existing desk rather than replacing it wholesale.
 its one-decimal formatting could hide smaller differences. Historical
 snapshot equality therefore cannot establish absence of sub-tenth drift.
 
-Sweep schema 2 records requested, encoded and reported values, the
-comparison rule, original/final state, running binary identity and any
-failure. Original/final messages retain all arguments and their OSC type
+Sweep schema 3 records requested, encoded and reported values, the
+comparison rule, running binary identity and any failure. Since 0.8.0 each
+chunk of up to 32 registers is one backend operation (lease) and one entry
+in `transactions`, with its own baseline (`before`), final read (`after`) and
+anything it could not restore; schema 2 had one original and one final
+state for the whole run, which a released lease no longer allows. Original/final messages retain all arguments and their OSC type
 tags, including mix pan and enum labels. Source provenance includes every
 runtime module used to judge the reports; a change during measurement
 invalidates the pass. SIGINT/SIGTERM requests end probing and allow bounded
