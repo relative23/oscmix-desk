@@ -74,7 +74,7 @@ acyclic graph.
 
 | Module | What it owns |
 |---|---|
-| `constants` | every timing constant and exit code, each with the measurement that produced it |
+| `constants` | every exit code and the session's timing constants, each with the measurement that produced it; the ODK1 client's own limits live in `backend`, the backend's clocks in `protocol` |
 | `errors` | configuration, ambiguous-device and lock refusals; `ReceivePortError` for failed coordinated observations (retained API name), and `WriteFailed` with submitted/pending paths |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
@@ -101,18 +101,55 @@ acyclic graph.
 | `preview` | compare two partial desk declarations for omitted matrix paths and changed link requirements |
 | `routing` | send a plan in two phases, with the link barrier between them |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
-| `process` | supervise the backend: start, `SIGTERM`, escalate to `SIGKILL`, reap; and associate the listening control inode with its executable and exclusive ALSA bridge |
+| `process` | the supervise loop (reload requests, `SIGTERM` then `SIGKILL` on stop); the unit's process and `systemctl` calls; associating the listening control inode with its executable and exclusive ALSA bridge, and ending an orphaned backend |
 | `pipewire` | generate named virtual sinks from the same config |
 | `locking` | the desk file lock and shared device endpoint path: location, permissions and bounded acquisition; backend leases additionally coordinate GTK |
 | `marker` | which profile is in effect, remembered beside the config: read, written through a rename, removed |
 | `outcome` | what a switch did, as a value: applied and verified, applied and unverified, refused, or written in part with both lists |
 | `profiles` | switch to `profiles/<name>.conf` under that lock: validate, write, check, finish the backend operation, then persist the selection; report exact outcomes and preserve the previous marker on incomplete operations |
 | `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` -- kept for the machine the session runs on, or refused as a desk for somewhere else |
-| `session` | the service lifecycle: wait for the device, start the backend, apply, signal ready, verify, shut down |
+| `session` | the service lifecycle: wait for the device, start and stop the backend, apply, signal ready, verify, shut down |
 | `launcher` | desktop entry point; checks GTK prerequisites and exact backend/desk identity before launch |
 | `reads` | the three actions that read the device and write nothing: `--snapshot`, `--diff`, `--dump-config` |
 | `cli` | argument parsing, one action per invocation, and the exit-code mapping -- a switch's outcome and the unit's reload included |
 | `__init__` | the supported surface -- read a config, apply and verify it, switch profiles, the errors and outcomes, the two entry points -- and the only module that re-exports; every other module is implementation |
+
+## One profile switch, end to end
+
+`oscmix-session --profile tracking`, module by module. The start and a
+reload run the same middle part (steps 3 to 8) with their own intent.
+
+1. `cli.main` parses the command line, finds the config
+   (`paths.discover_config_path`) and refuses during an unfinished package
+   update (`hostservice.maintenance_problem`).
+2. `profiles.switch_profile` parses and validates the whole profile onto the
+   main config's machine settings (`config`, `sections`, `devices`). A
+   refusal here has written nothing and takes no lock.
+3. `discovery.resolve_device` names the interface: its serial, sequencer
+   client and lock key.
+4. `locking.device_lock` takes the file lock every writer of that interface
+   takes, or returns why not.
+5. `backend.connect_backend` identifies the running backend through
+   `diagnostics.backend_status` (`process`, `discovery`), connects, checks the
+   kernel peer credentials and says HELLO as the desk (`protocol`).
+   `Control.begin` takes the operation lease.
+6. `routing.apply_routing` asks `reconcile.application_plan` what to write
+   for the intent (`reconcile.ApplyIntent`: explicit, repair or reconcile,
+   which decides PIN and REMEMBER), refuses a plan that would lose a value it
+   must keep (`retention_problem`) or a changed playback mode
+   (`streams.PlaybackGuard`), then sends links, waits at the link barrier
+   for device reports (`await_link_echo`), and sends the mix and channel
+   state.
+7. `verify.verify_routing` requests a refresh and compares the device-origin
+   reports (`observation`, `numeric`) with the expected registers, giving a
+   `VerifyResult`.
+8. `Control.finish` ends the lease; only an acknowledged end lets
+   `marker.remember_active_profile` record the switch.
+9. The `outcome.Outcome` becomes the exit code in `cli`.
+
+At start, `session` runs steps 3 to 6 before `READY=1` and step 7 in a
+background thread with a repair (`verify.verify_and_repair`); a SIGHUP runs
+them in `reload` with the reconcile intent, which keeps remembered values.
 
 ## The register model is data
 

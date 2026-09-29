@@ -57,7 +57,10 @@ def build_arg_parser() -> ArgumentParser:
         description="Supervise the oscmix backend for an RME Fireface interface.",
     )
     parser.add_argument("--config", type=Path, metavar="FILE",
-                        help="routing config (default: ~/.config/oscmix/routing.conf)")
+                        help="routing config (default: $OSCMIX_CONFIG, then "
+                             "$XDG_CONFIG_HOME/oscmix/routing.conf or "
+                             "~/.config/oscmix/routing.conf, then "
+                             "/etc/oscmix/routing.conf)")
     parser.add_argument("--device", metavar="NAME",
                         help="ALSA client name to wait for (overrides config)")
     parser.add_argument("--timeout", type=float, default=DEFAULT_DEVICE_TIMEOUT,
@@ -85,7 +88,7 @@ def build_arg_parser() -> ArgumentParser:
                              "a routing.conf that reproduces what it reports")
     parser.add_argument("--pipewire-sinks", action="store_true",
                         help="print a PipeWire config with one named sink "
-                             "per stereo route, then exit")
+                             "per stereo output pair, then exit")
     parser.add_argument("--pipewire-target", metavar="NODE",
                         help="Fireface sink node.name for --pipewire-sinks "
                              "(default: auto-detect via pw-dump)")

@@ -11,12 +11,15 @@ All integers are unsigned big-endian. The 24-byte header is:
 | 0–3 | ASCII `ODK1` |
 | 4–7 | Kind |
 | 8–11 | Request number |
-| 12–15 | Role, result or observation origin, according to kind |
+| 12–15 | Role (HELLO), result code (replies), lease or window state (events 16 and 18), observation origin (event 17) |
 | 16–23 | Lease generation; observation sequence or window number for those events |
 | 24 onward | Kind-specific payload, at most 8192 bytes |
 
-A client starts request numbering at 1 and increases it by exactly one.
-Zero, replay, gaps, wrap, bad framing and excess payload disconnect it.
+The backend serves at most 16 connections, and closes one that has not sent
+HELLO within three seconds. A client starts request numbering at 1 and
+increases it by exactly one. Zero, replay, gaps, wrap, bad framing, excess
+payload, a second HELLO, a nonzero code on any request but HELLO and a payload
+on any request but WRITE disconnect it.
 There is no automatic reconnection or replay. Replies set bit `0x80000000`
 on the request kind and retain its number. Events have request number zero.
 An observation sequence may have gaps because subscriptions select origins;
@@ -27,10 +30,10 @@ gaps alone do not prove loss.
 | Kind | Name | Code and payload |
 | --- | --- | --- |
 | 1 | HELLO | Role: 1 desk, 2 GTK, 3 reader. Payload: 32-bit origin mask (1, 2, 4 or their union). Required first. |
-| 2 | BEGIN | Desk only; acquire an operation lease or return busy. No payload. |
+| 2 | BEGIN | Acquire an operation lease or return busy (1). Only the desk role may hold one; GTK and readers get 6. No payload. |
 | 3 | END | Release this connection's lease, using its current generation. |
 | 4 | KEEPALIVE | Renew the five-second inactivity limit. The 90-second total limit remains fixed. |
-| 5 | WRITE | One literal OSC message, using the lease generation or GTK's last observed free generation. No bundles, address patterns or `/refresh` bypass. |
+| 5 | WRITE | One literal OSC message, using the lease generation or GTK's last observed free generation. Refused with 2: bundles, address patterns (`*?[]{}`) or non-printable characters, addresses starting with `/refresh` or `/register`, type tags other than `i`, `f` and `s`, and non-finite floats. |
 | 6 | REFRESH | Request a new hardware refresh receive window. No payload. |
 
 Code is zero except on HELLO. Replies normally have no payload. A successful
@@ -41,13 +44,30 @@ backend/bridge/interface identity. The name is not authentication. A changed
 connection invalidates all prior observations.
 
 Result codes: 0 processed, 1 busy or stale generation, 2 invalid command,
-6 no matching ownership. Codes 3–5 are reserved; expiry, shutdown and overflow
-close the connection. A processing acknowledgement is not hardware read-back.
-If it is lost, a submitted write may already have reached the device.
+6 no matching ownership or a role that cannot hold a lease. Codes 3–5 are
+reserved; expiry, shutdown and overflow close the connection. A processing
+acknowledgement is not hardware read-back. A WRITE to an address that no
+backend node handles is also answered 0: the reply says the message was parsed
+and dispatched, not that a register exists or changed. If an acknowledgement
+is lost, a submitted write may already have reached the device.
 
 GTK edits are never queued for later execution. During a desk operation
 they are rejected. Release advances the generation so an old edit also fails
 when the backend becomes free. Readers cannot write or acquire leases.
+
+## Timing
+
+The desk retries a busy BEGIN for up to 30 seconds and a busy REFRESH for up
+to 12, waits two seconds for each acknowledgement, and sends a KEEPALIVE
+every second while it holds a lease.
+
+A WRITE does not renew the lease, and the backend checks the five-second idle
+limit before it handles the next request. A WRITE whose MIDI output is held up
+for about five seconds therefore ends the lease even when a KEEPALIVE is
+already queued behind it. The backend itself exits when one MIDI write is
+not finished within two seconds. A desk that gets no
+acknowledgement within two seconds closes the connection. Each of these ends
+the operation, and the write in flight counts as possibly sent.
 
 ## Events
 

@@ -97,6 +97,15 @@ against the device's bounds before anything is sent. The shipped
 A config is a **partial** desired state: omitting a route does not mute it.
 The UCX II's front headphones are outputs 7/8.
 
+The config is the first of: `--config FILE`, `$OSCMIX_CONFIG`,
+`$XDG_CONFIG_HOME/oscmix/routing.conf` (or `~/.config/oscmix/routing.conf`),
+`/etc/oscmix/routing.conf`. Profiles live in `profiles/` beside it. Other
+options: `--device NAME` and `--timeout SECONDS` for the interface search,
+`--dry-run` to print what would be sent, `--pipewire-target NODE` for
+`--pipewire-sinks` when auto-detection picks the wrong node, and `--verbose`
+for debug logging. `--osc-port` is still accepted from old unit files and
+selects nothing.
+
 ### Who wins: pin and remember
 
 Every setting is either **pinned** -- the config wins and is re-sent if the
@@ -142,7 +151,11 @@ oscmix-session --pipewire-sinks > ~/.config/pipewire/pipewire.conf.d/oscmix-sink
 systemctl --user restart pipewire wireplumber
 ```
 
-Each stereo route with `playback = output` becomes a sink named after it.
+One sink per stereo output pair, named after the first route that targets
+it -- any route with a two-channel `output`, an input-monitoring route
+included. The sink plays into the device's playback channels with that
+pair's numbers, so it is heard only where a route sends them to the pair
+(`playback = output`); the generated file names each pair that lacks one.
 
 ## Troubleshooting
 

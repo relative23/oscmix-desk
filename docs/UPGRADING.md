@@ -1,5 +1,30 @@
 # Upgrade and recovery
 
+## Upgrading to 0.8.1
+
+0.8.1 uses the same backend patch series as 0.8.0, so the backend, ALSA
+bridge and GTK companion stay as they are; only the Python runtime changes.
+Configs, profiles and the active-profile marker carry over unchanged, and a
+rollback to 0.8.0 needs nothing beyond reinstalling it.
+
+Python callers: `switch_profile()`, `restore_main()`, `load_profile()`,
+`describe_profiles()` and `effective_config()` without `config_path` now use
+the config discovery finds, as the command line does. `restore_main()` with no
+config anywhere returns a refusal instead of applying the empty default desk,
+and a restore's `Outcome.name` is the config file's name (`routing.conf`
+unless `--config` names another). `active_profile(None)` still means "no
+config". `WriteFailed.refused` tells a refusal the plan made from a failed
+connection.
+
+Scripts that read the journal or the unit's status line: `reconcile skipped`
+now means that nothing was sent, and `reconcile incomplete` that writes were
+sent before the reload ended; see the
+[status table](TROUBLESHOOTING.md#3-is-the-backend-running). A stop during
+the start or the verifier is logged at info or warning level, not as an
+error, and the start is no longer failed with exit 1 for it. The text of
+`--status` says `none` instead of `unknown` for a desk without a profile or
+configured serial; the JSON is unchanged.
+
 ## Upgrading to 0.8.0
 
 Initial session application and explicit profile/main-desk selection still
@@ -45,15 +70,27 @@ discarding their damaged suffix. A valid prefix cannot confirm link state or
 be recorded as a partial successful snapshot. Fix the backend/transport cause
 and start a new operation; do not interpret the missing result as device silence.
 
-Python callers: `apply_routing()`, `verify_routing()` and
-`verify_and_repair()` take a connected backend control object instead of OSC
-ports, and `verify_and_repair()` returns whether the read-back ended without a
-remaining problem. That object is not part of the supported root API in 0.8.0;
-the release notes did not say so. Until a public operation interface
-replaces these three functions, use the `oscmix-session` command line. From
-Python, `switch_profile()` and `restore_main()` connect themselves, but pass
-`config_path` explicitly: without it they use an empty desk, not the
-discovered `routing.conf`. They also do not reload the running service.
+Python callers: six signatures of the root API changed, and the release
+notes did not say so.
+
+- `apply_routing(config, backend, *, leave_alone, require_link_confirmation,
+  intent, confirmed, should_stop)` takes a connected backend control object
+  instead of `port` and `recv_port`.
+- `verify_routing(registers, backend, timeout, ...)` takes it instead of
+  `send_port` and `recv_port`, and always returns a `VerifyResult` (never
+  `None`); a receive failure raises `ReceivePortError`.
+- `verify_and_repair(config, backend, should_stop)` takes it too and returns
+  whether the read-back ended without a remaining problem.
+- `VerifyResult` has a fourth list, `invalid`.
+- `switch_profile()` and `restore_main()` take that control object as
+  `backend` instead of the old UDP backend.
+
+The control object (`oscmix_desk.backend.Control`) is not part of the
+supported root API, so until a public operation interface replaces the first
+three functions, use the `oscmix-session` command line. `switch_profile()`
+and `restore_main()` connect themselves when `backend` is left out; in
+0.8.0, pass `config_path` explicitly (0.8.1 discovers it). They do not
+reload the running service.
 
 For a software rollback, restore the complete 0.7.3 installation or its exact
 core/GTK package pair, then restart deliberately with the preserved desk.

@@ -2,12 +2,37 @@
 
 ## Unreleased
 
+### Changed
+
+- Every failure that closes the backend connection raises `ReceivePortError`,
+  a failed send included; it was a plain `OSError`. Refusals that leave the
+  connection usable remain `OSError`.
+- The text of `--status` says `none` for a desk without a profile or
+  configured serial, where it said `unknown`. The JSON is unchanged.
+
 ### Documentation
 
-- 0.8.0 changed the Python signatures of `apply_routing()`,
-  `verify_routing()` and `verify_and_repair()`: they take a connected backend
-  control object instead of OSC ports, and `verify_and_repair()` returns a
-  result. The 0.8.0 notes did not mention this; `UPGRADING.md` now does.
+- 0.8.0 changed six signatures of the root API: `apply_routing()`,
+  `verify_routing()` and `verify_and_repair()` take a connected backend
+  control object instead of OSC ports, `verify_routing()` no longer returns
+  `None`, `verify_and_repair()` returns a result, `VerifyResult` gained
+  `invalid`, and `switch_profile()`/`restore_main()` take the new control
+  object as `backend`. The 0.8.0 notes did not mention this; `UPGRADING.md`
+  now lists them.
+- Troubleshooting, the example config, the README and `--help` no longer
+  describe UDP ports: `[osc]` is explained as legacy, the backend check looks
+  for the control socket, and `--diff`/`--snapshot` work with the mixer open.
+  The fader section describes remembered output volume, the status results
+  are tabulated, and new journal messages are listed.
+- The README states the config search order and the remaining options, and
+  that every stereo output pair gets a PipeWire sink.
+- The backend control contract covers the refused WRITE forms, the answer
+  for an unknown address, the connection limits and disconnect rules, the
+  desk's retry and keepalive timing, and how a slow MIDI write ends a lease.
+- The architecture page follows one profile switch through the modules and
+  states the layering, `constants` and `process` correctly. The feature table
+  no longer claims an `autoset` option and lists the backend functions the
+  desk cannot set yet. The numeric contract describes sweep schema 3.
 
 ### Fixed
 

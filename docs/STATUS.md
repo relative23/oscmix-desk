@@ -52,10 +52,17 @@ and package metadata describe software identity, not successful hardware
 tests. A service observation and a manual backend observation remain separate;
 status does not infer supervision from a process merely existing.
 
-Exit 0 means the status report was produced with a valid effective config.
-An absent device or optional GUI is still a useful status report. Exit 2
-indicates invalid configuration; `--status --json` still prints its diagnosis.
-Conflicting CLI actions are usage errors. `--json` requires `--status`.
+Exit 0 means the status report was produced with a valid effective config,
+including a main config used because the stored profile does not load
+(`fallback`). An absent device or optional GUI is still a useful status
+report. Exit 2 indicates invalid configuration; `--status --json` still
+prints its diagnosis. An `--osc-port` outside 1..65535 is also exit 2, with
+an error line instead of a report. Conflicting CLI actions are usage errors.
+`--json` requires `--status`.
+
+In the text output, `none` for `stored_profile`, `effective_profile` or
+`configured_serial` means there is none; `unknown` elsewhere means it could
+not be determined. The JSON uses `null` for both.
 
 ## Opening the existing GTK mixer
 

@@ -13,29 +13,29 @@ The runtime deliberately imports nothing outside the standard library, so
 the package runs from a checkout on a bare system. ``tests/test_architecture.py``
 enforces that, along with the layering the modules are arranged in:
 
-    constants, errors, log, osc no internal imports
-    notify, discovery, registers the leaves above, nothing else
-    devices                     constants, registers
-    model, paths                constants, registers; errors
-    sections, notices           model, devices, registers, log
-    config                      model, sections, devices, ...
-    backend                     errors, osc
-    reconcile                   model, constants, registers, devices
-    dump                        reconcile, model, registers
-    routing                     backend, model, reconcile, ...
-    verify                      routing, ...
-    pipewire, process, launcher leaves plus config/discovery
-    locking, marker, outcome    near-leaves: constants, config, log
-    profiles                    routing, verify, process, locking, ...
-    reload                      profiles, locking, verify, ...
-    session                     reload, profiles, locking, verify, routing, ...
-    reads                       backend, reconcile, dump, discovery, ...
-    cli                         session, profiles, reads, ...; oscmix-session
-    launcher                    (above) oscmix-launch, the desktop entry
+    constants, errors, hostservice,         no internal imports
+    log, osc, outcome, protocol, registers
+    devices, model, numeric                 constants, registers
+    discovery, locking, notify, paths       errors, log, constants
+    notices, reconcile, sections, streams   devices, model, numeric
+    marker, pipewire, process               paths, model, discovery
+    config                                  sections, devices, model, paths
+    diagnostics                             process, discovery, locking, paths
+    dump, observation, preview              reconcile, numeric, model
+    backend                                 diagnostics, discovery, protocol
+    desktop                                 diagnostics, discovery
+    routing                                 backend, observation, streams
+    reads                                   backend, dump, reconcile
+    verify                                  routing, observation
+    launcher                                config, desktop, diagnostics; oscmix-launch
+    profiles                                verify, config, marker, locking
+    reload, status                          profiles, ...
+    session                                 reload, verify, routing, process
+    cli                                     session, reads, status; oscmix-session
 
-This is the shape, not the list. The exact edges are ``ALLOWED_IMPORTS``
-in that test, which holds each module to what it really imports, in
-both directions.
+Each line names what it builds on besides the leaves. This is the shape,
+not the list. The exact edges are ``ALLOWED_IMPORTS`` in that test, which
+holds each module to what it really imports, in both directions.
 """
 
 from __future__ import annotations
