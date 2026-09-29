@@ -54,6 +54,7 @@ from oscmix_desk.discovery import (
 )
 from oscmix_desk.errors import DeviceAmbiguous
 from oscmix_desk.locking import take_device_lock
+from oscmix_desk.protocol import Source
 
 EXIT_SKIP = 77
 # How much louder an output must be when its own side carries the tone
@@ -106,7 +107,8 @@ class LevelReader:
             raise OSError("hardware measurement device lock unavailable")
         self.device = None
         try:
-            self.device = connect_backend(config, config_path, sources=5)
+            self.device = connect_backend(config, config_path,
+                                          sources=Source.DEVICE | Source.METERS)
             self.evidence = build_evidence(self.device, build_dir, proc)
         except BaseException:
             self.close()
@@ -125,7 +127,7 @@ class LevelReader:
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
             for path, _tags, args, origin, _seq in observations(self.device, .2):
-                if (origin != 4 or not path.startswith("/output/")
+                if (origin != Source.METERS or not path.startswith("/output/")
                         or not path.endswith("/level") or not args
                         or not isinstance(args[0], float)):
                     continue
@@ -151,7 +153,7 @@ class LevelReader:
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
             for path, _tags, args, origin, _seq in observations(self.device, .2):
-                if origin != 1:
+                if origin != Source.DEVICE:
                     continue
                 if path == "/hardware/dspvers" and args:
                     self.dspvers = args[0]

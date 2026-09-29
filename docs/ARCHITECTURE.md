@@ -78,6 +78,7 @@ acyclic graph.
 | `errors` | configuration, ambiguous-device and lock refusals; `ReceivePortError` for failed coordinated observations (retained API name), and `WriteFailed` with submitted/pending paths |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
+| `protocol` | the ODK1 wire values (request, event, status, role and source numbers, header layout), mirrored from `control.h` in patch 0003 and checked against it by a test |
 | `registers` | what a register row and a device are -- path, tags, bounds, verification class, policy -- and the questions the parser, the reconciler and the verifier ask of a device's table |
 | `numeric` | finite values, OSC representation and the pinned backend’s scalar encodings; parameter-specific comparisons and lossless decimal formatting |
 | `devices` | the tables themselves: the UCX II's rows and channel map, the 802's channel map, and which of them a config names |

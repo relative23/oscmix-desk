@@ -40,6 +40,7 @@ from support import repo_file
 from oscmix_desk.backend import Control
 from oscmix_desk.errors import ReceivePortError, WriteFailed
 from oscmix_desk.osc import decode_osc, encode_osc, iter_osc_messages
+from oscmix_desk.protocol import PAYLOAD
 
 
 @pytest.fixture(scope='module')
@@ -283,7 +284,7 @@ def test_invalid_requests_cannot_bypass_arbitration_or_reach_midi(desk, midi, pa
     HEADER.pack(b'ODK1', BEGIN, 3, 0, 0),  # omitted request id
     HEADER.pack(b'ODK1', BEGIN, 2, 1, 0),
     HEADER.pack(b'ODK1', BEGIN, 2, 0, 0) + b'extra',
-    HEADER.pack(b'ODK1', WRITE, 2, 0, 0) + bytes(8193),
+    HEADER.pack(b'ODK1', WRITE, 2, 0, 0) + bytes(PAYLOAD + 1),
 ])
 def test_malformed_protocol_disconnects_without_any_write(desk, midi, packet):
     desk.socket.sendall(packet)

@@ -2,7 +2,8 @@
 
 Qualification helpers, also shared with the actual GTK lifecycle run. The
 wire peer deliberately does not use desk's client, so it can challenge that
-client's protocol assumptions independently.
+client's protocol assumptions independently. It shares only the wire values,
+which tests/test_protocol.py holds to control.h.
 """
 
 import fcntl
@@ -15,13 +16,23 @@ import sys
 import threading
 import time
 
-HEADER = struct.Struct('>4sIIIQ')
-REPLY = 0x80000000
-HELLO, BEGIN, END, KEEPALIVE, WRITE, REFRESH = range(1, 7)
-EVENT, OBSERVATION = 16, 17
-OK, BUSY, INVALID, EXPIRED, SHUTDOWN, OVERFLOW, NOT_OWNER = range(7)
-DESK, GUI, READER = 1, 2, 3
-DEVICE, DERIVED, METERS = 1, 2, 4
+from oscmix_desk.protocol import (
+    HEADER,
+    MAGIC,
+    PAYLOAD,
+    REPLY,
+    Event,
+    Request,
+    Role,
+    Source,
+    Status,
+)
+
+HELLO, BEGIN, END, KEEPALIVE, WRITE, REFRESH = Request
+EVENT, OBSERVATION, WINDOW = Event
+OK, BUSY, INVALID, EXPIRED, SHUTDOWN, OVERFLOW, NOT_OWNER = Status
+DESK, GUI, READER = Role
+DEVICE, DERIVED, METERS = Source.DEVICE, Source.DERIVED, Source.METERS
 
 
 def wait_for(predicate, timeout=3):
@@ -156,16 +167,16 @@ class Peer:
 
     def send(self, kind, *, code=0, payload=b'', token=None):
         self.request_id += 1
-        self.socket.sendall(HEADER.pack(b'ODK1', kind, self.request_id, code,
+        self.socket.sendall(HEADER.pack(MAGIC, kind, self.request_id, code,
                                        self.token if token is None else token) + payload)
         return self.request_id
 
     def receive(self):
-        packet = self.socket.recv(8217)
+        packet = self.socket.recv(HEADER.size + PAYLOAD + 1)
         if not packet:
             raise EOFError('backend disconnected')
         magic, kind, request, code, sequence = HEADER.unpack_from(packet)
-        assert magic == b'ODK1'
+        assert magic == MAGIC
         result = kind, request, code, sequence, packet[HEADER.size:]
         if kind == EVENT:
             self.token = sequence
@@ -242,7 +253,7 @@ class ScriptedControl:
         self.thread.start()
 
     def emit(self, kind, request=0, code=0, sequence=None, payload=b''):
-        self.peer.sendall(HEADER.pack(b'ODK1', kind, request, code,
+        self.peer.sendall(HEADER.pack(MAGIC, kind, request, code,
                                      self.generation if sequence is None else sequence) + payload)
 
     def run(self):
@@ -271,7 +282,7 @@ class ScriptedControl:
             if not data:
                 return
             magic, kind, request, request_code, token = HEADER.unpack_from(data)
-            assert magic == b'ODK1'
+            assert magic == MAGIC
             self.requests.append(kind)
             self.wire.append((kind, request, request_code, token, data[HEADER.size:]))
             code = OK

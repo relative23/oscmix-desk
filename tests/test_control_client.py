@@ -25,12 +25,13 @@ from control_peer import (
     READER,
     REFRESH,
     REPLY,
+    WINDOW,
     WRITE,
     ScriptedControl,
     wait_for,
 )
 
-from oscmix_desk import backend
+from oscmix_desk import backend, protocol
 from oscmix_desk.diagnostics import BackendStatus
 from oscmix_desk.discovery import Device
 from oscmix_desk.errors import ReceivePortError, WriteFailed
@@ -195,8 +196,8 @@ def test_shared_origin_order_and_epoch_are_preserved(control):
     (EVENT, 0, 0, 0, b''),
     (EVENT, 0, 2, 1, b''),
     (EVENT, 0, 0, 1, b'extra'),
-    (18, 0, 8, 1, b''),
-    (18, 0, 0, 1, b'extra'),
+    (WINDOW, 0, 8, 1, b''),
+    (WINDOW, 0, 0, 1, b'extra'),
     (99, 0, 0, 1, b''),
     (HELLO | REPLY, 1, 0, 1, b''),
 ])
@@ -549,12 +550,12 @@ def test_a_nul_at_either_end_of_the_backend_name_is_refused(peer, name):
 
 def test_a_request_payload_may_fill_but_not_exceed_the_protocol_limit(control):
     server, client = control
-    client._send_request(KEEPALIVE, payload=bytes(backend.CONTROL_PAYLOAD))
+    client._send_request(KEEPALIVE, payload=bytes(protocol.PAYLOAD))
     with pytest.raises(OSError, match='protocol limits') as refused:
-        client._send_request(KEEPALIVE, payload=bytes(backend.CONTROL_PAYLOAD + 1))
+        client._send_request(KEEPALIVE, payload=bytes(protocol.PAYLOAD + 1))
     assert refused.value.errno == errno.EOVERFLOW
     wait_for(lambda: len(server.wire) == 2)
-    assert len(server.wire[1][4]) == backend.CONTROL_PAYLOAD
+    assert len(server.wire[1][4]) == protocol.PAYLOAD
     with pytest.raises(ReceivePortError, match='no longer valid'):
         client.next_delivery(0)
 
@@ -579,7 +580,7 @@ def test_a_silent_backend_fails_the_handshake_at_its_deadline(peer, monkeypatch)
 
 
 @pytest.mark.parametrize(('size', 'accepted'), [
-    (backend.CONTROL_PAYLOAD, True), (backend.CONTROL_PAYLOAD + 4, False)])
+    (protocol.PAYLOAD, True), (protocol.PAYLOAD + 4, False)])
 def test_a_frame_may_fill_but_not_exceed_the_protocol_limit(control, size, accepted):
     server, client = control
     server.emit(OBSERVATION, code=DEVICE, sequence=1, payload=bytes(size))
@@ -600,7 +601,7 @@ def test_a_frame_shorter_than_its_header_is_a_protocol_error(control):
 @pytest.mark.parametrize('code', [0, 1])
 def test_refresh_window_notices_are_accepted(control, code):
     server, client = control
-    server.emit(18, code=code, sequence=1)
+    server.emit(WINDOW, code=code, sequence=1)
     client.wait(.1)
     assert client.next_delivery(0) is None
 
@@ -666,9 +667,9 @@ def test_the_observation_queue_accounts_packets_and_bytes_exactly(peer, monkeypa
     # A payload longer than the header distinguishes adding, subtracting and
     # replacing the byte count; a reader never discards at begin().
     value = encode_osc('/output/5/volume/xx', 'f', -30.0)
-    assert len(value) > backend.CONTROL_HEADER.size
+    assert len(value) > protocol.HEADER.size
     assert len(value) % 4 == 0
-    size = backend.CONTROL_HEADER.size + len(value)
+    size = protocol.HEADER.size + len(value)
     monkeypatch.setattr(backend, 'CONTROL_QUEUE_BYTES', 2 * size)
     server = peer()
     client = backend.Control(server.path, os.getpid(), reader=role == 'reader')

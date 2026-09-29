@@ -54,6 +54,7 @@ from oscmix_desk import discover_config_path, load_config
 from oscmix_desk.backend import connect_backend
 from oscmix_desk.discovery import device_firmware, resolve_device
 from oscmix_desk.locking import take_device_lock
+from oscmix_desk.protocol import Source
 
 EXIT_SKIP = 77
 # Long enough to catch a meter cycle, short enough not to be a wait.
@@ -78,7 +79,8 @@ def collect(connection, seconds: float) -> Set[str]:
 
 def record_dump(connection, streamed: Set[str]):
     """Time each first DEVICE report separately from cached and meter reports."""
-    by_origin: Dict[int, Dict[str, Tuple[str, float]]] = {1: {}, 2: {}, 4: {}}
+    by_origin: Dict[Source, Dict[str, Tuple[str, float]]] = {
+        Source.DEVICE: {}, Source.DERIVED: {}, Source.METERS: {}}
     connection.request_dump()
     started = last_new = time.monotonic()
     dspvers = None
@@ -86,7 +88,7 @@ def record_dump(connection, streamed: Set[str]):
         if time.monotonic() - last_new > QUIET_SECONDS:
             break
         for path, tags, args, origin, _sequence in observations(connection, .25):
-            if origin == 1 and path == '/hardware/dspvers' and args:
+            if origin == Source.DEVICE and path == '/hardware/dspvers' and args:
                 dspvers = args[0]
             first = by_origin[origin]
             if path in first:
@@ -137,7 +139,8 @@ def main() -> int:
         return 1
     connection = None
     try:
-        connection = connect_backend(config, config_path, sources=7)
+        connection = connect_backend(
+            config, config_path, sources=Source.DEVICE | Source.DERIVED | Source.METERS)
         evidence = build_evidence(connection, args.backend_build, proc)
         connection.begin()
         print("listening %.0fs before requesting a refresh..." % BASELINE_SECONDS)
@@ -152,7 +155,7 @@ def main() -> int:
             connection.close()
         lock.release()
 
-    if not recorded[1]:
+    if not recorded[Source.DEVICE]:
         print("record-dump: no device-origin register report arrived", file=sys.stderr)
         return EXIT_SKIP
     fixture = {
@@ -174,15 +177,15 @@ def main() -> int:
             "A first report after the request ACK can be unsolicited device traffic.",
             "Cached/derived reports do not confirm hardware state.",
         ],
-        "registers": dict(sorted(recorded[1].items())),
-        "derived": dict(sorted(recorded[2].items())),
-        "meters": dict(sorted(recorded[4].items())),
+        "registers": dict(sorted(recorded[Source.DEVICE].items())),
+        "derived": dict(sorted(recorded[Source.DERIVED].items())),
+        "meters": dict(sorted(recorded[Source.METERS].items())),
         "streamed": sorted(streamed),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(_render(fixture))
     print("dump finished after %.1fs: %d device-origin registers -> %s"
-          % (duration, len(recorded[1]), args.out))
+          % (duration, len(recorded[Source.DEVICE]), args.out))
     return 0
 
 

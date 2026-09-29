@@ -73,10 +73,11 @@ def test_malformed_delivery_cannot_enter_measurement_evidence(measurement):
 
     from oscmix_desk.backend import Delivery
     from oscmix_desk.osc import encode_osc
+    from oscmix_desk.protocol import Source
 
     good = encode_osc('/output/5/stereo', 'i', 1)
     bad = encode_osc('/output/5/stereo', 'i', 0)[:-4]
-    delivery = Delivery(1, 1, bytes(range(16)), osc_bundle([good, bad]))
+    delivery = Delivery(Source.DEVICE, 1, bytes(range(16)), osc_bundle([good, bad]))
     closed = []
     connection = SimpleNamespace(next_delivery=lambda _: delivery,
                                  close=lambda: closed.append(True))

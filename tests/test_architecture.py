@@ -39,6 +39,8 @@ ALLOWED_IMPORTS = {
     "errors": set(),
     "log": set(),
     "osc": set(),
+    # The ODK1 wire values, mirrored from control.h; nothing but struct.
+    "protocol": set(),
     "notify": {"log"},
     # `errors` since 0.6.9: two identical interfaces without
     # `[device] serial` are a configuration the user has to fix, and the
@@ -158,7 +160,8 @@ ALLOWED_IMPORTS = {
     # able to name, and errors is a leaf.
     # Shared read-only identity below every command; connection/lease ownership
     # above it. Diagnostics never imports this transport or a write command.
-    "backend": {"constants", "diagnostics", "discovery", "errors", "model", "osc"},
+    "backend": {"constants", "diagnostics", "discovery", "errors", "model", "osc",
+                "protocol"},
     # Pure: config + the message shapes + the register table. No
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.

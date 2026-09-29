@@ -45,3 +45,11 @@ _.supported                      # noqa: F821
 # ElementTree calls the repository index parser's DTD rejection hook. UTF-8
 # and UTF-16 entity declarations are both exercised by test_repository_site.
 _.doctype                        # noqa: F821
+
+# protocol.Status and protocol.Role: the complete enums of control.h, which
+# tests/test_protocol.py compares member by member. GUI is the GTK client's
+# role; the backend defines the three statuses but sends none of them.
+EXPIRED                          # noqa: F821
+SHUTDOWN                         # noqa: F821
+OVERFLOW                         # noqa: F821
+GUI                              # noqa: F821

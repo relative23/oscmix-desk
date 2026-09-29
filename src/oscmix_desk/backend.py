@@ -26,6 +26,19 @@ from .discovery import serial_in
 from .errors import ReceivePortError, WriteFailed
 from .model import Config
 from .osc import Message, decode_delivery, encode_osc
+from .protocol import (
+    HEADER,
+    HELLO_REPLY,
+    MAGIC,
+    PAYLOAD,
+    REPLY,
+    VERSION,
+    Event,
+    Request,
+    Role,
+    Source,
+    Status,
+)
 
 
 @dataclass(frozen=True)
@@ -80,9 +93,6 @@ OSCMIX = Traits(
 )
 
 
-CONTROL_HEADER = struct.Struct(">4sIIIQ")
-CONTROL_REPLY = 0x80000000
-CONTROL_PAYLOAD = 8192
 CONTROL_QUEUE_BYTES = 256 * 1024
 CONTROL_QUEUE_PACKETS = 4096
 CONTROL_HEARTBEAT = 2.0
@@ -92,12 +102,11 @@ CONTROL_HEARTBEAT = 2.0
 class Delivery:
     """One complete OSC delivery and its actual backend origin.
 
-    Origin 1 is the MIDI register handler, 2 the command/cache handler and
-    4 metering. The register model still determines what can be confirmed.
+    The register model still determines what an origin can confirm.
     Sequence numbers order deliveries on this connection, not device time.
     """
 
-    origin: int
+    origin: Source
     sequence: int
     epoch: bytes
     payload: bytes
@@ -117,11 +126,11 @@ class Control:
                  expected_uid: Optional[int] = None,
                  expected_gid: Optional[int] = None,
                  reader: bool = False,
-                 sources: int = 3,
+                 sources: Source = Source.DEVICE | Source.DERIVED,
                  should_stop: Optional[Callable[[], bool]] = None) -> None:
-        if sources < 1 or sources > 7:
-            raise ValueError("observation sources must be a nonempty subset of 1, 2 and 4")
-        self._sources = sources
+        if sources < 1 or int(sources) & ~int(Source.DEVICE | Source.DERIVED | Source.METERS):
+            raise ValueError("observation sources must be a nonempty subset of Source")
+        self._sources = Source(sources)
         self.path = path
         self.should_stop = should_stop
         self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
@@ -150,23 +159,26 @@ class Control:
             raise OSError(errno.EPERM, "control endpoint is not a socket or is a symbolic link")
         self._sock.settimeout(CONTROL_ACK_TIMEOUT)
         self._sock.connect(str(self.path))
+        # struct ucred: pid_t is signed, uid_t and gid_t are not.
         peer = self._sock.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED,
-                                     struct.calcsize("3i"))
-        self.pid, self.uid, self.gid = struct.unpack("3i", peer)
+                                     struct.calcsize("i2I"))
+        self.pid, self.uid, self.gid = struct.unpack("i2I", peer)
         if (self.pid != expected_pid or (expected_uid is not None and self.uid != expected_uid)
                 or (expected_gid is not None and self.gid != expected_gid)):
             raise OSError(errno.EPERM,
                           "control socket peer does not match the checked backend")
-        code, generation, payload = self._request(1, code=3 if reader else 1,
+        role = Role.READER if reader else Role.DESK
+        code, generation, payload = self._request(Request.HELLO, code=role,
                                                    payload=struct.pack(">I", self._sources))
-        if (code or len(payload) < 25 or not payload.endswith(b"\0")
-                or b"\0" in payload[24:-1]):
+        name = payload[HELLO_REPLY.size:-1]
+        if (code != Status.OK or len(payload) <= HELLO_REPLY.size
+                or not payload.endswith(b"\0") or b"\0" in name):
             raise OSError(errno.EPROTO, "invalid backend handshake")
-        pid, version = struct.unpack_from(">II", payload, 16)
-        if pid != self.pid or version != 1:
+        epoch, pid, version = HELLO_REPLY.unpack_from(payload)
+        if pid != self.pid or version != VERSION:
             raise OSError(errno.EPROTO, "incompatible backend identity or protocol")
-        self.epoch = payload[:16]
-        self.device_name = payload[24:-1].decode("utf-8", "strict")
+        self.epoch = epoch
+        self.device_name = name.decode("utf-8", "strict")
         self._generation = generation
 
     def close(self) -> None:
@@ -183,15 +195,15 @@ class Control:
             self.close()
             raise ReceivePortError(errno.ECANCELED, "backend operation cancelled")
 
-    def _send_request(self, kind: int, code: int = 0,
+    def _send_request(self, kind: Request, code: int = 0,
                       payload: bytes = b"", token: Optional[int] = None) -> int:
         self._check()
-        if len(payload) > CONTROL_PAYLOAD or self._request_id == 0xffffffff:
+        if len(payload) > PAYLOAD or self._request_id == 0xffffffff:
             self.close()
             raise OSError(errno.EOVERFLOW, "control request exceeds protocol limits")
         self._request_id += 1
-        packet = CONTROL_HEADER.pack(
-            b"ODK1", kind, self._request_id, code,
+        packet = HEADER.pack(
+            MAGIC, kind, self._request_id, code,
             self._generation if token is None else token) + payload
         try:
             self._sock.settimeout(CONTROL_ACK_TIMEOUT)
@@ -209,7 +221,7 @@ class Control:
         try:
             self._sock.settimeout(max(0.001, timeout))
             packet, _ancillary, flags, _address = self._sock.recvmsg(
-                CONTROL_HEADER.size + CONTROL_PAYLOAD + 1)
+                HEADER.size + PAYLOAD + 1)
         except socket.timeout:
             return None
         except OSError as exc:
@@ -218,14 +230,14 @@ class Control:
         if not packet:
             self.close()
             raise ReceivePortError(errno.ECONNRESET, "backend disconnected; observations invalid")
-        if (len(packet) < CONTROL_HEADER.size
-                or len(packet) > CONTROL_HEADER.size + CONTROL_PAYLOAD
+        if (len(packet) < HEADER.size
+                or len(packet) > HEADER.size + PAYLOAD
                 or flags & (socket.MSG_TRUNC | socket.MSG_CTRUNC)):
             self._protocol_error("invalid control packet size")
-        magic, kind, request, code, sequence = CONTROL_HEADER.unpack_from(packet)
-        if magic != b"ODK1":
+        magic, kind, request, code, sequence = HEADER.unpack_from(packet)
+        if magic != MAGIC:
             self._protocol_error("incompatible control framing")
-        return kind, request, code, sequence, packet[CONTROL_HEADER.size:]
+        return kind, request, code, sequence, packet[HEADER.size:]
 
     def _protocol_error(self, reason: str) -> NoReturn:
         self.close()
@@ -235,32 +247,33 @@ class Control:
         kind, request, code, sequence, payload = frame
         if request:
             self._protocol_error("unexpected control reply")
-        if kind == 16:
-            if payload or code not in (0, 1) or sequence < self._generation:
+        if kind == Event.LEASE:
+            if payload or code not in (Status.OK, Status.BUSY) or sequence < self._generation:
                 self._protocol_error("invalid lease event")
-            if self._lease is not None and (sequence != self._lease or code != 1):
+            if self._lease is not None and (sequence != self._lease or code != Status.BUSY):
                 self._protocol_error("backend operation lease changed unexpectedly")
             self._generation = sequence
-        elif kind == 18:
-            if payload or code not in (0, 1):
+        elif kind == Event.WINDOW:
+            if payload or code not in (Status.OK, Status.BUSY):
                 self._protocol_error("invalid refresh-window event")
-        elif kind == 17:
-            if (code not in (1, 2, 4) or not code & self._sources
+        elif kind == Event.OBSERVATION:
+            if (code not in (Source.DEVICE, Source.DERIVED, Source.METERS)
+                    or not code & self._sources
                     or not payload or len(payload) % 4
                     or sequence <= self._last_sequence or not self.epoch):
                 self._protocol_error("invalid observation origin, order or delivery")
             self._last_sequence = sequence
-            size = CONTROL_HEADER.size + len(payload)
+            size = HEADER.size + len(payload)
             if (len(self._queue) >= CONTROL_QUEUE_PACKETS
                     or self._queue_bytes + size > CONTROL_QUEUE_BYTES):
                 self.close()
                 raise ReceivePortError(errno.ENOBUFS, "backend observation queue overflowed")
-            self._queue.append(Delivery(code, sequence, self.epoch, payload))
+            self._queue.append(Delivery(Source(code), sequence, self.epoch, payload))
             self._queue_bytes += size
         else:
             self._protocol_error("unexpected backend event")
 
-    def _acknowledgement(self, kind: int, request: int) -> Tuple[int, int, bytes]:
+    def _acknowledgement(self, kind: Request, request: int) -> Tuple[int, int, bytes]:
         deadline = time.monotonic() + CONTROL_ACK_TIMEOUT
         while True:
             remaining = deadline - time.monotonic()
@@ -271,15 +284,16 @@ class Control:
             if frame is None:
                 continue
             received_kind, number, code, sequence, payload = frame
-            if received_kind & CONTROL_REPLY:
-                if received_kind != kind | CONTROL_REPLY or number != request:
+            if received_kind & REPLY:
+                if received_kind != kind | REPLY or number != request:
                     self._protocol_error("unexpected backend acknowledgement")
-                if kind != 1 and (payload or code not in (0, 1, 2, 6)):
+                if kind != Request.HELLO and (payload or code not in (
+                        Status.OK, Status.BUSY, Status.INVALID, Status.NOT_OWNER)):
                     self._protocol_error("invalid backend acknowledgement")
                 return code, sequence, payload
             self._event(frame)
 
-    def _request(self, kind: int, code: int = 0, payload: bytes = b"",
+    def _request(self, kind: Request, code: int = 0, payload: bytes = b"",
                  token: Optional[int] = None) -> Tuple[int, int, bytes]:
         request = self._send_request(kind, code, payload, token)
         return self._acknowledgement(kind, request)
@@ -293,14 +307,14 @@ class Control:
             raise OSError(errno.EALREADY, "this connection already owns an operation")
         deadline = time.monotonic() + timeout
         while True:
-            code, generation, _ = self._request(2)
+            code, generation, _ = self._request(Request.BEGIN)
             self._discard()  # no observation window precedes this lease's receipt boundary
-            if code == 0:
+            if code == Status.OK:
                 self._lease = generation
                 self._generation = generation
                 self._last_heartbeat = time.monotonic()
                 return
-            if code != 1 or time.monotonic() >= deadline:
+            if code != Status.BUSY or time.monotonic() >= deadline:
                 raise OSError(errno.EBUSY, "another client holds the backend operation lease")
             self.wait(min(0.1, max(0.0, deadline - time.monotonic())))
 
@@ -308,7 +322,7 @@ class Control:
         self._check()
         if (self._lease is not None
                 and time.monotonic() - self._last_heartbeat >= CONTROL_HEARTBEAT):
-            code, generation, _ = self._request(4, token=self._lease)
+            code, generation, _ = self._request(Request.KEEPALIVE, token=self._lease)
             if code or generation != self._lease:
                 self._protocol_error("backend operation lease lost")
             self._last_heartbeat = time.monotonic()
@@ -319,7 +333,7 @@ class Control:
         if self._lease is None:
             raise OSError(errno.EPERM, "no backend operation lease to finish")
         token, self._lease = self._lease, None
-        code, generation, _ = self._request(3, token=token)
+        code, generation, _ = self._request(Request.END, token=token)
         if code or generation <= token:
             self._protocol_error("backend operation did not finish")
         self._generation = generation
@@ -341,7 +355,7 @@ class Control:
             self.heartbeat()
             if self._queue:
                 result = self._queue.popleft()
-                self._queue_bytes -= CONTROL_HEADER.size + len(result.payload)
+                self._queue_bytes -= HEADER.size + len(result.payload)
                 return result
             remaining = deadline - time.monotonic()
             if remaining <= 0:
@@ -358,7 +372,7 @@ class Control:
         revoke or confirm one; it simply supplies no hardware evidence.
         """
         delivery = self.next_delivery(timeout)
-        if delivery is None or delivery.origin != 1:
+        if delivery is None or delivery.origin != Source.DEVICE:
             return
         try:
             messages = decode_delivery(delivery.payload)
@@ -370,11 +384,11 @@ class Control:
         deadline = time.monotonic() + timeout
         while True:
             self.heartbeat()
-            code, _generation, _ = self._request(6, token=self._lease)
+            code, _generation, _ = self._request(Request.REFRESH, token=self._lease)
             self._discard()
-            if code == 0:
+            if code == Status.OK:
                 return
-            if code != 1 or time.monotonic() >= deadline:
+            if code != Status.BUSY or time.monotonic() >= deadline:
                 raise ReceivePortError(errno.EBUSY, "no fresh backend refresh window available")
             self.wait(min(0.1, max(0.0, deadline - time.monotonic())))
 
@@ -389,18 +403,19 @@ class Control:
             submitted = False
             try:
                 self.heartbeat()
-                request = self._send_request(5, payload=encode_osc(path, tags, *args),
+                request = self._send_request(Request.WRITE,
+                                             payload=encode_osc(path, tags, *args),
                                              token=self._lease)
                 submitted = True
-                code, generation, _ = self._acknowledgement(5, request)
-                if code == 0 and generation != self._lease:
+                code, generation, _ = self._acknowledgement(Request.WRITE, request)
+                if code == Status.OK and generation != self._lease:
                     self._protocol_error("backend lease changed during write")
             except OSError as exc:
                 if submitted:
                     written.append(path)  # acknowledgement lost: may have reached hardware
                 raise WriteFailed(exc, written, paths[index + int(submitted):]) from exc
             if code:  # a definite refusal before processing
-                raise WriteFailed(OSError(errno.EBUSY if code == 1 else errno.EPROTO,
+                raise WriteFailed(OSError(errno.EBUSY if code == Status.BUSY else errno.EPROTO,
                                   "backend refused write to %s (code %d)" % (path, code)),
                                   written, paths[index:])
             written.append(path)
@@ -408,7 +423,7 @@ class Control:
 
 def connect_backend(config: Config, config_path: Optional[Path] = None, *,
                     reader: bool = False,
-                    sources: int = 3,
+                    sources: Source = Source.DEVICE | Source.DERIVED,
                     should_stop: Optional[Callable[[], bool]] = None,
                     expected_pid: Optional[int] = None) -> Control:
     """Pin a read-only identity check to the actual kernel peer connection.
