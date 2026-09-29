@@ -150,6 +150,16 @@ def test_the_command_exits_1_and_asks_the_unit_to_put_the_desk_back(
 # The accounting itself, against a socket that gives out.
 # --------------------------------------------------------------------------
 
+def test_a_refusal_without_an_errno_reads_as_its_reason():
+    # The plan's own refusals carry no errno; OSError printed "[Errno None]"
+    # in front of every one until 0.8.1.
+    refused = WriteFailed(OSError("fresh link confirmation required"), [], ["/mix/1/input/1"])
+    assert str(refused) == ("fresh link confirmation required; sent (hardware "
+                            "unconfirmed): none; pending: /mix/1/input/1")
+    lost = WriteFailed(OSError(errno.ECONNRESET, "reset"), ["/a"], [])
+    assert str(lost) == "[Errno 104] reset; sent (hardware unconfirmed): /a; pending: none"
+
+
 def test_the_backend_counts_a_lost_ack_as_possibly_written(wire_peer):
     burst = [("/output/%d/volume" % n, "f", (0.,)) for n in (1, 2, 3, 4)]
     with wire_peer(disconnect_after="/output/2/volume") as (device, peer):

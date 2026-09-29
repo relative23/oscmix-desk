@@ -19,7 +19,7 @@ import os
 import stat
 import time
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional, Union
 
 from .constants import SWITCH_LOCK_WAIT
 from .log import log
@@ -233,18 +233,40 @@ def _group_of(directory: Path) -> str:
         return "an unknown group"
 
 
+#: What ``device_lock`` says when ``should_stop`` ended the wait.
+STOPPED_WAITING = "stop requested while waiting for the device lock"
+
+
 def take_device_lock(config_path: Optional[Path],
                      key: Optional[str] = None,
-                     wait: Optional[float] = None) -> Optional[DeviceLock]:
-    """Take the lock every writer of this device holds, or None.
+                     wait: Optional[float] = None,
+                     should_stop: Optional[Callable[[], bool]] = None
+                     ) -> Optional[DeviceLock]:
+    """Take the lock every writer of this device holds, or log why not
+    and return None. ``device_lock`` without the logging."""
+    lock = device_lock(config_path, key, wait, should_stop)
+    if isinstance(lock, DeviceLock):
+        return lock
+    log.error("%s", lock)
+    return None
+
+
+def device_lock(config_path: Optional[Path],
+                key: Optional[str] = None,
+                wait: Optional[float] = None,
+                should_stop: Optional[Callable[[], bool]] = None
+                ) -> Union[DeviceLock, str]:
+    """Take the lock every writer of this device holds, or say why not.
 
     Every writer: a switch, `--no-profile`, and the unit's own apply,
-    verifier and reconcile. None means it is not held, for
-    any reason -- contention that outlasted the wait, a lock file that
-    cannot be opened, a filesystem that cannot lock. Every caller
-    refuses on None since 0.6.7: a write nobody serialised is the thing
-    the lock exists to prevent, and "apply anyway" made the guarantee
-    conditional on nothing having gone wrong.
+    verifier and reconcile. A string means it is not held -- contention
+    that outlasted the wait, a stop requested during it, a lock file
+    that cannot be opened, a filesystem that cannot lock -- and says
+    which, for the caller's refusal. Every caller refuses since 0.6.7: a
+    write nobody serialised is the thing the lock exists to prevent, and
+    "apply anyway" made the guarantee conditional on nothing having gone
+    wrong. Until 0.8.1 all of these were one None, and a lock file this
+    user cannot open was reported as another writer holding it.
     """
     path = device_lock_path(config_path, key)
     if path is None:
@@ -252,13 +274,10 @@ def take_device_lock(config_path: Optional[Path],
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        log.error("cannot create the device runtime directory %s: %s", path.parent, exc)
-        return None
+        return "cannot create the device runtime directory %s: %s" % (path.parent, exc)
     fd = _open_lock(path)
     if fd is None:
-        log.error("cannot open the device lock at %s: %s", path,
-                  _why_unopenable(path))
-        return None
+        return "cannot open the device lock at %s: %s" % (path, _why_unopenable(path))
     deadline = time.monotonic() + (SWITCH_LOCK_WAIT if wait is None else wait)
     announced = False
     while True:
@@ -270,17 +289,21 @@ def take_device_lock(config_path: Optional[Path],
                 # Not contention: a filesystem that cannot lock, or a
                 # descriptor that is gone. Waiting 30 s to say "somebody
                 # else has it" would be the wrong answer to both.
-                log.error("cannot lock %s (%s)", path, exc)
                 os.close(fd)
-                return None
+                return "cannot lock %s (%s)" % (path, exc)
+            # A service stop has TimeoutStopSec=10; this wait is 30 s.
+            if should_stop is not None and should_stop():
+                os.close(fd)
+                return STOPPED_WAITING
             if time.monotonic() >= deadline:
                 os.close(fd)
-                return None
+                return held_elsewhere()
             if not announced:
                 log.info("another writer holds the device lock; waiting "
                          "for it")
                 announced = True
             time.sleep(0.1)
+
 
 
 def held_elsewhere() -> str:
@@ -291,19 +314,19 @@ def held_elsewhere() -> str:
 
 
 def _switch_lock_held(config_path: Optional[Path],
-                      key: Optional[str] = None) -> Iterator[bool]:
-    """Hold the device lock for this config, or yield False after the wait.
+                      key: Optional[str] = None) -> Iterator[Optional[str]]:
+    """Hold the device lock for this config and yield None, or yield why not.
 
     Taken *after* the profile parsed: a refusal for a bad config needs
     no lock and costs nothing, as a switch promises. Without a config
     there is no directory to lock in and nothing to contend with.
     """
-    lock = take_device_lock(config_path, key)
-    if lock is None:
-        yield False
+    lock = device_lock(config_path, key)
+    if not isinstance(lock, DeviceLock):
+        yield lock
         return
     try:
-        yield True
+        yield None
     finally:
         lock.release()
 

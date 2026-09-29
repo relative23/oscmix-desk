@@ -23,8 +23,8 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     umask = os.umask(0o022)
     try:
-        with locking._switch_lock(path, device_key(path)) as held:
-            assert held
+        with locking._switch_lock(path, device_key(path)) as refusal:
+            assert refusal is None
             with caplog.at_level("INFO"):
                 outcome = profiles.switch_profile("tracking", config_path=path,
                                                   backend=recording_backend)
@@ -47,9 +47,34 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
     assert profiles.switch_profile("tracking", config_path=path,
                                    backend=recording_backend).applied
 
+def test_a_switch_refused_for_a_lock_it_cannot_open_says_so(
+        tmp_path, recording_backend, monkeypatch):
+    # Not "another writer still holds the device lock after 30s", which is
+    # what every refusal said until 0.8.1 -- also the one for a lock file
+    # the audio group is not active for yet.
+    path = desk(tmp_path, tracking=TRACKING)
+    monkeypatch.setattr(locking, "_open_lock", lambda _path: None)
+    outcome = profiles.switch_profile("tracking", config_path=path,
+                                      backend=recording_backend)
+    assert outcome.state == outcome_mod.REFUSED
+    assert outcome.reason.startswith("cannot open the device lock at ")
+    assert "holds the device lock" not in outcome.reason
+    assert recording_backend.sent == []
+
+
+def test_a_stop_ends_the_wait_for_the_lock(tmp_path):
+    path = desk(tmp_path, tracking=TRACKING)
+    held = locking.take_device_lock(path, device_key(path))
+    try:
+        assert locking.device_lock(path, device_key(path), wait=30,
+                                   should_stop=lambda: True) == locking.STOPPED_WAITING
+    finally:
+        held.release()
+
+
 def test_without_a_config_there_is_nothing_to_lock():
-    with locking._switch_lock(None) as held:
-        assert held is True
+    with locking._switch_lock(None) as refusal:
+        assert refusal is None
 
 def test_no_profile_refuses_when_another_switch_holds_the_lock(
         tmp_path, recording_backend, monkeypatch):

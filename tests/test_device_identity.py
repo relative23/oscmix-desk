@@ -66,16 +66,16 @@ def _desk(tmp_path, port, serial=""):
 
 def _record_keys(monkeypatch, module, keys, who=None):
     """Record who took the lock with which key. The start and the reload
-    each call `take_device_lock` by the name in their own module; a
+    each call `device_lock` by the name in their own module; a
     switch and a restore take it through `locking._switch_lock`."""
-    real = module.take_device_lock
+    real = module.device_lock
     who = who or module.__name__.rsplit(".", 1)[1]
 
-    def take(config_path, key=None, wait=None):
+    def take(config_path, key=None, wait=None, should_stop=None):
         keys.append((who, key))
-        return real(config_path, key, wait)
+        return real(config_path, key, wait, should_stop)
 
-    monkeypatch.setattr(module, "take_device_lock", take)
+    monkeypatch.setattr(module, "device_lock", take)
 
 
 def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
@@ -503,3 +503,70 @@ def test_a_verifier_that_cannot_reach_the_backend_ends_quietly(
     assert any("verifier failed" in s for s in statuses)
     assert locking.take_device_lock(None, KEY_B, wait=0.2) is not None, \
         "the lock was released"
+
+
+def _verifier_ending(tmp_path, monkeypatch, caplog, backend, verify, stop=None):
+    from oscmix_desk import Config
+
+    monkeypatch.setattr(session_module, "verify_and_repair", verify)
+    monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
+    statuses = []
+    monkeypatch.setattr(session_module, "sd_notify", statuses.append)
+    lock_dir(tmp_path, monkeypatch)
+    lock = locking.take_device_lock(None, KEY_B)
+    with caplog.at_level("INFO"):
+        thread = session_module._verify_in_background(_Child(), Config(),
+                                                      stop or {"stop": False}, lock,
+                                                      backend)
+        thread.join(5)
+    assert not thread.is_alive()
+    assert locking.take_device_lock(None, KEY_B, wait=0.2) is not None, \
+        "the lock was released"
+    return statuses
+
+
+def test_a_repair_the_plan_refused_is_not_a_lost_connection(
+        tmp_path, monkeypatch, caplog, recording_backend):
+    from oscmix_desk.errors import WriteFailed
+
+    def refused(*_a, **_k):
+        raise WriteFailed(OSError("fresh link confirmation required for "
+                                  "/output/1/stereo; remaining writes refused"),
+                          [], ["/mix/1/playback/1"])
+
+    statuses = _verifier_ending(tmp_path, monkeypatch, caplog, recording_backend, refused)
+    assert "verifier did not repair the routing: fresh link confirmation" in caplog.text
+    assert "lost its backend operation" not in caplog.text
+    assert statuses[-1].startswith("STATUS=running; verifier failed at ")
+
+
+def test_a_lease_that_does_not_end_after_the_read_back_says_so(
+        tmp_path, monkeypatch, caplog, recording_backend):
+    from oscmix_desk.errors import ReceivePortError
+
+    def finish():
+        raise ReceivePortError(71, "backend operation did not finish")
+
+    monkeypatch.setattr(recording_backend, "finish", finish)
+    _verifier_ending(tmp_path, monkeypatch, caplog, recording_backend,
+                     lambda *_a, **_k: True)
+    assert ("verifier read the routing back, but its backend operation did not "
+            "end cleanly") in caplog.text
+    assert "routing cannot be verified" not in caplog.text
+
+
+def test_a_stop_during_the_verifier_is_not_a_verifier_failure(
+        tmp_path, monkeypatch, caplog, recording_backend):
+    from oscmix_desk.errors import ReceivePortError
+
+    stop = {"stop": False}
+
+    def cancelled(*_a, **_k):
+        stop["stop"] = True                  # SIGTERM, mid read-back
+        raise ReceivePortError(125, "backend operation cancelled")
+
+    statuses = _verifier_ending(tmp_path, monkeypatch, caplog, recording_backend,
+                                cancelled, stop)
+    assert "verifier ended by the stop" in caplog.text
+    assert [record for record in caplog.records if record.levelname == "ERROR"] == []
+    assert not any("verifier failed" in status for status in statuses)

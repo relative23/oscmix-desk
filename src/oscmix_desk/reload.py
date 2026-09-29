@@ -20,8 +20,8 @@ from typing import Dict, Optional
 from .backend import connect_backend
 from .constants import RECONCILE_WAIT_FOR_VERIFIER, SERVICE_UNIT
 from .discovery import lock_key
-from .errors import ConfigError, ReceivePortError
-from .locking import take_device_lock
+from .errors import ConfigError, WriteFailed
+from .locking import DeviceLock, device_lock
 from .log import log
 from .model import Config, Machine
 from .notices import log_desk_notices
@@ -174,10 +174,10 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
     path = _config_path(args)
     # The same lock a switch takes: a reconcile that started while one
     # was writing used to interleave with it.
-    lock = take_device_lock(path, lock_key(config.usb_id, config.serial))
-    if lock is None:
-        log.warning("SIGHUP: the device lock is not available; reconcile "
-                    "skipped -- send the reload again")
+    lock = device_lock(path, lock_key(config.usb_id, config.serial),
+                       should_stop=lambda: stop_requested["stop"])
+    if not isinstance(lock, DeviceLock):
+        log.warning("SIGHUP: %s; reconcile skipped -- send the reload again", lock)
         return "reconcile skipped"
     try:
         fresh = _reloaded_desk(config, path)
@@ -185,23 +185,20 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
             return "reconcile skipped"
         sd_notify("STATUS=reconciling (SIGHUP)")
         device = None
+        planned = False
         try:
             device = connect_backend(fresh, path, should_stop=lambda: stop_requested["stop"])
             device.begin()
             complete = reconcile_now(fresh, "SIGHUP", device,
                                      lambda: stop_requested["stop"])
+            planned = True
             if stop_requested["stop"]:
                 return "reconcile incomplete"
             device.finish()
-        except ReceivePortError as exc:
-            log.error("SIGHUP: %s; reconcile skipped -- routing dependencies "
-                      "cannot be observed", exc)
-            return "reconcile skipped"
         except OSError as exc:
             # Out of `supervise` and `run_session` as a traceback until
             # 0.6.10, with the backend left to systemd.
-            log.error("SIGHUP: backend operation failed (%s); reconcile incomplete", exc)
-            return "reconcile incomplete"
+            return _stood_down(exc, planned, stop_requested["stop"])
         else:
             return "reconciled" if complete else "reconcile incomplete"
         finally:
@@ -209,6 +206,28 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
                 device.close()
     finally:
         lock.release()
+
+
+def _stood_down(exc: OSError, planned: bool, stopping: bool) -> str:
+    """Report a reconcile that ended early: skipped or incomplete.
+
+    Skipped when nothing was submitted, incomplete otherwise.
+
+    Decided by how far the operation came, not by the exception's type:
+    until 0.8.1 a receive failure read "skipped" even when it ended the
+    lease after the writes, and a refusal the plan made before writing
+    anything (a remembered value it cannot keep, a link it may not trust)
+    read "incomplete" as if the backend had failed.
+    """
+    submitted = planned or (isinstance(exc, WriteFailed) and bool(exc.written))
+    outcome = "reconcile incomplete" if submitted else "reconcile skipped"
+    if stopping:
+        log.info("SIGHUP: stop requested; %s (%s)", outcome, exc)
+    elif submitted:
+        log.error("SIGHUP: %s; %s", exc, outcome)
+    else:
+        log.error("SIGHUP: %s; %s, nothing written", exc, outcome)
+    return outcome
 
 
 def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:

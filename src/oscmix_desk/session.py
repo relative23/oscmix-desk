@@ -41,8 +41,9 @@ from .errors import (
     DeviceAmbiguous,
     DeviceLockUnavailable,
     ReceivePortError,
+    WriteFailed,
 )
-from .locking import DeviceLock, control_path, take_device_lock
+from .locking import DeviceLock, control_path, device_lock
 from .log import log
 from .model import Config
 from .notices import log_desk_notices
@@ -182,25 +183,25 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
     # One transaction, from the first write to the verifier's last: a
     # switch that landed between them would be overwritten by the retry
     # that follows it, which is what 0.6.3 measured.
-    lock = take_device_lock(config_path,
-                            lock_key(config.usb_id, config.serial))
-    if lock is None:
+    lock = device_lock(config_path, lock_key(config.usb_id, config.serial),
+                       should_stop=lambda: _interrupted(child, stop_requested) is not None)
+    # The lock may have taken a while. A stop that arrived during the
+    # wait means this process is going away, and writing the whole
+    # routing on the way out is the opposite of what was asked (0.6.6).
+    interrupted = _interrupted(child, stop_requested)
+    if interrupted is not None:
+        log.info("%s while waiting for the device lock; nothing applied", interrupted)
+        if isinstance(lock, DeviceLock):
+            lock.release()
+        return None
+    if not isinstance(lock, DeviceLock):
         # Until 0.6.7 this wrote anyway, on the grounds that a desk with
         # no routing is worse than a re-apply. It also made "every writer
         # holds one lock" conditional on nothing going wrong, which is
         # the opposite of what a guarantee is. systemd restarts the unit;
         # a write nobody serialised cannot be taken back.
-        log.error("the device lock is not available; not applying routing")
-        raise DeviceLockUnavailable(config.usb_id)
-
-    # The lock may have taken a while. A stop that arrived during the
-    # wait means this process is going away, and writing the whole
-    # routing on the way out is the opposite of what was asked (0.6.6).
-    if stop_requested["stop"] or child.poll() is not None:
-        log.info("stop requested while waiting for the device lock; "
-                 "nothing applied")
-        lock.release()
-        return None
+        log.error("the device lock is not available (%s); not applying routing", lock)
+        raise DeviceLockUnavailable(lock)
 
     device = None
     try:
@@ -228,6 +229,20 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         raise
 
 
+def _interrupted(child: "subprocess.Popen[bytes]",
+                 stop_requested: Dict[str, bool]) -> Optional[str]:
+    """Why the start is not to go on writing, or None.
+
+    Two reasons, told apart: until 0.8.1 a backend that died during the
+    lock wait was logged as a stop request.
+    """
+    if stop_requested["stop"]:
+        return "stop requested"
+    if child.poll() is not None:
+        return "the backend exited"
+    return None
+
+
 def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
                           stop_requested: Dict[str, bool],
                           lock: DeviceLock, backend: Control) -> threading.Thread:
@@ -246,27 +261,26 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
         # STATUS= is what `systemctl --user status` shows: the phase the
         # session is in, and when the last one ended. It says what the
         # unit is doing; the lock is what keeps another writer out.
+        verified = False
         try:
             if wait_unless_stopped(VERIFY_SETTLE, should_stop, backend):
                 return
             sd_notify("STATUS=verifying routing")
             complete = verify_and_repair(config, backend, should_stop)
+            verified = True
             if should_stop():
                 return
             backend.finish()
             sd_notify("STATUS=running; verifier %s at %s"
                       % ("finished" if complete else "incomplete", time.strftime("%H:%M:%S")))
-        except ReceivePortError as exc:
-            # Failed feedback is distinct from silence. End this operation;
-            # a later explicit operation must obtain a new checked connection.
-            log.error("routing cannot be verified: %s", exc)
-            sd_notify("STATUS=running; verifier failed at %s"
-                      % time.strftime("%H:%M:%S"))
         except OSError as exc:
-            # The socket, not the desk: a thread traceback said nothing a
-            # person could act on, and the lock's release was all that
-            # happened (0.6.10).
-            log.error("verifier lost its backend operation (%s)", exc)
+            if should_stop():
+                # The stop cancels the operation (ECANCELED), or the backend
+                # is gone; supervise() reports which. Logged as a verifier
+                # failure until 0.8.1.
+                log.info("verifier ended by the stop (%s)", exc)
+                return
+            _log_verifier_failure(exc, verified)
             sd_notify("STATUS=running; verifier failed at %s"
                       % time.strftime("%H:%M:%S"))
         finally:
@@ -277,6 +291,30 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
                               daemon=True)
     thread.start()
     return thread
+
+
+def _log_verifier_failure(exc: OSError, verified: bool) -> None:
+    """Say which of four things ended the start-up verifier.
+
+    End this operation in every case; a later explicit operation must
+    obtain a new checked connection. Until 0.8.1 the split was by
+    exception type alone, so a repair the plan refused read as a lost
+    connection, and a lease that did not end after a completed read-back
+    read as routing that cannot be verified.
+    """
+    if verified:
+        log.error("verifier read the routing back, but its backend operation "
+                  "did not end cleanly (%s)", exc)
+    elif isinstance(exc, WriteFailed) and exc.refused:
+        log.error("verifier did not repair the routing: %s", exc)
+    elif isinstance(exc, ReceivePortError):
+        # Failed feedback is distinct from silence.
+        log.error("routing cannot be verified: %s", exc)
+    else:
+        # The socket, not the desk: a thread traceback said nothing a
+        # person could act on, and the lock's release was all that
+        # happened (0.6.10).
+        log.error("verifier lost its backend operation (%s)", exc)
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
@@ -415,7 +453,15 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
     except DeviceLockUnavailable:
         log.error("failing the start so systemd tries again")
     except OSError as exc:
-        log.error("cannot complete backend writes (%s); failing the start", exc)
+        interrupted = _interrupted(child, stop_requested)
+        if interrupted is None:
+            log.error("cannot complete backend writes (%s); failing the start", exc)
+        else:
+            # Not a failed start: the stop, or the backend's own exit (an
+            # unplug, most often), is the outcome, and supervise() reports
+            # it as it would a minute later. Until 0.8.1 both were exit 1.
+            log.warning("%s during the start; routing not completed (%s)", interrupted, exc)
+            return None, None
     else:
         sd_notify("READY=1")
         return verifier, None

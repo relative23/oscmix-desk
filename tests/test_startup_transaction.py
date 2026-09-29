@@ -205,6 +205,106 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
     assert after is not None, "and the lock is released"
     after.release()
 
+def test_a_stop_ends_the_lock_wait_within_the_stop_timeout(tmp_path, monkeypatch,
+                                                         session_mod, caplog):
+    # TimeoutStopSec is 10 s and the lock wait 30 s: a stop has to end the
+    # wait itself, not be noticed once it is over (0.8.1).
+    import threading
+    import time
+
+    from support import write_config
+
+    from oscmix_desk import session as session_module
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    applied = []
+    monkeypatch.setattr(session_module, "apply_routing",
+                        lambda *a, **k: applied.append(a))
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 30.0)
+    stop = {"stop": False}
+    held = locking.take_device_lock(path, device_key(path))
+    assert held is not None
+    threading.Timer(0.2, stop.update, [{"stop": True}]).start()
+    started = time.monotonic()
+    try:
+        with caplog.at_level("INFO"):
+            verifier = session_module._apply_and_verify(
+                RunningChild(), session_mod.load_config(path), stop, path)
+    finally:
+        held.release()
+    assert time.monotonic() - started < 5
+    assert verifier is None
+    assert applied == []
+    assert "stop requested while waiting for the device lock; nothing applied" in caplog.text
+
+
+def test_a_backend_that_exits_during_the_lock_wait_is_not_called_a_stop(
+        tmp_path, monkeypatch, session_mod, caplog):
+    import threading
+
+    from support import write_config
+
+    from oscmix_desk import session as session_module
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 30.0)
+    child = RunningChild()
+    held = locking.take_device_lock(path, device_key(path))
+    assert held is not None
+    threading.Timer(0.2, setattr, [child, "returncode", 1]).start()
+    try:
+        with caplog.at_level("INFO"):
+            verifier = session_module._apply_and_verify(
+                child, session_mod.load_config(path), {"stop": False}, path)
+    finally:
+        held.release()
+    assert verifier is None
+    assert "the backend exited while waiting for the device lock" in caplog.text
+    assert "stop requested" not in caplog.text
+
+
+@pytest.mark.parametrize("cause", ["stop", "backend exit"])
+def test_a_start_cut_short_by_a_stop_or_the_backend_is_not_a_failed_start(
+        tmp_path, monkeypatch, session_mod, caplog, cause):
+    # A stop, or an unplug that ends the backend, during connect, lease or
+    # apply: supervise() reports the outcome as it would a minute later.
+    # Both ended the start with exit 1 until 0.8.1.
+    from support import write_config
+
+    from oscmix_desk import session as session_module
+    from oscmix_desk.errors import WriteFailed
+
+    path = write_config(tmp_path / "routing.conf",
+                        "[route:x]\nplayback = 1/2\noutput = 1/2\n")
+    child = RunningChild()
+    stop = {"stop": False}
+
+    def cut_short(*_a, **_k):
+        if cause == "stop":
+            stop["stop"] = True
+        else:
+            child.returncode = 0
+        raise WriteFailed(OSError("stop requested; remaining writes refused"),
+                          [], ["/output/1/stereo"])
+
+    monkeypatch.setattr(session_module, "apply_routing", cut_short)
+    notified = []
+    monkeypatch.setattr(session_module, "sd_notify", notified.append)
+    with caplog.at_level("WARNING"):
+        outcome = session_module._apply_or_fail(
+            child, session_mod.load_config(path), stop, path)
+    assert outcome == (None, None)
+    assert "READY=1" not in notified, "READY=1 comes from the exit translation"
+    assert child.terminated is False
+    assert "during the start; routing not completed" in caplog.text
+    assert "failing the start" not in caplog.text
+    after = locking.take_device_lock(path, device_key(path), wait=0.2)
+    assert after is not None, "the lock is released"
+    after.release()
+
+
 def test_a_config_that_stopped_parsing_keeps_the_desk_of_this_process(
         tmp_path, monkeypatch, session_mod, caplog):
     """Read under the lock, and the file may be mid-edit by then.

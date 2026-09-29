@@ -44,7 +44,7 @@ from .errors import (
     DeviceAmbiguous,
     WriteFailed,
 )
-from .locking import _switch_lock, held_elsewhere
+from .locking import _switch_lock
 from .log import log
 from .marker import (
     active_profile,
@@ -193,8 +193,7 @@ def _refused_for_the_device(name: str, reason: str) -> "Outcome":
     return Outcome(state=REFUSED, name=name, reason=reason)
 
 
-def _refused_for_the_lock(name: str) -> Outcome:
-    reason = held_elsewhere()
+def _refused_for_the_lock(name: str, reason: str) -> Outcome:
     log.error("profile %r refused, nothing written: %s", name, reason)
     return Outcome(state=REFUSED, name=name, reason=reason)
 
@@ -264,9 +263,9 @@ def _activate(config: Config, config_path: Optional[Path], name: Optional[str],
     except _Refused as refusal:
         return _refused_for_the_device(label, str(refusal))
     config = replace(config, serial=target.serial)
-    with _switch_lock(config_path, target.key) as held:
-        if not held:
-            return _refused_for_the_lock(label)
+    with _switch_lock(config_path, target.key) as not_held:
+        if not_held is not None:
+            return _refused_for_the_lock(label, not_held)
         device = backend
         applied = False
         try:

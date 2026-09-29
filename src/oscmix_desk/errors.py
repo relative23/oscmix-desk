@@ -64,7 +64,20 @@ class WriteFailed(OSError):
         self.written = tuple(written)
         self.unwritten = tuple(unwritten)
 
+    @property
+    def refused(self) -> bool:
+        """This program stopped the write, not the connection.
+
+        A remembered value the plan cannot keep, a link it may not trust,
+        a playback mode that changed: raised as an OSError without an
+        errno, before the next burst. The connection is still usable.
+        """
+        return self.errno is None
+
     def __str__(self) -> str:
+        # A refusal the plan made has no errno; OSError would print
+        # "[Errno None]" in front of it.
+        cause = self.strerror if self.errno is None else super().__str__()
         return ("%s; sent (hardware unconfirmed): %s; pending: %s"
-                % (super().__str__(), ", ".join(self.written) or "none",
+                % (cause, ", ".join(self.written) or "none",
                    ", ".join(self.unwritten) or "none"))

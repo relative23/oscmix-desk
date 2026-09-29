@@ -111,7 +111,7 @@ def test_a_reconcile_connects_for_its_desk_and_can_be_stopped_while_connecting(
     assert recording_backend.operations == ["begin", "finish", "close"]
 
 
-def test_a_reconcile_whose_connection_fails_is_incomplete_and_releases_the_lock(
+def test_a_reconcile_whose_connection_fails_is_skipped_and_releases_the_lock(
         sighup, monkeypatch):
     run, _path, _connected, _stop = sighup
 
@@ -119,8 +119,9 @@ def test_a_reconcile_whose_connection_fails_is_incomplete_and_releases_the_lock(
         raise OSError(111, "Connection refused")
 
     monkeypatch.setattr(reload_mod, "connect_backend", refused)
-    assert run() == "reconcile incomplete"
-    assert run() == "reconcile incomplete", "the device lock was released"
+    # Nothing was submitted; "incomplete" until 0.8.1.
+    assert run() == "reconcile skipped"
+    assert run() == "reconcile skipped", "the device lock was released"
 
 
 def test_a_stop_during_the_reconcile_is_reported_incomplete_without_finishing(

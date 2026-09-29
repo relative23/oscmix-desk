@@ -12,19 +12,35 @@ from oscmix_desk import CommandLine, profiles
 from oscmix_desk import notices as notices_mod
 from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
+from oscmix_desk.errors import ReceivePortError, WriteFailed
+
+UNREACHABLE = OSError(101, "Network is unreachable")
 
 
-def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
-        tmp_path, monkeypatch, caplog, recording_backend):
+@pytest.mark.parametrize(("failure", "line", "status"), [
+    # Before the plan wrote anything: it stood down.
+    (UNREACHABLE, "[Errno 101] Network is unreachable; reconcile skipped, nothing written",
+     "reconcile skipped"),
+    (WriteFailed(OSError("a remembered value cannot be kept"), [], ["/output/1/volume"]),
+     ("a remembered value cannot be kept; sent (hardware unconfirmed): none; "
+      "pending: /output/1/volume; reconcile skipped, nothing written"), "reconcile skipped"),
+    # After a submission: whatever ended it, the desk is part-way.
+    (WriteFailed(UNREACHABLE, ["/output/1/stereo"], ["/mix/1/input/1"]),
+     ("[Errno 101] Network is unreachable; sent (hardware unconfirmed): "
+      "/output/1/stereo; pending: /mix/1/input/1; reconcile incomplete"),
+     "reconcile incomplete"),
+])
+def test_a_reconcile_that_ends_early_says_whether_it_wrote(
+        tmp_path, monkeypatch, caplog, recording_backend, failure, line, status):
     import argparse
 
     from oscmix_desk import Config
 
-    def unreachable(*_a, **_k):
-        raise OSError(101, "Network is unreachable")
+    def fails(*_a, **_k):
+        raise failure
 
     monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: recording_backend)
-    monkeypatch.setattr(reload_mod, "reconcile_now", unreachable)
+    monkeypatch.setattr(reload_mod, "reconcile_now", fails)
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
     lock_dir(tmp_path, monkeypatch)
@@ -32,8 +48,29 @@ def test_a_reconcile_that_cannot_reach_the_backend_stands_down(
     with caplog.at_level("ERROR"):
         reload_mod._reconcile(argparse.Namespace(config=path), Config(),
                                   {"stop": False})
-    assert ("SIGHUP: backend operation failed ([Errno 101] "
-            "Network is unreachable); reconcile incomplete") in caplog.text
+    assert "SIGHUP: " + line in caplog.text
+    assert statuses[-1].startswith("STATUS=running; " + status)
+
+
+def test_a_reconcile_whose_lease_cannot_be_finished_after_writing_is_incomplete(
+        tmp_path, monkeypatch, caplog, recording_backend):
+    import argparse
+
+    from oscmix_desk import Config
+
+    def finish():
+        raise ReceivePortError(71, "backend operation did not finish")
+
+    monkeypatch.setattr(recording_backend, "finish", finish)
+    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(reload_mod, "reconcile_now", lambda *_a: True)
+    statuses = []
+    monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
+    lock_dir(tmp_path, monkeypatch)
+    path = write_config(tmp_path / "routing.conf", DESK)
+    reload_mod._reconcile(argparse.Namespace(config=path), Config(), {"stop": False})
+    # "skipped" until 0.8.1, because a receive failure was taken to mean
+    # nothing could be observed and so nothing was written.
     assert statuses[-1].startswith("STATUS=running; reconcile incomplete")
 
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])

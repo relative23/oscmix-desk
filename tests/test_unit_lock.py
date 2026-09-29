@@ -143,8 +143,8 @@ def test_every_reconcile_that_stands_down_says_so(cause, tmp_path, monkeypatch,
     verifier = None
     release = threading.Event()
     if cause == "lock held":
-        monkeypatch.setattr(reload_mod, "take_device_lock",
-                            lambda *a: None)
+        monkeypatch.setattr(reload_mod, "device_lock",
+                            lambda *a, **k: locking.held_elsewhere())
     elif cause == "config broken":
         path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
     else:
@@ -219,8 +219,8 @@ def test_the_reconcile_locks_the_desk_it_reloads(tmp_path, monkeypatch,
 
     path = routes_file(tmp_path)
     taken = []
-    monkeypatch.setattr(reload_mod, "take_device_lock",
-                        lambda where, key: taken.append((where, key)))
+    monkeypatch.setattr(reload_mod, "device_lock",
+                        lambda where, key, should_stop: taken.append((where, key)) or "not taken")
     monkeypatch.setattr(reload_mod, "sd_notify", lambda *_a: None)
     config = session_mod.Config(serial="24216011")
     reload_mod._reconcile(argparse.Namespace(config=path), config,
