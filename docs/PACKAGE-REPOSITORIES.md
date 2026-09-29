@@ -1,8 +1,8 @@
 # Signed package repositories
 
 Signed APT and RPM repositories are published at
-`https://relative23.github.io/oscmix-desk/` starting with release 0.8.0.
-Until then, install from the [release artifacts](RELEASE-ARTIFACTS.md).
+`https://relative23.github.io/oscmix-desk/` since release 0.8.0. Releases
+before 0.8.0 are available as [release artifacts](RELEASE-ARTIFACTS.md) only.
 
 | Distribution | Channel |
 | --- | --- |
