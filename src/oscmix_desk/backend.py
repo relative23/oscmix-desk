@@ -95,7 +95,10 @@ OSCMIX = Traits(
 
 CONTROL_QUEUE_BYTES = 256 * 1024
 CONTROL_QUEUE_PACKETS = 4096
-CONTROL_HEARTBEAT = 2.0
+#: Seconds between KEEPALIVEs while the lease is held. The longest gap is
+#: this plus one acknowledgement wait (CONTROL_ACK_TIMEOUT), which has to
+#: stay clear of protocol.LEASE_IDLE; 2.0 until 0.8.1 left one second.
+CONTROL_HEARTBEAT = 1.0
 
 
 @dataclass(frozen=True)
@@ -314,6 +317,9 @@ class Control:
                 self._generation = generation
                 self._last_heartbeat = time.monotonic()
                 return
+            if code == Status.NOT_OWNER:
+                raise OSError(errno.EPERM, "this connection's role cannot take the "
+                              "backend operation lease")
             if code != Status.BUSY or time.monotonic() >= deadline:
                 raise OSError(errno.EBUSY, "another client holds the backend operation lease")
             self.wait(min(0.1, max(0.0, deadline - time.monotonic())))

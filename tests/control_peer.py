@@ -238,6 +238,7 @@ class ScriptedControl:
         self.begin_busy = begin_busy
         self.refresh_busy = refresh_busy
         self.generation = 1
+        self.role = None
         self.writes = []
         self.order = []
         self.requests = []
@@ -293,8 +294,11 @@ class ScriptedControl:
                 if self.handshake is not None:
                     payload = self.handshake
                 code = self.hello_code
+                self.role = request_code
             elif kind == BEGIN:
                 code = BUSY if self.begin_busy else OK
+                if self.role != DESK:                   # as control.c answers
+                    code = NOT_OWNER
                 if self.busy_begins:
                     self.busy_begins -= 1
                     code = BUSY

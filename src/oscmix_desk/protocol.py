@@ -20,6 +20,22 @@ PAYLOAD = 8192
 #: HELLO reply payload: epoch, backend pid, VERSION, then the device name
 #: terminated by one NUL.
 HELLO_REPLY = struct.Struct(">16sII")
+#: Connections the backend serves at once.
+CLIENTS = 16
+
+# The backend's own clocks, in seconds (control.c). A client cannot
+# change them; it has to stay inside them.
+
+#: A connection that has not said HELLO by then is closed.
+HELLO_TIMEOUT = 3.0
+#: The lease ends this long after BEGIN or the last KEEPALIVE. A WRITE
+#: does not extend it, and the check runs before queued requests are
+#: read, so a WRITE the MIDI side holds up for this long ends the lease.
+LEASE_IDLE = 5.0
+#: The lease ends this long after BEGIN, however alive its owner is.
+LEASE_TOTAL = 90.0
+#: How long after a REFRESH the next one is refused as BUSY.
+REFRESH_WINDOW = 10.0
 
 
 class Request(IntEnum):

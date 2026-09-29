@@ -33,8 +33,10 @@ VERIFY_SETTLE = 0.5
 # the fresh sync window. Its latest observations decide whether mix repair
 # is permitted; they do not establish permanent or playback-matrix state.
 LINK_ECHO_TIMEOUT = float(os.environ.get("OSCMIX_LINK_TIMEOUT", "1.5"))
-# ODK1 server limits, qualified against the versioned C backend. Acquisition
-# precedes a lease whose total duration cannot be extended by keepalives.
+# ODK1 client limits. Acquisition precedes a lease whose total duration
+# cannot be extended by keepalives: CONTROL_LEASE_TOTAL is the backend's
+# protocol.LEASE_TOTAL, restated here for the unit's start budget below
+# and held equal to it by tests/test_protocol.py.
 CONTROL_ACQUIRE_TIMEOUT = 30.0
 CONTROL_LEASE_TOTAL = 90.0
 CONTROL_ACK_TIMEOUT = 2.0

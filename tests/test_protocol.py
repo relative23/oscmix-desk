@@ -78,6 +78,28 @@ def test_the_framing_and_limits_match():
     assert 'memcpy(p->data, "%s", 4);' % protocol.MAGIC.decode() in SOURCE
 
 
+def test_the_backend_clocks_match():
+    # From the source 0003 creates; no later patch may redefine them.
+    values = defines(SOURCE)
+    for name in ("HELLO_TIMEOUT", "LEASE_IDLE", "LEASE_TOTAL", "REFRESH_WINDOW"):
+        assert float(values[name]) == getattr(protocol, name), name
+    assert int(defines(HEADER)["CONTROL_CLIENTS"]) == protocol.CLIENTS
+    series = json.loads(repo_file("patches", "backend-series.json").read_text())
+    for entry in series["patches"][1:]:
+        text = repo_file("patches", entry["file"]).read_text()
+        assert not re.search(r"^[-+]#define (HELLO_TIMEOUT|LEASE_|REFRESH_WINDOW|CONTROL_CLIENTS)",
+                             text, re.MULTILINE), entry["file"]
+
+
+def test_the_client_keeps_its_lease_with_room_to_spare():
+    # Between two KEEPALIVEs the client waits at most one heartbeat and one
+    # acknowledgement; the backend's idle check has to stay well clear.
+    from oscmix_desk import backend, constants
+
+    assert backend.CONTROL_HEARTBEAT + constants.CONTROL_ACK_TIMEOUT <= protocol.LEASE_IDLE - 2
+    assert constants.CONTROL_LEASE_TOTAL == protocol.LEASE_TOTAL
+
+
 def test_the_hello_reply_layout_matches():
     epoch = protocol.HELLO_REPLY.size - 8
     assert "memcpy(payload, epoch, %d);" % epoch in SOURCE

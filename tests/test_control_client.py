@@ -650,6 +650,20 @@ def test_a_lease_notice_after_finishing_is_ordinary_traffic(control):
     assert client.next_delivery(0) is None
 
 
+def test_a_reader_asking_for_the_lease_is_told_its_role_cannot(peer):
+    # Not "another client holds the backend operation lease" (until 0.8.1):
+    # nobody holds it, and waiting would not help.
+    server = peer()
+    client = backend.Control(server.path, os.getpid(), reader=True)
+    try:
+        with pytest.raises(OSError, match="role cannot take") as refused:
+            client.begin(timeout=5)
+        assert refused.value.errno == errno.EPERM
+        assert server.requests.count(BEGIN) == 1, "and it is not retried"
+    finally:
+        client.close()
+
+
 def test_begin_waits_while_the_lease_is_busy_and_acquires_it_when_free(peer):
     server = peer(busy_begins=2)
     client = backend.Control(server.path, os.getpid())

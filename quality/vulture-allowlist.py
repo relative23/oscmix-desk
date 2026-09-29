@@ -53,3 +53,13 @@ EXPIRED                          # noqa: F821
 SHUTDOWN                         # noqa: F821
 OVERFLOW                         # noqa: F821
 GUI                              # noqa: F821
+
+# protocol's backend clocks and client count: what control.c enforces,
+# compared with it by tests/test_protocol.py. LEASE_IDLE bounds the
+# client's heartbeat there; the others are stated for readers of the
+# protocol, since nothing on this side can change them.
+CLIENTS                          # noqa: F821
+HELLO_TIMEOUT                    # noqa: F821
+LEASE_IDLE                       # noqa: F821
+LEASE_TOTAL                      # noqa: F821
+REFRESH_WINDOW                   # noqa: F821
