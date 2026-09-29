@@ -12,12 +12,38 @@ import side-effect free.
 import collections
 import importlib.machinery
 import importlib.util
+import os
+import shutil
 import socket
 import struct
 import sys
+import tempfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+#: Directories from short_directory(), removed when the test session ends.
+SHORT_DIRECTORIES = []
+
+
+def short_directory(prefix="od-"):
+    """A new directory with room left for Unix socket names under it.
+
+    A socket path is limited to 107 bytes, and pytest's temporary paths
+    grow with ``TMPDIR`` and each test's name. Created under /tmp where
+    that is writable and removed at the end of the session.
+    """
+    # A fixed short base on purpose: TMPDIR is what can be too long.
+    base = "/tmp" if os.access("/tmp", os.W_OK | os.X_OK) else None  # noqa: S108
+    path = Path(tempfile.mkdtemp(prefix=prefix, dir=base))
+    SHORT_DIRECTORIES.append(path)
+    return path
+
+
+def remove_short_directories():
+    while SHORT_DIRECTORIES:
+        shutil.rmtree(SHORT_DIRECTORIES.pop(), ignore_errors=True)
 
 
 def repo_file(*parts):

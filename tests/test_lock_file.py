@@ -232,9 +232,9 @@ def test_a_lock_that_cannot_be_taken_for_another_reason_closes_its_file(
 
 @pytest.mark.parametrize(("length", "accepted"), [(107, True), (108, False)])
 def test_the_control_endpoint_fits_the_unix_socket_path_limit(
-        tmp_path, monkeypatch, length, accepted):
+        short_tmp, monkeypatch, length, accepted):
     key = "2a39-3fd9-24216011"
-    base = tmp_path.resolve()
+    base = short_tmp.resolve()
     pad = length - len(os.fsencode(base)) - len("/" + key + ".control") - 1
     assert pad > 0
     shared = base / ("d" * pad)

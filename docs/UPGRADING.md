@@ -45,6 +45,14 @@ discarding their damaged suffix. A valid prefix cannot confirm link state or
 be recorded as a partial successful snapshot. Fix the backend/transport cause
 and start a new operation; do not interpret the missing result as device silence.
 
+Python callers: `apply_routing()`, `verify_routing()` and
+`verify_and_repair()` take a connected backend control object instead of OSC
+ports, and `verify_and_repair()` returns whether the read-back ended without a
+remaining problem. That object is not part of the supported root API in 0.8.0;
+the release notes did not say so. Scripts should use `switch_profile()` and
+`restore_main()`, which connect themselves, or the `oscmix-session` command
+line until a public operation interface replaces these three functions.
+
 For a software rollback, restore the complete 0.7.3 installation or its exact
 core/GTK package pair, then restart deliberately with the preserved desk.
 Hardware values that changed after the backup are not restored by a package

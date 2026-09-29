@@ -12,6 +12,7 @@ import ast
 import os
 import socket
 import sys
+import tempfile
 import types
 from pathlib import Path
 
@@ -23,7 +24,7 @@ from backend_doubles import (
     echo_link_flags_only,
     echo_within_traits,
 )
-from support import PROJECT_ROOT
+from support import PROJECT_ROOT, remove_short_directories, short_directory
 
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
@@ -80,6 +81,36 @@ def _setattr_that_something_reads(self, target, name=None, *args, **kwargs):
 MonkeyPatch.setattr = _setattr_that_something_reads
 
 
+def pytest_configure(config):
+    """Keep ``tmp_path`` short when ``TMPDIR`` is long.
+
+    Many tests bind Unix sockets under ``tmp_path``, and a socket path is
+    limited to 107 bytes. An explicit ``--basetemp`` is left alone.
+    """
+    if config.option.basetemp is not None:
+        return
+    if len(os.fsencode(tempfile.gettempdir())) <= 20:
+        return
+    short = short_directory("pt-")
+    if len(os.fsencode(short)) < len(os.fsencode(tempfile.gettempdir())):
+        config.option.basetemp = str(short / "base")
+
+
+@pytest.fixture
+def short_tmp():
+    """A directory with room left for Unix socket names under it.
+
+    ``tmp_path`` grows with ``TMPDIR`` and the test's name, and a socket
+    path is limited to 107 bytes. With ``TMPDIR=/var/tmp/odk080-no-interface``
+    the soak's notify socket and the socket-limit test ran out of room.
+    """
+    return short_directory()
+
+
+def pytest_unconfigure(config):
+    remove_short_directories()
+
+
 @pytest.fixture(autouse=True)
 def _own_runtime_dir(tmp_path_factory, monkeypatch):
     """No test may touch the device lock of the machine it runs on.
@@ -97,9 +128,10 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
     from oscmix_desk import locking
 
     machine = (os.environ.get("XDG_RUNTIME_DIR"), locking.SHARED_LOCK_DIR)
-    monkeypatch.setenv("XDG_RUNTIME_DIR",
-                       str(tmp_path_factory.mktemp("runtime")))
-    absent = str(tmp_path_factory.mktemp("nolockdir") / "absent")
+    # Short: the control socket and the lock live under it, and a Unix
+    # socket path is limited to 107 bytes whatever TMPDIR is.
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(short_directory("rt-")))
+    absent = str(short_directory("nl-") / "absent")
     monkeypatch.setenv("OSCMIX_LOCK_DIR", absent)
     # The default too, not only the variable that overrides it. A mutant
     # that renames the variable falls back to /run/oscmix-desk, and the
@@ -306,7 +338,7 @@ def wire_peer(tmp_path_factory):
 
     @contextmanager
     def run(**options):
-        root = tmp_path_factory.mktemp("wire")
+        root = short_directory("wire-")
         peer = ScriptedControl(root / "c", **options)
         device = Control(peer.path, os.getpid())
         try:
@@ -337,7 +369,7 @@ def read_peer(tmp_path_factory, monkeypatch):
 
     @contextmanager
     def run(registers, **faults):
-        root = tmp_path_factory.mktemp("read")
+        root = short_directory("read-")
         reports = [osc_bundle([encode_osc(p, t, *a) for p, t, a in registers])]
         peer = ScriptedControl(root / "c", reports=reports if registers else [], **faults)
 
@@ -364,7 +396,7 @@ def endpoint(tmp_path_factory, monkeypatch):
     from oscmix_desk import locking
     from oscmix_desk.model import Config
 
-    root = tmp_path_factory.mktemp("identity")
+    root = short_directory("iden-")
     shared = root / "shared"
     shared.mkdir()
     monkeypatch.setenv("OSCMIX_LOCK_DIR", str(shared))
@@ -393,7 +425,7 @@ def coordinated(tmp_path_factory, monkeypatch):
 
     @contextmanager
     def run(serial=B[1], client=B[0], boxes=(A, B)):
-        root = tmp_path_factory.mktemp("peer")
+        root = short_directory("peer-")
         shared = root / "shared"
         shared.mkdir()
         monkeypatch.setenv("OSCMIX_LOCK_DIR", str(shared))

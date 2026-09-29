@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Documentation
+
+- 0.8.0 changed the Python signatures of `apply_routing()`,
+  `verify_routing()` and `verify_and_repair()`: they take a connected backend
+  control object instead of OSC ports, and `verify_and_repair()` returns a
+  result. The 0.8.0 notes did not mention this; `UPGRADING.md` now does.
+
+### Fixed
+
+- Tests that bind Unix sockets no longer fail when `TMPDIR` is long.
+
 ## 0.8.0 -- 2026-09-29
 
 ### Changed

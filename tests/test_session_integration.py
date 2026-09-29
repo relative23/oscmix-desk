@@ -14,12 +14,17 @@ import signal
 import socket
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 import pytest
-from support import control_owner, fake_proc, free_udp_port, read_until_ready
+from support import (
+    control_owner,
+    fake_proc,
+    free_udp_port,
+    read_until_ready,
+    short_directory,
+)
 
 from oscmix_desk import osc
 
@@ -95,8 +100,8 @@ def make_env(tmp_path, *, with_client, with_usb, port=None, reply_port=None):
 
     env = dict(os.environ)
     env.pop("NOTIFY_SOCKET", None)
-    shared = tempfile.mkdtemp(prefix="integration-",
-                              dir=Path(os.environ["XDG_RUNTIME_DIR"]).parent)
+    # The control socket is created here; tmp_path may leave no room for it.
+    shared = str(short_directory("oi-"))
     env.update({
         "OSCMIX_LOCK_DIR": shared,
         "STUB_TESTS_DIR": str(Path(__file__).parent),

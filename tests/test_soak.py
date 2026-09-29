@@ -138,18 +138,18 @@ def one_startup(tmp_path, session_mod, cycle):
         terminate(proc)
 
 
-def test_the_routing_survives_being_applied_over_and_over(tmp_path,
+def test_the_routing_survives_being_applied_over_and_over(short_tmp,
                                                           session_mod):
+    # short_tmp: each cycle binds a notify socket in its own directory.
     cycles = soak_cycles()
     started = time.monotonic()
     for cycle in range(1, cycles + 1):
-        one_startup(tmp_path, session_mod, cycle)
+        one_startup(short_tmp, session_mod, cycle)
     elapsed = time.monotonic() - started
     # Not a performance gate -- this project asserts growth order rather
-    # than wall-clock time. It is a hang
-    # detector: a cycle that waits out a real timeout instead of the
-    # stubbed one takes 30 s+, and averaging that away over many cycles
-    # is exactly what a soak must not do.
+    # than wall-clock time. It is a hang detector: a cycle that waits out
+    # a real timeout instead of the stubbed one takes 30 s+, and averaging
+    # that away over many cycles is exactly what a soak must not do.
     assert elapsed / cycles < 25.0, (
         "%d cycles took %.1fs (%.1fs each) -- a cycle is waiting out a "
         "timeout rather than converging" % (cycles, elapsed, elapsed / cycles)
