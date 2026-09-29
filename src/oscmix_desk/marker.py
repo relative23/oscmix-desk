@@ -18,7 +18,7 @@ from typing import NamedTuple, Optional
 
 from .errors import ConfigError
 from .log import log
-from .paths import profile_path
+from .paths import profile_path, regular_file
 
 #: Where the active profile's name is kept: one line, beside
 #: routing.conf. Written by the CLI after an applied switch, removed by
@@ -43,10 +43,15 @@ def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
     warning rather than trusted: the name is used to build a path.
     """
     path = active_profile_path(config_path)
-    if path is None or not path.is_file():
+    if path is None:
         return None
     try:
+        if not regular_file(path):
+            return None
         name = path.read_text(encoding="utf-8").strip()
+    except ConfigError as exc:
+        log.warning("ignoring the active-profile marker: %s", exc)
+        return None
     except (OSError, UnicodeDecodeError) as exc:
         log.warning("ignoring %s: %s", path, exc)
         return None

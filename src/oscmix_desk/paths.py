@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import pwd
 import re
+import stat
 from pathlib import Path
 from typing import List, Mapping, Optional
 
@@ -29,6 +30,23 @@ def system_config(env: Mapping[str, str]) -> Path:
     /etc is the machine's, not the test's.
     """
     return Path(env.get("OSCMIX_SYSTEM_CONFIG") or SYSTEM_CONFIG)
+
+
+def regular_file(path: Path) -> bool:
+    """Whether ``path`` is a regular file, answered alike on every Python.
+
+    Before 3.14 Path.is_file() raised PermissionError for a file behind a
+    directory the caller cannot search, and since 3.14 it returns False:
+    a traceback on one version, "not found" on the other. Here an absent
+    file is False and one that cannot be looked at is a ConfigError that
+    names it.
+    """
+    try:
+        return stat.S_ISREG(path.stat().st_mode)
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    except OSError as exc:
+        raise ConfigError("cannot read %s: %s" % (path, exc)) from None
 
 
 def discover_config_path(
@@ -54,7 +72,12 @@ def discover_config_path(
     if xdg:
         candidates.insert(0, Path(xdg) / "oscmix" / "routing.conf")
     for candidate in candidates:
-        if candidate.is_file():
+        try:
+            if regular_file(candidate):
+                return candidate
+        except ConfigError:
+            # There, but not to be looked at: loading it says why, instead
+            # of a desk further down the order being applied in its place.
             return candidate
     return None
 
@@ -88,9 +111,10 @@ def profiles_dir(config_path: Optional[Path] = None) -> Optional[Path]:
 def list_profiles(config_path: Optional[Path] = None) -> List[str]:
     """Profile names, sorted. Missing directory is empty, not an error."""
     directory = profiles_dir(config_path)
-    if directory is None or not directory.is_dir():
+    # os.path, not pathlib: False rather than PermissionError before 3.14.
+    if directory is None or not os.path.isdir(directory):
         return []
-    return sorted(p.stem for p in directory.glob("*.conf") if p.is_file())
+    return sorted(p.stem for p in directory.glob("*.conf") if os.path.isfile(p))
 
 
 def profile_path(name: str, config_path: Optional[Path] = None) -> Path:

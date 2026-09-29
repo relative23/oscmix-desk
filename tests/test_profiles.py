@@ -20,6 +20,9 @@ a live desk is that a typo costs you a message, not your monitoring.
 """
 
 
+import errno
+import re
+
 import pytest
 from backend_doubles import RecordingBackend
 from profile_desk import GOOD, TRACKING, desk
@@ -333,6 +336,24 @@ def test_load_profile_raises_for_a_bad_one(tmp_path):
                  "[route:x]\noutput = 99\nplayback = 1\n")
     with pytest.raises(ConfigError):
         profiles.load_profile("bad", tmp_path / "routing.conf")
+
+
+def test_a_profile_that_cannot_be_looked_at_is_a_config_error(tmp_path, monkeypatch):
+    # Not a PermissionError traceback (Python before 3.14), and not "no
+    # profile" (3.14): the switch reports it like any unreadable desk.
+    from oscmix_desk import ConfigError
+
+    path = desk(tmp_path, tracking=TRACKING)
+    profile = tmp_path / "profiles" / "tracking.conf"
+    real = paths_mod.Path.stat
+
+    def stat(self, *args, **kwargs):
+        if self == profile:
+            raise PermissionError(errno.EACCES, "Permission denied", str(self))
+        return real(self, *args, **kwargs)
+    monkeypatch.setattr(paths_mod.Path, "stat", stat)
+    with pytest.raises(ConfigError, match="cannot read " + re.escape(str(profile))):
+        profiles.load_profile("tracking", path)
 
 
 def test_describe_profiles_summarises_each_one(tmp_path):

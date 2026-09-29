@@ -61,7 +61,7 @@ from .outcome import (
     WRITTEN_IN_PART,
     Outcome,
 )
-from .paths import list_profiles, profile_path
+from .paths import list_profiles, profile_path, regular_file
 from .reconcile import ApplyIntent
 from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
@@ -94,7 +94,7 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     ``[device]`` and ``[osc]`` into every one.
     """
     path = profile_path(name, config_path)
-    if not path.is_file():
+    if not regular_file(path):
         raise ConfigError("no profile %r (looked in %s)" % (name, path.parent))
     # Read *onto* the machine settings rather than patched with them
     # afterwards. Patched, the profile was validated while it still named
@@ -104,7 +104,7 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     # through the UCX II's table and written (0.6.11). The parser takes
     # every machine setting with the value it finds as the fallback, so a
     # profile that states one still wins.
-    if config_path is None or not Path(config_path).is_file():
+    if config_path is None or not regular_file(Path(config_path)):
         return load_config(path, said=said)
     main = load_config(config_path, said=said)
     # Onto what routing.conf itself says, not onto what the command line

@@ -57,7 +57,9 @@ ALLOWED_IMPORTS = {
     # a register row, and the rows. devices sits on registers, since a
     # table is made of rows, and everything that asks which device a
     # config names reads devices.
-    "config": {"constants", "devices", "errors", "model", "registers",
+    # `paths` since 0.8.1 for regular_file(): whether the file is there,
+    # answered alike on every supported Python. paths sits on errors only.
+    "config": {"constants", "devices", "errors", "model", "paths", "registers",
                "sections"},
     # link_messages/mix_messages moved down into reconcile: they are
     # pure message shapes, and keeping them here made reconcile sit

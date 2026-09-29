@@ -1,6 +1,8 @@
 """routing.conf parsing: valid configs, defaults, and error reporting."""
 
 
+import errno
+
 import oracle
 import pytest
 from support import repo_file, routing_conf
@@ -301,12 +303,50 @@ def test_config_discovery_returns_none_when_there_is_nothing(session_mod,
                                                              tmp_path,
                                                              monkeypatch):
     # No config is a supported state: the defaults leave the mixer alone.
-    from oscmix_desk import config as config_mod
-
     monkeypatch.delenv("OSCMIX_CONFIG", raising=False)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "empty"))
-    monkeypatch.setattr(config_mod.Path, "is_file", lambda self: False)
+    monkeypatch.setenv("OSCMIX_SYSTEM_CONFIG", str(tmp_path / "etc" / "routing.conf"))
     assert session_mod.discover_config_path() is None
+
+
+def unsearchable(monkeypatch, directory):
+    """stat() below ``directory`` fails with EACCES, as for a directory
+    without search permission -- also as root, and on every Python."""
+    real = paths_mod.Path.stat
+
+    def stat(self, *args, **kwargs):
+        if directory in self.parents:
+            raise PermissionError(errno.EACCES, "Permission denied", str(self))
+        return real(self, *args, **kwargs)
+    monkeypatch.setattr(paths_mod.Path, "stat", stat)
+
+
+def test_a_config_that_cannot_be_looked_at_is_a_config_error(session_mod, tmp_path,
+                                                             monkeypatch):
+    # Path.is_file() raised PermissionError here before Python 3.14 -- a
+    # traceback and exit 1 at start, a dead session on SIGHUP -- and 3.14
+    # answers False, which read "config file not found".
+    from oscmix_desk.config import load_config
+
+    path = tmp_path / "locked" / "routing.conf"
+    path.parent.mkdir()
+    path.write_text("")
+    unsearchable(monkeypatch, path.parent)
+    with pytest.raises(session_mod.ConfigError, match=r"cannot read .*Permission denied"):
+        load_config(path)
+    with pytest.raises(session_mod.ConfigError, match="config file not found"):
+        load_config(tmp_path / "absent.conf")
+    # Discovery stops there rather than applying the system desk in its
+    # place; loading it then says why.
+    system = tmp_path / "etc" / "routing.conf"
+    system.parent.mkdir()
+    system.write_text("")
+    monkeypatch.delenv("OSCMIX_CONFIG", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setenv("OSCMIX_SYSTEM_CONFIG", str(system))
+    assert session_mod.discover_config_path() == system
+    unsearchable(monkeypatch, tmp_path / "xdg" / "oscmix")
+    assert session_mod.discover_config_path() == tmp_path / "xdg" / "oscmix" / "routing.conf"
 
 
 def test_a_config_is_not_changed_after_it_is_read(session_mod, tmp_path):

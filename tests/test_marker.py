@@ -5,8 +5,10 @@ synced with its directory, and honest about the three ways that can go
 wrong.
 """
 
+import errno
 import os
 import stat
+from pathlib import Path
 
 import pytest
 from profile_desk import GOOD, TRACKING, desk, shared_lock_dir
@@ -111,6 +113,24 @@ def test_an_unreadable_marker_is_ignored_with_a_warning(tmp_path, caplog):
     finally:
         marker.chmod(0o600)
     assert "ignoring" in caplog.text
+
+def test_a_marker_that_cannot_be_looked_at_is_ignored_with_a_warning(tmp_path, caplog,
+                                                                    monkeypatch):
+    # Path.is_file() raised PermissionError for it before Python 3.14, out
+    # of the session's start and out of every SIGHUP reconcile.
+    path = desk(tmp_path, tracking=TRACKING)
+    marker = tmp_path / "active-profile"
+    marker.write_text("tracking\n")
+    real = Path.stat
+
+    def stat(self, *args, **kwargs):
+        if self == marker:
+            raise PermissionError(errno.EACCES, "Permission denied", str(self))
+        return real(self, *args, **kwargs)
+    monkeypatch.setattr(Path, "stat", stat)
+    with caplog.at_level("WARNING"):
+        assert marker_mod.active_profile(path) is None
+    assert "ignoring the active-profile marker: cannot read %s" % marker in caplog.text
 
 def test_a_marker_that_cannot_be_removed_is_a_warning_not_a_crash(tmp_path,
                                                                  caplog):

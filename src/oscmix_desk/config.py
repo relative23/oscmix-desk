@@ -31,6 +31,7 @@ from .model import (
     Machine,
     Route,
 )
+from .paths import regular_file
 from .registers import POLICIES, Policy, global_families, register_at, settable_options
 from .sections import (
     _is_nested_section,
@@ -278,7 +279,7 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
         # No file resolves to the defaults, and that is a record like any
         # other: which interface the (empty) desk was checked for.
         return config.frozen()
-    if not path.is_file():
+    if not regular_file(path):
         raise ConfigError("config file not found: %s" % path)
 
     parser = configparser.ConfigParser(
