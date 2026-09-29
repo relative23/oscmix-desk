@@ -8,15 +8,16 @@ python3 -m venv .venv
 make check PYTHON=.venv/bin/python
 ```
 
-The runtime uses only the Python standard library (3.9 or newer). The test
-suite needs no audio hardware; tests that need a device or a desktop session
+The runtime uses only the Python standard library (3.9 or newer). `make check`
+also needs `shellcheck` from your distribution (`apt install shellcheck`,
+`dnf install ShellCheck`). The test suite needs no audio hardware; tests that need a device or a desktop session
 skip or run in their own qualification scripts.
 
 ## Checks
 
 | Command | What it runs |
 | --- | --- |
-| `make check` | ruff, `mypy --strict`, vulture and the test suite |
+| `make check` | ruff, shellcheck, `mypy --strict`, vulture and the test suite |
 | `make coverage` | the suite with branch coverage; fails below `fail_under` in `pyproject.toml` |
 | `make flake REPEAT=5` | the full suite repeatedly, for timing-dependent failures |
 | `make soak SOAK_CYCLES=200` | repeated start/apply/stop cycles |

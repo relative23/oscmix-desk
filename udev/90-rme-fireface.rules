@@ -14,6 +14,7 @@ ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2a39", ATTR{idProduct}=="3fd9"
 # ends the service on unplug is the backend: it exits when its device
 # goes, and the session exits 0 with it. StopWhenUnneeded=yes in the
 # unit would stop a service that only the pull-in started; the
-# installer enables it, and an enabled unit is wanted by default.target
+# explicit activation enables it (install.sh --enable, oscmix-setup
+# --enable), and an enabled unit is wanted by default.target
 # and so never unneeded.
 ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="2a39/3fd9/*", TAG+="systemd"

@@ -31,9 +31,9 @@ BUILD_DIR="$PROJECT_DIR/build/oscmix"
 BIN_DIR="$HOME/.local/bin"
 LIB_DIR="$HOME/.local/lib/oscmix-desk"
 # Where this project installed itself before it was renamed. An upgrade
-# would otherwise leave a complete second copy of the package behind,
-# and `oscmix-launch` searches `../lib/*` for a package directory -- a
-# stale one there is a version nobody chose. Removed by both scripts.
+# would otherwise leave a complete second copy of the package behind, a
+# version nobody chose, beside the one the entry points load. Removed by
+# both scripts.
 LEGACY_LIB_DIR="$HOME/.local/lib/oscmix-autostart"
 
 # A base directory that is not absolute is invalid and ignored: the XDG
@@ -109,13 +109,19 @@ warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
 fail() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
 # Install a file, keeping a timestamped backup if the target differs.
+# One backup per file: until 0.8.1 every upgrade added one and none went.
 install_file() {
     local mode="$1" src="$2" dst="$3"
     if [ -e "$dst" ] && ! cmp -s "$src" "$dst"; then
-        local backup
+        local backup older
         backup="$dst.bak.$(date +%Y%m%d-%H%M%S)"
         cp -p "$dst" "$backup"
         info "backed up $dst -> $backup"
+        for older in "$dst".bak.*; do
+            if [ "$older" != "$backup" ] && [ -f "$older" ]; then
+                rm -f "$older"
+            fi
+        done
     fi
     install -D -m "$mode" "$src" "$dst"
 }
@@ -507,6 +513,14 @@ esac
 
 if [ "$DO_BUILD" = 1 ] && [ "$GTK_BUILT" = 0 ]; then
     warn "the GTK mixer was not built; only the headless backend is installed"
+fi
+
+# Earlier builds are not what is installed now, and a measurement needs
+# the build of the running binary. A build started later by another
+# installer is newer than this one and stays.
+if [ "$DO_BUILD" = 1 ]; then
+    find "$PROJECT_DIR/build" -maxdepth 1 -type d -name 'coordinated.*' \
+        ! -path "$BUILD_DIR" ! -newer "$BUILD_DIR" -exec rm -rf {} + 2>/dev/null || true
 fi
 
 info "installation complete."

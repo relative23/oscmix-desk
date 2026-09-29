@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -101,8 +102,14 @@ for path, content in preserved.items():
 install(previous)
 verify_files(previous)
 cli()
+# cli() ran as root and left bytecode of its own; only the package's counts.
+cache = Path('/usr/lib/oscmix-desk/oscmix_desk/__pycache__')
+shutil.rmtree(cache, ignore_errors=True)
 install(first)
 verify_files(first)
+if kind == 'deb':
+    # py3compile without the private directory compiled nothing (0.8.0).
+    assert any(cache.glob('*.pyc')), 'the package did not byte-compile its runtime'
 cli()
 assert not Path('/usr/bin/oscmix-gtk').exists()
 assert not (config / 'service-allowed').exists()

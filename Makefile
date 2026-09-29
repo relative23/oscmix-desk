@@ -2,7 +2,7 @@ PYTHON ?= python3
 SCRIPTS = bin/oscmix-session bin/oscmix-launch
 PACKAGE = src/oscmix_desk
 SHELL_SCRIPTS = install.sh uninstall.sh scripts/verify-unit.sh scripts/install-payload.sh scripts/stage-install.sh packaging/oscmix-desk.install systemd/system-sleep/oscmix service/openrc/oscmix-desk service/runit/run service/runit/finish service/runit/log-run service/runit/hup service/resume
-# Repeats for the flakiness gate. The suite binds real UDP sockets and
+# Repeats for the flakiness gate. The suite binds real Unix sockets and
 # runs background threads, so a single green run proves little.
 REPEAT ?= 5
 # Restart cycles for `make soak`. The scheduled workflow runs 200.
@@ -72,7 +72,7 @@ mutation:
 	ulimit -v $(MUTATION_VMEM_KB) && $(PYTHON) -m mutmut run --max-children 4
 	$(PYTHON) scripts/mutation-policy.py
 
-# Runs the suite repeatedly: races in the UDP/threading fakes only show up
+# Runs the suite repeatedly: races in the socket/threading fakes only show up
 # across runs, and one such race was shipped before this gate existed.
 flake:
 	@for i in $$(seq 1 $(REPEAT)); do \

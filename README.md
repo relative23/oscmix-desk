@@ -195,6 +195,8 @@ Only the UCX II is supported. The pinned backend cannot operate a Fireface
 ## Credits and license
 
 The protocol work is done by [oscmix] (ISC license). oscmix-desk is MIT
-licensed, see [LICENSE](LICENSE).
+licensed, see [LICENSE](LICENSE). The backend and mixer built from oscmix
+include its `intpack.h`, which is under the Unlicense, so the packages
+declare MIT, ISC and Unlicense.
 
 [oscmix]: https://github.com/michaelforney/oscmix

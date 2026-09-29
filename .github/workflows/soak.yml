@@ -40,8 +40,8 @@ jobs:
           cache-dependency-path: requirements-dev.txt
       - run: pip install -r requirements-dev.txt
       # Each cycle starts bin/oscmix-session for real against the stub
-      # backend, waits for READY=1, checks the routing datagrams byte for
-      # byte, then SIGTERMs it and requires exit 0. ~1.2 s per cycle.
+      # backend, waits for READY=1, checks the OSC messages the stub receives
+      # byte for byte, then SIGTERMs it and requires exit 0. ~1.2 s per cycle.
       - name: Soak the restart path
         env:
           OSCMIX_SOAK_CYCLES: ${{ github.event.inputs.cycles || 200 }}

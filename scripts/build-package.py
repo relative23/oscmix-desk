@@ -150,7 +150,7 @@ set -eu
 case "$1" in
   configure)
     getent group audio >/dev/null || addgroup --system audio
-    py3compile -p oscmix-desk
+    py3compile -p oscmix-desk /usr/lib/oscmix-desk
     if command -v systemd-tmpfiles >/dev/null 2>&1; then
         systemd-tmpfiles --create /usr/lib/tmpfiles.d/oscmix-desk.conf
     fi

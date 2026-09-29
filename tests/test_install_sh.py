@@ -245,6 +245,25 @@ def test_uninstall_removes_files_but_keeps_config(tmp_path):
     assert (home / ".config" / "oscmix" / "routing.conf").is_file()
 
 
+def test_the_installer_keeps_one_backup_per_file_and_uninstall_removes_it(tmp_path):
+    # Every upgrade added a timestamped backup and nothing removed them
+    # until 0.8.1; one host had 26.
+    home, env, _ = make_fake_home(tmp_path)
+    assert run("install.sh", ["--no-build", "--no-udev"], env).returncode == 0
+    unit = home / ".config/systemd/user/oscmix.service"
+    for edit in ("# local edit 1\n", "# local edit 2\n"):
+        unit.write_text(unit.read_text() + edit)
+        stale = unit.with_name("oscmix.service.bak.20200101-000000")
+        stale.write_text("an old backup\n")
+        assert run("install.sh", ["--no-build", "--no-udev"], env).returncode == 0
+        backups = sorted(unit.parent.glob("oscmix.service.bak.*"))
+        assert len(backups) == 1
+        assert backups[0] != stale
+        assert backups[0].read_text().endswith(edit)
+    assert run("uninstall.sh", [], env).returncode == 0
+    assert list(unit.parent.glob("oscmix.service*")) == []
+
+
 def test_uninstall_purge_removes_config(tmp_path):
     home, env, _ = make_fake_home(tmp_path)
     assert run("install.sh", ["--no-build", "--no-udev"], env).returncode == 0

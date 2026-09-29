@@ -96,7 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          fetch-depth: 0 # the upgrade test installs the actual v0.6.11 commit
+          fetch-depth: 0 # the upgrade tests install the actual earlier release commits
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -150,7 +150,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - run: pip install -r requirements-dev.txt
-      # The suite binds real UDP sockets and drives background threads, so
+      # The suite binds real Unix sockets and drives background threads, so
       # a single green run proves little -- a teardown race in the device
       # fakes survived several full runs before it was caught.
       - run: make flake

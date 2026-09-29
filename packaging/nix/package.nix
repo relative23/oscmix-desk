@@ -144,6 +144,7 @@ stdenv.mkDerivation {
     license = [
       lib.licenses.mit
       lib.licenses.isc
+      lib.licenses.unlicense # upstream intpack.h
     ];
     platforms = lib.platforms.linux;
     mainProgram = "oscmix-session";

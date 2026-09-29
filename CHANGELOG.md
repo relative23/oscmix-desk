@@ -29,6 +29,9 @@
 - The backend control contract covers the refused WRITE forms, the answer
   for an unknown address, the connection limits and disconnect rules, the
   desk's retry and keepalive timing, and how a slow MIDI write ends a lease.
+- `CONTRIBUTING.md` names `shellcheck` as a requirement of `make check`, the
+  README explains why the packages declare the Unlicense, and comments no
+  longer describe UDP sockets or an installer that enables the service.
 - The installation guide says how to move a source installation's system
   files aside before installing the Arch package, which pacman otherwise
   refuses; the repository page says what an expired APT `Release` means.
@@ -72,6 +75,11 @@
 - A package installation keeps its own files when another package tool is
   also installed: every available package database is asked whether it owns
   a system file, not only the first one found.
+- The installer keeps one backup per replaced file instead of adding one on
+  every upgrade, `uninstall.sh` removes them with the files, and a source build
+  removes the build directories of earlier builds.
+- The Debian package byte-compiles its runtime in `/usr/lib/oscmix-desk`; its
+  `py3compile` call named no directory and compiled nothing.
 - Backend peer credentials are read as unsigned uid and gid.
 - `--list-profiles` counts channel settings, not sections.
 - Tests that bind Unix sockets no longer fail when `TMPDIR` is long.

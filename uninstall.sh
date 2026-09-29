@@ -15,9 +15,9 @@ esac
 BIN_DIR="$HOME/.local/bin"
 LIB_DIR="$HOME/.local/lib/oscmix-desk"
 # Where this project installed itself before it was renamed. An upgrade
-# would otherwise leave a complete second copy of the package behind,
-# and `oscmix-launch` searches `../lib/*` for a package directory -- a
-# stale one there is a version nobody chose. Removed by both scripts.
+# would otherwise leave a complete second copy of the package behind, a
+# version nobody chose, beside the one the entry points load. Removed by
+# both scripts.
 LEGACY_LIB_DIR="$HOME/.local/lib/oscmix-autostart"
 
 # A base directory that is not absolute is invalid and ignored: the XDG
@@ -157,16 +157,20 @@ fi
 
 info "removing installed files"
 rm -rf "$LIB_DIR" "$LEGACY_LIB_DIR"
-rm -f "$UNIT_DIR/oscmix.service" \
-      "$BIN_DIR/oscmix-session" \
-      "$BIN_DIR/oscmix-launch" \
-      "$BIN_DIR/oscmix" \
-      "$BIN_DIR/oscmix-gtk" \
-      "$BIN_DIR/alsaseqio" \
-      "$DATA_DIR/applications/oscmix-gtk.desktop" \
-      "$DATA_DIR/icons/hicolor/scalable/apps/oscmix.svg" \
-      "$DATA_DIR/oscmix-desk/backend-source.json" \
-      "$DATA_DIR/glib-2.0/schemas/oscmix.gschema.xml"
+INSTALLED=("$UNIT_DIR/oscmix.service"
+           "$BIN_DIR/oscmix-session"
+           "$BIN_DIR/oscmix-launch"
+           "$BIN_DIR/oscmix"
+           "$BIN_DIR/oscmix-gtk"
+           "$BIN_DIR/alsaseqio"
+           "$DATA_DIR/applications/oscmix-gtk.desktop"
+           "$DATA_DIR/icons/hicolor/scalable/apps/oscmix.svg"
+           "$DATA_DIR/oscmix-desk/backend-source.json"
+           "$DATA_DIR/glib-2.0/schemas/oscmix.gschema.xml")
+for installed in "${INSTALLED[@]}"; do
+    # With the installer's backups of it, which nothing else removes.
+    rm -f "$installed" "$installed".bak.*
+done
 if [ -d "$DATA_DIR/glib-2.0/schemas" ]; then
     glib-compile-schemas "$DATA_DIR/glib-2.0/schemas" 2>/dev/null || true
 fi
