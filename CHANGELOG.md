@@ -11,7 +11,40 @@
 
 ### Fixed
 
+- `switch_profile()`, `restore_main()`, `load_profile()`,
+  `describe_profiles()` and `effective_config()` called without a config path
+  use the config that discovery finds, as the command line does.
+  `restore_main()` used to apply the empty default desk and report success,
+  `switch_profile()` validated against the defaults and never remembered the
+  profile. A restore with no config anywhere is now refused, and a restore
+  is named after the config file it applies.
+- A config, profile or active-profile marker behind a directory that cannot
+  be searched is a configuration error that names the file (a warning for
+  the marker) on every Python version. Before Python 3.14 it was a traceback,
+  and on SIGHUP it ended the session without stopping the backend.
+- A lock file that cannot be opened is reported as that, not as another
+  writer holding the device lock for 30 seconds. The wait for the lock ends
+  when the service is stopped.
+- A stop, or the backend exiting, during the start no longer fails the start
+  with exit 1, and a backend that exits while the start waits for the lock is
+  no longer logged as a stop.
+- A reload that ends early reports `reconcile skipped` only when nothing was
+  sent, and `reconcile incomplete` otherwise. The start-up verifier tells a
+  repair it refused, an unfinished backend operation and a stop apart from a
+  lost connection; a stop is no longer logged as an error.
+- A refused write no longer prints `[Errno None]`.
+- The desk sends a keepalive every second instead of every two, which keeps
+  it three seconds inside the backend's idle limit instead of one. A lease
+  request from a connection that may not hold one is reported as that.
+- Backend peer credentials are read as unsigned uid and gid.
+- `--list-profiles` counts channel settings, not sections.
 - Tests that bind Unix sockets no longer fail when `TMPDIR` is long.
+
+### Internal
+
+- The backend protocol's request, event, status, role and source numbers are
+  named once, in `oscmix_desk.protocol`, and a test compares them with the
+  backend's `control.h`.
 
 ## 0.8.0 -- 2026-09-29
 

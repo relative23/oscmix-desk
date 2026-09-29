@@ -61,7 +61,7 @@ from .outcome import (
     WRITTEN_IN_PART,
     Outcome,
 )
-from .paths import list_profiles, profile_path, regular_file
+from .paths import discover_config_path, list_profiles, profile_path, regular_file
 from .reconcile import ApplyIntent
 from .routing import apply_routing
 from .verify import expected_registers, register_ever_reported, verify_routing
@@ -93,6 +93,10 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     profiles/x.conf``, the documented way to make a profile, writes
     ``[device]`` and ``[osc]`` into every one.
     """
+    # None is "the config discovery finds", for the profile's file and for
+    # the machine settings alike: until 0.8.1 the file was discovered and
+    # the machine settings were the defaults.
+    config_path = config_path or discover_config_path()
     path = profile_path(name, config_path)
     if not regular_file(path):
         raise ConfigError("no profile %r (looked in %s)" % (name, path.parent))
@@ -215,6 +219,7 @@ def effective_config(config_path: Optional[Path],
     exists to prevent; the marker stays, so the warning stays until somebody
     decides.
     """
+    config_path = config_path or discover_config_path()
     main = load_config(config_path, said=said)
     name = active_profile(config_path)
     if name is None:
@@ -235,7 +240,11 @@ def effective_config(config_path: Optional[Path],
 def switch_profile(name: str, config_path: Optional[Path] = None,
                    backend: Optional[Control] = None,
                    verify: bool = True) -> Outcome:
-    """Parse a profile fully, then apply it as one coordinated operation."""
+    """Parse a profile fully, then apply it as one coordinated operation.
+
+    ``config_path`` None is the config discovery finds, as for the CLI.
+    """
+    config_path = config_path or discover_config_path()
     try:
         config = load_profile(name, config_path)
     except ConfigError as exc:
@@ -246,17 +255,26 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
 def restore_main(config_path: Optional[Path] = None,
                  backend: Optional[Control] = None,
                  verify: bool = True) -> Outcome:
-    """Apply the main desk; clear the marker only after the operation finishes."""
+    """Apply the main desk; clear the marker only after the operation finishes.
+
+    ``config_path`` None is the config discovery finds. Without any, there
+    is no main desk to return to: until 0.8.1 the defaults were applied,
+    0 of 0 registers verified and the restore reported as a success.
+    """
+    config_path = config_path or discover_config_path()
+    if config_path is None:
+        return _refused_for_the_device(
+            "routing.conf", "no config file found, so there is no main desk to restore")
     try:
         config = load_config(config_path)
     except ConfigError as exc:
-        return _refused_for_the_device("routing.conf", str(exc))
+        return _refused_for_the_device(Path(config_path).name, str(exc))
     return _activate(config, config_path, None, backend, verify)
 
 
 def _activate(config: Config, config_path: Optional[Path], name: Optional[str],
               backend: Optional[Control], verify: bool) -> Outcome:
-    label = name if name is not None else "routing.conf"
+    label = name if name is not None else Path(config_path or "routing.conf").name
     log_desk_notices(config)
     try:
         target = _target(config, reach=backend is None)
@@ -378,6 +396,7 @@ def describe_profiles(config_path: Optional[Path] = None) -> Sequence[str]:
     The active one is marked, because "which desk am I on" is the
     question this list is most often asked.
     """
+    config_path = config_path or discover_config_path()
     active = active_profile(config_path)
     lines = []
     for name in list_profiles(config_path):
@@ -387,6 +406,6 @@ def describe_profiles(config_path: Optional[Path] = None) -> Sequence[str]:
         except ConfigError as exc:
             lines.append("%-16s  BROKEN: %s%s" % (name, exc, mark))
             continue
-        lines.append("%-16s  %d route(s), %d channel section(s)%s"
+        lines.append("%-16s  %d route(s), %d channel setting(s)%s"
                      % (name, len(config.routes), len(config.channels), mark))
     return lines

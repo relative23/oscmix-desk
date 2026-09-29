@@ -356,12 +356,44 @@ def test_a_profile_that_cannot_be_looked_at_is_a_config_error(tmp_path, monkeypa
         profiles.load_profile("tracking", path)
 
 
+def test_the_profile_functions_without_a_path_use_the_discovered_config(
+        tmp_path, monkeypatch, recording_backend):
+    # None was "discover" for the profile's file and "no config" for the
+    # desk and the marker until 0.8.1: restore_main() applied the defaults
+    # and switch_profile() never remembered the switch.
+    path = desk(tmp_path, tracking=TRACKING)
+    monkeypatch.setenv("OSCMIX_CONFIG", str(path))
+    outcome = profiles.switch_profile("tracking", backend=recording_backend, verify=False)
+    assert outcome.applied
+    assert (tmp_path / "active-profile").read_text().strip() == "tracking"
+    assert profiles.effective_config(None)[1] == "tracking"
+    assert any("(active)" in line for line in profiles.describe_profiles())
+    assert profiles.load_profile("tracking").osc_port == profiles.load_config(path).osc_port
+    restored = profiles.restore_main(backend=recording_backend, verify=False)
+    assert restored.applied
+    assert restored.name == "routing.conf"
+    assert not (tmp_path / "active-profile").exists()
+
+
+def test_a_restore_with_no_config_anywhere_is_refused(recording_backend):
+    outcome = profiles.restore_main(backend=recording_backend)
+    assert outcome.state == outcome_mod.REFUSED
+    assert "no config file found" in outcome.reason
+    assert recording_backend.sent == []
+
+
+def test_a_restore_is_labelled_with_the_config_it_applies(tmp_path, recording_backend):
+    path = write_config(tmp_path / "studio.conf", GOOD)
+    restored = profiles.restore_main(path, backend=recording_backend, verify=False)
+    assert restored.name == "studio.conf"
+
+
 def test_describe_profiles_summarises_each_one(tmp_path):
     write_config(tmp_path / "profiles" / "tracking.conf", GOOD)
     lines = profiles.describe_profiles(tmp_path / "routing.conf")
     assert len(lines) == 1
     assert "tracking" in lines[0]
-    assert "1 route" in lines[0]
+    assert "1 route(s), 1 channel setting(s)" in lines[0]
 
 
 def test_describe_profiles_reports_a_broken_one_instead_of_raising(tmp_path):
