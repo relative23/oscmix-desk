@@ -13,6 +13,15 @@ Each release on GitHub carries:
 - `SHA256SUMS` over all of these, and `attestation.jsonl`, GitHub's signed
   statement that the release workflow of this repository produced them.
 
+`oscmix-repositories-<snapshot>.tar.gz`, the signed repository site, is
+attached after that workflow and is not listed in `SHA256SUMS`. The
+repository publication workflow attests it and attaches that attestation as
+`oscmix-repositories-<snapshot>-<run>-<attempt>.attestation.jsonl`; check it
+with `gh attestation verify` and `--signer-workflow
+relative23/oscmix-desk/.github/workflows/repository-publication.yml`.
+Installing from the [package repositories](PACKAGE-REPOSITORIES.md) does not
+use it.
+
 ## Verify before installing
 
 Download all assets into a new directory and check the attestation, then the
