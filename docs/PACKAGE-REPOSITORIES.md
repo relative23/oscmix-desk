@@ -49,6 +49,10 @@ sudo oscmix-repository refresh-key --certificate /path/to/public.asc \
   --fingerprint FULL_PRIMARY_FINGERPRINT
 ```
 
+APT metadata is valid for 30 days and is renewed with every release or in
+between. If apt reports an expired `Release` file, the renewal is late:
+report it, and do not turn the date check off.
+
 If an installation was interrupted, reinstall the helper package with your
 package manager. `oscmix-repository status` reports `maintenance` or
 `native_key_pending` while work is unfinished; `sudo oscmix-repository enable`

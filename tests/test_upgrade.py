@@ -14,6 +14,7 @@ BASES = [
     ("0.6.11", "ddca339e808361f7114d3c2099a557a3859140c1"),
     ("0.7.0", "25eb57dff7a305b0e6452010ce15992c90ad144b"),
     ("0.7.2", "2cf9b02a1c271582d042ce4ad064331fb09f3619"),
+    ("0.8.0", "fd4f4bece9af3b0eb32cba386785a7e440ea6e9d"),
 ]
 pytestmark = pytest.mark.skipif(
     bool(os.environ.get("MUTANT_UNDER_TEST")),
@@ -63,7 +64,9 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless, previous_ver
                     assert Path(env[variable]).read_bytes() == (tree / source).read_bytes()
         return package
 
-    install(previous, expect_hotplug=previous_version != '0.7.2')
+    # Since 0.7.2 a first install defers hotplug and resume until --enable.
+    deferred = tuple(map(int, previous_version.split("."))) >= (0, 7, 2)
+    install(previous, expect_hotplug=not deferred)
     session_home_stub(tmp_path, str(home), enabled=True)
     config = home / ".config" / "oscmix"
     files = {config / "routing.conf": "# custom desk\n",

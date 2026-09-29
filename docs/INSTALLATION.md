@@ -256,6 +256,25 @@ hash -r
 oscmix-session --version
 ```
 
+On Debian, Ubuntu, Fedora and openSUSE the package keeps a copy of the
+source installer's system files under `/var/lib/oscmix-desk/legacy-system/`
+and installs its own over them. pacman checks for file conflicts
+before any package script runs, so on Arch the package refuses to install
+over them. A source installation made without `--no-udev` has three; move
+them aside before `pacman -U`:
+
+```sh
+sudo mkdir -p /var/lib/oscmix-desk/source-system-files
+sudo mv /usr/lib/systemd/system-sleep/oscmix \
+        /usr/lib/systemd/system/oscmix-resume.service \
+        /usr/lib/tmpfiles.d/oscmix-desk.conf \
+        /var/lib/oscmix-desk/source-system-files/
+sudo systemctl daemon-reload
+```
+
+The source udev rule in `/etc/udev/rules.d/` does not conflict; it stays
+as a host override that `oscmix-setup --check` reports for review.
+
 Migration prints its backup directory before moving files. Its manifest
 records every intended move, so a migration interrupted between moves is
 recoverable. Runtime, entry points, old unit and project desktop resources

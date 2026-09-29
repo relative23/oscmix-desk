@@ -116,6 +116,8 @@ jobs:
           assert (evidence / 'release-notes.md').is_file(), 'Release notes are required before tagging'
           software = json.loads((evidence / 'software-qualification.json').read_text())
           assert software['candidate'] == manifest['version'] and software['status'] == 'qualified'
+          series = hashlib.sha256(Path('patches/backend-series.json').read_bytes()).hexdigest()
+          assert software['backend_series_sha256'] == series, 'Software qualification used another backend series'
           required = {'check', 'coverage', 'flake', 'soak-200', 'unit', 'mutation'}
           required.update('python-3.%d' % minor for minor in range(9, 15))
           required.update('fault-%02d' % index for index in range(1, 16))
@@ -129,7 +131,8 @@ jobs:
           tested = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
           assert software['tested_files_sha256'] == tested, 'Software qualification predates these files'
           support = [Path('install.sh'), Path('uninstall.sh'), Path('quality/vulture-allowlist.py')]
-          support += [path for directory in ('config', 'systemd', 'udev', 'packaging')
+          support += [path for directory in ('config', 'systemd', 'udev', 'packaging',
+                                             'patches', 'service', 'desktop')
                       for path in Path(directory).rglob('*')
                       if path.is_file() and '__pycache__' not in path.parts
                       and path.suffix not in ('.pyc', '.pyo')]
@@ -153,6 +156,7 @@ jobs:
           assert lifecycle['installed_runtime_sha256'] == runtime
           for record in (hardware, sweep):
               assert record['oscmix_revision'] == manifest['oscmix_revision']
+              assert record['running_backend']['series_sha256'] == series, 'Hardware evidence measured another backend series'
               assert record['desk_source']['runtime_sha256'] == runtime, 'Hardware evidence predates this runtime'
           for name in ('software-qualification.json', 'lifecycle.json',
                        'hardware-evidence.json', 'write-sweep-ucx2.json'):

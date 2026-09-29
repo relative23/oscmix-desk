@@ -29,6 +29,9 @@
 - The backend control contract covers the refused WRITE forms, the answer
   for an unknown address, the connection limits and disconnect rules, the
   desk's retry and keepalive timing, and how a slow MIDI write ends a lease.
+- The installation guide says how to move a source installation's system
+  files aside before installing the Arch package, which pacman otherwise
+  refuses; the repository page says what an expired APT `Release` means.
 - The architecture page follows one profile switch through the modules and
   states the layering, `constants` and `process` correctly. The feature table
   no longer claims an `autoset` option and lists the backend functions the
@@ -74,6 +77,13 @@
 - Tests that bind Unix sockets no longer fail when `TMPDIR` is long.
 
 ### Internal
+
+- The release workflow refuses software and hardware evidence recorded
+  against another backend patch series, and hashes `patches/`, `service/`
+  and `desktop/` with the other installation files. Changes there now also
+  trigger the distribution workflow.
+- Upgrade and rollback checks start from 0.8.0, which is also added to the
+  installer upgrade test.
 
 - The backend protocol's request, event, status, role and source numbers are
   named once, in `oscmix_desk.protocol`, and a test compares them with the
