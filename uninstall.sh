@@ -40,6 +40,9 @@ UDEV_RULE="${OSCMIX_UDEV_RULE:-/etc/udev/rules.d/90-rme-fireface.rules}"
 SLEEP_HOOK="${OSCMIX_SLEEP_HOOK:-/usr/lib/systemd/system-sleep/oscmix}"
 RESUME_UNIT="${OSCMIX_RESUME_UNIT:-/usr/lib/systemd/system/oscmix-resume.service}"
 TMPFILES_CONF="${OSCMIX_TMPFILES_CONF:-/usr/lib/tmpfiles.d/oscmix-desk.conf}"
+# Present exactly when a native package is installed (install-preflight
+# checks the same file).
+PACKAGE_GUARD="${OSCMIX_PACKAGE_GUARD:-/usr/lib/oscmix-desk/package-guard}"
 
 PURGE=0
 case "${1:-}" in
@@ -61,22 +64,63 @@ warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
 # back.
 #
 # `systemctl --user show-environment` reports the session's own HOME, so
-# the two can be compared. When it reports nothing -- an unusual systemd,
-# or none -- this proceeds, which is what every earlier version did.
-manages_this_home() {
+# the two can be compared: `this` when it serves this HOME and config base,
+# `other` when it serves another, `none` when no user manager answers (ssh
+# without lingering, a container). Until 0.8.1 `none` was treated as
+# `other`, which left the root files and a dangling enable link behind.
+manager_state() {
     local environment session_home session_config
-    environment="$(systemctl --user show-environment 2>/dev/null)" || return 1
+    if ! environment="$(systemctl --user show-environment 2>/dev/null)"; then
+        echo none
+        return
+    fi
     session_home="$(printf '%s\n' "$environment" | sed -n 's/^HOME=//p')"
+    if [ -z "$session_home" ]; then
+        echo none
+        return
+    fi
     session_config="$(printf '%s\n' "$environment" | sed -n 's/^XDG_CONFIG_HOME=//p')"
     session_config="$(xdg_base "$session_config" "$session_home/.config")"
-    [ "$session_home" = "$HOME" ] && [ "$session_config" = "$CONFIG_HOME" ]
+    if [ "$session_home" = "$HOME" ] && [ "$session_config" = "$CONFIG_HOME" ]; then
+        echo this
+    elif [ "$session_home" = "$HOME" ]; then
+        echo other-config
+    else
+        echo other
+    fi
 }
+
+# Without a manager to ask, the account database says whose home this is:
+# a scratch HOME is nobody's, and its uninstall leaves the system files of
+# the real one alone. Overridable for the test suite only.
+account_home() {
+    if [ -n "${OSCMIX_ACCOUNT_HOME:-}" ]; then
+        printf '%s\n' "$OSCMIX_ACCOUNT_HOME"
+    else
+        getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6
+    fi
+}
+
+MANAGER="$(manager_state)"
+OWNS_SYSTEM_FILES=0
+if [ "$MANAGER" = this ] || { [ "$MANAGER" = none ] && [ "$(account_home)" = "$HOME" ]; }; then
+    OWNS_SYSTEM_FILES=1
+fi
 
 # With the same HOME but another config base, removing .local/lib would
 # remove the very runtime the unrelated desk may still be using.
-if ! manages_this_home && systemctl --user show-environment 2>/dev/null \
-    | sed -n 's/^HOME=//p' | grep -Fxq "$HOME"; then
+if [ "$MANAGER" = other-config ]; then
     warn "systemd's user manager uses another XDG_CONFIG_HOME; no files changed"
+    exit 1
+fi
+
+# The package owns the root files and the service this script would stop,
+# disable and remove. Its own migration moves the per-user files aside.
+if [ -e "$PACKAGE_GUARD" ]; then
+    warn "an oscmix-desk package is installed. uninstall.sh removes a source"
+    warn "installation and would take the package's system files and service with"
+    warn "it. Run oscmix-setup --migrate-source to move the per-user files aside, or"
+    warn "remove the package with its package manager. No files changed."
     exit 1
 fi
 
@@ -92,10 +136,19 @@ if record['home'] == sys.argv[1]:
 PY
 fi
 
-if manages_this_home; then
+if [ "$MANAGER" = this ]; then
     info "stopping and disabling oscmix.service"
     systemctl --user stop oscmix.service 2>/dev/null || true
     systemctl --user disable --quiet oscmix.service 2>/dev/null || true
+elif [ "$MANAGER" = none ]; then
+    # Nothing can be running under a manager that is not there; what
+    # `disable` would have removed is the enable links.
+    info "no user manager answers; removing oscmix.service's enable links"
+    for link in "$UNIT_DIR"/*.wants/oscmix.service; do
+        if [ -L "$link" ]; then
+            rm -f "$link"
+        fi
+    done
 else
     warn "not touching oscmix.service: systemd's user instance serves a"
     warn "different home than $HOME, and stopping it would take down a"
@@ -120,13 +173,17 @@ fi
 systemctl --user daemon-reload 2>/dev/null || true   # no user bus over ssh without linger
 
 if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$RESUME_UNIT" ] || [ -e "$TMPFILES_CONF" ]; then
-  if ! manages_this_home; then
+  if [ "$OWNS_SYSTEM_FILES" != 1 ]; then
     # The system files serve whichever installation the session's home
     # has. Removing them from a scratch home took away the real desk's
     # hotplug rule, resume hook and lock directory -- the same trap as
     # the service above, one level down.
     warn "not removing $UDEV_RULE, $SLEEP_HOOK, $RESUME_UNIT or $TMPFILES_CONF:"
-    warn "they serve the installation in systemd's session home, not $HOME."
+    if [ "$MANAGER" = none ]; then
+        warn "no user manager answers, and $HOME is not this account's home."
+    else
+        warn "they serve the installation in systemd's session home, not $HOME."
+    fi
   else
     info "removing the root-installed files (needs root)"
     if SUDO=""; [ "$(id -u)" != 0 ]; then SUDO="sudo"; fi

@@ -61,6 +61,11 @@
 - The desk sends a keepalive every second instead of every two, which keeps
   it three seconds inside the backend's idle limit instead of one. A lease
   request from a connection that may not hold one is reported as that.
+- `uninstall.sh` refuses to run while a native package is installed, and
+  points to `oscmix-setup --migrate-source`; it used to stop and disable the
+  package's service and remove the system files the package owns. Without a
+  reachable user manager it now removes the service's enable links and, for
+  the account's own home, the system files; it left both behind.
 - Backend peer credentials are read as unsigned uid and gid.
 - `--list-profiles` counts channel settings, not sections.
 - Tests that bind Unix sockets no longer fail when `TMPDIR` is long.

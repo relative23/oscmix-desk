@@ -11,6 +11,7 @@ import shlex
 import shutil
 import stat
 import subprocess
+from pathlib import Path
 
 import pytest
 from support import repo_file
@@ -78,6 +79,8 @@ def make_fake_home(tmp_path):
         # every install on the restart path and its 2 s sleep -- 30 s a
         # run on CI, which pushed the flakiness gate past its timeout.
         "OSCMIX_SYSFS_USB": str(tmp_path / "no-usb"),
+        # No native package, whatever the machine running the suite has.
+        "OSCMIX_PACKAGE_GUARD": str(tmp_path / "system" / "package-guard"),
     })
     (tmp_path / "system").mkdir(exist_ok=True)
     (tmp_path / "no-usb").mkdir(exist_ok=True)
@@ -504,6 +507,72 @@ def test_uninstall_of_the_session_s_home_removes_the_system_files(tmp_path):
     for var in ("OSCMIX_UDEV_RULE", "OSCMIX_SLEEP_HOOK", "OSCMIX_RESUME_UNIT",
                 "OSCMIX_TMPFILES_CONF"):
         assert "sudo rm -f %s" % env[var] in calls
+
+
+def no_user_manager(tmp_path):
+    """A `systemctl` whose user manager does not answer, as over ssh."""
+    stub = tmp_path / "stub-bin" / "systemctl"
+    stub.write_text('#!/bin/sh\necho "systemctl $@" >> "%s"\n'
+                    'case "$*" in *show-environment*) exit 1 ;; esac\nexit 1\n'
+                    % (tmp_path / "calls.log"))
+    stub.chmod(0o755)
+
+
+def test_uninstall_without_a_user_manager_cleans_up_its_own_home(tmp_path):
+    # Treated as another session's home until 0.8.1: the system files
+    # stayed, and so did a dangling default.target.wants link.
+    home, env, log = make_fake_home(tmp_path)
+    files = _fake_system_files(tmp_path, env)
+    run("install.sh", ["--no-build", "--no-udev"], env)
+    wants = home / ".config/systemd/user/default.target.wants"
+    wants.mkdir(parents=True, exist_ok=True)
+    (wants / "oscmix.service").symlink_to("../oscmix.service")
+    no_user_manager(tmp_path)
+    env["OSCMIX_ACCOUNT_HOME"] = str(home)
+    log.write_text("")
+
+    result = run("uninstall.sh", [], env)
+
+    assert result.returncode == 0, result.stderr
+    assert not (wants / "oscmix.service").is_symlink()
+    calls = log.read_text()
+    for var in files:
+        assert "sudo rm -f %s" % env[var] in calls
+
+
+def test_uninstall_without_a_user_manager_from_a_scratch_home_leaves_the_system(tmp_path):
+    _home, env, log = make_fake_home(tmp_path)
+    files = _fake_system_files(tmp_path, env)
+    run("install.sh", ["--no-build", "--no-udev"], env)
+    no_user_manager(tmp_path)
+    env["OSCMIX_ACCOUNT_HOME"] = "/home/somebodyelse"
+    log.write_text("")
+
+    result = run("uninstall.sh", [], env)
+
+    assert result.returncode == 0, result.stderr
+    assert "sudo rm" not in log.read_text()
+    assert "no user manager answers, and" in result.stderr
+    assert all(path.exists() for path in files.values())
+
+
+def test_uninstall_leaves_a_native_package_alone(tmp_path):
+    # It stopped and disabled the package's service and removed the system
+    # files the package owns until 0.8.1.
+    home, env, log = make_fake_home(tmp_path)
+    files = _fake_system_files(tmp_path, env)
+    run("install.sh", ["--no-build", "--no-udev"], env)
+    Path(env["OSCMIX_PACKAGE_GUARD"]).write_text("")
+    log.write_text("")
+
+    result = run("uninstall.sh", ["--purge"], env)
+
+    assert result.returncode == 1
+    assert "oscmix-setup --migrate-source" in result.stderr
+    assert log.read_text().count("systemctl --user stop") == 0
+    assert (home / ".local/bin/oscmix-session").exists()
+    assert (home / ".config/oscmix").is_dir()
+    assert all(path.exists() for path in files.values())
 
 
 def test_install_warns_a_user_who_is_not_in_audio(tmp_path):
