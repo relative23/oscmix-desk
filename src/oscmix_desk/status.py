@@ -148,6 +148,12 @@ def collect_status(path: Optional[Path], said: CommandLine) -> Info:
                     "do not confirm hardware state"}
 
 
+#: Fields whose null means "there is none", not "not known". JSON keeps
+#: null for both; the text said "stored_profile: unknown" for a desk
+#: without a profile until 0.8.1.
+ABSENT_WHEN_NULL = frozenset(("stored_profile", "effective_profile", "configured_serial"))
+
+
 def _text_lines(value: object, indent: str = "") -> List[str]:
     lines = []
     if isinstance(value, dict):
@@ -156,8 +162,10 @@ def _text_lines(value: object, indent: str = "") -> List[str]:
             if isinstance(item, dict):
                 lines.append(label)
                 lines.extend(_text_lines(item, indent + "  "))
+            elif item is None:
+                lines.append(label + (" none" if key in ABSENT_WHEN_NULL else " unknown"))
             else:
-                lines.append(label + " " + (str(item) if item is not None else "unknown"))
+                lines.append(label + " " + str(item))
         return lines
     return [indent + str(value)]
 

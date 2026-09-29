@@ -60,6 +60,14 @@ def test_text_status_and_idle_playback_are_explicit(world, capsys):
     assert str(path) in text
 
 
+def test_text_status_says_none_for_a_desk_without_a_profile(world, capsys):
+    path, _proc = world
+    assert cli.main(['--config', str(path), '--status']) == 0
+    out = capsys.readouterr().out
+    assert "stored_profile: none" in out
+    assert "effective_profile: none" in out
+
+
 def test_invalid_config_still_produces_json_diagnosis(world, capsys):
     path, _ = world
     path.write_text('[device]\nusb-id=bad\n')
