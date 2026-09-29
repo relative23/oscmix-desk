@@ -321,7 +321,8 @@ def read_all(device, listener, seconds: float = 6.0) -> Dict[str, object]:
     return seen
 
 
-def read_complete(device, listener, expected: Collection[str] = ()) -> Dict[str, object]:
+def read_complete(device, listener, expected: Collection[str] = (), *,
+                  again: bool = False) -> Dict[str, object]:
     """A dump, requested once more when it left out a path it should hold.
 
     A refresh can end without some reports: the backend withholds an
@@ -330,9 +331,13 @@ def read_complete(device, listener, expected: Collection[str] = ()) -> Dict[str,
     `/mix/11/input/9`, the next read reported it, and the restoration
     check took the difference for a register the sweep had moved. One
     more dump costs one read window; the lease has room for it.
+
+    ``again`` reads twice whatever the first dump held: the first baseline
+    of a sweep has no earlier read to say what is missing. Measured: it
+    lacked `/mix/13/input/13`, which the lease's final read then carried.
     """
     seen = read_all(device, listener)
-    if not set(expected) - set(getattr(seen, "messages", seen)):
+    if not again and not set(expected) - set(getattr(seen, "messages", seen)):
         return seen
     again = read_all(device, listener)
     if isinstance(seen, Readback) and isinstance(again, Readback):
@@ -700,7 +705,7 @@ def measure_chunks(device, targets, note=None):
                 transactions.append(record)
                 try:
                     device.begin()
-                    before = read_complete(device, device, surface)
+                    before = read_complete(device, device, surface, again=not surface)
                     surface |= known(before)
                     record['before'] = before
                     record['before_messages'] = getattr(before, 'messages', {})

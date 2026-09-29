@@ -859,3 +859,40 @@ def test_a_baseline_missing_a_withheld_mix_report_does_not_fail_the_lease(sweep,
     assert withheld in operations[1]['before']
     assert pending == ['withhold', 'done', 'withhold']
     assert state[withheld] == float('-inf')
+
+
+def test_the_first_baseline_is_read_twice(sweep, monkeypatch):
+    """Nothing earlier says what the first dump of a sweep left out."""
+    path = '/input/1/eq/band2gain'
+    withheld = '/mix/13/input/13'
+    state = {path: 0., withheld: float('-inf')}
+    reads = []
+
+    class Device:
+        def begin(self):
+            pass
+
+        def finish(self):
+            pass
+
+        def send(self, messages, **_options):
+            for name, _tags, args in messages:
+                state[name] = args[0]
+
+    def read(*_args):
+        reads.append(1)
+        if len(reads) == 1:
+            return {p: v for p, v in state.items() if p != withheld}
+        return dict(state)
+
+    monkeypatch.setattr(sweep, 'read_all', read)
+    monkeypatch.setattr(sweep.time, 'sleep', lambda *_args: None)
+    monkeypatch.setattr(sweep, 'STEPS', (0.01,))
+    monkeypatch.setattr(sweep, 'UNBOUNDED_STEPS', (1.0,))
+    targets = [(path, R.register_at(sweep.devices.UCX2, path))]
+    _findings, operations, unrestored, failure = sweep.measure_chunks(Device(), targets)
+    assert failure is None
+    assert unrestored == []
+    assert operations[0]['before'] == operations[0]['after']
+    assert withheld in operations[0]['before']
+
