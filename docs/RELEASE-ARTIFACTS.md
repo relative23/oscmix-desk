@@ -20,19 +20,19 @@ checksums. `gh attestation verify` needs a recent GitHub CLI.
 
 ```sh
 mkdir oscmix-desk-release && cd oscmix-desk-release
-gh release download v0.7.3 --repo relative23/oscmix-desk
+gh release download v0.8.0 --repo relative23/oscmix-desk
 gh attestation verify SHA256SUMS \
   --repo relative23/oscmix-desk \
   --signer-workflow relative23/oscmix-desk/.github/workflows/release.yml \
-  --source-ref refs/tags/v0.7.3 \
+  --source-ref refs/tags/v0.8.0 \
   --deny-self-hosted-runners --bundle attestation.jsonl
 sha256sum --check SHA256SUMS
-tar -xzf oscmix-desk-0.7.3.tar.gz
-cd oscmix-desk-0.7.3
+tar -xzf oscmix-desk-0.8.0.tar.gz
+cd oscmix-desk-0.8.0
 ./install.sh
 ```
 
-Replace `0.7.3` with the release you install. A changed file fails the
+Replace `0.8.0` with the release you install. A changed file fails the
 checksum check; a checksum without the attestation check proves nothing about
 who built the file. See the
 [GitHub CLI reference](https://cli.github.com/manual/gh_attestation_verify).
@@ -40,8 +40,8 @@ who built the file. See the
 ## Reproduce the source archive
 
 ```sh
-python3 scripts/build-release.py --ref v0.7.3 --output build/first
-python3 scripts/build-release.py --ref v0.7.3 --output build/second
+python3 scripts/build-release.py --ref v0.8.0 --output build/first
+python3 scripts/build-release.py --ref v0.8.0 --output build/second
 diff -r build/first build/second
 ```
 
