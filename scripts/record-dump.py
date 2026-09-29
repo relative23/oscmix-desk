@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Record what a ``/refresh`` dump reports, and when, as a test fixture.
 
-Roadmap item L. ``register_promptly_reported`` decides whether a missing
+``register_promptly_reported`` decides whether a missing
 register is a warning or a note. It is a hand-maintained list, measured
 once against a UCX II and checked against nothing since. Now that the
 backend revision is pinned, a dump from exactly that revision can be

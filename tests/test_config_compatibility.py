@@ -58,10 +58,10 @@ def test_a_config_from_a_newer_version_still_applies_what_we_understand(
     assert len(warnings) == 3
     # `[durec]` rather than `[clock]`: clock became a real section when
     # the global families landed, and an example of "a section from a
-    # newer version" has to be one this version will not grow. The
-    # roadmap puts DUREC transport under "never -- interactive", so it
+    # newer version" has to be one this version will not grow. DUREC
+    # transport is interactive and will never be a config section, so it
     # will stay unknown.
-    # Both examples are things the roadmap puts under "never" -- DUREC
+    # Both examples will never be config sections -- DUREC
     # transport is interactive, workspaces are GUI. `[eq:output:5]` used
     # to stand here and stopped being unknown the day EQ landed, which
     # is churn this test does not need twice.
@@ -234,7 +234,7 @@ def test_the_shapes_adr_0014_rejected_really_do_refuse_the_file(session_mod,
                                                                 shape):
     """The measurement the decision rests on, kept executable.
 
-    The roadmap's plan assumed sub-sections like `[input:3.eq]` would
+    The first plan assumed sub-sections like `[input:3.eq]` would
     degrade. They do not: the parser dispatches on the `input:` prefix
     before it reads the rest, so the whole file dies on
     `int("3.eq")`. That is a property of a released version, so the

@@ -213,7 +213,7 @@ class Device:
     """A Fireface, and what its registers are.
 
     ``channels`` maps a capability name to the channels that have it.
-    ``supported`` states the bar from the roadmap plainly: a device is
+    ``supported`` states the bar plainly: a device is
     supported when its register table is declared, its channel
     capabilities are recorded, and one hardware evidence artifact exists
     for it. Below that line it is "may work", and saying so in the data
@@ -421,7 +421,7 @@ def settable_options(device: Optional[Device], family: str) -> Dict[str, Registe
     ``48v`` stays out -- it is modelled, verifiable and readable, and it
     has no domain, so no config can reach it.
 
-    The roadmap's rule for phantom power is why: it may not be settable
+    The rule for phantom power is why: it may not be settable
     from a text file until a hardware case proves the channel it names
     is the channel it hits. An off-by-one in a silent output is a bug;
     an off-by-one in phantom power is a damaged ribbon microphone.

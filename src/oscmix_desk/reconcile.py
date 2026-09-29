@@ -135,7 +135,7 @@ def mix_messages(route: Route) -> List[Message]:
             # runs both kinds through the same setlevel(), so the same
             # halving is expected for an input source -- but expected is
             # not measured, and it needs a signal on a hardware input to
-            # check. Flagged in the roadmap rather than assumed silently.
+            # check. Flagged here rather than assumed silently.
             # Mute must remain the backend's explicit zero. Adding the
             # compensation to -65 dB produces a nonzero hardware gain.
             unlinked = (LEVEL_MIN if route.level <= LEVEL_MIN

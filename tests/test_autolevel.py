@@ -48,7 +48,7 @@ def test_the_options_are_the_three_upstream_declares():
 
 def test_maxgain_is_eighteen_decibels_not_a_hundred_and_eighty():
     """The failure a factor of ten hides. Measured at the device rather
-    than argued -- see the roadmap entry for auto level."""
+    than argued."""
     maxgain = settable_nested(UCX2, "autolevel", "input")["maxgain"]
     assert (maxgain.lo, maxgain.hi) == (0.0, 18.0)
 

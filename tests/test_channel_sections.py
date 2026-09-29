@@ -38,7 +38,7 @@ def test_the_options_come_from_the_register_model():
 
 
 def test_phantom_power_is_modelled_but_not_settable():
-    """The roadmap's rule, enforced by the absence of a value domain.
+    """The phantom power rule, enforced by the absence of a value domain.
 
     `48v` is in the model -- verifiable, readable, on channels 1-2 -- and
     has no domain, so no config can reach it. It stays out until a

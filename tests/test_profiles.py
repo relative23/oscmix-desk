@@ -1,6 +1,6 @@
 """The profile switch, written from its contract rather than its parser.
 
-The roadmap states the promise this file exists to hold:
+The promise this file exists to hold:
 
     the switch has to state its outcome: applied and verified, applied
     but unverifiable (with the list), or refused before anything was
@@ -263,7 +263,7 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
 
 def test_the_four_states_are_the_only_four(tmp_path):
     # Three, until 0.7.0: "partly, and here is a traceback" was the state
-    # the roadmap forbade, and a wire that gives out half-way produced it
+    # the contract forbade, and a wire that gives out half-way produced it
     # all the same -- as the traceback. The fourth is that state with a
     # name and both lists. A fifth arrives by decision too.
     assert set(outcome_mod.STATES) == {outcome_mod.APPLIED_VERIFIED,

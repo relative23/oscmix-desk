@@ -1,8 +1,7 @@
 """The restart soak: apply the routing N times, assert the result N times.
 
-Roadmap item A. *Proven by* has said "soak on main" since the first
-draft of the roadmap and nothing in the repository ran one, so the claim
-was carried by a Makefile target that did not exist.
+A soak was claimed long before anything in the repository ran one; the
+claim was carried by a Makefile target that did not exist.
 
 Every failure mode this project has actually found was a timing bug --
 the link race, two teardown races, the stub signal race -- and each one

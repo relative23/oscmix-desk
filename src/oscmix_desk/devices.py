@@ -274,7 +274,7 @@ UCX2 = Device(
                  policy=PIN, mix_level=True),
         # 48v deliberately has NO domain: it is readable by the code and not
         # settable from a routing.conf. See registers.settable_options and
-        # the roadmap's rule -- phantom power is not exposed until a
+        # the rule behind it -- phantom power is not exposed until a
         # hardware case proves the channel it names is the channel it
         # hits, because an off-by-one is damaged equipment, not silence.
         Register("/input/{ch}/48v", "i", VERIFIABLE, "48v", policy=PIN),
@@ -425,8 +425,8 @@ UCX2 = Device(
         # `samplerate` has **no domain**, and the reason is upstream's
         # own: its node is `{"samplerate", CLOCK_SAMPLERATE,
         # .new=newsamplerate}` -- a reporter with no `.set`. oscmix
-        # cannot write it, so neither can a config, and the roadmap's
-        # open question "is the rate state or an event" is answered by
+        # cannot write it, so neither can a config, and the open
+        # question "is the rate state or an event" is answered by
         # the node table rather than by argument. Measured separately:
         # the device changes it on its own, pushes the change, and loses
         # no mixer state doing so.

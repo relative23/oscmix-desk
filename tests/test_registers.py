@@ -81,7 +81,7 @@ def test_the_802_channel_map_is_not_a_copy_of_the_ucx2():
 
 
 def test_a_supported_device_names_its_evidence():
-    # The roadmap's bar: register table declared, capabilities recorded,
+    # The bar: register table declared, capabilities recorded,
     # and one hardware evidence artifact.
     for device in devices.DEVICES:
         if device.supported:

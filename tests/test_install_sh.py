@@ -251,7 +251,7 @@ def test_uninstall_purge_removes_config(tmp_path):
 
 
 # --------------------------------------------------------------------------
-# Roadmap item J: nothing proved an install actually works.
+# Nothing else proves an install actually works.
 #
 # The tests above assert the *file set*. That is not the same as the
 # installed tree being runnable: this release moved the runtime from

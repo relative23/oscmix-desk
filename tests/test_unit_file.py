@@ -154,7 +154,7 @@ def test_the_service_writes_only_the_lock_directory(unit):
     assert directive(unit, "ReadWritePaths") == "-/run/oscmix-desk"
 
 # --------------------------------------------------------------------------
-# The timing budget has to compose -- roadmap item H.
+# The timing budget has to compose.
 #
 # Eight waits in constants.py and two systemd deadlines. The relationship
 # between them used to live in a comment in the unit, where nothing
@@ -304,7 +304,7 @@ def test_verification_is_off_the_startup_path_structurally(unit):
 
 
 def test_systemd_analyze_accepts_the_unit():
-    """Roadmap item J: a typo in a directive *name* passes every test above.
+    """A typo in a directive *name* passes every test above.
 
     Everything else in this file matches strings. systemd ignores keys it
     does not know, so `NoNewPrivilegs=yes` reads as hardening, disables

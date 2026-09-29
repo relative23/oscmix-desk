@@ -1,7 +1,7 @@
 #!/bin/sh
 # Run `systemd-analyze verify` on the unit and fail on anything it says.
 #
-# Roadmap item J. tests/test_unit_file.py reads the unit as text: it
+# tests/test_unit_file.py reads the unit as text: it
 # catches the directives known to break a *user* unit, and it asserts the
 # timing budget against the constants. What it cannot catch is a typo in
 # a directive *name* -- systemd ignores unknown keys, so

@@ -131,8 +131,8 @@ def test_the_seam_is_the_only_place_that_opens_a_device_socket():
 
     Six places used to open their own socket and know the address. If a
     seventh appears outside this module, the dependency on oscmix stops
-    being visible in one place -- and the own-state-path option the
-    roadmap wants to keep open gets more expensive with each one.
+    being visible in one place -- and an own state path, an option
+    worth keeping open, gets more expensive with each one.
 
     notify.py is excluded: it speaks to systemd over a UNIX socket, not
     to the device.

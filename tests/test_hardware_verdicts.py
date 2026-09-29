@@ -410,7 +410,7 @@ def test_the_evidence_carries_every_field_the_checklist_names():
 def test_the_evidence_names_the_particular_device():
     """Evidence that does not say which box it measured is weaker evidence.
 
-    The roadmap intends to support two Fireface units on one desk. The
+    Two Fireface units on one desk are meant to work. The
     serial is read from `/proc/asound/cards`, where the driver puts the
     device's own product string -- not the USB `iSerial`, which is a
     different number and not the one printed on the hardware.

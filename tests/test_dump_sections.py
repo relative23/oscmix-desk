@@ -3,8 +3,8 @@
 Before this, a dump of a fully configured device emitted `[device]`,
 `[osc]` and forty flat channel sections -- 124 settings out of the 604
 the device reports. Every global register and all 480 EQ registers fell
-out silently, so the round trip that point 3 of the roadmap's bar asks
-for was open for everything 0.4.0 had just declared.
+out silently, so the dump round trip
+was open for everything 0.4.0 had just declared.
 
 The round trip is the test, as it is for the input matrix: render, parse
 what was rendered, render that, and require the two texts to be equal.

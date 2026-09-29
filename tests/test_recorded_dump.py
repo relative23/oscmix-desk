@@ -1,6 +1,6 @@
 """``register_promptly_reported`` against a recorded dump, not a memory.
 
-Roadmap item L. That function decides whether a missing register is a
+That function decides whether a missing register is a
 warning worth re-sending for or a note. It was a hand-maintained list,
 measured once against a UCX II and checked against nothing since -- and
 it is about to be the thing 0.3.0's verification classes are derived
@@ -182,8 +182,8 @@ def test_the_measured_dump_disagrees_with_the_prose_and_says_so(
         "the prose may be right after all: /playback/*/stereo arrived at "
         "%.1fs" % max(playback.values()))
     assert dump["dump_seconds"] < 5.0, (
-        "the dump took %.1fs; the 15-20s figure in constants.py and the "
-        "roadmap may be describing this after all" % dump["dump_seconds"])
+        "the dump took %.1fs; the old 15-20s figure may be describing "
+        "this after all" % dump["dump_seconds"])
     # At 0.0 s because the backend sends them itself: setrefresh() emits
     # its own view of the playback links before the device answers. The
     # coordinated backend labels that view backend-derived, so it is no

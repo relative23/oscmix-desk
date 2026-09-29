@@ -1,6 +1,6 @@
 name: Soak
 
-# Roadmap item A. The normal suite runs the soak twice, which only
+# The normal suite runs the soak twice, which only
 # proves the session can start twice. This is the gate that actually
 # earns the word: the same routing applied and asserted a few hundred
 # times, on a schedule, so a leak that needs fifty cycles to surface has
@@ -9,8 +9,7 @@ name: Soak
 # Every failure mode this project has found was a timing bug, and every
 # one of them survived a green single run. That is why this is a
 # scheduled workflow and not a Makefile target: a gate nobody invokes
-# proves nothing, and `Proven by: soak on main` was written in the
-# roadmap long before anything ran one.
+# proves nothing.
 
 on:
   schedule:

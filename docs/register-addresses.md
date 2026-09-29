@@ -93,7 +93,7 @@ which noise never is.
 
 ## How many addresses are enough
 
-The roadmap asked this and did not answer it. The answer is that
+The answer is that
 **2028 addresses are not 2028 facts**: they are the three rules above
 over a table of 82 control offsets. Verifying two thousand registers was
 never the task.

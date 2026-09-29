@@ -1,7 +1,7 @@
 """When the routing is re-applied, and how it is asked for.
 
-Three triggers were on the roadmap: SIGHUP, resume, hotplug. Only two of
-them needed building.
+Three triggers were planned: SIGHUP, resume, hotplug. Only two of them
+needed building.
 
 **Hotplug was already covered**, and building a second path for it would
 have been the mistake this release keeps finding. `udev/90-rme-fireface.rules`
@@ -189,8 +189,8 @@ def test_no_timer_anywhere_triggers_a_reconcile():
 
     A timer would make this a background process that fights the user on
     a schedule -- and, given that the device does not report a change,
-    each tick would cost a full 2252-register dump. The roadmap ruled it
-    out and this keeps it ruled out.
+    each tick would cost a full 2252-register dump. It is ruled out and
+    this keeps it ruled out.
     """
     for path in repo_file("systemd").rglob("*"):
         if path.is_file():

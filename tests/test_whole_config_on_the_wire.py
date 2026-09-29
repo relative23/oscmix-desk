@@ -11,7 +11,7 @@ from oscmix_desk import osc
 
 def test_the_dry_run_prints_exactly_the_datagrams_the_apply_sends(
         session_mod, routing_mod, monkeypatch, capsys, wire_peer):
-    """Roadmap item G: the printed sequence *is* the sent sequence.
+    """The printed sequence *is* the sent sequence.
 
     Two routes, because a single route cannot exhibit the bug class this
     check exists for: walking route by route and printing link, mix,
@@ -61,7 +61,7 @@ def test_everything_the_config_asks_for_reaches_the_wire(session_mod,
                                                         monkeypatch, wire_peer):
     """The general form of a defect that shipped twice in two shapes.
 
-    First as roadmap item G: `--dry-run` walked route by route while the
+    First: `--dry-run` walked route by route while the
     apply walked the routing, so the printed order was not the sent
     order. Fixed by giving both one source.
 

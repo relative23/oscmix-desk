@@ -364,7 +364,7 @@ def test_a_register_upstream_cannot_write_is_not_settable(path):
     report. A config cannot set what oscmix cannot write, and saying so
     in the table beats discovering it as a write that draws no reply.
 
-    This also settles the roadmap's open question about the sample rate:
+    This also settles the open question about the sample rate:
     it is not "state or event", it is not writable at all.
     """
     by_path = {r.template: r for r in UCX2.registers}

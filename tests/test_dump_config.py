@@ -1,6 +1,6 @@
 """`--dump-config`: observed() rendered as a routing.conf.
 
-The roadmap's test for it is a round trip -- dump, apply, dump again is
+Its test is a round trip -- dump, apply, dump again is
 a fixed point -- and that is what most of this file is. A dumper that
 does not round-trip produces a config which quietly differs from the
 device it was read off, which is worse than no dumper: the file *looks*
@@ -64,7 +64,7 @@ ROUND_TRIP = [
                              k["input"], k["output"],
                              "" if k.get("stereo", True) else "-split"))
 def test_dump_apply_dump_is_a_fixed_point(session_mod, kwargs):
-    """Point 3 of the bar in the roadmap, for the input matrix.
+    """The round trip, for the input matrix.
 
     Apply a route, observe what the device would report, reconstruct
     the route from that, observe again -- the second observation must
