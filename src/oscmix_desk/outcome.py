@@ -20,7 +20,8 @@ Four states:
 ``WRITTEN_IN_PART``
     Some registers went out and then the wire gave out. Carries both
     lists; the marker is left alone, so the desk in effect is still the
-    one a reload or a start writes back.
+    previous one: a reload restores its pinned values and mix, a start
+    or an explicit selection all of its declared values.
 
 A value rather than an exception or an exit code: what it means for a
 process is the CLI's business, and a caller that switches from code can

@@ -342,10 +342,10 @@ def _dry_run_desk(args: "argparse.Namespace",
 def _switch_profile(name: str, config_path: Optional[Path]) -> int:
     """Apply a profile and turn its outcome into an exit code.
 
-    Four states, four codes, and the distinction the caller needs is
-    between "nothing happened" and "something happened that I could not
-    check" -- a script that treats those the same will re-run a switch
-    that already took effect.
+    The codes are in docs/ARCHITECTURE.md, and the distinction the caller
+    needs most is between "nothing happened" (2) and "something happened"
+    (0, 1, 4, 5) -- a script that treats those the same will re-run a
+    switch that already took effect.
 
     EXIT_CONFIG for a refusal is the same code a bad routing.conf gives
     at startup, because it is the same failure: the config did not parse
@@ -360,18 +360,22 @@ def _report_outcome(outcome: "Outcome",
     """One line on stdout and the exit code the outcome maps to.
 
     Shared by the switch and by `--no-profile`, which is the same
-    transaction with routing.conf as the desk. Four states,
-    four codes: a script that branches on `$?` has to be able to tell
-    "the desk is yours and will stay" from "it is yours until the next
-    start", and neither from "the unit did not hear about it".
+    transaction with routing.conf as the desk. Four outcome states and
+    the unit's reload give five codes: 2 refused, 1 written in part, 4
+    applied but not remembered, 5 applied but the running unit refused the
+    reload, 0 applied (the line says whether verified). A script that
+    branches on `$?` has to be able to tell "the desk is yours and will
+    stay" from "it is yours until the next start", and neither from "the
+    unit did not hear about it".
     """
     sys.stdout.write(outcome.describe() + "\n")
     if outcome.state == REFUSED:
         return EXIT_CONFIG
     if outcome.state == WRITTEN_IN_PART:
         # The marker was left alone, so the unit's reconcile writes the
-        # desk in effect back over the part that went out -- the one
-        # repair there is, if the backend can be reached again by then.
+        # desk in effect's pinned values and mix back over the part that
+        # went out; remembered values (volume, mute, phase) stay as sent
+        # (0.8.0). Selecting that desk again restores all of it.
         # Exit 1 whatever the reload says: the switch did not happen.
         _hand_over_to_the_unit(config_path)
         return EXIT_FAILURE
