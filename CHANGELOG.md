@@ -29,6 +29,9 @@
 - The backend control contract covers the refused WRITE forms, the answer
   for an unknown address, the connection limits and disconnect rules, the
   desk's retry and keepalive timing, and how a slow MIDI write ends a lease.
+- The release artifacts page describes the four verification records and
+  how each is tied to the tagged files, and how the repository archive
+  attached later is authenticated.
 - `CONTRIBUTING.md` names `shellcheck` as a requirement of `make check`, the
   README explains why the packages declare the Unlicense, and comments no
   longer describe UDP sockets or an installer that enables the service.
