@@ -174,7 +174,7 @@ class Register:
     hi: Optional[float] = None
     unit: str = ""
     #: Who wins after the initial write, PIN or REMEMBER. The default is
-    #: REMEMBER because that is ADR 0003's rule -- do not wipe what the
+    #: REMEMBER because a route rewrites only what it declares -- do not wipe what the
     #: user left in the mixer -- and a register that forgot to declare a
     #: policy should fall on the side that surprises nobody.
     #:
@@ -431,8 +431,8 @@ def settable_options(device: Optional[Device], family: str) -> Dict[str, Registe
     `eq/band1freq`; and a sub-family's own *switch* -- `/input/{ch}/eq` --
     is flat by path shape while belonging to the nested section, so it is
     excluded by having children. Both would be settable from `[input:3]`,
-    which is the one shape an installed 0.3.0 refuses the whole file over
-    (ADR 0014). Both live in `settable_nested` instead, the switch under
+    which is the one shape an installed 0.3.0 refuses the whole file over.
+    Both live in `settable_nested` instead, the switch under
     ``ENABLE_OPTION``.
     """
     return dict(settable_option_rows(device, family))

@@ -16,7 +16,7 @@ class DeviceAmbiguous(ConfigError):
     `[device] serial` names the box. Guessing is not an option -- the
     first match is whichever box the kernel enumerated first, so the desk
     would land on an arbitrary interface and its lock would name the
-    other one (ADR 0024).
+    other one.
     """
 
 
@@ -25,21 +25,21 @@ class DeviceLockUnavailable(Exception):
 
     Raised rather than returned as None, because None already means
     "nothing to apply" or "a stop arrived", and the start treated all
-    three alike: it sent READY=1 for a desk it never wrote (ADR 0024).
+    three alike: it sent READY=1 for a desk it never wrote.
     """
 
 
 class ReceivePortError(OSError):
     """The coordinated connection cannot supply usable observations.
 
-    The public exception name is retained from the UDP receiver (ADR 0025).
+    The public exception name is retained from the UDP receiver.
     In ODK1 it covers disconnect, cancellation, malformed deliveries,
     acknowledgement deadlines and queue overflow. None is receiver silence.
 
     An OSError, so existing receive handlers can name the failure. During
     an apply it becomes WriteFailed with exact sent and pending paths;
     a failed receiver must not erase a known link contradiction by falling
-    back to blind writes (ADR 0029 amends ADR 0025).
+    back to blind writes.
     """
 
 
@@ -51,7 +51,7 @@ class WriteFailed(OSError):
     A submitted request whose acknowledgement is lost may already have
     reached the device. It is the difference between "nothing happened" and
     "the desk is somewhere between two configs", which is the one thing a
-    person at that desk needs to know (ADR 0027).
+    person at that desk needs to know.
 
     All operation logs include these lists. A profile result also exposes
     them as structured fields. Neither submission nor the backend's ACK

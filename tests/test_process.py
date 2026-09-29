@@ -384,7 +384,7 @@ def test_system_install_is_found_when_the_user_path_omits_it(monkeypatch, availa
 
 
 # --------------------------------------------------------------------------
-# Reloading the unit after a switch (ADR 0018)
+# Reloading the unit after a switch
 # --------------------------------------------------------------------------
 
 def test_reload_service_says_when_the_unit_is_not_running(monkeypatch):
@@ -489,7 +489,7 @@ def test_systemctl_output_is_stdout_on_success_and_none_otherwise(
 
 
 # --------------------------------------------------------------------------
-# Resolving the holder of the port (ADR 0021).
+# Resolving the holder of the port.
 # --------------------------------------------------------------------------
 
 def test_the_owner_is_unknown_when_no_process_holds_the_inode(process_mod, endpoint):

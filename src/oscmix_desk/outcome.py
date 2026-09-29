@@ -20,11 +20,11 @@ Four states:
 ``WRITTEN_IN_PART``
     Some registers went out and then the wire gave out. Carries both
     lists; the marker is left alone, so the desk in effect is still the
-    one a reload or a start writes back (ADR 0027).
+    one a reload or a start writes back.
 
 A value rather than an exception or an exit code: what it means for a
 process is the CLI's business, and a caller that switches from code can
-read every part of it (ADR 0011).
+read every part of it.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ APPLIED_UNVERIFIED = "applied-unverified"
 #: Nothing was written. ``reason`` says why.
 REFUSED = "refused"
 #: Some of it was written and then the wire gave out. ``written`` and
-#: ``unwritten`` say which; the marker was left alone (ADR 0027).
+#: ``unwritten`` say which; the marker was left alone.
 WRITTEN_IN_PART = "written-in-part"
 
 #: The ``reason`` on an outcome where the read-back was never attempted,
@@ -60,7 +60,7 @@ NOT_CHECKED = "verification not requested"
 #: arrive by accretion. The fourth arrived in 0.7.0 as one: "partly
 #: applied" was the state this value was meant to make unrepresentable,
 #: and a wire that fails half-way made it real all the same -- as a
-#: traceback (ADR 0027).
+#: traceback.
 STATES = (APPLIED_VERIFIED, APPLIED_UNVERIFIED, REFUSED, WRITTEN_IN_PART)
 
 
@@ -84,7 +84,7 @@ class Outcome:
     #: switch landed but the marker could not be written, or the restore
     #: could not remove it: a later reconcile uses the previous PIN values
     #: and a new session uses its starting values. Do not send a reload
-    #: from the failed persistence operation (ADR 0019).
+    #: from the failed persistence operation.
     persisted: bool = True
     #: False when the marker change is in effect but its directory could
     #: not be synced, so a power cut may bring the previous state back.

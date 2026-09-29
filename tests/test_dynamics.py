@@ -2,7 +2,7 @@
 
 Second nested family of 0.4.0, and the first one added after the shape
 existed -- so most of this file checks the *row*, not the machinery.
-`[dynamics:input:3]` parses, dumps and round-trips because ADR 0014's
+`[dynamics:input:3]` parses, dumps and round-trips because nested
 sections are generic; what is new is eight bounds, two wire types and a
 read-only meter that must stay out of the config.
 
@@ -128,7 +128,7 @@ def test_the_switch_is_a_bool_and_the_rest_are_numbers():
 
 
 def test_dynamics_is_remembered_rather_than_pinned():
-    """ADR 0003's default. A compressor setting is something a person
+    """Remembered by default. A compressor setting is something a person
     reaches for during a session, not installation state like a
     reference level -- so the device's value wins after the first write.
     """

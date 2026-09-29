@@ -367,7 +367,7 @@ def test_every_candidate_stays_inside_the_declared_bounds(sweep):
 
 
 def test_reflevel_is_refused_and_48v_is_out_of_reach(sweep):
-    """ADR 0016, checked against the model rather than asserted."""
+    """Checked against the model rather than asserted."""
     assert sweep.is_dangerous("/input/3/reflevel")
     assert not sweep.is_dangerous("/output/1/volume")
     reachable = [p for p, _r in sweep.settable() if "48v" in p]
@@ -556,7 +556,7 @@ def test_the_sweep_holds_the_device_lock():
 
     It walks every settable register and writes each one a different
     value, and it is in the release checklist -- so it runs on a desk
-    where the unit is up and may reconcile at any moment (ADR 0023). It
+    where the unit is up and may reconcile at any moment. It
     needs no config directory for it: the shared lock path does not
     depend on one.
     """

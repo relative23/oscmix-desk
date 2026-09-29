@@ -1,5 +1,5 @@
 """The mix matrix is written again once the device has reported the
-links, through the same operation connection (ADR 0001, ADR 0030).
+links, through the same operation connection.
 """
 
 import oracle

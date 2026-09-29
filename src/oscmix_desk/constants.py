@@ -97,7 +97,7 @@ RECONCILE_WAIT_FOR_VERIFIER = 30.0
 
 # How long a writer waits for the device lock before it gives up. Every
 # writer takes it: a switch, `--no-profile`, and the unit's own apply,
-# verifier and reconcile (locking.take_device_lock, ADR 0019). Two at
+# verifier and reconcile (locking.take_device_lock). Two at
 # once would interleave their link phases and mix writes on the wire.
 # This wait bounds contention rather than guaranteeing that a preceding
 # operation finishes in time. The lock and backend lease span verification

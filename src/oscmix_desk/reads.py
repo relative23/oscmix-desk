@@ -67,8 +67,8 @@ class DeviceRead:
 
 
 #: Phase numbers as the diff prints them. The apply writes in this
-#: order and the barrier between the first two is what ADR 0001 is
-#: about, so a diff that listed writes in path order would hide the one
+#: order and the barrier between the first two is what the two-phase
+#: apply is about, so a diff that listed writes in path order would hide the one
 #: thing about them that is not obvious.
 _PHASE_NAMES = ((PHASE_LINK, "links"),
                 (PHASE_MIX, "mix matrix"),
@@ -143,7 +143,7 @@ def _diff(config: Config, config_path: Optional[Path] = None) -> int:
     healthy silence when the backend is down.
 
     **A rewrite is not a difference.** `/mix/<out>/playback/<pb>` is
-    never reported (ADR 0002) and is written on every apply whatever the
+    never reported and is written on every apply whatever the
     device holds, so counting it would make the exit code permanently 3
     and worth nothing.
     """
@@ -156,7 +156,7 @@ def _diff(config: Config, config_path: Optional[Path] = None) -> int:
     result = plan(desired(config), seen, model)
 
     # A rewrite is not a difference. `/mix/<out>/playback/<pb>` is never
-    # reported (ADR 0002), so it is written on every apply whatever the
+    # reported, so it is written on every apply whatever the
     # device holds -- listing it next to a real mismatch would answer
     # "has the desk drifted?" with a number that is always non-zero.
     differing = [w for w in result.writes if w.reason != REWRITE]

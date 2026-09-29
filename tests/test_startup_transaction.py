@@ -1,8 +1,8 @@
-"""The start-up apply and its verifier are one transaction (ADR 0019).
+"""The start-up apply and its verifier are one transaction.
 
 One lock from the first write to the verifier's last, the desk read
 under that lock rather than before it, and a desk for somewhere else not
-applied here (ADR 0026).
+applied here.
 """
 
 
@@ -61,7 +61,7 @@ def test_the_start_holds_the_device_lock_until_the_verifier_is_done(
 
 def test_a_start_that_cannot_take_the_lock_writes_nothing(
         tmp_path, monkeypatch, session_mod, caplog):
-    """No lock, no write (ADR 0022).
+    """No lock, no write.
 
     Until 0.6.7 the start applied anyway, on the grounds that a desk
     with no routing is worse than a re-apply. It also made the whole
@@ -117,7 +117,7 @@ _LATER = "[route:y]\nplayback = 5/6\noutput = 5/6\n"
 
 # A profile that names another box was pinned to this process's interface
 # and applied here until 0.6.11, and not applied in 0.6.11. Since 0.7.0
-# it is no desk at all -- refused where it is loaded (ADR 0026) -- so the
+# it is no desk at all -- refused where it is loaded -- so the
 # desk in effect under the lock is routing.conf's.
 @pytest.mark.parametrize(("profile", "applied_output"), [
     (_LATER, (5, 6)),

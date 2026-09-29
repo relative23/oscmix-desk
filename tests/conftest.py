@@ -85,8 +85,8 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
     """No test may touch the device lock of the machine it runs on.
 
     The lock is keyed by the interface and searched for in
-    `/run/oscmix-desk` first, `$XDG_RUNTIME_DIR/oscmix-desk` second
-    (ADR 0023). Both are real on a developer machine with the service
+    `/run/oscmix-desk` first, `$XDG_RUNTIME_DIR/oscmix-desk` second.
+    Both are real on a developer machine with the service
     running: a test taking that lock would block the real desk, and a
     test that leaves one held would block it for good.
 
@@ -126,8 +126,8 @@ def _own_runtime_dir(tmp_path_factory, monkeypatch):
 def _device_is_plugged_in(tmp_path_factory, monkeypatch):
     """A sysfs where the interface is present, unless a test says otherwise.
 
-    Since 0.6.8 a switch refuses when the interface is not connected
-    (ADR 0023), and the check reads `OSCMIX_SYSFS_USB`. On a machine
+    Since 0.6.8 a switch refuses when the interface is not connected,
+    and the check reads `OSCMIX_SYSFS_USB`. On a machine
     with no Fireface -- CI, a laptop -- every switch test would refuse
     for the wrong reason. A test that wants the device gone points the
     variable at an empty directory itself.
@@ -145,7 +145,7 @@ def _no_stray_proc_reads(tmp_path_factory, monkeypatch):
     """An empty /proc, so nothing reads the machine's own.
 
     Since 0.6.8 a switch that opens its own socket refuses when nothing
-    is bound to the OSC port (ADR 0023). Most tests hand in a backend
+    is bound to the OSC port. Most tests hand in a backend
     and never reach that check; the ones that do not must not decide
     against the ports of the developer's running desk, which a real
     `/proc` would let them do.
@@ -604,7 +604,7 @@ def lifecycle(session_module, monkeypatch):
         monkeypatch.setattr(session_module, "_install_stop_handlers",
                             lambda *a, **k: None)
         # True: the port came up. False is the backend that lives but
-        # never binds, which since 0.6.6 fails the start (ADR 0021).
+        # never binds, which since 0.6.6 fails the start.
         monkeypatch.setattr(session_module, "_await_backend_port",
                             lambda *a, **k: port_ready)
         def apply(*a, **k):

@@ -468,8 +468,8 @@ def reload_service() -> str:
     the config it started with, and it overwrote the switch: measured on
     the desk, a switch sent right after a restart read back at the old
     fader value fifteen seconds later. The reload makes the unit re-read
-    the desk in effect -- the new profile (ADR 0018) -- and its
-    reconcile is serialised behind the verifier (ADR 0013), so whichever
+    the desk in effect -- the new profile -- and its
+    reconcile is serialised behind the verifier, so whichever
     of the two writes last, it is the profile.
     """
     try:

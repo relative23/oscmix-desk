@@ -45,7 +45,7 @@ def test_the_link_state_trait_is_why_the_barrier_exists():
     `stereo=1` with the patch offered as michaelforney/oscmix#31.
 
     When that lands and the pin moves, this flips to True and the
-    barrier goes -- in that order (ADR 0008), and this is the flag that
+    barrier goes -- in that order, and this is the flag that
     says so rather than a search through the control flow.
     """
     from oscmix_desk import constants

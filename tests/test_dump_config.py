@@ -7,7 +7,7 @@ device it was read off, which is worse than no dumper: the file *looks*
 authoritative.
 
 The other half is the limit. `/mix/<out>/input/<in>` is reported and
-`/mix/<out>/playback/<pb>` is not (ADR 0002), so a dump reproduces
+`/mix/<out>/playback/<pb>` is not, so a dump reproduces
 monitoring paths and cannot reproduce software routing. A tool that
 stayed quiet about that would lose half a config on the first use.
 """
@@ -182,7 +182,7 @@ def test_a_playback_route_cannot_be_recovered(session_mod):
 
 
 def test_volume_is_not_pinned_by_a_dump(session_mod):
-    # ADR 0003: a route that declares volume forces that level on every
+    # A route that declares volume forces that level on every
     # start. A dump has no way to tell "I meant this" from "this is
     # where I left it", so it declares neither.
     original = config_of(session_mod,

@@ -2,7 +2,7 @@
 
 ``observed()`` rendered as config -- the inverse of ``mix_messages``, and
 only as complete as the device is willing to report. ``/mix/<out>/input/
-<in>`` comes back; the playback matrix does not (ADR 0002), so a dump
+<in>`` comes back; the playback matrix does not, so a dump
 reproduces monitoring paths and cannot reproduce software routing.
 Saying that loudly is the whole difference between a useful tool and one
 that silently loses half a config.
@@ -372,8 +372,8 @@ def _channel_sections(config: Config,
     had no state at all.
     """
     # Grouped by the section a setting belongs in, not by channel: a
-    # nested option goes to `[eq:input:3]` and a flat one to `[input:3]`
-    # (ADR 0014), so one channel produces several sections and they must
+    # nested option goes to `[eq:input:3]` and a flat one to `[input:3]`,
+    # so one channel produces several sections and they must
     # not be run together.
     by_section: Dict[Tuple[str, str, int], List[ChannelSetting]] = {}
     for setting in config.channels:

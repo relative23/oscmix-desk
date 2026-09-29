@@ -1,6 +1,6 @@
 """Whose backend, and whose unit: the process that holds the OSC port,
 the interface it bridges, the session above it, and the desk the unit
-runs -- read from /proc, never assumed (ADR 0021, ADR 0024).
+runs -- read from /proc, never assumed.
 """
 
 import io

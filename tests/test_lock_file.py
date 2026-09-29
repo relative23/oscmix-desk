@@ -1,4 +1,4 @@
-"""What may sit at a lock path, and who may open it (ADR 0023, 0024).
+"""What may sit at a lock path, and who may open it.
 
 The shared lock directory is writable by a whole group, so a lock file
 is opened without following links, without blocking on a FIFO, and only
@@ -118,7 +118,7 @@ def test_a_lock_file_that_cannot_be_regrouped_is_still_a_lock(
 
     A sandboxed user service runs in a user namespace that maps only the
     user's own group. The mode still changes, the lock is still held,
-    and nothing is raised (ADR 0024).
+    and nothing is raised.
     """
     lock_dir(tmp_path, monkeypatch)
     others = [g for g in os.getgroups() if g != os.getegid()]

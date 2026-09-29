@@ -185,7 +185,7 @@ def test_the_input_matrix_is_verifiable_unlike_the_playback_matrix(session_mod):
     """The reason this feature came first.
 
     `/mix/<out>/playback/<pb>` is re-established from a known link state
-    and never confirmed (ADR 0002) because the dump omits it. The input
+    and never confirmed because the dump omits it. The input
     matrix is in the dump, so a monitoring path is the first thing this
     project routes that it can actually verify.
     """

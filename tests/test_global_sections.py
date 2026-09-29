@@ -254,7 +254,7 @@ def test_a_reduction_above_zero_is_refused(tmp_path):
 
 
 def test_the_control_room_splits_setup_from_buttons():
-    """ADR 0012 applied to a family where both kinds sit together.
+    """PIN and REMEMBER in a family where both kinds sit together.
 
     How far DIM reduces, what RECALL returns to and which pair the
     section drives are set once for a room. DIM, MONO and mute-enable
@@ -397,7 +397,7 @@ def test_the_box_and_the_clock_are_pinned():
 
     Which clock a room runs on, whether the word clock output is
     terminated, what the optical port carries and what the box does with
-    no computer attached are all installation, in ADR 0012's sense.
+    no computer attached are all installation, so they are pinned.
     """
     from oscmix_desk.registers import PIN, register_policy
 

@@ -82,7 +82,7 @@ def test_a_device_that_matches_says_so_plainly(session_mod, capsys, tmp_path, re
 # --------------------------------------------------------------------------
 
 def test_the_playback_matrix_is_counted_apart_from_real_differences():
-    """`/mix/<out>/playback/<pb>` is never reported (ADR 0002), so it is
+    """`/mix/<out>/playback/<pb>` is never reported, so it is
     written on every apply whatever the device holds. Listing it as a
     difference would answer "has the desk drifted?" with a number that
     is never zero.

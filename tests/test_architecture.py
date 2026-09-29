@@ -42,12 +42,12 @@ ALLOWED_IMPORTS = {
     "notify": {"log"},
     # `errors` since 0.6.9: two identical interfaces without
     # `[device] serial` are a configuration the user has to fix, and the
-    # leaf that finds the interfaces is the one that can tell (ADR 0024).
+    # leaf that finds the interfaces is the one that can tell.
     # errors is itself a leaf, so no direction in the graph changes.
     "discovery": {"errors", "log"},
     # log is a leaf: one named logger, configured by the CLI entry point
     # before load_config runs. The section parsers have it for the
-    # unknown-section warning of ADR 0006 -- a warning has to reach the
+    # unknown-section warning -- a warning has to reach the
     # journal, and returning it up the call chain would be a second error
     # channel beside ConfigError for no benefit. The loader itself logs
     # nothing.
@@ -61,7 +61,7 @@ ALLOWED_IMPORTS = {
     # pure message shapes, and keeping them here made reconcile sit
     # above routing while routing wanted to call it -- a cycle.
     # `errors` since 0.6.11, here and in verify: both have to tell a
-    # receive port that cannot be bound from one that is held (ADR 0025),
+    # receive port that cannot be bound from one that is held,
     # and the leaf is where that exception lives -- imported from there,
     # because `__init__` is the only module that re-exports.
     "routing": {"backend", "constants", "errors", "log", "model", "observation",
@@ -108,11 +108,11 @@ ALLOWED_IMPORTS = {
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
     # `discovery` since 0.6.7: the device lock is keyed by the interface,
-    # and the serial that names it is the leaf's to answer (ADR 0022).
+    # and the serial that names it is the leaf's to answer.
     # `process` since 0.6.9: a switch accepts the OSC port only from an
     # oscmix of this user that bridges the resolved interface, which is
     # the question the start's stale cleanup already asks through
-    # process.socket_owner (ADR 0024). process imports nothing above
+    # process.socket_owner. process imports nothing above
     # discovery, so no cycle.
     "profiles": {"backend", "config", "constants", "devices", "discovery",
                  "errors", "locking", "log", "marker", "model", "notices",
@@ -361,7 +361,7 @@ def test_every_public_name_is_exercised_by_some_test(session_mod):
 
 
 # --------------------------------------------------------------------------
-# The mutation exemption, ADR 0015.
+# The mutation exemption of the register table.
 # --------------------------------------------------------------------------
 
 def _exempt_lines():
@@ -400,7 +400,7 @@ def _defined_at(name, module="devices"):
                                   "_sub_registers",
                                   "UCX2", "FF802", "DEVICES"])
 def test_the_register_table_is_inside_the_mutation_exemption(name):
-    """ADR 0015: the data is checked by the recordings, not by mutmut."""
+    """The data is checked by the recordings, not by mutmut."""
     first, last = _exempt_lines()
     assert first < _defined_at(name) < last
 
@@ -411,7 +411,7 @@ def test_the_register_table_is_inside_the_mutation_exemption(name):
                                   "declared_paths", "register_policy",
                                   "verify_class", "settable_globals"])
 def test_everything_that_queries_the_table_stays_under_mutation(name):
-    """The half of ADR 0015 that keeps it honest.
+    """The half of the exemption that keeps it honest.
 
     Exempting data is defensible because the recordings check it harder.
     Exempting the functions that read that data would not be -- a wrong

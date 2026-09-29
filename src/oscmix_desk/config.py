@@ -95,7 +95,7 @@ _KNOWN_OPTIONS = {
 #: pinned, or a studio that would rather ride an input gain by hand.
 #:
 #: A section rather than an option inside ``[output:N]``, and that is not
-#: a style choice: ADR 0006 makes an unknown *option* in a known section
+#: a style choice: an unknown *option* in a known section is
 #: an error, so putting it there would mean every config using it is
 #: rejected whole by 0.2.x. An unknown *section* only warns, so this one
 #: degrades to "the defaults apply", which is the behaviour those
@@ -338,8 +338,7 @@ def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
                 # two -- a USB keyboard beside the interface -- it was
                 # "2 interfaces match ''" with `serial` as the remedy, and
                 # either way the desk had no model, so nothing in it was
-                # checked. It worked by accident; it is refused (0.6.11,
-                # ADR 0006).
+                # checked. It worked by accident; it is refused (0.6.11).
                 raise ConfigError(
                     "[device] name: expected the interface's name, for "
                     "example %r; an empty name matches every card that "

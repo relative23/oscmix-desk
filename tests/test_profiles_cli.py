@@ -189,7 +189,7 @@ def test_an_applied_but_unverifiable_switch_still_exits_ok(tmp_path, capsys,
     # slowest single test in the suite, and mutmut re-runs it per
     # mutant, which is what pushed the mutation job past a 90-minute
     # CI timeout. The outcome is what is under test here, not the
-    # durations; ADR 0010's timing tests own those.
+    # durations; the timing tests own those.
     from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import routing as routing_mod
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
@@ -209,7 +209,7 @@ def test_an_applied_but_unverifiable_switch_still_exits_ok(tmp_path, capsys,
 
 
 # --------------------------------------------------------------------------
-# --no-profile, and the listing's mark (ADR 0018)
+# --no-profile, and the listing's mark
 # --------------------------------------------------------------------------
 
 def _quick_wire(monkeypatch):
@@ -261,7 +261,7 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
         tmp_path, capsys, monkeypatch, caplog):
     # Measured: a switch sent right after a restart was reverted by the
     # unit's start-up verifier fifteen seconds later. The reload makes
-    # the unit re-read the desk in effect (ADR 0018).
+    # the unit re-read the desk in effect.
     # Which desk the unit runs cannot be told here (no unit process), and
     # "cannot be told" reloads as before; the rule itself has its own
     # tests in test_whose_backend.
@@ -305,8 +305,7 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
 
 
 # --------------------------------------------------------------------------
-# A switch the marker did not record must not be handed to the unit
-# (ADR 0019).
+# A switch the marker did not record must not be handed to the unit.
 # --------------------------------------------------------------------------
 
 def test_a_switch_whose_marker_cannot_be_written_does_not_reload(

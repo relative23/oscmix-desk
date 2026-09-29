@@ -56,7 +56,7 @@ def free_udp_port():
             return port
 
 def fake_proc(directory, bound=(), boxes=()):
-    """A /proc for device resolution and port identity (ADR 0024).
+    """A /proc for device resolution and port identity.
 
     ``boxes`` are (client, serial) pairs: each becomes a sequencer client
     named ``Fireface UCX II (<serial>)`` and a card, so the resolution
@@ -125,7 +125,7 @@ def proc_with_ports(directory, *ports):
     A test that drives the real CLI without a backend still has to get
     past the reachability check -- since 0.6.9 that means a visible
     interface and an oscmix of this user on the port bridging its client,
-    not merely a bound port (ADR 0024) -- because
+    not merely a bound port -- because
     it is the outcome-to-exit-code translation it is testing, and
     reachability has tests of its own.
     """
@@ -176,7 +176,7 @@ def device_key(path):
     """The device key the code under test derives for this config.
 
     From the same resolution the code uses, against the /proc the suite
-    points it at (ADR 0024) -- not against the machine's own card list.
+    points it at -- not against the machine's own card list.
     """
     import os
     from pathlib import Path

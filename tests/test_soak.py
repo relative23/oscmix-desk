@@ -146,8 +146,8 @@ def test_the_routing_survives_being_applied_over_and_over(tmp_path,
     for cycle in range(1, cycles + 1):
         one_startup(tmp_path, session_mod, cycle)
     elapsed = time.monotonic() - started
-    # Not a performance gate -- see docs/decisions on why this project
-    # asserts growth order rather than wall-clock time. It is a hang
+    # Not a performance gate -- this project asserts growth order rather
+    # than wall-clock time. It is a hang
     # detector: a cycle that waits out a real timeout instead of the
     # stubbed one takes 30 s+, and averaging that away over many cycles
     # is exactly what a soak must not do.

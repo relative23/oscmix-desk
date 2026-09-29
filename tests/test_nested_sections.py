@@ -1,4 +1,4 @@
-"""The three-band EQ, and the first section written the ADR 0014 way.
+"""The three-band EQ, and the first nested section.
 
 480 registers, the largest family in 0.4.0 and the first one nested:
 `[eq:input:3]` rather than a dotted option inside `[input:3]`, because
@@ -79,7 +79,7 @@ def test_the_bounds_are_upstreams():
 
 
 # --------------------------------------------------------------------------
-# The nested option must not leak into the flat section (ADR 0014).
+# The nested option must not leak into the flat section.
 # --------------------------------------------------------------------------
 
 def test_a_flat_section_offers_neither_nested_options_nor_the_switch():

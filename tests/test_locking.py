@@ -1,4 +1,4 @@
-"""The lock every writer of one interface holds (ADR 0019, 0022-0024).
+"""The lock every writer of one interface holds.
 
 Where it lives, how it is opened, who may hold it, how long it is waited
 for, and that a switch, a restore and the unit each refuse rather than
@@ -32,7 +32,7 @@ def test_a_switch_refuses_when_another_holds_the_lock_too_long(
         os.umask(umask)
     lock = locking.device_lock_path(path, device_key(path))
     # A plain file every writer of the interface can open -- owner and
-    # group, the group being the shared directory's (ADR 0024).
+    # group, the group being the shared directory's.
     assert stat.S_IMODE(lock.stat().st_mode) == 0o660
     assert outcome.state == outcome_mod.REFUSED
     assert outcome.name == "tracking"
@@ -103,7 +103,7 @@ def test_the_unit_locks_a_file_it_cannot_open_for_writing(tmp_path):
 @pytest.mark.skipif(os.geteuid() == 0, reason="root opens anything")
 def test_a_lock_that_cannot_be_opened_is_a_refusal(tmp_path, monkeypatch,
                                                    caplog):
-    """No lock, no write (ADR 0022).
+    """No lock, no write.
 
     Until 0.6.7 this warned and wrote anyway, which made "every writer
     holds one lock" true only while nothing went wrong. Every caller
@@ -335,7 +335,7 @@ def test_the_lock_file_is_openable_by_a_second_user(tmp_path, monkeypatch):
     needs to *open* the file -- but a lock file created 0600 by the unit
     cannot be opened by anyone else at all. Measured on the desk: the
     unit's own lock file came out `-rw-------`. Owner and group since
-    0.6.9, the group being the directory's (ADR 0024).
+    0.6.9, the group being the directory's.
     """
     shared_lock_dir(tmp_path, monkeypatch)
     umask = os.umask(0o077)
@@ -360,7 +360,7 @@ def test_a_configured_serial_is_the_key_a_switch_and_a_restore_lock_on(
     desk contends on its own box's key and nothing else. A switch that
     dropped the configured serial would key on the card list instead --
     another box's number, or `ambiguous` -- and walk past a holder of
-    its own box (ADR 0023).
+    its own box.
     """
     shared_lock_dir(tmp_path, monkeypatch)
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)

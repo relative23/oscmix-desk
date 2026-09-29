@@ -2,7 +2,7 @@
 
 Routes on a device nobody modelled: they are written as given, and said
 so once, by whoever has the desk in hand. There were three notices in
-0.6.11. A profile for another machine is refused since 0.7.0 (ADR 0026),
+0.6.11. A profile for another machine is refused since 0.7.0,
 and a desk is validated for the interface ``--device`` names rather than
 warned about afterwards, so this is the one that is left.
 """
@@ -19,7 +19,7 @@ from .model import Config
 def unchecked_routes_warning(config: "Config") -> Optional[str]:
     """What to say about routes on a device nobody modelled, or None.
 
-    Still no opinion (ADR 0006), and no longer a silent one: a channel
+    Still no opinion, and no longer a silent one: a channel
     section on such a device has warned since 0.6.2, while its routes
     went to the hardware without a channel check and without a word.
     Asked by the paths that write or show a desk, about that desk

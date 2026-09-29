@@ -1,11 +1,11 @@
 """The lock every writer of one interface holds.
 
 A switch, ``--no-profile``, and the unit's own apply, verifier and
-reconcile (ADR 0019). Two writers at once would interleave their link
-phases and mix writes on the wire, which is the ordering ADR 0001 exists
-to guarantee. Keyed by the interface rather than by a config directory
-(ADR 0022), in one directory that is the same for every writer on the
-machine (ADR 0023), and refused rather than skipped when it cannot be
+reconcile. Two writers at once would interleave their link
+phases and mix writes on the wire, which is the ordering the two-phase
+apply exists to guarantee. Keyed by the interface rather than by a config
+directory, in one directory that is the same for every writer on the
+machine, and refused rather than skipped when it cannot be
 held.
 """
 
@@ -26,18 +26,18 @@ from .log import log
 
 #: The lock every writer of this desk takes, beside the marker: a
 #: switch, `--no-profile`, and the unit's own apply, verifier and
-#: reconcile (ADR 0019). Two writers at once would interleave their link
-#: phases and mix writes on the wire -- the ordering ADR 0001 exists to
-#: guarantee. This name is the last fallback, beside the marker, for a
+#: reconcile. Two writers at once would interleave their link
+#: phases and mix writes on the wire -- the ordering the two-phase apply
+#: exists to guarantee. This name is the last fallback, beside the marker, for a
 #: session with neither the shared lock directory nor a runtime
-#: directory; every other writer keys on the interface (ADR 0023).
+#: directory; every other writer keys on the interface.
 SWITCH_LOCK = "active-profile.lock"
 
 #: The one path that is the same for every writer on the machine,
 #: created 3770 root:audio by tmpfiles.d. Overridable for tests through
 #: OSCMIX_LOCK_DIR; a directory that is absent means the root steps of
 #: the installer never ran, and the search falls through to the ones
-#: that depend on the caller (ADR 0023).
+#: that depend on the caller.
 SHARED_LOCK_DIR = "/run/oscmix-desk"
 
 
@@ -73,8 +73,7 @@ def device_lock_path(config_path: Optional[Path],
     that depends on neither the environment nor the user nor the config
     directory, so every writer of one interface computes it identically
     -- including one under sudo, cron or a bare ssh command, which have
-    no `$XDG_RUNTIME_DIR` and used to walk straight past a holder
-    (ADR 0023).
+    no `$XDG_RUNTIME_DIR` and used to walk straight past a holder.
 
     `$XDG_RUNTIME_DIR/oscmix-desk/` second, for a machine whose
     installer never ran the root steps. Beside the config last, for a
@@ -87,7 +86,7 @@ def device_lock_path(config_path: Optional[Path],
             # It exists, so every other writer on this machine is using
             # it. Falling back from here would put this process on a
             # different path from the holder, which is the hole the
-            # runtime directory had (ADR 0023). Unusable is a refusal.
+            # runtime directory had. Unusable is a refusal.
             return shared / ("%s.lock" % key)
         runtime = os.environ.get("XDG_RUNTIME_DIR")
         if runtime and os.path.isabs(runtime):
@@ -120,7 +119,7 @@ def control_path(config_path: Optional[Path], key: str) -> Path:
 #: it -- 0.6.8 followed one and chmod'ed its target to 0666, stopped only
 #: by fs.protected_symlinks. O_NONBLOCK keeps a FIFO from blocking open()
 #: until a writer appears -- a planted one hung every writer, the 30 s
-#: wait included (ADR 0024).
+#: wait included.
 _LOCK_OPEN = os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
 
 #: Owner and group: the shared directory belongs to `audio`, and every
@@ -136,10 +135,10 @@ def _open_lock(path: Path) -> Optional[int]:
     `flock` needs neither: the lock lives on the open file description,
     and a read-only one holds it exactly as well. None means there is no
     descriptor to lock, which the caller turns into a refusal rather
-    than into an unlocked write (ADR 0022).
+    than into an unlocked write.
 
     Only a regular file is a lock. A directory, FIFO, socket or device
-    at the path is refused, whoever put it there (ADR 0024).
+    at the path is refused, whoever put it there.
     """
     fd = _open_regular(path, os.O_RDWR | os.O_CREAT)
     if fd is not None:
@@ -175,7 +174,7 @@ def _share_with_the_directory_group(fd: int, path: Path) -> None:
     runs in a user namespace that maps only the user's own group, and
     fchown to `audio` fails there with EINVAL. It does not need to -- a
     file created in the setgid directory has the group already, and the
-    tmpfiles.d `z` line regroups one that predates it (ADR 0024).
+    tmpfiles.d `z` line regroups one that predates it.
     """
     try:
         info = os.fstat(fd)
@@ -240,12 +239,12 @@ def take_device_lock(config_path: Optional[Path],
     """Take the lock every writer of this device holds, or None.
 
     Every writer: a switch, `--no-profile`, and the unit's own apply,
-    verifier and reconcile (ADR 0019). None means it is not held, for
+    verifier and reconcile. None means it is not held, for
     any reason -- contention that outlasted the wait, a lock file that
     cannot be opened, a filesystem that cannot lock. Every caller
     refuses on None since 0.6.7: a write nobody serialised is the thing
     the lock exists to prevent, and "apply anyway" made the guarantee
-    conditional on nothing having gone wrong (ADR 0022).
+    conditional on nothing having gone wrong.
     """
     path = device_lock_path(config_path, key)
     if path is None:
@@ -296,7 +295,7 @@ def _switch_lock_held(config_path: Optional[Path],
     """Hold the device lock for this config, or yield False after the wait.
 
     Taken *after* the profile parsed: a refusal for a bad config needs
-    no lock and costs nothing, as ADR 0011 promises. Without a config
+    no lock and costs nothing, as a switch promises. Without a config
     there is no directory to lock in and nothing to contend with.
     """
     lock = take_device_lock(config_path, key)
@@ -311,6 +310,6 @@ def _switch_lock_held(config_path: Optional[Path],
 
 #: Wrapped here rather than with the decorator, on purpose: mutmut
 #: leaves decorated functions unmutated, and this loop is what the
-#: no-interleave guarantee rests on (ADR 0018). A decorator kept it out
+#: no-interleave guarantee rests on. A decorator kept it out
 #: of the 0.6.4 mutation run entirely; as a plain generator it is in.
 _switch_lock = contextlib.contextmanager(_switch_lock_held)

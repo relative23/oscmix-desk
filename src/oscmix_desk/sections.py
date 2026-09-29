@@ -4,8 +4,7 @@
 options they take and what each may hold is not written here but read
 from the device's table (``registers``), so a register row is all it
 takes for a section to parse. A device nobody modelled has no such
-sections; they are passed over with a warning that says what is modelled
-(ADR 0006).
+sections; they are passed over with a warning that says what is modelled.
 """
 
 from __future__ import annotations
@@ -54,7 +53,7 @@ def _has_register_model(device_name: str) -> bool:
     Two things answer "no": a name the model has never heard of, and a
     device it lists without rows -- the 802, whose channel map is read
     from upstream and whose registers nobody has measured. Both get no
-    opinion on routes (ADR 0006). Both must *say so* when a section asks
+    opinion on routes. Both must *say so* when a section asks
     for registers they cannot supply, rather than stay silent.
     """
     device = device_for_name(device_name)
@@ -113,8 +112,8 @@ def _is_nested_section(section: str, device_name: str) -> bool:
 
     Checked before the section is parsed so an unknown sub-family still
     falls through to the "newer version" warning rather than being
-    claimed and then rejected -- which is precisely the failure ADR 0014
-    measured in 0.3.0 and moved the format to avoid.
+    claimed and then rejected -- which is precisely the failure measured
+    in 0.3.0 that moved the format to nested sections.
     """
     parts = section.split(":")
     if len(parts) != 3 or not parts[2].strip().isdigit():
@@ -240,8 +239,8 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
     known = settable_options(device, family)
     if device is None or not known:
         # No rows for this device: an unmodelled name, or the 802, which
-        # lists channels and no registers. Routes still get no opinion
-        # (ADR 0006). A section that asks for registers the model cannot
+        # lists channels and no registers. Routes still get no opinion.
+        # A section that asks for registers the model cannot
         # supply must not: it used to return here in silence, having
         # parsed, shown nothing in `--dry-run` and delivered nothing at
         # the device, while looking exactly like a section that worked.

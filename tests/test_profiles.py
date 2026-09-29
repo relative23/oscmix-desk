@@ -82,7 +82,7 @@ def test_an_unknown_section_applies_without_it_rather_than_refusing(
         tmp_path, recording_backend):
     """The one deliberate exception, and it is not this module's to make.
 
-    ADR 0006: an unknown *section* warns and is ignored, an unknown
+    An unknown *section* warns and is ignored, an unknown
     *option* fails. A profile is a config, so it inherits that rule
     rather than inventing a stricter one -- a format that means two
     different things depending on which command read it is worse than
@@ -91,7 +91,7 @@ def test_an_unknown_section_applies_without_it_rather_than_refusing(
     Worth stating plainly because the trade-off is genuinely closer here
     than at boot. Refusing a profile switch is cheap (the desk keeps the
     old state), while refusing at boot means no routing at all -- which
-    is the case ADR 0006 argued from. The rule still wins on consistency.
+    is the case the rule was argued from. The rule still wins on consistency.
     """
     write_config(tmp_path / "profiles" / "odd.conf",
                  GOOD + "\n[from-a-newer-version]\nx = 1\n")
@@ -265,7 +265,7 @@ def test_the_four_states_are_the_only_four(tmp_path):
     # Three, until 0.7.0: "partly, and here is a traceback" was the state
     # the roadmap forbade, and a wire that gives out half-way produced it
     # all the same -- as the traceback. The fourth is that state with a
-    # name and both lists (ADR 0027). A fifth arrives by decision too.
+    # name and both lists. A fifth arrives by decision too.
     assert set(outcome_mod.STATES) == {outcome_mod.APPLIED_VERIFIED,
                                        outcome_mod.APPLIED_UNVERIFIED,
                                        outcome_mod.REFUSED,
@@ -485,7 +485,7 @@ def test_two_switches_do_not_interleave_on_the_wire(tmp_path, routing_mod,
 
     Each switch is a link phase, a barrier and a mix phase; interleaved,
     the second's links could land between the first's links and mix,
-    which is the ordering ADR 0001 exists to guarantee. The lock makes
+    which is the ordering the two-phase apply exists to guarantee. The lock makes
     one finish before the other starts, whichever wins.
     """
     import threading
@@ -557,7 +557,7 @@ def test_the_device_key_names_the_box_not_the_file(tmp_path):
 
 
 # --------------------------------------------------------------------------
-# No writing to an absent device (ADR 0023).
+# No writing to an absent device.
 # --------------------------------------------------------------------------
 
 

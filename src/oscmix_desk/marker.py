@@ -2,8 +2,8 @@
 
 One line in ``active-profile``: written by the CLI after an applied
 switch, removed by ``--no-profile``, and only ever *read* by the
-session, which is what keeps the unit's ``ProtectHome=read-only`` true
-(ADR 0018). Written through a temporary file of its own name and a
+session, which is what keeps the unit's ``ProtectHome=read-only`` true.
+Written through a temporary file of its own name and a
 rename, and synced with its directory, so that a reader sees the old
 name or the new one and a power cut cannot bring a half of either back.
 """
@@ -25,7 +25,7 @@ from .paths import profile_path
 #: `--no-profile`, and only ever *read* by the session -- which is what
 #: keeps the unit's ProtectHome=read-only true. Beside the config rather
 #: than in a state directory, so that `--config` selects the profiles
-#: and the marker together (ADR 0018).
+#: and the marker together.
 ACTIVE_MARKER = "active-profile"
 
 
@@ -63,7 +63,7 @@ def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
 class Marked(NamedTuple):
     """What a change of the marker achieved.
 
-    ``in_effect`` decides whether the unit may be reloaded (ADR 0019).
+    ``in_effect`` decides whether the unit may be reloaded.
     ``durable`` is the smaller promise: the directory was synced, so a
     power cut cannot bring the previous marker back. Until 0.6.11 that
     was a log line and the answer was a single bool that read as both.
@@ -78,7 +78,7 @@ def remember_active_profile(name: str, config_path: Optional[Path]) -> Marked:
 
     Not an outcome state: the device already has the profile, and a
     fourth state for "applied but forgotten" would be the "applied, but
-    the flag says otherwise" case ADR 0011 forbids.
+    the flag says otherwise" case a switch outcome must never be.
     """
     path = active_profile_path(config_path)
     if path is None:
@@ -149,7 +149,7 @@ def forget_active_profile(config_path: Optional[Path]) -> Marked:
 
     Not ``in_effect`` when it is still there afterwards, which the caller
     carries in the outcome: a reload sent then would re-apply the profile the
-    marker still names and undo the restore (ADR 0019).
+    marker still names and undo the restore.
     """
     path = active_profile_path(config_path)
     if path is None:

@@ -1,6 +1,6 @@
 """A write that fails part of the way.
 
-A switch promises an outcome and never an exception (ADR 0011). Until
+A switch promises an outcome and never an exception. Until
 0.7.0 a socket error after some of the registers had gone was a
 traceback out of `--profile`, with nothing said about which part of the
 profile was on the device.

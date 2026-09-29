@@ -85,7 +85,7 @@ UNBOUNDED_STEPS = (1.0, 10.0, 50.0)
 WRITE_PACE = 0.010
 
 #: Registers this tool refuses to touch, matched on the last path
-#: segment. See ADR 0016.
+#: segment: phantom power and reference levels.
 DANGEROUS = ("48v", "reflevel")
 
 #: What the artifact records about how the numbers were taken. In the
@@ -107,7 +107,7 @@ METHOD = ("Each register is written a different legal value from its own "
 
 
 def is_dangerous(path: str) -> bool:
-    """True for registers ADR 0016 keeps out of reach of a text file."""
+    """True for registers this tool never writes, whatever the model allows."""
     return path.rsplit("/", 1)[-1] in DANGEROUS
 
 
@@ -802,7 +802,7 @@ def main() -> int:
     # This walks every settable register and writes each one a different
     # value. It is the loudest writer in the repository, and until 0.6.8
     # it took no lock at all: a sweep and the unit's reconcile could
-    # interleave on one device (ADR 0023). No config directory is needed
+    # interleave on one device. No config directory is needed
     # for it -- the shared lock directory does not depend on one.
     try:
         interface = resolve_device(DEFAULT_USB_ID, DEFAULT_DEVICE_NAME, "",
@@ -810,7 +810,7 @@ def main() -> int:
     except DeviceAmbiguous as exc:
         # The sweep writes to whichever backend holds the default port and
         # names the box in its artifact; with two boxes it could do
-        # neither honestly (ADR 0024).
+        # neither honestly.
         sys.stderr.write("%s; the sweep supports one interface\n" % exc)
         return 1
     lock = take_device_lock(args.config, interface.key)

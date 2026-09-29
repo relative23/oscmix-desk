@@ -121,6 +121,6 @@ fail_under = 98
 # with `# pragma: no mutate start` / `end`. It is data built at import
 # time, which mutmut cannot attribute to a covering test, so it scored
 # as though nothing tested it while the recordings check it harder than
-# a mutant would. ADR 0015 has the measurement.
+# a mutant would.
 source_paths = ["src/oscmix_desk/"]
 pytest_add_cli_args_test_selection = ["tests/"]

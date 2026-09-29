@@ -11,7 +11,7 @@ upstream's folding of a linked pair onto its left channel, the 6.02 dB is
 the deficit measured on a UCX II for an unlinked route, `hi-z = on` as
 `,i 1` and `Internal` as clock source 0 are what the device reports
 (`tests/data/refresh-dump.json`), and the two phases with the links first
-are ADR 0001. A change to any of them has to be made here as well, by
+are the two-phase apply. A change to any of them has to be made here as well, by
 hand, which is the point.
 """
 

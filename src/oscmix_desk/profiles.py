@@ -2,7 +2,7 @@
 
 A profile is a complete ``routing.conf`` in ``profiles/`` beside the
 main one. Not a new section type: a profile *is* a config, parsed by the
-same code, subject to the same compatibility rule (ADR 0006), and
+same code, subject to the same compatibility rule, and
 ``--dump-config > profiles/tracking.conf`` composes for free.
 
 The design constraint is the desk, not the file format. Switching
@@ -15,7 +15,7 @@ cannot be understood costs an error message and not one datagram.
 That is why this states an outcome rather than raising (``outcome``):
 applied and verified, applied and unverified, refused, or written in
 part. A partial write names the submitted and unsent registers and
-leaves the active marker unchanged (ADR 0027). It cannot promise a
+leaves the active marker unchanged. It cannot promise a
 hardware rollback.
 
 The order of a switch is this module's, and only this module's: which
@@ -84,8 +84,8 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     the compiled-in default 7222 during development and wrote to a live
     Fireface from a unit test, because the default happened to match.
 
-    **A profile that names another machine is refused** (ADR 0026, since
-    0.7.0; 0.6.11 warned). Until then it won, and one persisted profile
+    **A profile that names another machine is refused** (since 0.7.0;
+    0.6.11 warned). Until then it won, and one persisted profile
     meant three targets: its own backend for the switch, the running
     session's for the reload the switch sent, its own again after a
     restart -- with two device locks over one marker. Restating
@@ -212,9 +212,9 @@ def effective_config(config_path: Optional[Path],
     Raises ConfigError only for `routing.conf` itself: a main config
     that does not parse is exit 2 as it always was. A remembered profile
     that does not load is a warning and a fallback, because a refused
-    start over a file nobody edited is the failure ADR 0006 exists to
-    prevent; the marker stays, so the warning stays until somebody
-    decides (ADR 0018).
+    start over a file nobody edited is the failure config compatibility
+    exists to prevent; the marker stays, so the warning stays until somebody
+    decides.
     """
     main = load_config(config_path, said=said)
     name = active_profile(config_path)
@@ -306,7 +306,7 @@ def _written(name: str, config: Config, device: Control
              ) -> Optional[Outcome]:
     """Write the desk. None when all of it went out; else how far it came.
 
-    A switch promises an outcome and never an exception (ADR 0011), and
+    A switch promises an outcome and never an exception, and
     until 0.7.0 a socket error part of the way broke that promise as a
     traceback, with some of the profile on the device and nothing said
     about which part. Nothing gone out is a
@@ -314,7 +314,7 @@ def _written(name: str, config: Config, device: Control
     its own state, with both lists, and the marker is left alone -- the
     desk in effect remains the previous one. Reload repairs only PIN;
     restoring its REMEMBER starting values requires explicit selection
-    or a new session (ADR 0012, ADR 0027).
+    or a new session.
     """
     try:
         apply_routing(config, device, intent=ApplyIntent.EXPLICIT)

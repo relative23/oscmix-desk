@@ -1,4 +1,4 @@
-"""One resolved interface, from the serial to the socket (ADR 0024).
+"""One resolved interface, from the serial to the socket.
 
 0.6.8 worked out the interface four times: the unit bound the first
 matching sequencer client, pinned the first serial in the card list, a

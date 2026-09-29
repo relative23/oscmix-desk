@@ -1,5 +1,5 @@
 """A desk read again by a running session: kept for the machine it runs
-on, or refused as a desk for somewhere else (ADR 0024, ADR 0026).
+on, or refused as a desk for somewhere else.
 """
 
 import argparse
@@ -110,8 +110,8 @@ def test_a_re_read_desk_for_somewhere_else_is_not_applied_here(
     assert "--no-profile" not in caplog.text
 
     # As an active profile over an untouched routing.conf it is not a desk
-    # at all since 0.7.0: the profile is refused where it is loaded (ADR
-    # 0026), and the desk in effect is routing.conf's, with a warning.
+    # at all since 0.7.0: the profile is refused where it is loaded, and
+    # the desk in effect is routing.conf's, with a warning.
     path.write_text("[route:main]\nplayback = 1/2\noutput = 1/2\n")
     write_config(tmp_path / "profiles" / "far.conf", elsewhere
                  + "[route:far]\nplayback = 1/2\noutput = 3/4\n")
@@ -217,7 +217,7 @@ def test_a_routing_conf_that_moved_is_followed_by_a_restart_whatever_is_active(
         tmp_path, caplog):
     """Only routing.conf can name another machine since 0.7.0, so there is
     one cause and one remedy. In 0.6.11 a profile could be the cause, and
-    the advice had three forms to keep up with it (ADR 0026)."""
+    the advice had three forms to keep up with it."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     running = profiles.load_config(path)

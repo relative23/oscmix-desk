@@ -1,4 +1,4 @@
-"""The unit takes the lock every other writer takes (ADR 0019).
+"""The unit takes the lock every other writer takes.
 
 Around its start-up apply and verifier and around every reconcile: one
 writer at a time, and a reconcile that cannot have the lock stands down

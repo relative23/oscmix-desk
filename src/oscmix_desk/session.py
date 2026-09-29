@@ -181,7 +181,7 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
     """
     # One transaction, from the first write to the verifier's last: a
     # switch that landed between them would be overwritten by the retry
-    # that follows it, which is what 0.6.3 measured (ADR 0019).
+    # that follows it, which is what 0.6.3 measured.
     lock = take_device_lock(config_path,
                             lock_key(config.usb_id, config.serial))
     if lock is None:
@@ -189,7 +189,7 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         # no routing is worse than a re-apply. It also made "every writer
         # holds one lock" conditional on nothing going wrong, which is
         # the opposite of what a guarantee is. systemd restarts the unit;
-        # a write nobody serialised cannot be taken back (ADR 0022).
+        # a write nobody serialised cannot be taken back.
         log.error("the device lock is not available; not applying routing")
         raise DeviceLockUnavailable(config.usb_id)
 
@@ -315,12 +315,12 @@ def _find_client(args: argparse.Namespace, config: Config, proc_root: Path,
     the box among identical ones, and without it more than one candidate
     is a configuration error, exit 2, which `RestartPreventExitStatus=2`
     keeps from becoming a restart loop. Until 0.6.9 the first matching
-    client was bound and the serial worked out separately (ADR 0024).
+    client was bound and the serial worked out separately.
 
     The start pins the serial it is given here, because it is read again
     on every write, and the card list empties the moment the interface is
     unplugged: a reconcile in that window would otherwise take a
-    different lock (ADR 0023). Until 0.7.0 this function wrote it into
+    different lock. Until 0.7.0 this function wrote it into
     its argument, which is how the caller's config came to change under
     it.
     """
@@ -407,7 +407,7 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
     telling systemd the desk was set while nothing had been written
     (0.6.7, 0.6.8). Returns the verifier thread, or the exit code of a
     start that failed: a held lock is a wait, not a desk, and systemd
-    retries after RestartSec (ADR 0022, ADR 0024); a socket the backend
+    retries after RestartSec; a socket the backend
     cannot be reached through was a traceback until 0.6.10.
     """
     try:

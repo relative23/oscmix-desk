@@ -116,7 +116,7 @@ def test_each_family_gets_its_own_section(seen):
 
 
 def test_a_nested_section_is_headed_by_sub_family_and_channel(seen):
-    """ADR 0014: `[eq:input:3]`, not options folded into `[input:3]`."""
+    """`[eq:input:3]`, not options folded into `[input:3]`."""
     text = dumped(seen)
     assert "[eq:input:3]" in text
     assert "[eq:input:1]" in text
@@ -174,7 +174,7 @@ def test_the_dump_is_a_fixed_point_from_the_second_render(seen, tmp_path):
     """Byte-for-byte, headers included, once round.
 
     Not from the *first*: the first render carries the device's
-    remembered state as comments (ADR 0012), and a family that is
+    remembered state as comments, and a family that is
     entirely remembered -- `[echo]` -- keeps its header while every line
     under it is a comment. The parser is right to drop those, so the
     section is gone next time round. From there on the file is stable,
@@ -206,7 +206,7 @@ def settings_in(text):
 def test_the_dump_parses_back_without_being_refused(seen, tmp_path):
     """The whole file, not just the parts we thought to check.
 
-    ADR 0006 refuses a file whole over one unknown option, so a single
+    An unknown option refuses a file whole, so a single
     misspelled name in the renderer makes every dump unusable.
     """
     path = tmp_path / "dumped.conf"

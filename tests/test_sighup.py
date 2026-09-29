@@ -1,4 +1,4 @@
-"""What SIGHUP does inside the process (ADR 0013).
+"""What SIGHUP does inside the process.
 
 It reconciles rather than restarting: the handler only sets a flag, the
 reload waits for the start-up verifier, a broken file keeps the running
@@ -270,7 +270,7 @@ def test_a_reload_applies_the_remembered_profile(tmp_path, session_mod,
     """The resume hook's reload must re-apply the desk that was chosen.
 
     A reload used to re-read routing.conf and apply that, which is how a
-    profile vanished after every wake (ADR 0018). It asks the same
+    profile vanished after every wake. It asks the same
     question the start asks now: the active profile, else routing.conf.
     """
     import argparse
@@ -375,7 +375,7 @@ def test_a_reload_keeps_the_ports_the_backend_is_bound_to(
     # A file that names another backend and another box is not moved to,
     # and since 0.6.11 it is not applied *here* either: it was pinned to
     # this session's interface and written, so a desk for one box reached
-    # another (ADR 0024 kept the settings, ADR 0026 is about the desk).
+    # another.
     path.write_text("[osc]\nport = 9100\nrecv-port = 9101\n"
                     "[device]\nname = Fireface 802\nusb-id = 1234:5678\n"
                     "serial = 99887766\n" + CONF)

@@ -63,7 +63,7 @@ def test_device_serials_read_the_product_string(tmp_path):
 
     An evidence artifact that cannot name its box stops being evidence
     the moment there is a second one; which box a process is for is
-    decided by discovery.resolve_device on top of this (ADR 0024).
+    decided by discovery.resolve_device on top of this.
     """
     from oscmix_desk.discovery import device_serials
 

@@ -183,7 +183,7 @@ class Config:
     usb_id: str = DEFAULT_USB_ID
     #: Which box, when the machine has more than one of the same
     #: model. Empty means "the only one", and two unnamed boxes
-    #: share one lock rather than racing (ADR 0023).
+    #: share one lock rather than racing.
     serial: str = ""
     osc_port: int = DEFAULT_OSC_PORT
     osc_recv_port: int = DEFAULT_OSC_RECV_PORT

@@ -34,7 +34,7 @@ from .registers import (
 )
 
 # --------------------------------------------------------------------------
-# The register table itself, exempt from mutation. ADR 0015.
+# The register table itself, exempt from mutation.
 #
 # Everything from here to the end of the device literals is the table:
 # the channel-map helper, the two loops that expand a row table into
@@ -47,7 +47,7 @@ from .registers import (
 #
 # What checks it instead is `tests/data/refresh-dump.json`, which fixes
 # every path and every type tag against what the device reports -- a
-# stricter statement than a surviving mutant. ADR 0015 has the numbers.
+# stricter statement than a surviving mutant.
 # --------------------------------------------------------------------------
 
 # pragma: no mutate start
@@ -211,7 +211,7 @@ def _sub_registers(family: str, sub: str,
     """One sub-family's rows: its own switch, then its options.
 
     The switch carries a value as well as a subtree (`/input/3/dynamics`
-    is a bool), which is the shape ADR 0014 spells `enabled`.
+    is a bool), which nested sections spell `enabled`.
 
     `.../meter` is deliberately absent from every table here. It is
     streamed and has no `.set` upstream, so it is not a setting -- the
@@ -341,7 +341,7 @@ UCX2 = Device(
         # but implied is not declared, so it is left open too.
         #
         # All REMEMBER: an echo send is what somebody dials in while
-        # working, not what describes the installation (ADR 0012).
+        # working, not what describes the installation.
         Register("/echo", "i", VERIFIABLE, GLOBAL, BOOL),
         Register("/echo/type", "is", VERIFIABLE, GLOBAL, ENUM,
                  ("Stereo Echo", "Stereo Cross", "Pong Echo")),
@@ -466,7 +466,7 @@ UCX2 = Device(
 
         # --- the three-band EQ, in and out (0.4.0) ---------------------
         # 480 registers, the largest family in the release, and the
-        # first written in a nested section (ADR 0014):
+        # first written in a nested section:
         #
         #     [eq:input:3]
         #     band1freq = 80

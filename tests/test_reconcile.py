@@ -175,7 +175,7 @@ def test_a_register_the_dump_never_mentioned_is_written(session_mod):
 
 
 def test_the_playback_matrix_is_never_confirmed_only_rewritten(session_mod):
-    # ADR 0002: a /mix write draws no reply and the dump omits it, so it
+    # A /mix write draws no reply and the dump omits it, so it
     # is re-established from a known link state rather than checked.
     # Even a dump that somehow carried it must not confirm it.
     config = make_config(session_mod, route(session_mod, output=(5, 6)))

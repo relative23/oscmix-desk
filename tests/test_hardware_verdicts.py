@@ -205,7 +205,7 @@ def test_a_shut_fader_is_named_instead_of_blaming_the_bus(harness):
     assert all("stop other audio" not in problem
                for problem in verdict["problems"])
     # ... and it says whose value that is: a route without 'volume'
-    # leaves the fader to the user (ADR 0003).
+    # leaves the fader to the user.
     assert all("yours" in problem for problem in verdict["problems"])
 
 
@@ -419,8 +419,8 @@ def test_the_evidence_names_the_particular_device():
     assert '"serial"' in source
     # The reading rule lives in the library's one resolution since 0.6.9:
     # evidence names the box the config selects, and refuses a machine
-    # with two it cannot tell apart rather than naming the first (ADR
-    # 0024). The behaviour is tested in test_device_identity.py.
+    # with two it cannot tell apart rather than naming the first. The
+    # behaviour is tested in test_device_identity.py.
     assert "resolve_device(" in source
     assert "except DeviceAmbiguous" in source
     import inspect

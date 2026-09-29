@@ -1,4 +1,4 @@
-"""What routing.conf promises across versions (ADR 0006, ADR 0014).
+"""What routing.conf promises across versions.
 
 Two directions, and they are not symmetric: a file from the future must
 still route what this version understands, and a file from the past must
@@ -124,13 +124,13 @@ stereo = false
     assert (route.level, route.volume, route.stereo) == (-6.0, -12.0, False)
 
 def test_the_known_surface_is_stated_rather_than_discovered(session_mod):
-    """ADR 0006 promises these names keep their meaning.
+    """These names keep their meaning in every later version.
 
     Changing the list is the point: it turns a compatibility decision
     into a visible edit rather than a diff nobody reads.
 
     `input` was added here in 0.3.0, and the consequence belongs where
-    the edit happens. Under ADR 0006 an unknown *option in a known
+    the edit happens. An unknown *option in a known
     section* is an error, so a config with an input route is **rejected
     whole** by a 0.2.0 install -- playback routes included, exit 2, no
     restart.
@@ -159,7 +159,7 @@ def test_the_known_surface_is_stated_rather_than_discovered(session_mod):
 # Sub-families this version does not carry. The property under test is
 # that an *unrecognised* one still falls through to the warning rather
 # than being claimed by the dispatch and then rejected -- which is the
-# failure ADR 0014 measured in 0.3.0. Naming a family that later lands
+# failure measured in 0.3.0. Naming a family that later lands
 # would only re-test that it landed.
 #
 # That warning was written here and then ignored two lines below it:
@@ -212,7 +212,7 @@ def test_the_unknown_names_are_ones_that_cannot_ever_land():
 @pytest.mark.parametrize("shape", FORWARD_COMPATIBLE_SHAPES)
 def test_a_family_first_section_is_skipped_not_refused(session_mod, tmp_path,
                                                        caplog, shape):
-    """ADR 0014, and the reason it is family-first rather than nested.
+    """Nested sections, and the reason they are family-first.
 
     A sub-family this version does not carry has to warn, be skipped,
     and leave the rest applied. The shape that matters is the dispatch:
@@ -241,7 +241,7 @@ def test_the_shapes_adr_0014_rejected_really_do_refuse_the_file(session_mod,
     format had to move rather than the parser.
 
     If this test ever passes for a shape above, the constraint behind
-    ADR 0014 has changed and the ADR should say so.
+    the nested section format has changed.
     """
     path = routing_conf(tmp_path, _WORKING + shape)
     with pytest.raises(session_mod.ConfigError):

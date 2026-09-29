@@ -1,4 +1,4 @@
-"""Which machine a profile is for (ADR 0026).
+"""Which machine a profile is for.
 
 A profile is the desk, not the machine: it inherits `[osc]` and
 `[device]` from its `routing.conf`, is validated for the device that
@@ -51,7 +51,7 @@ def test_a_profile_that_states_another_machine_setting_is_refused(
     """Option by option: until 0.7.0 the stated one won and the other four
     were inherited, which made one persisted profile three targets -- its
     own backend for the switch, the running session's for the reload the
-    switch sent, its own again after a restart (ADR 0026). The refusal
+    switch sent, its own again after a restart. The refusal
     names the profile, the file it disagrees with, the one setting that
     differs and what to do."""
     path = write_config(tmp_path / "routing.conf", _MAIN)
@@ -195,7 +195,7 @@ def test_a_profile_that_names_another_machine_changes_nothing_anywhere(
     switch writes nothing and moves no marker, a listing names it as
     broken, and a marker that already points at one -- written by 0.6.x,
     where such a profile still won -- falls back to routing.conf with a
-    warning, as for any active profile that no longer loads (ADR 0018)."""
+    warning, as for any active profile that no longer loads."""
     from oscmix_desk import marker as marker_mod
     from oscmix_desk import outcome as outcome_mod
 

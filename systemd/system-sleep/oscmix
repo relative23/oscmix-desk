@@ -1,7 +1,7 @@
 #!/bin/sh
 # systemd keeps user.slice frozen throughout both sleep-hook phases.
 # Queue one system job without waiting; its ordering postpones the user
-# manager calls until systemd-sleep has thawed that slice (ADR 0013).
+# manager calls until systemd-sleep has thawed that slice.
 case "${1:-}" in
     post) exec systemctl --no-block start oscmix-resume.service ;;
     reload-active) ;; # Only the ordered system service uses this phase.

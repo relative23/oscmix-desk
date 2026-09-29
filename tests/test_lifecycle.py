@@ -181,7 +181,7 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch, r
     assert set(apply_options) == {"should_stop"}
     apply_stop = apply_options["should_stop"]
     assert not apply_stop()
-    # Verified on a thread the session can outlive (ADR 0009): a daemon,
+    # Verified on a thread the session can outlive: a daemon,
     # named for thread dumps, running the verifier exactly once.
     assert verifier is not None, "a config with state to verify got no verifier"
     assert verifier.daemon is True
@@ -233,7 +233,7 @@ def test_an_empty_config_leaves_the_desk_alone(session_module, monkeypatch,
 
 
 # --------------------------------------------------------------------------
-# The start-up apply and its verifier are one transaction (ADR 0019).
+# The start-up apply and its verifier are one transaction.
 # --------------------------------------------------------------------------
 
 
@@ -247,13 +247,13 @@ def _machine(tmp_path, monkeypatch, boxes):
 
 def test_the_serial_is_pinned_once_the_device_is_found(lifecycle, tmp_path,
                                                        monkeypatch):
-    """The key must not move under a running writer (ADR 0023).
+    """The key must not move under a running writer.
 
     It is recomputed on every write, and the card list empties the moment
     the interface is unplugged. Measured across a real unplug in 0.6.7:
     the key went from `2a39-3fd9-24216011` to `2a39-3fd9-unknown` and a
     second lock file appeared beside the first. The pinned serial is the
-    one in the name of the client the unit bound (ADR 0024).
+    one in the name of the client the unit bound.
     """
     proc = _machine(tmp_path, monkeypatch, boxes=[(42, "24216011")])
     lifecycle()
@@ -285,11 +285,11 @@ def test_a_device_that_shows_no_serial_pins_an_empty_one(lifecycle, tmp_path,
 
 def test_a_start_without_the_lock_fails_and_never_signals_ready(
         session_mod, lifecycle):
-    """READY=1 only after the routing was applied (ADR 0024).
+    """READY=1 only after the routing was applied.
 
     0.6.7 and 0.6.8 refused to write without the lock -- and then sent
     READY=1 anyway, so systemd reported a started desk that had never
-    been written, and nothing retried. ADR 0022 said the start fails.
+    been written, and nothing retried. The start has to fail.
     It does now: EXIT_FAILURE, the backend stopped, and Restart=on-failure
     tries again after RestartSec.
     """
@@ -304,7 +304,7 @@ def test_an_ambiguous_interface_is_a_config_error_before_anything_starts(
     """Two identical interfaces and no `[device] serial`: exit 2, not a guess.
 
     Exit 2 is in RestartPreventExitStatus, so a config that cannot say
-    which box it is for does not become a restart loop (ADR 0024).
+    which box it is for does not become a restart loop.
     """
     code = lifecycle(alive=True, ambiguous=True)
     assert code == session_mod.EXIT_CONFIG

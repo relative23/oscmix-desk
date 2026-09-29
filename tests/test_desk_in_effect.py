@@ -1,5 +1,4 @@
-"""The desk in effect: the remembered profile, else `routing.conf`
-(ADR 0018).
+"""The desk in effect: the remembered profile, else `routing.conf`.
 
 What a start and a reload apply, what `--no-profile` goes back to, and
 what a switch says when it could not remember or forget.
@@ -21,7 +20,7 @@ def test_effective_config_is_the_remembered_profile(tmp_path):
     config, name = profiles.effective_config(path)
     assert name == "tracking"
     assert [r.output for r in config.routes] == [(5, 6)]
-    # Machine settings still come from routing.conf (ADR 0011).
+    # Machine settings still come from routing.conf.
     assert config.osc_port != 7222
 
 def test_without_a_marker_the_effective_config_is_routing_conf(tmp_path):
@@ -38,7 +37,7 @@ def test_without_a_marker_the_effective_config_is_routing_conf(tmp_path):
 def test_a_marker_that_cannot_be_honoured_falls_back_with_a_warning(
         tmp_path, caplog, marker, why):
     # The desk must come up; a refused start over a file nobody edited is
-    # the failure ADR 0006 exists to prevent. The marker stays, so the
+    # the failure config compatibility exists to prevent. The marker stays, so the
     # warning stays until somebody decides.
     path = desk(tmp_path, tracking=TRACKING,
                  broken="[route:x]\noutput = 99\nplayback = 1\n")
@@ -96,7 +95,7 @@ def test_the_listing_marks_the_active_profile(tmp_path):
 
 def test_a_marker_that_cannot_be_written_does_not_change_the_outcome(
         tmp_path, recording_backend, caplog, monkeypatch):
-    # Not a fourth state: the device has the profile, ADR 0011.
+    # Not a fourth state: the device has the profile.
     path = desk(tmp_path, tracking=TRACKING)
     marker = tmp_path / "active-profile"
     marker.mkdir()          # a directory where the file should be

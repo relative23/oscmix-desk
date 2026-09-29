@@ -16,15 +16,14 @@ StartLimitBurst=5
 Type=notify
 ExecStart=%h/.local/bin/oscmix-session
 # The fallback location of the device lock: /run/oscmix-desk, created
-# by tmpfiles.d for the group audio, comes first (ADR 0023, 0024), and
+# by tmpfiles.d for the group audio, comes first, and
 # this per-user runtime directory serves a machine whose installer never
 # ran its root steps. A lock the unit cannot take is a start it refuses.
 RuntimeDirectory=oscmix-desk
 RuntimeDirectoryPreserve=yes
 # Reconcile without restarting: re-read the desk in effect (the active
 # profile, else routing.conf), read the device back, and re-apply what
-# the config pins -- leaving alone what it remembers (ADR 0012, ADR 0013,
-# ADR 0018).
+# the config pins -- leaving alone what it remembers.
 #
 # $MAINPID and not `systemctl kill`. That was measured the hard way:
 # `systemctl --user kill --signal=SIGHUP oscmix.service` signals *every*

@@ -93,7 +93,7 @@ def select_seq_client(text: str, device_name: str, serial: str = "",
     one match is not a choice this function makes: the first client is
     whichever interface the kernel enumerated first, and a desk bound to
     it would configure an arbitrary box while its lock named another.
-    DeviceAmbiguous says so and names the remedy (ADR 0024).
+    DeviceAmbiguous says so and names the remedy.
 
     Only kernel clients count. ``cards``, when given, is the product name
     of every card the kernel lists, and a client counts only when its name
@@ -155,7 +155,7 @@ def usb_device_authorized(usb_id: str, sysfs_usb: Path) -> bool:
 
     Such a device -- deauthorized by hand, or held back by a policy such
     as USBGuard -- keeps its sysfs entry with no driver bound: no ALSA
-    card, no sequencer client (measured, ADR 0023). It is still
+    card, no sequencer client (measured). It is still
     *present*: the start retries it, as it retries a driver that has not
     loaded, and that retry is what brings the desk up once it is allowed
     -- authorizing it adds interfaces, not the device, so udev starts
@@ -258,8 +258,7 @@ class Device:
     so they cannot describe different boxes. Until 0.6.9 each was worked
     out on its own: the unit bound the first matching client, pinned the
     first serial in the card list, and a switch keyed on a rule of its
-    own -- three answers that agreed only while there was one interface
-    (ADR 0024).
+    own -- three answers that agreed only while there was one interface.
     """
 
     usb_id: str
@@ -282,7 +281,7 @@ def resolve_device(usb_id: str, device_name: str, serial: str,
     miss while two interfaces enumerate one after the other. More than one
     raises DeviceAmbiguous rather than picking. Both lists are matched on
     the model name, so a Fireface of another model beside it is not a
-    second candidate (ADR 0024).
+    second candidate.
 
     The serial comes from the client this desk binds, and from the card
     list only when no client is up, so a process and its lock describe the
@@ -316,7 +315,7 @@ def wait_for_device(usb_id: str, device_name: str, serial: str,
 
     The start binds the client and pins the serial from the same
     resolution, read once per poll, rather than finding a client and then
-    working out the serial from a second look at the machine (ADR 0024).
+    working out the serial from a second look at the machine.
     """
     clients_file = proc_root / "asound" / "seq" / "clients"
     deadline = time.monotonic() + timeout
@@ -390,7 +389,7 @@ def device_serials(cards: Path = Path("/proc/asound/cards"),
 
     More than one means the machine has more than one box, and nothing
     in the card list says which of them a given process is driving;
-    ``resolve_device`` refuses to guess (ADR 0024).
+    ``resolve_device`` refuses to guess.
     """
     products = card_products(cards) or []
     found: List[str] = []

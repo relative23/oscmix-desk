@@ -2,10 +2,10 @@
 
 Twice: under the device lock at the start, since the file the start read
 is older than the wait for the device and the lock, and on SIGHUP, which
-is how a switch, a resume and a person tell the unit to reconcile (ADR
-0013). Both keep the machine the session was started for and apply only
+is how a switch, a resume and a person tell the unit to reconcile.
+Both keep the machine the session was started for and apply only
 a desk that is for it -- what a restart with the same command line would
-apply here (ADR 0024, ADR 0026) -- and a reconcile says on the status
+apply here -- and a reconcile says on the status
 line whether it wrote.
 """
 
@@ -70,10 +70,10 @@ def _kept_for_this_process(fresh: Config, running: Config
     desk for somewhere else.
 
     The lock was taken and the backend bound for this process's ports,
-    usb id and pinned serial, and nothing re-read under it moves them
-    (ADR 0024). Until 0.6.11 that meant the re-read desk was applied
+    usb id and pinned serial, and nothing re-read under it moves them.
+    Until 0.6.11 that meant the re-read desk was applied
     *here* whatever it named: a `routing.conf` edited to name a box with
-    42 outputs reached a UCX II, which has twenty (ADR 0026).
+    42 outputs reached a UCX II, which has twenty.
 
     The re-read file is resolved the way a restart would resolve it --
     read and validated under the command line the start was given
@@ -87,7 +87,7 @@ def _kept_for_this_process(fresh: Config, running: Config
 
     Only ``routing.conf`` can name another machine since 0.7.0 -- a
     profile that does is refused where it is loaded, and the desk in
-    effect falls back to ``routing.conf`` (ADR 0018) -- so the advice is
+    effect falls back to ``routing.conf`` -- so the advice is
     the one a moved ``routing.conf`` gets: a restart follows it.
     """
     live = Machine(running.device_name, running.usb_id, running.serial,
@@ -173,7 +173,7 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
         return "reconcile skipped"
     path = _config_path(args)
     # The same lock a switch takes: a reconcile that started while one
-    # was writing used to interleave with it (ADR 0019).
+    # was writing used to interleave with it.
     lock = take_device_lock(path, lock_key(config.usb_id, config.serial))
     if lock is None:
         log.warning("SIGHUP: the device lock is not available; reconcile "
@@ -215,7 +215,7 @@ def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
     """The desk a SIGHUP re-reads, or None when the file is not usable.
 
     The active profile if one is remembered, routing.conf otherwise --
-    the same answer the start gives (ADR 0018), which is what makes the
+    the same answer the start gives, which is what makes the
     resume hook's reload re-apply the desk that was chosen rather than
     the default one. A config that no longer parses keeps the running
     configuration, which is the state somebody is listening to.

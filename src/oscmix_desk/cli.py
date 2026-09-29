@@ -145,8 +145,8 @@ def _desk_in_effect(config_path: Optional[Path],
                     said: CommandLine) -> Optional[Config]:
     """The desk this invocation is about, named in the log; None if refused.
 
-    The active profile if one is remembered, else routing.conf (ADR
-    0018); only routing.conf itself can refuse.
+    The active profile if one is remembered, else routing.conf; only
+    routing.conf itself can refuse.
     """
     try:
         config, active = effective_config(config_path, said)
@@ -257,7 +257,7 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
 
 
 #: The things one invocation can be asked to do. Two of them at once is
-#: a config error, refused before anything is written (ADR 0011).
+#: a config error, refused before anything is written.
 _ACTIONS = (("--profile", "profile"), ("--no-profile", "no_profile"),
             ("--diff", "diff"), ("--dump-config", "dump_config"),
             ("--snapshot", "snapshot"), ("--pipewire-sinks", "pipewire_sinks"),
@@ -269,7 +269,7 @@ def _refuse_conflicting_actions(parser: ArgumentParser,
     """Two actions asked for in one command is a config error.
 
     Refusing before anything is written is the promise a bad profile
-    already gets: it costs a message, never a fader (ADR 0011). Until
+    already gets: it costs a message, never a fader. Until
     0.6.6 the first branch in the dispatch simply won, so `--profile X
     --no-profile` switched and `--profile X --diff` wrote the device and
     then compared it against something else. Until 0.6.10 only those
@@ -357,7 +357,7 @@ def _report_outcome(outcome: "Outcome",
     """One line on stdout and the exit code the outcome maps to.
 
     Shared by the switch and by `--no-profile`, which is the same
-    transaction with routing.conf as the desk (ADR 0018). Four states,
+    transaction with routing.conf as the desk. Four states,
     four codes: a script that branches on `$?` has to be able to tell
     "the desk is yours and will stay" from "it is yours until the next
     start", and neither from "the unit did not hear about it".
@@ -375,7 +375,7 @@ def _report_outcome(outcome: "Outcome",
     if not outcome.persisted:
         # Measured on the desk: with the marker unwritten, the reload's
         # reconcile re-read routing.conf and undid the switch two
-        # seconds after it was reported as applied (ADR 0019).
+        # seconds after it was reported as applied.
         log.warning("%s not reloaded: the marker was not written, and its "
                     "reconcile would undo what was just applied",
                     SERVICE_UNIT)

@@ -65,7 +65,7 @@ def test_the_installation_and_the_routing_are_pinned(path):
     "/output/1/phase", "/input/1/phase",
 ])
 def test_what_a_person_reaches_for_during_a_session_is_remembered(path):
-    """ADR 0003's rule, now stated per register instead of implied.
+    """Remembered by default, now stated per register instead of implied.
 
     The example config once carried `volume = 0.0` in a monitor block,
     and every restart forced a hand-set -20 dB back to unity. Declaring
@@ -96,7 +96,7 @@ def test_every_settable_option_has_a_deliberate_policy():
         "volume": REMEMBER, "mute": REMEMBER, "phase": REMEMBER,
         # A headphone listening preference, not installation state: it
         # changes how a mix sounds to one listener and breaks nothing if
-        # somebody turns it. ADR 0003's default, decided rather than
+        # somebody turns it. The default, decided rather than
         # inherited -- which is what this test is for.
         "crossfeed": REMEMBER,
     }
@@ -246,7 +246,7 @@ def test_a_typo_in_the_pin_section_is_an_error(tmp_path, broken, why):
 def test_an_old_version_would_ignore_the_section_not_reject_the_file(tmp_path):
     """Why [pin] is a section and not an option in [output:N].
 
-    ADR 0006: an unknown *option* in a known section is an error, an
+    An unknown *option* in a known section is an error, an
     unknown *section* is a warning. Putting this in [output:N] would mean
     every config using it is rejected whole by 0.2.x -- the routing gone,
     on a machine that upgraded a config before it upgraded the package.

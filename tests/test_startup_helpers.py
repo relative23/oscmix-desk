@@ -2,7 +2,7 @@
 
 Waiting for the backend to bind its port, and the handlers that turn a
 signal into a stop: driven in process here, because a test that starts a
-real session loads the checked-out source and never a mutant (ADR 0005).
+real session loads the checked-out source and never a mutant.
 """
 
 import time

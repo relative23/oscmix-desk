@@ -1,4 +1,4 @@
-"""Which profile is in effect, remembered beside the config (ADR 0018).
+"""Which profile is in effect, remembered beside the config.
 
 Read with suspicion, written through a rename so it is never half there,
 synced with its directory, and honest about the three ways that can go

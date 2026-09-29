@@ -172,8 +172,8 @@ def test_hotplug_is_handled_by_udev_and_not_by_a_second_mechanism():
     then hotplug silently stops re-applying anything, and the session has
     no path of its own to fall back on. The `remove` half is asserted too,
     though what ends the service on unplug is the backend exiting with
-    its device, not `StopWhenUnneeded` (an enabled unit is never unneeded;
-    ADR 0013, amended). So all of it is asserted here rather than assumed
+    its device, not `StopWhenUnneeded` (an enabled unit is never
+    unneeded). So all of it is asserted here rather than assumed
     from a comment.
     """
     rules = repo_file("udev", "90-rme-fireface.rules").read_text()
@@ -240,5 +240,5 @@ def test_no_sample_rate_trigger_exists_and_that_is_deliberate():
                     and "clock/samplerate" in node.value):
                 handlers.append("%s:%d" % (path.name, node.lineno))
     assert handlers == [], (
-        "something now acts on the sample rate: %s -- ADR 0013 says the "
-        "measured loss is zero, so say what changed" % handlers)
+        "something now acts on the sample rate: %s -- the measured loss "
+        "was zero, so say what changed" % handlers)

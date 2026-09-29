@@ -41,7 +41,7 @@ class Traits:
     for four releases none of them was: the docstring promised that
     flipping ``reports_link_state_on_write`` would be the change when
     upstream fixed the cache, and no branch consulted it. The barrier
-    does now. The other two are facts the register table and ADR 0002
+    does now. The other two are facts the register table and the verifier
     already encode; they stay here as the named, tested statement of
     *why* that encoding is what it is, not as a switch.
     """
@@ -59,7 +59,7 @@ class Traits:
 
     #: Whether a state dump carries ``/mix/<out>/playback/<pb>``. False:
     #: confirmed absent from a full recorded dump, which is why the
-    #: playback matrix is re-established rather than verified (ADR 0002).
+    #: playback matrix is re-established rather than verified.
     #: Documented, not read: the register table encodes it as the
     #: ``REESTABLISHED`` class of ``/mix/{out}/playback/{pb}``.
     dumps_playback_matrix: bool

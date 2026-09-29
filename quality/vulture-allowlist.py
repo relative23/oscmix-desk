@@ -21,7 +21,7 @@ used. `_.x` marks an attribute, a bare name a function or constant.
 # backend.Traits: two of three fields are documented facts, checked by
 # tests/test_backend.py against recordings, and deliberately not read
 # by the runtime -- the register table encodes what they state.
-_.dumps_playback_matrix          # noqa: F821  -- ADR 0002, REESTABLISHED class
+_.dumps_playback_matrix          # noqa: F821  -- the REESTABLISHED class
 _.reports_unchanged_registers    # noqa: F821  -- why the barrier is opportunistic
 
 # constants.startup_budget: the arithmetic tests/test_unit_file.py holds

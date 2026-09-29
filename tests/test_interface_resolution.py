@@ -1,5 +1,5 @@
 """Which interface a desk is for: the serial, the sequencer client and
-the card list, from one resolution that never guesses (ADR 0024).
+the card list, from one resolution that never guesses.
 """
 
 import threading

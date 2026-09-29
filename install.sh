@@ -77,7 +77,7 @@ options:
   --no-udev    skip the root steps: the udev rule (no hotplug autostart),
                resume integration (no reconcile after suspend) and the
                shared lock directory (the lock falls back to the
-               per-user runtime directory, ADR 0023)
+               per-user runtime directory)
   -h, --help   show this help
 
 environment:
@@ -330,7 +330,7 @@ install -D -m 644 "$PROJECT_DIR/config/routing.conf.example" \
     "$CONFIG_DIR/routing.conf.example"
 
 # No lock file to create: the lock lives in /run/oscmix-desk, which the
-# root step below creates through tmpfiles.d (ADR 0023, 0024), or in the
+# root step below creates through tmpfiles.d, or in the
 # per-user runtime directory the unit creates itself. A lock file left by
 # an older install beside the config is harmless and stays.
 
@@ -431,7 +431,7 @@ if [ "$DO_UDEV" = 1 ]; then
     # The lock directory every writer of an interface shares. Without
     # it the path falls back to $XDG_RUNTIME_DIR, which sudo, cron and a
     # bare ssh command do not have -- and a writer that computes a
-    # different path does not contend with the holder (ADR 0023).
+    # different path does not contend with the holder.
     info "installing the shared lock directory (needs root)"
     if command -v systemd-tmpfiles >/dev/null 2>&1 \
         && $SUDO install -m 644 "$PROJECT_DIR/systemd/tmpfiles.d/oscmix-desk.conf" \
@@ -439,7 +439,7 @@ if [ "$DO_UDEV" = 1 ]; then
         && $SUDO systemd-tmpfiles --create "$TMPFILES_CONF"; then
         info "lock directory: /run/oscmix-desk (group audio)"
         # Only members of `audio` can take the lock; everyone else is
-        # refused, the unit included (ADR 0024).
+        # refused, the unit included.
         if ! id -nG "$(id -un)" | tr ' ' '\n' | grep -qx audio; then
             warn "$(id -un) is not in the group audio, so it cannot take the"
             warn "device lock and every start and switch will be refused:"

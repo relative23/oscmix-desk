@@ -43,7 +43,7 @@ def test_an_unmodelled_device_keeps_working_exactly_as_before(session_mod,
 
 def test_routes_on_an_unmodelled_device_have_a_warning_for_the_caller(
         session_mod, tmp_path, caplog):
-    """Still no opinion (ADR 0006) -- but a channel section on such a device
+    """Still no opinion -- but a channel section on such a device
     has warned since 0.6.2, while its routes were written to hardware
     nobody modelled without a word. The parser stays quiet: it runs on
     every load, and the first cut of this warned two to four times per
@@ -77,7 +77,7 @@ def test_an_empty_device_name_is_a_config_error(session_mod, tmp_path, name):
     MIDI-capable card it selected that card, with a second one -- a USB
     keyboard beside the interface -- the start refused as ambiguous and
     pointed at `serial`; and either way the desk had no model, so nothing
-    in it was checked. It worked by accident (0.6.11, ADR 0006)."""
+    in it was checked. It worked by accident (0.6.11)."""
     from oscmix_desk import discovery
     from oscmix_desk.errors import DeviceAmbiguous
 
@@ -100,7 +100,7 @@ def test_a_config_records_what_its_file_said_and_what_the_command_line_did(
     """`loaded` is what the file said, `overrides` what the command line put
     over it, and the five settings are the second over the first. A
     running session resolves a file it reads again with `overrides` and
-    holds it against those (ADR 0024, ADR 0026)."""
+    holds it against those."""
     from oscmix_desk import CommandLine
 
     assert session_mod.Config().loaded is None, "not loaded, no record"
@@ -274,7 +274,7 @@ def test_a_nested_or_global_section_on_the_802_is_not_blamed_on_a_newer_version(
 def test_an_unknown_section_on_a_modelled_device_still_suggests_a_newer_version(
         session_mod, tmp_path, caplog):
     # The other branch keeps its meaning: on the UCX II an unknown
-    # section really may come from a newer version (ADR 0006).
+    # section really may come from a newer version.
     path = routing_conf(tmp_path, "[device]\nname = Fireface UCX II\n\n"
                            "[frobnicate]\nlevel = 1\n")
     with caplog.at_level("WARNING"):

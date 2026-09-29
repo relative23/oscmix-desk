@@ -75,7 +75,7 @@ def profiles_dir(config_path: Optional[Path] = None) -> Optional[Path]:
 
     Beside it rather than inside it, because a profile *is* a
     ``routing.conf`` -- complete, parsed by the same code, subject to
-    the same compatibility rule (ADR 0006). A new section type for them
+    the same compatibility rule. A new section type for them
     would have meant a second format with a second set of promises, and
     ``--dump-config > profiles/tracking.conf`` would not compose.
     """

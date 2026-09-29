@@ -49,8 +49,8 @@ def wait_unless_stopped(seconds: float, should_stop: StopCheck,
     A plain ``time.sleep`` is what let ``LINK_SYNC_BLIND_DELAY`` outlast
     ``TimeoutStopSec``: the session would exit with the verifier still
     parked in it, and the daemon thread would be cut wherever it happened
-    to be -- possibly between two mix writes. The delay is 5 s now
-    (ADR 0010) and would fit either way, but the property this function
+    to be -- possibly between two mix writes. The delay is 5 s now,
+    measured, and would fit either way, but the property this function
     provides must not depend on that: ``VERIFY_TIMEOUT`` is 10 s and the
     verifier can run two of them.
     """

@@ -41,7 +41,7 @@ def dump():
 
 
 def test_the_fixture_names_the_revision_it_was_taken_against(dump):
-    # A dump is evidence about one build of oscmix (ADR 0008). One that
+    # A dump is evidence about one build of oscmix. One that
     # does not say which build is not evidence.
     assert len(dump["oscmix_revision"]) == 40
     assert dump["device"] == "Fireface UCX II"
@@ -50,7 +50,7 @@ def test_the_fixture_names_the_revision_it_was_taken_against(dump):
 
 def test_the_pinned_revision_is_the_one_the_dump_came_from(dump):
     # If the pin moves without a re-record, the fixture describes a
-    # backend that is no longer shipped -- the exact failure ADR 0008
+    # backend that is no longer shipped -- the exact failure the pin
     # exists to prevent, in the artifact rather than in the release.
     install = repo_file("install.sh").read_text()
     pinned = next(line.split('"')[1].split(":-")[1].rstrip("}")
@@ -107,8 +107,8 @@ def test_the_playback_mix_matrix_is_absent_as_documented(dump):
               if path.startswith("/mix/") and "/playback/" in path]
     assert matrix == [], (
         "the dump now reports the playback mix matrix: %s -- if upstream "
-        "started dumping it, the matrix becomes verifiable and ADR 0002 "
-        "needs revisiting" % matrix[:5])
+        "started dumping it, the matrix becomes verifiable and its "
+        "re-established class needs revisiting" % matrix[:5])
 
 
 def test_the_input_mix_matrix_is_present_as_0_3_0_assumes(dump):
@@ -162,7 +162,7 @@ def test_the_measured_dump_disagrees_with_the_prose_and_says_so(
     That was first measured with only the backend restarted, which left
     a cold *device* as the untested condition and
     LINK_SYNC_BLIND_DELAY=20 with an excuse. It lost the excuse and then
-    the value: 5 s since ADR 0010. See
+    the value: 5 s since then. See
     tests/data/cold-plug-timeline.json, captured across a real USB
     replug on both OSC ports. /playback/*/stereo arrives at 0.0 s there
     too -- before the session has sent a single message -- and the link

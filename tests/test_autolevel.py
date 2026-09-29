@@ -54,7 +54,7 @@ def test_maxgain_is_eighteen_decibels_not_a_hundred_and_eighty():
 
 
 def test_autolevel_is_remembered_rather_than_pinned():
-    """ADR 0003's default: something a person reaches for during a
+    """Remembered by default: something a person reaches for during a
     session, not installation state."""
     assert register_policy(UCX2, "/input/3/autolevel/maxgain") == "remember"
     assert register_policy(UCX2, "/input/3/autolevel") == "remember"
