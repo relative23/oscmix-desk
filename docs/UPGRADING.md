@@ -49,9 +49,11 @@ Python callers: `apply_routing()`, `verify_routing()` and
 `verify_and_repair()` take a connected backend control object instead of OSC
 ports, and `verify_and_repair()` returns whether the read-back ended without a
 remaining problem. That object is not part of the supported root API in 0.8.0;
-the release notes did not say so. Scripts should use `switch_profile()` and
-`restore_main()`, which connect themselves, or the `oscmix-session` command
-line until a public operation interface replaces these three functions.
+the release notes did not say so. Until a public operation interface
+replaces these three functions, use the `oscmix-session` command line. From
+Python, `switch_profile()` and `restore_main()` connect themselves, but pass
+`config_path` explicitly: without it they use an empty desk, not the
+discovered `routing.conf`. They also do not reload the running service.
 
 For a software rollback, restore the complete 0.7.3 installation or its exact
 core/GTK package pair, then restart deliberately with the preserved desk.
