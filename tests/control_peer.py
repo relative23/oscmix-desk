@@ -15,8 +15,16 @@ import subprocess
 import sys
 import threading
 import time
+from pathlib import Path
 
-from oscmix_desk.protocol import (
+# The package qualification runs tests/gtk_control.py as a script, with the
+# system Python beside an installed desk that is not on sys.path. The wire
+# values come from this checkout either way.
+SOURCE = str(Path(__file__).resolve().parents[1] / "src")
+if SOURCE not in sys.path:
+    sys.path.insert(0, SOURCE)
+
+from oscmix_desk.protocol import (  # noqa: E402
     HEADER,
     MAGIC,
     PAYLOAD,
