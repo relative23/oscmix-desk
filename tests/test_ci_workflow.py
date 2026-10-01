@@ -58,13 +58,14 @@ def test_timeouts_are_bounded_for_their_job_cost():
     Each one is meant to catch a hang, so it belongs well above the
     job's measured maximum and far below the default -- the numbers are
     recorded in the workflow next to them. Mutation gets a specific
-    240-minute ceiling after two scheduled runs exhausted 180 minutes;
-    that exception must not increase another job's allowed duration.
+    ceiling: 240 minutes after two scheduled runs exhausted 180, and 330
+    after two more exhausted 240 (0.8.0). That exception must not increase
+    another job's allowed duration.
     """
     too_generous = {}
     for job, block in _jobs().items():
         found = re.search(r"timeout-minutes:\s*(\d+)", block)
-        limit = 240 if job == "mutation" else 180
+        limit = 330 if job == "mutation" else 180
         if found and int(found.group(1)) > limit:
             too_generous[job] = int(found.group(1))
     assert too_generous == {}, (

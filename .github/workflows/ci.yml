@@ -222,10 +222,16 @@ jobs:
     # leaving 198 unjudged. Give this job 240 minutes; individual mutant
     # timeouts still bound stalled cases, and mutation-policy still
     # requires a complete result and the existing score floor.
+    #
+    # 0.8.0: the nights of September 30 and October 1 reached 240 as well.
+    # Run 36849164878 stopped at 11140/11497 mutants after 240 minutes, so
+    # a complete run needs about 250, and 0.8.1 adds mutants. 330 leaves
+    # room below the 360-minute limit of a hosted job; past that, the run
+    # has to be split, not lengthened.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     continue-on-error: true
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
