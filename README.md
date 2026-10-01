@@ -12,7 +12,7 @@ It builds on [oscmix] by Michael Forney, which speaks the Fireface's MIDI
 SysEx protocol and provides a GTK mixer similar to TotalMix FX. oscmix-desk
 adds the declarative desk, profiles, verification and the Linux integration.
 
-The latest release is **0.8.0**.
+The latest release is **0.8.1**.
 
 ![oscmix-gtk showing the Fireface UCX II hardware mixer](docs/img/oscmix-gtk.png)
 
