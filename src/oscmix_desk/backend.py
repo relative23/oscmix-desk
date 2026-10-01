@@ -220,7 +220,10 @@ class Control:
             sent = self._sock.send(packet)
         except OSError as exc:
             self.close()
-            raise ReceivePortError(exc.errno, "backend send failed: %s" % exc) from exc
+            # A send timeout has no errno, and an errno-less failure reads
+            # as a refusal the plan made (WriteFailed.refused).
+            raise ReceivePortError(exc.errno or errno.ETIMEDOUT,
+                                   "backend send failed: %s" % exc) from exc
         if sent != len(packet):
             self.close()
             raise ReceivePortError(errno.EIO, "incomplete control request")

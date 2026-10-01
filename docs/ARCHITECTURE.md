@@ -74,7 +74,7 @@ acyclic graph.
 
 | Module | What it owns |
 |---|---|
-| `constants` | every exit code and the session's timing constants, each with the measurement that produced it; the ODK1 client's own limits live in `backend`, the backend's clocks in `protocol` |
+| `constants` | every exit code and the session's timing constants, each with the measurement that produced it; the ODK1 client's queue limits and keepalive interval live in `backend`, the backend's clocks in `protocol` |
 | `errors` | configuration, ambiguous-device and lock refusals; `ReceivePortError` for failed coordinated observations (retained API name), and `WriteFailed` with submitted/pending paths |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |

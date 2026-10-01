@@ -177,7 +177,10 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
     lock = device_lock(path, lock_key(config.usb_id, config.serial),
                        should_stop=lambda: stop_requested["stop"])
     if not isinstance(lock, DeviceLock):
-        log.warning("SIGHUP: %s; reconcile skipped -- send the reload again", lock)
+        if stop_requested["stop"]:
+            log.info("SIGHUP: %s; reconcile skipped", lock)
+        else:
+            log.warning("SIGHUP: %s; reconcile skipped -- send the reload again", lock)
         return "reconcile skipped"
     try:
         fresh = _reloaded_desk(config, path)

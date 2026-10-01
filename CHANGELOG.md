@@ -5,8 +5,8 @@
 ### Changed
 
 - Every failure that closes the backend connection raises `ReceivePortError`,
-  a failed send included; it was a plain `OSError`. Refusals that leave the
-  connection usable remain `OSError`.
+  a failed send included; it was a plain `OSError`. A send timeout carries
+  `ETIMEDOUT`. Refusals that leave the connection usable remain `OSError`.
 - The text of `--status` says `none` for a desk without a profile or
   configured serial, where it said `unknown`. The JSON is unchanged.
 
@@ -59,9 +59,9 @@
 - A lock file that cannot be opened is reported as that, not as another
   writer holding the device lock for 30 seconds. The wait for the lock ends
   when the service is stopped.
-- A stop, or the backend exiting, during the start no longer fails the start
-  with exit 1, and a backend that exits while the start waits for the lock is
-  no longer logged as a stop.
+- A stop during the start no longer fails the start with exit 1, and a
+  backend that exits during the start is reported through its own exit
+  status (exit 0 after an unplug), not as a failed start or as a stop.
 - A reload that ends early reports `reconcile skipped` only when nothing was
   sent, and `reconcile incomplete` otherwise. The start-up verifier tells a
   repair it refused, an unfinished backend operation and a stop apart from a
@@ -74,7 +74,8 @@
   points to `oscmix-setup --migrate-source`; it used to stop and disable the
   package's service and remove the system files the package owns. Without a
   reachable user manager it now removes the service's enable links and, for
-  the account's own home, the system files; it left both behind.
+  the account's own home and not as root, the system files; it left both
+  behind.
 - A package installation keeps its own files when another package tool is
   also installed: every available package database is asked whether it owns
   a system file, not only the first one found.
@@ -95,7 +96,6 @@
   trigger the distribution workflow.
 - Upgrade and rollback checks start from 0.8.0, which is also added to the
   installer upgrade test.
-
 - The backend protocol's request, event, status, role and source numbers are
   named once, in `oscmix_desk.protocol`, and a test compares them with the
   backend's `control.h`.

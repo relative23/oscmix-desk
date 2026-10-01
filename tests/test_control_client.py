@@ -571,6 +571,33 @@ def test_a_failed_send_closes_the_connection_like_a_failed_receive(control):
     assert client._closed
 
 
+def test_a_send_timeout_is_a_timeout_not_a_refusal(control, monkeypatch):
+    # socket.timeout has no errno; WriteFailed.refused keys on errno None,
+    # so it read as a refusal the plan made, with "[Errno None]" in front.
+    _server, client = control
+
+    class Stuck:
+        def __init__(self, real):
+            self.real = real
+
+        def settimeout(self, value):
+            self.real.settimeout(value)
+
+        def send(self, _packet):
+            raise socket.timeout("timed out")
+
+        def close(self):
+            self.real.close()
+
+    monkeypatch.setattr(client, "_sock", Stuck(client._sock))
+    client._lease = 1
+    with pytest.raises(WriteFailed) as failed:
+        client.send([("/output/1/volume", "f", (0.0,))])
+    assert failed.value.errno == errno.ETIMEDOUT
+    assert not failed.value.refused
+    assert "Errno None" not in str(failed.value)
+
+
 def test_a_late_acknowledgement_within_its_deadline_is_accepted(peer):
     server = peer(delay={HELLO: 1.2})
     client = backend.Control(server.path, os.getpid())

@@ -2,8 +2,9 @@
 
 Every value mirrors ``control.h`` from patches/0003; tests/test_protocol.py
 parses that header and fails when one side changes without the other.
-This module holds wire facts only. How the desk uses them (timeouts,
-queue limits, retries) stays with the client in backend.py.
+This module holds wire facts only. How the desk uses them stays with the
+client: its timeouts in constants.py, its queue limits and keepalive
+interval in backend.py.
 """
 
 import struct

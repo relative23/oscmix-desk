@@ -52,6 +52,26 @@ def test_a_reconcile_that_ends_early_says_whether_it_wrote(
     assert statuses[-1].startswith("STATUS=running; " + status)
 
 
+def test_a_stop_during_the_lock_wait_does_not_ask_for_another_reload(
+        tmp_path, monkeypatch, caplog):
+    import argparse
+
+    from oscmix_desk import Config, locking
+
+    stop = {"stop": False}
+
+    def stopped(*_a, **_k):
+        stop["stop"] = True                  # SIGTERM while another writer held it
+        return locking.STOPPED_WAITING
+
+    monkeypatch.setattr(reload_mod, "device_lock", stopped)
+    path = write_config(tmp_path / "routing.conf", DESK)
+    with caplog.at_level("INFO"):
+        reload_mod._reconcile(argparse.Namespace(config=path), Config(), stop)
+    assert "send the reload again" not in caplog.text
+    assert not [record for record in caplog.records if record.levelname == "WARNING"]
+
+
 def test_a_reconcile_whose_lease_cannot_be_finished_after_writing_is_incomplete(
         tmp_path, monkeypatch, caplog, recording_backend):
     import argparse

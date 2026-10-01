@@ -103,7 +103,11 @@ account_home() {
 
 MANAGER="$(manager_state)"
 OWNS_SYSTEM_FILES=0
-if [ "$MANAGER" = this ] || { [ "$MANAGER" = none ] && [ "$(account_home)" = "$HOME" ]; }; then
+if [ "$MANAGER" = this ]; then
+    OWNS_SYSTEM_FILES=1
+elif [ "$MANAGER" = none ] && [ "$(id -u)" != 0 ] && [ "$(account_home)" = "$HOME" ]; then
+    # Not as root: `sudo ./uninstall.sh` has HOME=/root, root's own home,
+    # and the system files serve the user who ran the installer.
     OWNS_SYSTEM_FILES=1
 fi
 
@@ -184,7 +188,8 @@ if [ -e "$UDEV_RULE" ] || [ -e "$SLEEP_HOOK" ] || [ -e "$RESUME_UNIT" ] || [ -e 
     # the service above, one level down.
     warn "not removing $UDEV_RULE, $SLEEP_HOOK, $RESUME_UNIT or $TMPFILES_CONF:"
     if [ "$MANAGER" = none ]; then
-        warn "no user manager answers, and $HOME is not this account's home."
+        warn "no user manager answers, and $HOME is not this account's home"
+        warn "(or this runs as root; run uninstall.sh as the installing user)."
     else
         warn "they serve the installation in systemd's session home, not $HOME."
     fi

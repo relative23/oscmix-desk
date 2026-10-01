@@ -516,11 +516,19 @@ if [ "$DO_BUILD" = 1 ] && [ "$GTK_BUILT" = 0 ]; then
 fi
 
 # Earlier builds are not what is installed now, and a measurement needs
-# the build of the running binary. A build started later by another
-# installer is newer than this one and stays.
+# the build of the running binary, which is this one. A build another
+# installer is still writing has changed within the hour and stays.
 if [ "$DO_BUILD" = 1 ]; then
-    find "$PROJECT_DIR/build" -maxdepth 1 -type d -name 'coordinated.*' \
-        ! -path "$BUILD_DIR" ! -newer "$BUILD_DIR" -exec rm -rf {} + 2>/dev/null || true
+    now="$(date +%s)"
+    for older in "$PROJECT_DIR"/build/coordinated.*; do
+        if [ ! -d "$older" ] || [ "$older" = "$BUILD_DIR" ]; then
+            continue
+        fi
+        changed="$(stat -c %Y "$older" 2>/dev/null)" || continue
+        if [ $((now - changed)) -gt 3600 ]; then
+            rm -rf -- "$older"
+        fi
+    done
 fi
 
 info "installation complete."

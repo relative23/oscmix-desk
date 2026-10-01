@@ -155,9 +155,10 @@ Common findings in the journal:
   the stop, or the backend's own exit (an unplug, most often), is reported
   next and decides the exit code.
 - `verifier did not repair the routing: ...` -- the read-back found a
-  difference, and the repair was refused before it was sent: a remembered
-  value it could not keep, a link it could not trust, or a playback mode
-  that changed. The backend connection was fine.
+  difference, and the repair stopped itself before its remaining writes: a
+  remembered value it could not keep, a link it could not trust, or a
+  playback mode that changed. The line lists any link writes that went out
+  first. The backend connection was fine.
 - `verifier read the routing back, but its backend operation did not end
   cleanly (...)` -- the result above it stands; only the end of the lease
   was not acknowledged.
@@ -486,7 +487,6 @@ where it is. Nothing is drifting; the config is doing what it says. If the
 fader is one you set by hand, delete the `volume =` line from that route;
 the session then never writes that register. `[pin] output.volume = pin`
 does the opposite: reloads and resumes restore the declared value too.
-Until 0.8.0 volume was pinned, and every reload wrote it.
 
 A profile, by contrast, survives all of this: the switch
 remembers it beside `routing.conf`, and starts and reloads apply the

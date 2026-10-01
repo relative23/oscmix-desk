@@ -575,6 +575,27 @@ def test_uninstall_without_a_user_manager_from_a_scratch_home_leaves_the_system(
     assert all(path.exists() for path in files.values())
 
 
+def test_uninstall_as_root_without_a_user_manager_leaves_the_system(tmp_path):
+    # `sudo ./uninstall.sh` has HOME=/root, root's own home, while the
+    # system files serve the user who installed; no user manager answers.
+    home, env, log = make_fake_home(tmp_path)
+    files = _fake_system_files(tmp_path, env)
+    run("install.sh", ["--no-build", "--no-udev"], env)
+    no_user_manager(tmp_path)
+    env["OSCMIX_ACCOUNT_HOME"] = str(home)
+    stub = tmp_path / "stub-bin" / "id"
+    stub.write_text('#!/bin/sh\ncase "$1" in -u) echo 0 ;; *) exec /usr/bin/id "$@" ;; esac\n')
+    stub.chmod(0o755)
+    log.write_text("")
+
+    result = run("uninstall.sh", [], env)
+
+    assert result.returncode == 0, result.stderr
+    assert "sudo rm" not in log.read_text()
+    assert "run uninstall.sh as the installing user" in result.stderr
+    assert all(path.exists() for path in files.values())
+
+
 def test_uninstall_leaves_a_native_package_alone(tmp_path):
     # It stopped and disabled the package's service and removed the system
     # files the package owns until 0.8.1.
