@@ -2,8 +2,9 @@
 
 Two limits of the UCX II hold across channels, so no single register is out of range when they
 are broken. The manual (v1.6) allows Room EQ on at most 16 output channels -- 8 stereo -- (25.3.3)
-and Crossfeed on at most 4 stereo output channels (25.3.1). Beyond that the device's load limiter
-leaves the extra ones off, and a verifier repairing them would never converge.
+and Crossfeed on at most 4 stereo output channels (25.3.1). Beyond that the device reports the
+extra ones on and does not run them -- measured: a ninth Room EQ pair and a fifth Crossfeed pair
+read back as on while `/hardware/dspload` stayed at 48 and 4 -- so no read-back would notice.
 
 What counts is the state an apply leaves behind: desk's own writes over the observed state of
 every output it does not write. A config alone is checked when it loads; an apply additionally

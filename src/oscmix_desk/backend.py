@@ -99,6 +99,14 @@ CONTROL_QUEUE_PACKETS = 4096
 #: this plus one acknowledgement wait (CONTROL_ACK_TIMEOUT), which has to
 #: stay clear of protocol.LEASE_IDLE; 2.0 until 0.8.1 left one second.
 CONTROL_HEARTBEAT = 1.0
+#: Seconds between two WRITEs of one burst. The backend acknowledges a WRITE
+#: once it has queued the MIDI message, and the wire carries roughly a
+#: thousand registers a second: an unpaced burst loses writes. Measured on a
+#: UCX II: 295 writes in a few milliseconds lost 40 (2026-08-25); a
+#: `[desk] base` of 400 mix writes in 0.12 s left 3 of 4 changed cells and a
+#: 100-write restore left all 3 unchanged, while the same writes 20 ms apart
+#: all landed (2026-10-27). 10 ms per write landed every one in the sweep.
+WRITE_PACE = 0.010
 
 
 @dataclass(frozen=True)
@@ -148,6 +156,7 @@ class Control:
         self._request_id = 0
         self._lease: Optional[int] = None
         self._last_heartbeat = 0.0
+        self._last_write = 0.0
         self._generation = 0
         self._last_sequence = 0
         self._queue: Deque[Delivery] = deque()
@@ -425,6 +434,9 @@ class Control:
         for index, (path, tags, args) in enumerate(burst):
             submitted = False
             try:
+                gap = WRITE_PACE - (time.monotonic() - self._last_write)
+                if gap > 0:
+                    self.wait(gap)
                 self.heartbeat()
                 request = self._send_request(Request.WRITE,
                                              payload=encode_osc(path, tags, *args),
@@ -442,6 +454,7 @@ class Control:
                                   "backend refused write to %s (code %d)" % (path, code)),
                                   written, paths[index:])
             written.append(path)
+            self._last_write = time.monotonic()
             if self.on_written is not None:
                 self.on_written(path, tags, tuple(args))
 

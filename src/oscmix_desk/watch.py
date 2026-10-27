@@ -52,6 +52,9 @@ from .registers import VERIFIABLE, verify_class
 KNOWN_LIMIT = 20000
 #: Seconds one receive waits; the socket wait of the loop, not a device read.
 SLICE = 0.25
+#: The last path segment of the level meters the device reports as DEVICE observations,
+#: some 270 a second on a UCX II (measured 2026-10-27): never a register, never a reason.
+METER = "meter"
 
 Reports = Dict[str, Tuple[str, Args]]
 
@@ -193,12 +196,14 @@ class Watch:
             # An operation's own writes, and whatever it is about to overwrite.
             self._pending.clear()
             self._first = None
-        for path, tags, args in reports:
+        registers = [(path, tags, args) for path, tags, args in reports
+                     if path.rsplit("/", 1)[-1] != METER]
+        for path, tags, args in registers:
             if path in self.known or len(self.known) < KNOWN_LIMIT:
                 self.known[path] = (tags, tuple(args))
             if not owned:
                 self._pending[path] = (tags, tuple(args))
-        if reports and not owned:
+        if registers and not owned:
             now = self._clock()
             self._first = now if self._first is None else self._first
             self._last = now

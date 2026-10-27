@@ -357,3 +357,10 @@ def test_the_watcher_reads_the_desk_again_only_after_a_file_changed(tmp_path, de
     assert caplog.text.count("someday") == 1, "warned once, not on every check"
     path.write_text(DESK.replace("level = -12.0", "level = -10.0"))
     assert current() is not first
+
+
+def test_level_meters_never_keep_the_reports_from_resting(desk):
+    meters = [outside(report("/input/1/dynamics/meter", "i", 112), after=0.5) for _ in range(8)]
+    asked, _, watcher = watching(desk, [outside(report(CELL, "fi", -20.0, 0)), *meters])
+    assert asked == [(CELL,)], "judged once the register reports rest, meters or not"
+    assert "/input/1/dynamics/meter" not in watcher.known

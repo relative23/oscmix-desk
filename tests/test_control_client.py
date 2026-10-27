@@ -831,3 +831,20 @@ def test_a_reader_knows_whether_an_operation_holds_the_lease(peer, code, held):
         assert client.lease_held is held
     finally:
         client.close()
+
+
+def test_a_burst_of_writes_is_paced_for_the_midi_wire(peer):
+    # Unpaced, the wire drops writes the backend has already acknowledged:
+    # a 400-write base burst left 3 of 4 changed cells on a UCX II.
+    server = peer()
+    client = backend.Control(server.path, os.getpid())
+    try:
+        client.begin()
+        start = time.monotonic()
+        client.send([('/output/%d/volume' % n, 'f', (-40.0,)) for n in range(1, 6)])
+        assert time.monotonic() - start >= 4 * backend.WRITE_PACE
+        start = time.monotonic()
+        client.send([('/output/6/volume', 'f', (-40.0,))])
+        assert time.monotonic() - start >= 0.5 * backend.WRITE_PACE, "paced across bursts too"
+    finally:
+        client.close()

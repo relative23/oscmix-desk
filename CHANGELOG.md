@@ -53,6 +53,10 @@
 
 ### Changed
 
+- Desk paces its writes 10 ms apart. The backend acknowledges a write once
+  the MIDI message is queued, and an unpaced burst loses writes on the
+  wire: measured on a UCX II, a 400-write base left 3 of 4 changed cells
+  unchanged; paced, every write landed and the read-back confirmed it.
 - Room EQ on more than 16 outputs, or Crossfeed on more than 4 stereo
   outputs, is refused before any write: when the config loads, and when
   a switch would turn either on beyond the limit, counting the outputs it
