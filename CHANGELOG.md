@@ -2,8 +2,64 @@
 
 ## 0.9.0 -- unreleased
 
+### Added
+
+- Desk keeps a write journal per interface and user beside its lock
+  (`/run/oscmix-desk/<interface>.written.<uid>.json`): every write the
+  backend acknowledged, stored after each apply and when the operation ends,
+  under the lock. A reader takes each register's latest write from every
+  user's file. It covers this boot only and is never taken as proof of the
+  hardware state.
+- `[desk] enforce = watch` in routing.conf keeps a reader connection open
+  while the service runs: a report that contradicts a value the desk pins
+  -- a link change, which the device announces itself, or a value in a
+  state dump another client asks for -- leads, once the reports rest for
+  two seconds, to the same selective reconcile a reload runs. Reports during desk's own operations, remembered values, a
+  base and gains AutoSet owns never do. A register the device sets back
+  three times within a minute is left to it until the desk changes or a
+  reload. `apply`, the default, never watches; profiles inherit the setting
+  and may not set it.
+- `--dump-config --include-written` adds the playback routes and mute
+  flags desk itself last wrote, which the device does not report, in a
+  section marked unconfirmed; mute flags stay commented out.
+- `[desk] base = clear-inputs | clear-submixes | straight-playback | daw`
+  makes a desk a whole matrix: every input and/or playback cell no route
+  sets is silenced, or playback pair N plays on output pair N. Silencing
+  links nothing, and where the device folds a register onto its linked
+  partner the cell is written but not compared, so `--diff` and the
+  read-back stay quiet after a clean apply. Straight playback is declared
+  as routes of the base, which link a playback or output pair no route
+  names only when the desk sets both its channels alike, and never an
+  input pair. It is written on an
+  explicit start or switch and remembered afterwards; `keep` (the default)
+  changes nothing.
+- `[output:N] mirror = S` (or a pair `S/S+1`) mirrors an output: every
+  route declared for the source is declared again for the mirror, without
+  its output volume, and each apply keeps both submixes equal. Widths
+  must match, and a mirror may neither mirror a mirror nor have routes of
+  its own. A mirror gets no desktop sink of its own.
+- `--capture NAME` saves the device's reported state, plus the playback
+  routes desk last wrote, as the new profile NAME: every value declared,
+  the remembered ones as starting values a switch writes, gains AutoSet
+  owns left to it, `[desk] base = clear-inputs` so the input routes are
+  the whole monitoring matrix, device and ports inherited from
+  routing.conf. Playback cells desk did not write since the boot are left
+  alone, never silenced, and the command says when it knows none. It never
+  replaces a file, and the profile appears only once it has loaded.
+- `--diff-profile A B` lists what two desks set differently -- profile
+  names, or `:main` for routing.conf -- with each register's value on
+  both sides and any policy change, without connecting to the device.
+  It exits 3 when they differ, like `--diff`.
+
 ### Changed
 
+- Room EQ on more than 16 outputs, or Crossfeed on more than 4 stereo
+  outputs, is refused before any write: when the config loads, and when
+  a switch would turn either on beyond the limit, counting the outputs it
+  does not set as the device reports them and both channels of a linked
+  pair. A start, repair or reload leaves those switch-ons to the device
+  instead, says so, and applies the rest. The device's own load limiter
+  would otherwise leave the extra ones off.
 - Output sections accept `volumecal =` from -24.00 to +3.00 dB in 0.01 dB
   steps. DEVICE feedback is verifiable and PIN is the default. Calibration
   is separate from the normal output fader.

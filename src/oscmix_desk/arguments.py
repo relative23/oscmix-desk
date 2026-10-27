@@ -47,6 +47,13 @@ def build_arg_parser() -> ArgumentParser:
     parser.add_argument("--dump-config", action="store_true",
                         help="ask the running device for its state and print "
                              "a routing.conf that reproduces what it reports")
+    parser.add_argument("--capture", metavar="NAME",
+                        help="save the device's reported state, plus the playback "
+                             "routes desk last wrote, as the new profile NAME")
+    parser.add_argument("--include-written", action="store_true",
+                        help="with --dump-config: add the playback routes and mute "
+                             "flags desk itself last wrote, which the device does "
+                             "not report, marked unconfirmed")
     parser.add_argument("--pipewire-sinks", action="store_true",
                         help="print a PipeWire config with one named sink "
                              "per stereo output pair, then exit")
@@ -56,6 +63,9 @@ def build_arg_parser() -> ArgumentParser:
     parser.add_argument("--profile", metavar="NAME",
                         help="switch the desk to profiles/NAME.conf and "
                              "report the outcome, then exit")
+    parser.add_argument("--diff-profile", nargs=2, metavar=("A", "B"),
+                        help="compare what two desks set -- profile names, or "
+                             ":main for routing.conf -- without the device")
     parser.add_argument("--list-profiles", action="store_true",
                         help="list the profiles found beside the config; "
                              "the active one is marked")

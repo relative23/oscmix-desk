@@ -14,8 +14,9 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, FrozenSet, List, Mapping, Optional
 
+from .autogain import retained_gains
 from .constants import (
     EXIT_DIFFERS,
     EXIT_FAILURE,
@@ -23,13 +24,16 @@ from .constants import (
 )
 from .desk import _operation
 from .devices import device_for_name
-from .discovery import device_firmware, serial_in
+from .discovery import device_firmware, lock_key, serial_in
 from .dump import (
+    WrittenState,
     channels_from_observed,
     globals_from_observed,
     render_config,
     routes_from_observed,
+    written_state,
 )
+from .journal import Journal, journal_path, journal_paths, read_journals
 from .log import log
 from .model import Config
 from .osc import (
@@ -46,6 +50,7 @@ from .reconcile import (
     observed,
     plan,
 )
+from .registers import Device
 
 #: How long --dump-config listens for the device's reply. The dump is
 #: over in ~2 s on a UCX II (tests/data/cold-plug-timeline.json); this is
@@ -246,11 +251,30 @@ def _read_device(config: Config, config_path: Optional[Path] = None
         return None
 
 
-def _dump_config(config: Config, config_path: Optional[Path] = None) -> int:
-    """Print a routing.conf built from what the device reports."""
+def _dump_config(config: Config, config_path: Optional[Path] = None, *,
+                 include_written: bool = False) -> int:
+    """Print a routing.conf built from what the device reports.
+
+    ``include_written`` adds what desk itself last wrote where the device reports nothing --
+    the playback matrix and mute flags -- from the write journal, marked unconfirmed.
+    """
+    text = _rendered(config, config_path, include_written=include_written)
+    if text is None:
+        return EXIT_FAILURE
+    sys.stdout.write(text)
+    return EXIT_OK
+
+
+def capture_text(config: Config, config_path: Optional[Path] = None) -> Optional[str]:
+    """The device's state as a profile for ``--capture``, journal included; None if unread."""
+    return _rendered(config, config_path, include_written=True, capture=True)
+
+
+def _rendered(config: Config, config_path: Optional[Path], *, include_written: bool,
+              capture: bool = False) -> Optional[str]:
     reading = _read_device(config, config_path)
     if reading is None:
-        return EXIT_FAILURE
+        return None
     seen = reading.registers
 
     model = device_for_name(config.device_name)
@@ -265,7 +289,41 @@ def _dump_config(config: Config, config_path: Optional[Path] = None) -> int:
              "and %d global setting(s) reconstructed",
              len(seen), len(dumped.routes), len(dumped.channels),
              len(dumped.globals))
+    written = _written(config, config_path, reading, model, warnings) if include_written \
+        else None
     for warning in warnings:
         log.warning("incomplete export: %s", warning)
-    sys.stdout.write(render_config(dumped, model, warnings))
-    return EXIT_OK
+    if capture and written is not None and not written.routes:
+        log.warning("the capture knows no playback routing: desk wrote none since the boot, "
+                    "and the device does not report it; switching to the capture leaves "
+                    "every playback cell as it is then")
+    return render_config(dumped, model, warnings, written, capture=capture,
+                         autoset=_autoset_gains(dumped, seen) if capture else frozenset())
+
+
+def _autoset_gains(dumped: Config, seen: Mapping[str, Args]) -> FrozenSet[str]:
+    """The gains AutoSet owns on the device, partners of linked inputs included."""
+    flags = {path: ("i", tuple(args)) for path, args in seen.items()
+             if path.startswith("/input/") and path.endswith(("/autoset", "/stereo"))}
+    return retained_gains(dumped, flags)
+
+
+def _written(config: Config, config_path: Optional[Path], reading: DeviceRead,
+             model: Optional[Device], warnings: List[str]) -> WrittenState:
+    """What desk last wrote where the device is silent, from the journal beside the lock."""
+    journal: Journal = {}
+    source = "no write journal"
+    if reading.serial == "?":
+        log.warning("the interface named no serial, so its write journal is unknown")
+    else:
+        key = lock_key(config.usb_id, reading.serial)
+        paths = journal_paths(config_path, key)
+        if journal_path(config_path, key) is None:
+            log.warning("no runtime lock directory, so there is no write journal")
+        elif paths:
+            journal = read_journals(config_path, key)
+            source = ", ".join(map(str, paths))
+    written = written_state(journal, reading.registers, model, source, warnings)
+    log.info("write journal: %d playback route(s) and %d mute flag(s) desk wrote",
+             len(written.routes), len(written.mutes))
+    return written

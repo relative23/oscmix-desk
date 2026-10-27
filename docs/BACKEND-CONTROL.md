@@ -54,6 +54,10 @@ is lost, a submitted write may already have reached the device.
 GTK edits are never queued for later execution. During a desk operation
 they are rejected. Release advances the generation so an old edit also fails
 when the backend becomes free. Readers cannot write or acquire leases.
+Every connection learns the lease state right after HELLO and on each change
+(event 16); with `[desk] enforce = watch` the service keeps one reader that
+subscribes to device reports only and judges none that arrive while a lease
+is held, since those belong to the operation holding it.
 
 ## Timing
 

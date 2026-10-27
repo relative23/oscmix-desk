@@ -30,13 +30,15 @@ from .preview import transition_lines
 from .profiles import (
     _check_configurations,
     _restore_config,
+    compare_desks,
     describe_profiles,
     effective_config,
     load_profile,
     restore_main,
+    save_capture,
     switch_profile,
 )
-from .reads import _diff, _dump_config, _snapshot
+from .reads import _diff, _dump_config, _snapshot, capture_text
 from .session import run_session
 from .status import print_status
 
@@ -118,6 +120,8 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     overrides = _config_overrides(args)
     if args.check and overrides is not None:
         return _check_files(config_path)
+    if args.diff_profile and overrides is not None:
+        return _compare_desks(args.diff_profile, config_path, strict=args.strict)
     if args.status and overrides is not None:
         return print_status(config_path, overrides, args.json, strict=args.strict)
     if overrides is not None and args.dry_run and (args.profile is not None or args.no_profile):
@@ -151,6 +155,11 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
             log.error("%s; complete installation recovery before activation", problem)
             return EXIT_CONFIG
 
+    return _act(args, config, config_path)
+
+
+def _act(args: "argparse.Namespace", config: Config, config_path: Optional[Path]) -> int:
+    """The actions on the desk in effect, once it loaded and no maintenance blocks them."""
     if args.snapshot:
         return _snapshot(config, config_path)
 
@@ -161,6 +170,11 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     if args.diff:
         return _diff(config, config_path)
 
+    if args.capture is not None:
+        return _capture(args.capture, config, config_path)
+
+    if args.dump_config and args.include_written:
+        return _dump_config(config, config_path, include_written=True)
     if args.dump_config:
         return _dump_config(config, config_path)
 
@@ -181,6 +195,38 @@ def _check_files(config_path: Optional[Path]) -> int:
         print("valid: %s" % path)
     print("configuration check passed (%d file(s)); no device access" % len(checked))
     return EXIT_OK
+
+
+def _capture(name: str, config: Config, config_path: Optional[Path]) -> int:
+    """Read the device and keep its desk as a new profile; nothing on the device changes."""
+    text = capture_text(config, config_path)
+    if text is None:
+        return EXIT_FAILURE
+    try:
+        path = save_capture(name, text, config_path)
+    except ConfigError as exc:
+        log.error("capture refused: %s", exc)
+        return EXIT_CONFIG
+    print("captured profile %r: %s" % (name, path))
+    return EXIT_OK
+
+
+def _compare_desks(names: Sequence[str], config_path: Optional[Path], *,
+                   strict: bool) -> int:
+    """Print what two desks set differently; EXIT_DIFFERS if anything does."""
+    first, second = names
+    try:
+        lines = compare_desks(first, second, config_path, strict=strict)
+    except ConfigError as exc:
+        log.error("configuration error: %s", exc)
+        return EXIT_CONFIG
+    for line in lines:
+        print(line)
+    if not lines:
+        print("%s and %s set the same registers to the same values" % (first, second))
+        return EXIT_OK
+    print("%d register(s) differ; no device access" % len(lines))
+    return EXIT_DIFFERS
 
 
 def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
@@ -221,7 +267,8 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
 _ACTIONS = (("--profile", "profile"), ("--no-profile", "no_profile"),
             ("--diff", "diff"), ("--dump-config", "dump_config"),
             ("--snapshot", "snapshot"), ("--pipewire-sinks", "pipewire_sinks"),
-            ("--list-profiles", "list_profiles"), ("--status", "status"), ("--check", "check"))
+            ("--list-profiles", "list_profiles"), ("--status", "status"), ("--check", "check"),
+            ("--diff-profile", "diff_profile"), ("--capture", "capture"))
 
 
 def _refuse_conflicting_actions(parser: argparse.ArgumentParser,
@@ -246,19 +293,23 @@ def _refuse_conflicting_actions(parser: argparse.ArgumentParser,
         parser.error("--dry-run cannot be combined with %s" % asked[0])
     if args.json and not args.status:
         parser.error("--json requires --status")
+    if args.include_written and not args.dump_config:
+        parser.error("--include-written requires --dump-config")
     if args.device is not None and not args.device.strip():
         # '' was skipped without a word, and '  ' was searched for.
         parser.error("--device needs a name")
     override_flags = [flag for flag, given in (("--device", args.device),
                                                ("--osc-port", args.osc_port))
                       if given is not None]
-    if override_flags and asked and asked[0] in ("--profile", "--no-profile", "--check"):
+    if override_flags and asked and asked[0] in ("--profile", "--no-profile", "--check",
+                                                 "--diff-profile"):
         # A switch and a restore resolve their interface and ports from
         # the config (profiles._target). The overrides never reached
         # them: they were dropped without a word, while the dry run of
         # the same switch looked for the interface --device named, and
         # so showed something the switch would not do.
-        operation = "a check" if asked[0] == "--check" else "a switch or a restore"
+        operation = {"--check": "a check", "--diff-profile": "a comparison"}.get(
+            asked[0], "a switch or a restore")
         parser.error("%s cannot be combined with %s: %s "
                      "takes its interface and ports from the config"
                      % (" and ".join(override_flags), asked[0], operation))

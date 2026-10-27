@@ -266,14 +266,43 @@ level = 0.0
 #     input.gain = remember    # gain ridden by hand
 #
 # Pinning does NOT mean the value snaps back the moment you change it in
-# the mixer. It cannot: of everything a config sets, this device
-# announces only channel links when they change -- measured. Everything
-# else is silent until a full state dump is requested. Pinning means
-# this session insists, through the read-back after start.
+# the mixer. Of everything a config sets, this device announces only
+# channel links when they change -- measured. Everything else is silent
+# until a full state dump is requested. Pinning means this session
+# insists, through the read-back after start; '[desk] enforce = watch'
+# (below) also acts on what is announced or dumped while it runs.
 
 # Output calibration is separate from the listening fader. It defaults to PIN:
 # [output:1]
 # volumecal = -0.10
+#
+# A base makes the desk a whole matrix (TotalMix "Reset Mix"): every input
+# cell no route sets is silenced (clear-inputs), every input and playback
+# cell (clear-submixes), or playback pair N plays on output pair N with the
+# rest silent (straight-playback), or both with no hardware monitoring
+# (daw). Silencing needs no link; straight playback links a playback or
+# output pair no route names only when the desk sets its two channels
+# alike, since a link hands the left channel's settings to the pair. It is
+# written on an explicit start or switch and then remembered, so a change
+# made in TotalMix stays until the next switch. Default: keep. An unmute
+# below owns its two columns itself: a base's routes do not complete them.
+# [desk]
+# base = clear-submixes
+#
+# enforce = watch (routing.conf only; profiles inherit it) reconciles a
+# pinned value as soon as a report contradicts it, two seconds after the
+# reports rest: a link change, which the device announces itself, or any
+# value in a state dump another client asks for (the GTK mixer does when it
+# connects). Default: apply (start, switch, reload).
+# [desk]
+# enforce = watch
+#
+# A mirror sends what another output sends (TotalMix "Mirror of Output"):
+# every route declared for 1/2 is declared again for 3/4, without its
+# output volume, and each apply keeps the two submixes equal. The mirror's
+# own fader, EQ and dynamics stay its own; it may not have routes itself.
+# [output:3]
+# mirror = 1/2
 #
 # Playback mute has no device readback. Declare both members of each pair:
 # [playback:1]

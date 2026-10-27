@@ -157,7 +157,9 @@ def generate_pipewire_conf(config: Config, target: Optional[str],
     dropped: List[Tuple[Route, str]] = []
     seen_pairs: Dict[Tuple[int, ...], str] = {}
     for route in config.routes:
-        if len(route.output) != 2:
+        # A mirror sends the same signals as its source and needs no sink of its own; a
+        # base's 1:1 playback is the device's default, not a desktop destination.
+        if len(route.output) != 2 or route.mirror_of or route.base:
             continue
         if route.output in seen_pairs:
             dropped.append((route, seen_pairs[route.output]))

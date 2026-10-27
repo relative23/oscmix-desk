@@ -177,7 +177,8 @@ def playback_problem(config: Config, mode: PlaybackMode) -> Optional[str]:
                 "14- or 8-channel hardware stream before applying playback routes"
                 % description)
     limit = min(mode.channels, 16) if mode.rate in (88200, 96000) else mode.channels
-    for route in config.routes:
+    # A base plays every playback pair on its outputs; one the stream does not carry is silent.
+    for route in (route for route in config.routes if not route.base):
         unavailable = [channel for channel in route.playback if channel > limit]
         if unavailable:
             return ("route %r needs playback %s, but %s carries playback 1..%d"

@@ -98,7 +98,9 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
         return True
 
     def supervise(child, stop, on_reload=None, reload_requested=None):
-        on_reload()                      # one SIGHUP while the unit runs
+        # One SIGHUP while the unit runs, flagged as the handler flags it.
+        reload_requested["reload"] = reload_requested["sighup"] = True
+        on_reload()
         return 0
 
     monkeypatch.setattr(session_module, "_start_backend", start)

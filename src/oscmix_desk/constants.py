@@ -108,6 +108,23 @@ RECONCILE_WAIT_FOR_VERIFIER = 30.0
 # and repair too. If the wait expires, the new switch refuses without writes.
 SWITCH_LOCK_WAIT = 30.0
 
+# `[desk] enforce = watch` (watch.py). Choices, not measurements: a knob
+# being turned reports on every detent, so the watcher waits for the reports
+# to rest before it judges them -- WATCH_SETTLE after the last one, and never
+# longer than WATCH_LONGEST after the first, should a source never rest.
+WATCH_SETTLE = 2.0
+WATCH_LONGEST = 10.0
+# A register the device sets back after every reconcile (a DSP limit, a
+# device-side rule) would otherwise be fought forever: watch re-asserts one
+# register at most WATCH_REPEATS times within WATCH_REPEAT_WINDOW, then
+# leaves it to the device until the desk changes or a reload.
+WATCH_REPEATS = 3
+WATCH_REPEAT_WINDOW = 60.0
+# Reader connections in a row that the watcher lets fail before it gives up;
+# one that served a while starts the count again. A lost one is replaced at
+# once, not after a delay: the watcher has no timer.
+WATCH_CONNECTIONS = 3
+
 
 def startup_budget(device_timeout: float = DEFAULT_DEVICE_TIMEOUT) -> float:
     """Bound foreground startup, including contention and the server lease.

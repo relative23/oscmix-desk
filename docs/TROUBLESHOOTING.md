@@ -188,15 +188,16 @@ rejected while busy or disconnected. The old `OSCMIX_LINK_SYNC_DELAY` workaround
 for a GUI-held UDP receiver no longer applies.
 
 `systemctl --user status oscmix.service` also shows a `Status:` line:
-`applying routing`, `verifying routing`, `reconciling (SIGHUP)`, or
-`running; <result> at HH:MM:SS` with one of these results:
+`applying routing`, `verifying routing`, `reconciling (SIGHUP)`,
+`reconciling (watch)`, or `running; <result> at HH:MM:SS` with one of these
+results:
 
 | Result | Meaning |
 |---|---|
 | `verifier finished` | the start-up read-back and any repair completed |
 | `verifier incomplete` | registers stayed unconfirmed after the one repair, or a link was contradicted; the journal names them |
 | `verifier failed` | the read-back, the repair or the end of the backend operation failed; the journal says which |
-| `reconciled` | a reload re-read the desk and applied it |
+| `reconciled` | a reload, or the watcher (`[desk] enforce = watch`), re-read the desk and applied it |
 | `reconcile skipped` | a reload stood down before sending anything: the device lock or lease was held elsewhere, the start-up verifier was still running, the config no longer parses, the backend could not be reached, or the plan refused to write |
 | `reconcile incomplete` | a reload sent writes and then ended early; the journal lists what was sent and what was pending |
 
@@ -497,3 +498,27 @@ remembered profile. If the desk came back as `routing.conf` anyway,
 the journal's start line says why -- the marker names a profile that
 no longer loads -- and `--no-profile` or fixing the file ends it. See
 *Profiles* in the README.
+
+## 12. A setting jumps back a moment after it is changed
+
+Symptom: a gain, link or monitoring level changed on the front panel, in
+TotalMix or in the mixer GUI returns to its old value about two seconds
+later, while the service runs.
+
+That is `[desk] enforce = watch` in `routing.conf`. The session then watches
+the reports that reach it -- link changes, which the device announces
+itself, and every value of a state dump another client asks for, such as
+the GTK mixer when it connects -- and reconciles when one contradicts a
+value the desk pins; the journal says `watch: the device changed <path>, which the desk
+pins; reconciling`. Only pinned values come back: remembered ones (output
+faders by default), the cells a `[desk] base` writes and gains AutoSet owns
+stay where they are put. To change a pinned value for good, change the
+config and reload; to keep changing one by hand, remember it
+(`[pin] <family>.<option> = remember`) or remove `enforce = watch`.
+
+A register the device itself keeps setting back -- a DSP limit, a sample
+rate that switches effects off -- is re-asserted three times within a
+minute and then left to the device until the desk changes or a reload:
+`watch: the device set <path> back 3 times within 60s`. A desk with
+`enforce = apply` (the default) never watches; turning watch on needs a
+restart of the service, turning it off takes effect at the next reload.

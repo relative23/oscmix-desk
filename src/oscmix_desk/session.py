@@ -51,7 +51,8 @@ from .notices import log_desk_notices
 from .notify import sd_notify
 from .process import _cleanup_stale_backend, control_socket_owner, supervise
 from .reconcile import ApplyIntent, application_plan, desired
-from .reload import _config_path, _desk_under_the_lock, _reconcile
+from .reload import _config_path, _desk_under_the_lock, _reconcile, watched_desk
+from .watch import Watch, reader
 
 
 def _print_dry_run(client: Optional[int], config: Config) -> None:
@@ -121,9 +122,10 @@ def _install_reload_handler(reload_requested: Dict[str, bool]) -> None:
 
     The supervise loop picks the flag up within its poll interval, which
     is the only place in this process where nothing else is half-done.
+    ``sighup`` tells it from a request the watcher made (`_serve_reload`).
     """
     def handle_reload(_signum: int, _frame: object) -> None:
-        reload_requested["reload"] = True
+        reload_requested["reload"] = reload_requested["sighup"] = True
 
     signal.signal(signal.SIGHUP, handle_reload)
 
@@ -497,20 +499,68 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
             _stop_child(child)
         return EXIT_FAILURE
 
-    verifier = None
+    verifier: Optional[threading.Thread] = None
+    watch: Optional[Watch] = None
     if child.poll() is None:
+        watch = _start_watch(child, config, config_path, args, stop_requested, reload_requested)
         verifier, failed = _apply_or_fail(child, config, stop_requested,
                                           config_path, strict=getattr(args, "strict", False))
         if failed is not None:
             return failed
 
     returncode = supervise(child, stop_requested,
-                           on_reload=lambda: _reconcile(args, config,
-                                                        stop_requested,
-                                                        verifier),
+                           on_reload=lambda: _serve_reload(args, config, stop_requested,
+                                                           verifier, reload_requested, watch),
                            reload_requested=reload_requested)
     _await_verifier(verifier)
     return _exit_code_for(returncode, config, sysfs_usb, stop_requested)
+
+
+def _start_watch(child: "subprocess.Popen[bytes]", config: Config,
+                 config_path: Optional[Path], args: argparse.Namespace,
+                 stop_requested: Dict[str, bool],
+                 reload_requested: Dict[str, bool]) -> Optional[Watch]:
+    """Watch the device for `[desk] enforce = watch`, from before the first apply.
+
+    Connected before the start-up operation so the watcher learns the link
+    and AutoSet flags from its dump. It never writes: a contradiction sets
+    the flags supervise() serves, as SIGHUP does.
+    """
+    if config.enforce != "watch":
+        return None
+
+    def should_stop() -> bool:
+        return stop_requested["stop"] or child.poll() is not None
+
+    def request(_paths: Tuple[str, ...]) -> None:
+        reload_requested["watch"] = True
+        reload_requested["reload"] = True
+
+    strict = getattr(args, "strict", False)
+    watch = Watch(reader(config, config_path, child.pid),
+                  watched_desk(config, config_path, strict=strict), request, should_stop)
+    threading.Thread(target=watch.run, name="watch", daemon=True).start()
+    log.info("watching the device for changes to what the desk pins ([desk] enforce = watch)")
+    return watch
+
+
+def _serve_reload(args: argparse.Namespace, config: Config,
+                  stop_requested: Dict[str, bool], verifier: Optional[threading.Thread],
+                  reload_requested: Dict[str, bool], watch: Optional[Watch]) -> None:
+    """One reconcile for every pending request; a SIGHUP among them wins.
+
+    A reload also watches again what the watcher left to the device.
+    """
+    sighup = reload_requested.pop("sighup", False)
+    watched = reload_requested.pop("watch", False)
+    if not sighup and not watched:
+        return  # the watcher raised the flag again for a request already served
+    if not sighup:
+        _reconcile(args, config, stop_requested, verifier, reason="watch")
+        return
+    if watch is not None:
+        watch.forgive()
+    _reconcile(args, config, stop_requested, verifier)
 
 
 def _await_verifier(verifier: Optional[threading.Thread]) -> None:

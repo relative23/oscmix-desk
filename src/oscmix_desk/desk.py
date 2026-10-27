@@ -22,9 +22,11 @@ from .devices import device_for_name
 from .discovery import Device as Interface
 from .discovery import resolve_device, usb_device_present
 from .errors import BackendControlError, ConfigError, DeviceLockUnavailable, WriteFailed
+from .journal import Written, journal_path, record_written
 from .locking import DeviceLock, device_lock
 from .log import log
 from .model import Config
+from .osc import Args
 from .paths import discover_config_path
 from .reconcile import ApplyIntent, desired
 from .routing import apply_routing, never_stop, wait_unless_stopped
@@ -58,6 +60,8 @@ class Desk:
         self._should_stop: Callable[[], bool] = never_stop
         self._opened = self._entered = self._closed = False
         self._lease = self._finished = self._failed = self._aborted = False
+        self._journal: Optional[Path] = None
+        self._written: Written = {}
 
     @property
     def config(self) -> Config:
@@ -125,6 +129,7 @@ class Desk:
         if not isinstance(lock, DeviceLock):
             raise DeviceLockUnavailable(lock)
         self._lock = lock
+        self._journal = journal_path(self.config_path, target.key)
         self._check_stop()
         if self._reread is not None:
             fresh = self._reread(self.config)
@@ -158,7 +163,17 @@ class Desk:
                 self._failed = self._aborted = True
                 raise
             self._lease = True
+            backend.on_written = self._wrote
         return backend
+
+    def _wrote(self, path: str, tags: str, args: Args) -> None:
+        """One acknowledged write, kept for the journal until it is next stored."""
+        self._written[path] = (tags, args)
+
+    def _record(self) -> None:
+        """Store the acknowledged writes so far; the held lock keeps other writers out."""
+        written, self._written = self._written, {}
+        record_written(self._journal, written)
 
     def apply(self, intent: ApplyIntent = ApplyIntent.EXPLICIT, *,
               reason: str = "desk") -> bool:
@@ -180,6 +195,9 @@ class Desk:
         except OSError:
             self._failed = self._aborted = True
             raise
+        finally:
+            # Now, not only at the end: a start's verifier can be cut off at exit.
+            self._record()
         if self._should_stop():
             self._failed = self._aborted = True
             return False
@@ -232,13 +250,17 @@ class Desk:
             try:
                 self._disconnect()
             finally:
-                if self._lock is not None:
-                    self._lock.release()
+                try:
+                    self._record()
+                finally:
+                    if self._lock is not None:
+                        self._lock.release()
 
     def _disconnect(self) -> None:
         """Close once; profiles retain the file lock through marker commit."""
         backend, self._backend = self._backend, None
         if backend is not None:
+            backend.on_written = None
             backend.close()
 
 

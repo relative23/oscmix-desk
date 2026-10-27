@@ -121,13 +121,18 @@ def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     # set of routing is meant to behave, so a profile brings its own.
     # `globals` likewise -- an echo send is part of a mix, not part of
     # the box it runs on.
-    desk = {"routes", "channels", "policies", "globals"}
+    # `base` too: what the matrix is beneath the routes belongs to the routes.
+    desk = {"routes", "channels", "policies", "globals", "base"}
     # Neither: `loaded` records the machine settings the file resolved to,
     # and `overrides` what the command line replaced -- no file's to
     # state, and carried along by `keep_machine_settings` beside the
     # table (0.6.11).
     record = {"loaded", "overrides"}
-    machine = {f.name for f in dataclasses.fields(Config)} - desk - record
+    # `enforce` is how the session keeps any desk: routing.conf's alone, set
+    # on every profile by `load_profile`, and read again on each reload --
+    # so not kept from the start like the machine (tests/test_watch.py).
+    session = {"enforce"}
+    machine = {f.name for f in dataclasses.fields(Config)} - desk - record - session
     covered = {attr for _section, _option, attr in profiles.MACHINE_SETTINGS}
     assert machine == covered, (
         "not inherited by a profile switch: %s" % sorted(machine - covered))

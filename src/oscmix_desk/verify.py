@@ -76,7 +76,7 @@ def expected_registers(config: Config) -> Registers:
     uses. ``tests/test_reconcile.py`` asserts the two agree for every
     config shape in its table, so they cannot drift apart quietly.
     """
-    return {entry.path: (entry.tags, entry.args) for entry in desired(config)}
+    return {entry.path: (entry.tags, entry.args) for entry in desired(config) if entry.compared}
 
 
 def register_ever_reported(path: str,

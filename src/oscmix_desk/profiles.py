@@ -11,9 +11,10 @@ import contextlib
 import errno
 import io
 import os
+import tempfile
 from dataclasses import replace
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence, Tuple, Union
 
 from .arguments import build_arg_parser
 from .backend import Control
@@ -46,7 +47,7 @@ from .outcome import (
 )
 from .paths import discover_config_path, list_profiles, profile_path, profiles_dir, regular_file
 from .process import RELOAD_DONE, RELOAD_NOT_RUNNING, reload_service, unit_process
-from .reconcile import ApplyIntent
+from .reconcile import ApplyIntent, desired, policy_for
 from .verify import expected_registers, register_ever_reported
 
 
@@ -72,6 +73,12 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     path = profile_path(name, config_path)
     if not regular_file(path):
         raise ConfigError("no profile %r (looked in %s)" % (name, path.parent))
+    return _profile_at(path, name, config_path, overrides, strict=strict)
+
+
+def _profile_at(path: Path, name: str, config_path: Optional[Path],
+                overrides: Optional[Overrides], *, strict: bool) -> Config:
+    """The profile in ``path``, validated as profile ``name`` of ``config_path``."""
     # Read *onto* the machine settings rather than patched with them
     # afterwards. Patched, the profile was validated while it still named
     # the default device: on a desk for another interface its channels
@@ -81,7 +88,7 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     # every machine setting with the value it finds as the fallback, so a
     # profile that states one still wins.
     if config_path is None or not regular_file(Path(config_path)):
-        return load_config(path, overrides=overrides, strict=strict)
+        return load_config(path, overrides=overrides, strict=strict, profile=True)
     main = load_config(config_path, overrides=overrides, strict=strict)
     # Onto what routing.conf itself says, not onto what the command line
     # made of it: the comparison below is between the two files, and the
@@ -89,7 +96,7 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     onto = replace(Config(), **(main.loaded or Machine(
         main.device_name, main.usb_id, main.serial, main.osc_port,
         main.osc_recv_port))._asdict())
-    profile = load_config(path, onto, overrides, strict=strict)
+    profile = load_config(path, onto, overrides, strict=strict, profile=True)
     theirs, ours = profile.loaded, main.loaded
     moved = "" if theirs is None or ours is None else theirs.differs_from(ours)
     if moved:
@@ -97,7 +104,8 @@ def load_profile(name: str, config_path: Optional[Path] = None,
             "profile %r names another backend or interface than %s -- %s. A "
             "profile is the desk, not the machine: take [device] out of %s"
             % (name, config_path, moved, path))
-    return profile
+    # How the session keeps the desk is routing.conf's, whichever desk it keeps.
+    return replace(profile, enforce=main.enforce)
 
 
 #: Device identity and retained legacy ports, as (section, option, Config
@@ -141,8 +149,8 @@ def _refused_for_the_device(name: str, reason: str) -> "Outcome":
 
 def effective_config(config_path: Optional[Path],
                      overrides: Optional[Overrides] = None, *,
-                     said: Optional[Overrides] = None, strict: bool = False
-                     ) -> Tuple[Config, Optional[str]]:
+                     said: Optional[Overrides] = None, strict: bool = False,
+                     quiet: bool = False) -> Tuple[Config, Optional[str]]:
     """The desk a start applies, and the profile it came from.
 
     The active profile when one is remembered and loads, `routing.conf`
@@ -162,6 +170,8 @@ def effective_config(config_path: Optional[Path],
     validates its target independently, so it can repair a broken selection.
     ``overrides`` selects the validation device for both files; ``said``
     is its compatible keyword alias. Supplying both is a TypeError.
+    ``quiet`` says nothing about which desk it is: for a reader that asks
+    often, such as the watcher, while the reconcile it may lead to says it.
     """
     overrides = _resolve_overrides(overrides, said)
     config_path = config_path or discover_config_path()
@@ -174,13 +184,15 @@ def effective_config(config_path: Optional[Path],
     except ConfigError as exc:
         if strict:
             raise ConfigError("active profile %r is not usable (%s)" % (name, exc)) from None
-        log.warning("active profile %r is not usable (%s); applying %s "
-                    "instead -- fix the file, or `--no-profile`",
-                    name, exc, config_path)
+        if not quiet:
+            log.warning("active profile %r is not usable (%s); applying %s "
+                        "instead -- fix the file, or `--no-profile`",
+                        name, exc, config_path)
         return main, None
-    log.info("active profile %r (%s) is in effect; the routes and channel "
-             "state in %s are not", name, profile_path(name, config_path),
-             config_path)
+    if not quiet:
+        log.info("active profile %r (%s) is in effect; the routes and channel "
+                 "state in %s are not", name, profile_path(name, config_path),
+                 config_path)
     return profile, name
 
 
@@ -338,6 +350,100 @@ def _check(name: str, desk: Desk) -> Outcome:
                    unverified=tuple(unverified), unverifiable=tuple(blind), read_back=True,
                    mismatched=tuple(result.mismatched), unobserved=tuple(result.unobserved),
                    invalid=tuple(result.invalid))
+
+
+def save_capture(name: str, text: str, config_path: Optional[Path] = None) -> Path:
+    """Store a captured desk as a new profile, kept only if it loads like any other.
+
+    Never replaces a file: the name must be free, and the profile appears in one link of a
+    completed temporary file that has already loaded as that profile -- so at no moment is
+    there an unchecked profile a switch could pick up. Validated in the default mode: a
+    section routing.conf has that this version ignores is no reason to refuse a capture.
+    """
+    config_path = config_path or discover_config_path()
+    target = profile_path(name, config_path)
+    if os.path.lexists(target):
+        raise ConfigError("profile %r already exists (%s); choose another name" % (name, target))
+    try:
+        target.parent.mkdir(mode=0o755, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=".capture-", suffix=".tmp", dir=target.parent)
+    except OSError as exc:
+        raise ConfigError("cannot store profile %r in %s: %s"
+                          % (name, target.parent, exc.strerror or exc)) from None
+    try:
+        _store_checked(fd, Path(temporary), target, name, text, config_path)
+    finally:
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
+    return target
+
+
+def _store_checked(fd: int, temporary: Path, target: Path, name: str, text: str,
+                   config_path: Optional[Path]) -> None:
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            os.fchmod(stream.fileno(), 0o644)
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except OSError as exc:
+        raise ConfigError("cannot store profile %r: %s" % (name, exc.strerror or exc)) from None
+    try:
+        _profile_at(temporary, name, config_path, None, strict=False)
+    except ConfigError as exc:
+        raise ConfigError("the captured desk would not load as profile %r (%s); "
+                          "nothing kept" % (name, exc)) from None
+    try:
+        os.link(temporary, target)
+    except FileExistsError:
+        raise ConfigError("profile %r appeared while capturing; nothing replaced"
+                          % name) from None
+    except OSError as exc:
+        raise ConfigError("cannot store profile %r: %s" % (name, exc.strerror or exc)) from None
+
+
+#: The main desk on a `--diff-profile` command line. No profile name can start with ':'.
+MAIN_DESK = ":main"
+
+
+def _desk_named(name: str, config_path: Optional[Path], strict: bool) -> Config:
+    if name == MAIN_DESK:
+        return _restore_config(config_path or discover_config_path(), strict=strict)
+    return load_profile(name, config_path, strict=strict)
+
+
+def _set_by(config: Config) -> Dict[str, Tuple[str, str]]:
+    """Each register a desk sets: its value as written, and the policy it holds it with."""
+    device = device_for_name(config.device_name)
+    return {entry.path: (" ".join(map(str, entry.args)),
+                         "remember" if entry.base
+                         else policy_for(entry.path, device, config.policies).value)
+            for entry in desired(config)}
+
+
+def _natural(path: str) -> Tuple[Union[int, str], ...]:
+    return tuple(int(part) if part.isdigit() else part for part in path.split("/"))
+
+
+def compare_desks(first: str, second: str, config_path: Optional[Path] = None, *,
+                  strict: bool = False) -> Sequence[str]:
+    """What choosing ``second`` over ``first`` would set differently, without a device.
+
+    Either name is a profile, or ``:main`` for routing.conf, loaded as a switch would load
+    it. One line per register the two desks set differently: its value in each (``-`` where
+    a desk leaves it alone) and, where it differs, the policy it is held with.
+    """
+    sides = [_set_by(_desk_named(name, config_path, strict)) for name in (first, second)]
+    lines = []
+    for path in sorted(set(sides[0]) | set(sides[1]), key=_natural):
+        before, after = (side.get(path) for side in sides)
+        if before == after:
+            continue
+        line = "%s: %s -> %s" % (path, before[0] if before else "-", after[0] if after else "-")
+        if before and after and before[1] != after[1]:
+            line += " (policy %s -> %s)" % (before[1], after[1])
+        lines.append(line)
+    return lines
 
 
 def describe_profiles(config_path: Optional[Path] = None, *,

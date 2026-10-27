@@ -15,6 +15,7 @@ from typing import List, Optional, Tuple
 from .devices import device_for_name, modelled_names
 from .errors import ConfigError
 from .log import log
+from .mirrors import MIRROR_OPTION
 from .model import (
     ChannelSetting,
     GlobalSetting,
@@ -108,7 +109,7 @@ def _known_sections(device_name: str) -> str:
     lists none -- it reads as authoritative.
     """
     device = device_for_name(device_name)
-    names = ["[device]", "[osc]", "[pin]", "[route:<name>]",
+    names = ["[device]", "[desk]", "[osc]", "[pin]", "[route:<name>]",
              "[input:<n>]", "[output:<n>]", "[playback:<n>]"]
     names += ["[%s]" % family for family in global_families(device)]
     for family in ("input", "output"):
@@ -264,7 +265,9 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
             "(modelled: %s)", (section, device_name, family, modelled_names()), strict)
         return []
 
-    unknown = set(parser.options(section)) - set(known)
+    # `mirror` is the desk's, not a register's: `config` expands it into routes.
+    desk_options = {MIRROR_OPTION} if family == "output" else set()
+    unknown = set(parser.options(section)) - set(known) - desk_options
     if unknown:
         extra = ""
         if family == "input" and "48v" in unknown:
@@ -274,10 +277,12 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
         raise ConfigError(
             "[%s]: unknown option(s) %s (valid: %s)%s"
             % (section, ", ".join(sorted(unknown)),
-               ", ".join(sorted(known)), extra))
+               ", ".join(sorted({*known, *desk_options})), extra))
 
     settings = []
     for option in parser.options(section):
+        if option in desk_options:
+            continue
         # By channel, not by name: an option can have several rows when
         # the device's limits differ per channel, and the wrong row
         # validates against the wrong ceiling. See `option_register`.

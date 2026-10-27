@@ -53,6 +53,10 @@ class Route:
     #: Balance of a linked stereo source and output pair, as OSC Int32.
     #: Level and balance belong to one compound matrix register.
     pan: int = 0
+    #: The outputs this route copies, when a `mirror =` declared it rather than the file.
+    mirror_of: Tuple[int, ...] = ()
+    #: Declared by `[desk] base`, not by the file: REMEMBERed after an explicit apply.
+    base: bool = False
 
     def __post_init__(self) -> None:
         _ = self.checked_pan
@@ -247,6 +251,11 @@ class Config:
     #: What the command line put in place of the file's settings. No file
     #: this process reads again has a say in these, exactly as at its start.
     overrides: Overrides = field(default_factory=Overrides)
+    #: `[desk] base`: what the matrix is beneath the routes (see `base.BASES`).
+    base: str = "keep"
+    #: `[desk] enforce`: ``apply``, or ``watch`` to reconcile when the device
+    #: contradicts a pinned value (watch.py). routing.conf's; profiles inherit it.
+    enforce: str = "apply"
 
     def __post_init__(self) -> None:
         # A frozen dataclass alone leaves a dict writable. Copy first:

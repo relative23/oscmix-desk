@@ -25,7 +25,7 @@ from .diagnostics import backend_status
 from .discovery import serial_in
 from .errors import BackendControlError, WriteFailed
 from .model import Config
-from .osc import Message, decode_delivery, encode_osc
+from .osc import Args, Message, decode_delivery, encode_osc
 from .protocol import (
     HEADER,
     HELLO_REPLY,
@@ -154,6 +154,11 @@ class Control:
         self._queue_bytes = 0
         self.epoch = b""
         self.device_name = ""
+        #: Called with each write the backend acknowledged; the journal's source.
+        self.on_written: Optional[Callable[[str, str, Args], None]] = None
+        #: Whether some connection holds the operation lease, as the last LEASE
+        #: event said; the backend sends one right after HELLO and on each change.
+        self.lease_held = False
         self.pid = self.uid = self.gid = -1
         try:
             self._connect(expected_pid, expected_uid, expected_gid, reader)
@@ -267,6 +272,7 @@ class Control:
             if self._lease is not None and (sequence != self._lease or code != Status.BUSY):
                 self._protocol_error("backend operation lease changed unexpectedly")
             self._generation = sequence
+            self.lease_held = code == Status.BUSY
         elif kind == Event.WINDOW:
             if payload or code not in (Status.OK, Status.BUSY):
                 self._protocol_error("invalid refresh-window event")
@@ -436,6 +442,8 @@ class Control:
                                   "backend refused write to %s (code %d)" % (path, code)),
                                   written, paths[index:])
             written.append(path)
+            if self.on_written is not None:
+                self.on_written(path, tags, tuple(args))
 
 
 def connect_backend(config: Config, config_path: Optional[Path] = None, *,

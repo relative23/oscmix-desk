@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .autogain import validate_autogain
+from .base import base_routes, check_base
 from .constants import (
     CHANNEL_MAX,
     CHANNEL_MIN,
@@ -23,6 +24,8 @@ from .constants import (
 )
 from .devices import device_for_name
 from .errors import ConfigError
+from .limits import validate_dsp_limits
+from .mirrors import MIRROR_OPTION, Mirror, expand_mirrors, parse_mirror
 from .model import (
     ChannelSetting,
     Config,
@@ -35,7 +38,14 @@ from .model import (
 )
 from .paths import regular_file
 from .playback import validate_playback_mute
-from .registers import POLICIES, Policy, global_families, register_at, settable_options
+from .registers import (
+    POLICIES,
+    Device,
+    Policy,
+    global_families,
+    register_at,
+    settable_options,
+)
 from .sections import (
     _is_nested_section,
     _parse_bool,
@@ -88,6 +98,7 @@ def _parse_db(raw: str, section: str, option: str) -> float:
 
 _KNOWN_OPTIONS = {
     "device": {"name", "usb-id", "serial"},
+    "desk": {"base", "enforce"},
     "osc": {"port", "recv-port"},
     "route": {"playback", "input", "output", "level", "volume", "stereo", "pan"},
 }
@@ -250,6 +261,12 @@ class _Draft:
     channels: List[ChannelSetting] = field(default_factory=list)
     globals: List[GlobalSetting] = field(default_factory=list)
     policies: Dict[Tuple[str, str], Policy] = field(default_factory=dict)
+    #: `[desk] base`: what the matrix is beneath the routes.
+    base: str = "keep"
+    #: `[desk] enforce`: how the running session keeps the desk (`ENFORCE`).
+    enforce: str = "apply"
+    #: `mirror =` declarations, expanded into routes once every section is read.
+    mirrors: List[Mirror] = field(default_factory=list)
 
     @property
     def used(self) -> str:
@@ -263,12 +280,14 @@ class _Draft:
         return Config(run.device_name, run.usb_id, run.serial, run.osc_port,
                       run.osc_recv_port, tuple(self.routes),
                       tuple(self.channels), tuple(self.globals),
-                      dict(self.policies), file, self.overrides)
+                      dict(self.policies), file, self.overrides, base=self.base,
+                      enforce=self.enforce)
 
 
 def load_config(path: Optional[Path], base: Optional[Config] = None,
                 overrides: Optional[Overrides] = None, *,
-                said: Optional[Overrides] = None, strict: bool = False) -> Config:
+                said: Optional[Overrides] = None, strict: bool = False,
+                profile: bool = False) -> Config:
     """Load routing.conf. ``path=None`` returns built-in defaults.
 
     ``overrides`` selects the device used during validation and carries the
@@ -282,6 +301,9 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
     ``strict=True`` rejects unknown sections and sections the selected
     device cannot apply. The default warns and ignores them for config
     compatibility. Both modes validate all supported options and values.
+
+    ``profile=True`` reads a profile, which may not set `[desk] enforce`:
+    routing.conf alone decides how the running session keeps a desk.
     """
     overrides = _resolve_overrides(overrides, said)
     onto = Config() if base is None else base
@@ -309,17 +331,12 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
     pending: List[str] = []
     pending_globals: List[str] = []
     pending_nested: List[str] = []
-    _dispatch(parser, config, pending, pending_globals, pending_nested, strict=strict)
+    _dispatch(parser, config, pending, pending_globals, pending_nested, strict=strict,
+              profile=profile)
     device = device_for_name(config.used)
-    for section in pending_globals:
-        config.globals.extend(_parse_global_section(parser, section, device))
-    for section in pending_nested:
-        config.channels.extend(_parse_nested_section(parser, section, device))
-    for section in pending:
-        family = section.split(":", 1)[0]
-        config.channels.extend(
-            _parse_channel_section(parser, section, family, device,
-                                   config.used, strict=strict))
+    _parse_collected(parser, config, device, pending, pending_globals, pending_nested,
+                     strict=strict)
+    _desk_wide(config, device)
 
     _check_device_channels(config)
     _check_link_agreement(config.routes)
@@ -330,12 +347,69 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
     result = config.frozen()
     validate_autogain(result)
     validate_playback_mute(result)
+    validate_dsp_limits(result)
     return result
+
+
+#: `[desk] enforce`: ``apply`` keeps the desk on start, switch and reload; ``watch`` also
+#: reconciles when the device contradicts a pinned value (watch.py).
+ENFORCE = ("apply", "watch")
+
+
+def _parse_desk(parser: "configparser.ConfigParser", section: str, config: _Draft, *,
+                profile: bool) -> None:
+    """`[desk]`: the base beneath the routes, and how the session keeps the desk."""
+    _check_options(section, "desk", parser.options(section))
+    config.base = parser.get(section, "base", fallback=config.base).strip()
+    if not parser.has_option(section, "enforce"):
+        return
+    if profile:
+        raise ConfigError("[desk] enforce: how the running session keeps the desk is set in "
+                          "routing.conf, and every profile inherits it; take it out of the "
+                          "profile")
+    enforce = parser.get(section, "enforce").strip()
+    if enforce not in ENFORCE:
+        raise ConfigError("[desk] enforce: expected one of %s, got %r"
+                          % (", ".join(ENFORCE), enforce))
+    config.enforce = enforce
+
+
+def _parse_collected(parser: "configparser.ConfigParser", config: _Draft,
+                     device: Optional[Device], pending: List[str], pending_globals: List[str],
+                     pending_nested: List[str], *, strict: bool) -> None:
+    """The sections that needed the device: global, nested and channel sections."""
+    for section in pending_globals:
+        config.globals.extend(_parse_global_section(parser, section, device))
+    for section in pending_nested:
+        config.channels.extend(_parse_nested_section(parser, section, device))
+    for section in pending:
+        family = section.split(":", 1)[0]
+        config.channels.extend(
+            _parse_channel_section(parser, section, family, device,
+                                   config.used, strict=strict))
+        if family == "output" and device is not None and parser.has_option(section,
+                                                                           MIRROR_OPTION):
+            config.mirrors.append(parse_mirror(parser.get(section, MIRROR_OPTION), section,
+                                               int(section.split(":", 1)[1]), device))
+
+
+def _desk_wide(config: _Draft, device: Optional[Device]) -> None:
+    """What spans the whole desk once every section is read: the base's routes, then mirrors.
+
+    In that order, so a mirror copies the base's routes of its source like any other. The
+    base's silent cells are planning's: they depend on which cells the routes take.
+    """
+    check_base(config.base)
+    if device is not None:
+        config.routes += base_routes(config.base, config.routes, config.channels,
+                                     config.mirrors, device)
+    config.routes = expand_mirrors(config.routes, config.mirrors)
 
 
 def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
               pending: List[str], pending_globals: List[str],
-              pending_nested: List[str], *, strict: bool = False) -> None:
+              pending_nested: List[str], *, strict: bool = False,
+              profile: bool = False) -> None:
     """Route each section to its parser, or refuse/report an ignored section.
 
     Channel and nested sections are only *collected* here: both need the
@@ -382,6 +456,8 @@ def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
             config.serial = serial
         elif section == "osc":
             _parse_osc(parser, section, config)
+        elif section == "desk":
+            _parse_desk(parser, section, config, profile=profile)
         elif section.startswith("route:"):
             config.routes.append(_parse_route(parser, section))
         elif section.startswith(("input:", "output:", "playback:")):

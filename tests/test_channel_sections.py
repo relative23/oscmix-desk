@@ -119,7 +119,7 @@ def test_an_unknown_option_lists_what_is_valid(session_mod, tmp_path):
     with pytest.raises(session_mod.ConfigError) as excinfo:
         session_mod.load_config(write(tmp_path, DEVICE +
                                       "[output:5]\nnosuchoption = 3\n"))
-    assert "crossfeed, fx, mute, pan, phase, reflevel, volume" in str(excinfo.value)
+    assert "crossfeed, fx, mirror, mute, pan, phase, reflevel, volume" in str(excinfo.value)
 
 
 def test_a_gain_outside_the_range_is_refused(session_mod, tmp_path):

@@ -13,7 +13,7 @@ Pure, like the reconciler it reads from: what was seen goes in, a
 
 from __future__ import annotations
 
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import AbstractSet, Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 from .constants import LEVEL_MAX, LEVEL_MIN, UNLINKED_GAIN_OFFSET
 from .model import (
@@ -25,7 +25,7 @@ from .model import (
 )
 from .numeric import finite, integer, render_number, report_value
 from .osc import Args
-from .reconcile import policy_for
+from .reconcile import mix_messages, policy_for
 from .registers import (
     BOOL,
     ENABLE_OPTION,
@@ -67,11 +67,11 @@ def _omitted(warnings: Optional[List[str]], path: str, reason: str) -> None:
         warnings.append(" ".join(("%s: %s; omitted" % (path, reason)).splitlines()))
 
 
-def _mix_cell(parts: List[str], args: Args, device: Optional[Device]
+def _mix_cell(parts: List[str], args: Args, device: Optional[Device], kind: str = "input"
               ) -> Optional[Tuple[int, int, Args]]:
     out, src = int(parts[2]), int(parts[4])
     if (device is None or out not in device.channels["output"]
-            or src not in device.channels["input"]):
+            or src not in device.channels[kind]):
         raise ValueError("channel is outside the known device map")
     if not args:
         raise ValueError("missing mix level")
@@ -92,15 +92,16 @@ def _mix_cell(parts: List[str], args: Args, device: Optional[Device]
 
 
 def _mix_entries(seen: Mapping[str, Args], device: Optional[Device],
-                 warnings: Optional[List[str]]) -> Dict[Tuple[int, int], Args]:
-    """Every reported input-matrix cell that is not muted."""
+                 warnings: Optional[List[str]], kind: str = "input"
+                 ) -> Dict[Tuple[int, int], Args]:
+    """Every input-matrix (or playback-matrix) cell that is not muted."""
     entries: Dict[Tuple[int, int], Args] = {}
     for path, args in seen.items():
         parts = path.split("/")
-        if len(parts) != 5 or parts[1] != "mix" or parts[3] != "input":
+        if len(parts) != 5 or parts[1] != "mix" or parts[3] != kind:
             continue
         try:
-            cell = _mix_cell(parts, args, device)
+            cell = _mix_cell(parts, args, device, kind)
             if cell is not None:
                 out, src, value = cell
                 entries[(out, src)] = value
@@ -220,14 +221,14 @@ def _config_value(register: "Register", args: Args) -> SettingValue:
 
 def _canonicalize_balanced_cells(entries: Dict[Tuple[int, int], Args],
                                   seen: Mapping[str, Args],
-                                  warnings: Optional[List[str]]) -> None:
+                                  warnings: Optional[List[str]], kind: str = "input") -> None:
     """Fold linked aliases only when every declared level/balance agrees."""
     # Nonzero linked balances include both components of one crosspoint.
     # Equivalent aliases can be canonicalized; contradictory aliases must
     # not yield an export that silently chooses one requested balance.
     groups: Dict[Tuple[int, int], List[Tuple[int, int]]] = {}
     for out, src in entries:
-        if _linked(seen, "output", out) and _linked(seen, "input", src):
+        if _linked(seen, "output", out) and _linked(seen, kind, src):
             key = (out - (out - 1) % 2, src - (src - 1) % 2)
             groups.setdefault(key, []).append((out, src))
     for key, aliases in groups.items():
@@ -238,15 +239,24 @@ def _canonicalize_balanced_cells(entries: Dict[Tuple[int, int], Args],
         for alias in aliases:
             del entries[alias]
         if inconsistent:
-            _omitted(warnings, "/mix/%d/input/%d" % key,
+            _omitted(warnings, "/mix/%d/%s/%d" % (key[0], kind, key[1]),
                      "contradictory linked level/pan aliases")
         else:
             entries[key] = cell
 
 
+def _route(kind: str, name: str, source: Tuple[int, ...], output: Tuple[int, ...],
+           level: float, *, pan: int = 0, stereo: bool = True) -> Route:
+    if kind == "playback":
+        return Route(name=name, playback=source, output=output, level=level, pan=pan,
+                     stereo=stereo)
+    return Route(name=name, input=source, output=output, level=level, pan=pan, stereo=stereo)
+
+
 def routes_from_observed(seen: Mapping[str, Args],
                          device: Optional[Device] = None,
-                         warnings: Optional[List[str]] = None) -> Tuple[Route, ...]:
+                         warnings: Optional[List[str]] = None,
+                         kind: str = "input") -> Tuple[Route, ...]:
     """Reconstruct the routes a device's reported state implies.
 
     Deterministic in name and order, because the round trip has to be a
@@ -254,10 +264,14 @@ def routes_from_observed(seen: Mapping[str, Args],
     same file, and a name derived from anything but the channels would
     not survive that.
 
-    Only what the dump carries. See ``unrecoverable`` for the rest.
+    Only what the dump carries; see ``unrecoverable`` for the rest. With
+    ``kind="playback"`` the same inverse reads the playback matrix out of
+    the write journal (``written_routes``), since ``mix_messages`` writes
+    both kinds alike.
     """
-    entries = _mix_entries(seen, device, warnings)
-    _canonicalize_balanced_cells(entries, seen, warnings)
+    entries = _mix_entries(seen, device, warnings, kind)
+    _canonicalize_balanced_cells(entries, seen, warnings, kind)
+    short = "in" if kind == "input" else "pb"
     routes = []
     claimed = set()
     for (out, src) in sorted(entries):
@@ -267,8 +281,8 @@ def routes_from_observed(seen: Mapping[str, Args],
         level = finite(cell[0])
         pan = integer(cell[1])
         out_linked = _linked(seen, "output", out)
-        in_linked = _linked(seen, "input", src)
-        path = "/mix/%d/input/%d" % (out, src)
+        in_linked = _linked(seen, kind, src)
+        path = "/mix/%d/%s/%d" % (out, kind, src)
         if pan and round(level, 1) <= LEVEL_MIN:
             _omitted(warnings, path, "nonzero balance would round level to digital mute")
             continue
@@ -277,14 +291,13 @@ def routes_from_observed(seen: Mapping[str, Args],
             continue
         pair = (device is not None and out % 2 == src % 2 == 1
                 and out + 1 in device.channels["output"]
-                and src + 1 in device.channels["input"])
+                and src + 1 in device.channels[kind])
 
         if pair and out_linked and in_linked and level <= LEVEL_MAX:
             # A linked pair folds onto its odd channel, and the register
             # is the pair's. Its declared balance stays with its level.
-            routes.append(Route(name="in%d-%d-out%d-%d" % (src, src + 1, out, out + 1),
-                                input=(src, src + 1), output=(out, out + 1),
-                                level=round(level, 1), pan=pan))
+            routes.append(_route(kind, "%s%d-%d-out%d-%d" % (short, src, src + 1, out, out + 1),
+                                 (src, src + 1), (out, out + 1), round(level, 1), pan=pan))
             claimed.add((out, src))
         elif (pair and not out_linked and in_linked and pan == -100
               and (out + 1, src) in entries
@@ -294,20 +307,58 @@ def routes_from_observed(seen: Mapping[str, Args],
             # The hard-panned pair an unlinked route writes. oscmix
             # halved the gain on the way in, so the 6 dB compensation
             # comes back off to recover the `level` the config asked for.
-            routes.append(Route(name="in%d-%d-out%d-%d-split" % (src, src + 1, out, out + 1),
-                                input=(src, src + 1), output=(out, out + 1),
-                                level=round(level - UNLINKED_GAIN_OFFSET, 1),
-                                stereo=False))
+            routes.append(_route(kind, "%s%d-%d-out%d-%d-split"
+                                 % (short, src, src + 1, out, out + 1), (src, src + 1),
+                                 (out, out + 1), round(level - UNLINKED_GAIN_OFFSET, 1),
+                                 stereo=False))
             claimed.update({(out, src), (out + 1, src)})
         elif pan == 0 and not out_linked and not in_linked and level <= LEVEL_MAX:
-            routes.append(Route(name="in%d-out%d" % (src, out),
-                                input=(src,), output=(out,),
-                                level=round(level, 1)))
+            routes.append(_route(kind, "%s%d-out%d" % (short, src, out), (src,), (out,),
+                                 round(level, 1)))
             claimed.add((out, src))
         else:
             _omitted(warnings, path,
                      "pan, balance or channel pairing is not expressible as a route")
     return tuple(routes)
+
+
+class WrittenState(NamedTuple):
+    """What desk itself last wrote where the device reports nothing, from its journal."""
+
+    source: str
+    routes: Tuple[Route, ...]
+    mutes: Mapping[int, int]
+    stamps: Mapping[str, str]
+
+
+def _reestablished(device: Optional[Device], path: str) -> bool:
+    register = register_at(device, path)
+    return register is not None and register.verify == REESTABLISHED
+
+
+def written_state(journal: Mapping[str, Tuple[str, Args, str]], reported: Mapping[str, Args],
+                  device: Optional[Device], source: str,
+                  warnings: Optional[List[str]] = None) -> WrittenState:
+    """Playback routes and mute flags recovered from the write journal, never from the device.
+
+    Only registers the device does not report are taken from the journal; the output link
+    flags a playback route depends on are the device's own reports.
+    """
+    seen: Dict[str, Args] = {path: args for path, (_tags, args, _at) in journal.items()
+                             if _reestablished(device, path)}
+    seen.update({path: args for path, args in reported.items()
+                 if path.startswith("/output/") and path.endswith("/stereo")})
+    routes = routes_from_observed(seen, device, warnings, kind="playback")
+    mutes: Dict[int, int] = {}
+    for path, args in seen.items():
+        parts = path.split("/")
+        if len(parts) == 4 and parts[1] == "playback" and parts[3] == "mute":
+            try:
+                mutes[int(parts[2])] = integer(args[0])
+            except (IndexError, TypeError, ValueError) as exc:
+                _omitted(warnings, path, str(exc))
+    stamps = {path: at for path, (_tags, _args, at) in journal.items()}
+    return WrittenState(source, routes, mutes, stamps)
 
 
 def unrecoverable(device: Optional[Device] = None) -> Tuple[str, ...]:
@@ -323,17 +374,32 @@ def unrecoverable(device: Optional[Device] = None) -> Tuple[str, ...]:
                  if r.verify == REESTABLISHED)
 
 
-def render_config(config: Config, device: Optional[Device] = None,
-                  warnings: Sequence[str] = ()) -> str:
-    """Render the representable subset, with all observed omissions visible.
+#: How a capture reads, and the base that makes its input routes the whole monitoring matrix.
+_CAPTURE_NOTE = [
+    "# Every reported value is declared, and the base below silences",
+    "# every input cell no route sets, so switching to this profile",
+    "# restores the monitoring matrix as captured. The playback matrix",
+    "# cannot be read: the playback routes desk wrote since the boot are",
+    "# below, and every other playback cell keeps what it holds when",
+    "# switching here -- a capture never silences what it does not know.",
+    "# Pinned values are kept as they are; the remembered ones are",
+    "# starting values: switching to this profile writes them, and",
+    "# later reloads leave the mixer's value alone. Gains AutoSet owns",
+    "# are left to it. Device and ports come from routing.conf.",
+    "",
+    "[desk]",
+    "base = clear-inputs",
+    "",
+]
 
-    PIN settings are active; REMEMBER settings are comments so a dump
-    does not claim ownership of live controls. Uncommenting declares an
-    initial value without changing that register's reconciliation policy.
-    """
+
+def _header_lines(config: Config, device: Optional[Device], warnings: Sequence[str],
+                  written: Optional[WrittenState], capture: bool) -> List[str]:
+    """What the file is, what it leaves out, and how to read its values."""
     missing = unrecoverable(device)
     lines = [
-        "# Generated by oscmix-session --dump-config.",
+        "# Captured by oscmix-session --capture." if capture
+        else "# Generated by oscmix-session --dump-config.",
         "#",
         "# This is what the device reported, not everything it is doing.",
     ]
@@ -354,50 +420,119 @@ def render_config(config: Config, device: Optional[Device] = None,
             "# the backend, so software routing cannot be read back -- only",
             "# re-established from a config. Playback mute flags/columns cannot be",
             "# recovered from this dump either. Playback mute remains unverified.",
+        ]
+        lines += ([
+            "# What desk itself last wrote there follows at the end, from its",
+            "# write journal -- unconfirmed. Merge, do not replace.",
+        ] if written is not None else [
             "# Playback routes are not below and this file will not restore",
             "# them. Merge, do not replace.",
-        ]
+        ])
     lines += [
         "#",
-        "# Values are emitted as config where the register model pins them,",
-        "# and commented out where it remembers them -- a dump cannot tell",
-        "# 'I meant this' from 'this is where I left it', so for anything a",
-        "# person turns during a session it does not decide. Uncommenting",
-        "# declares an initial value; it does not change the policy. Only",
-        "# flat input/output/playback options support overrides in [pin].",
-        "",
-        "[device]",
-        "name = %s" % config.device_name,
-        "usb-id = %s" % config.usb_id,
-        "",
-        "[osc]",
-        "port = %d" % config.osc_port,
-        "recv-port = %d" % config.osc_recv_port,
-        "",
     ]
+    if capture:
+        lines += _CAPTURE_NOTE
+    else:
+        lines += [
+            "# Values are emitted as config where the register model pins them,",
+            "# and commented out where it remembers them -- a dump cannot tell",
+            "# 'I meant this' from 'this is where I left it', so for anything a",
+            "# person turns during a session it does not decide. Uncommenting",
+            "# declares an initial value; it does not change the policy. Only",
+            "# flat input/output/playback options support overrides in [pin].",
+            "",
+            "[device]",
+            "name = %s" % config.device_name,
+            "usb-id = %s" % config.usb_id,
+            "",
+            "[osc]",
+            "port = %d" % config.osc_port,
+            "recv-port = %d" % config.osc_recv_port,
+            "",
+        ]
+    return lines
+
+
+def render_config(config: Config, device: Optional[Device] = None,
+                  warnings: Sequence[str] = (), written: Optional[WrittenState] = None,
+                  *, capture: bool = False, autoset: AbstractSet[str] = frozenset()) -> str:
+    """Render the representable subset, with all observed omissions visible.
+
+    PIN settings are active; REMEMBER settings are comments so a dump
+    does not claim ownership of live controls. Uncommenting declares an
+    initial value without changing that register's reconciliation policy.
+
+    ``capture`` renders a profile instead (``--capture``): every value active, the
+    remembered ones as starting values a switch writes, and no ``[device]`` or ``[osc]``,
+    which a profile inherits from routing.conf. Its ``[desk] base = clear-inputs`` makes the
+    input routes the whole monitoring matrix; playback cells the journal does not know are
+    left alone, never silenced. The gains in ``autoset`` stay comments, since AutoSet owns
+    them and a switch that wrote them would be refused.
+    """
+    lines = _header_lines(config, device, warnings, written, capture)
     if not config.routes:
         lines += ["# No representable input route was recovered. This does not",
                   "# prove that direct monitoring is absent; see --snapshot."]
     for route in config.routes:
-        kind, source = route.source
-        lines += [
-            "[route:%s]" % route.name,
-            "%s = %s" % (kind, "/".join(map(str, source))),
-            "output = %s" % "/".join(map(str, route.output)),
-            "level = %.1f" % route.level,
-        ]
-        if not route.stereo:
-            lines.append("stereo = false")
-        if route.pan:
-            lines.append("pan = %d" % route.checked_pan)
-        lines.append("")
-    lines += _global_sections(config, device)
-    lines += _channel_sections(config, device)
+        lines += _route_lines(route)
+    lines += _global_sections(config, device, capture)
+    lines += _channel_sections(config, device, capture, autoset)
+    if written is not None:
+        lines += _written_sections(written)
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _channel_sections(config: Config,
-                      device: Optional[Device]) -> List[str]:
+def _route_lines(route: Route) -> List[str]:
+    kind, source = route.source
+    lines = [
+        "[route:%s]" % route.name,
+        "%s = %s" % (kind, "/".join(map(str, source))),
+        "output = %s" % "/".join(map(str, route.output)),
+        "level = %.1f" % route.level,
+    ]
+    if not route.stereo:
+        lines.append("stereo = false")
+    if route.pan:
+        lines.append("pan = %d" % route.checked_pan)
+    lines.append("")
+    return lines
+
+
+def _written_sections(written: WrittenState) -> List[str]:
+    """The journal's playback routes, live, and its mute flags, commented out."""
+    lines = [
+        "# ---------------------------------------------------------------------",
+        "# WRITTEN BY DESK, NOT REPORTED BY THE DEVICE -- unconfirmed.",
+        "# From %s: what desk last sent and the backend" % written.source,
+        "# acknowledged, at the time shown. TotalMix, the GTK mixer or the front",
+        "# panel may have changed it since; the device cannot say.",
+        "",
+    ]
+    if not written.routes and not written.mutes:
+        lines += ["# The journal holds no playback route or mute flag.", ""]
+    for route in written.routes:
+        times = [written.stamps[path] for path, _tags, _args in mix_messages(route)
+                 if path in written.stamps]
+        if times:
+            lines.append("# written %s" % max(times))
+        lines += _route_lines(route)
+    if written.mutes:
+        lines += [
+            "# Playback mute as desk last wrote it. A mute needs both partners",
+            "# declared, and releasing one also both complete matrix columns,",
+            "# so these stay comments: uncomment deliberately.",
+        ]
+    for channel, value in sorted(written.mutes.items()):
+        stamp = written.stamps.get("/playback/%d/mute" % channel, "?")
+        lines += ["# [playback:%d]" % channel,
+                  "# mute = %s   # written %s" % ("true" if value else "false", stamp)]
+    return lines
+
+
+def _channel_sections(config: Config, device: Optional[Device],
+                      capture: bool = False, autoset: AbstractSet[str] = frozenset()
+                      ) -> List[str]:
     """``[input:N]`` / ``[output:N]`` blocks for the observed channel state.
 
     Pinned options become config lines, remembered ones become comments
@@ -427,12 +562,17 @@ def _channel_sections(config: Config,
             path = "/%s/%d/%s" % (family, channel, setting.option)
             name = (ENABLE_OPTION if setting.option == sub
                     else setting.option.split("/", 1)[-1])
-            lines.append(_setting_line(name, setting.value, path, device))
+            if path in autoset:
+                lines.append("# %s = %s   # AutoSet owns it, so the profile leaves it alone"
+                             % (name, setting.value))
+            else:
+                lines.append(_setting_line(name, setting.value, path, device, capture))
         lines.append("")
     return lines
 
 
-def _global_sections(config: Config, device: Optional[Device]) -> List[str]:
+def _global_sections(config: Config, device: Optional[Device],
+                     capture: bool = False) -> List[str]:
     """`[echo]` and the other channel-less families."""
     by_family: Dict[str, List[GlobalSetting]] = {}
     for setting in config.globals:
@@ -442,13 +582,13 @@ def _global_sections(config: Config, device: Optional[Device]) -> List[str]:
         lines.append("[%s]" % family)
         for setting in sorted(settings, key=lambda s: s.option):
             lines.append(_setting_line(setting.option, setting.value,
-                                       setting.path, device))
+                                       setting.path, device, capture))
         lines.append("")
     return lines
 
 
 def _setting_line(name: str, value: SettingValue, path: str,
-                  device: Optional[Device]) -> str:
+                  device: Optional[Device], capture: bool = False) -> str:
     """One config line, live or commented, with the reason for commenting."""
     register = register_at(device, path)
     try:
@@ -459,7 +599,7 @@ def _setting_line(name: str, value: SettingValue, path: str,
     if register is not None and _unnameable(register, value):
         return ("# %s   # this backend reports no name for it; see "
                 "michaelforney/oscmix#30" % entry)
-    if policy_for(path, device) == PIN:
+    if capture or policy_for(path, device) == PIN:
         return entry
     return "# %s   # remembered: the device's value wins" % entry
 

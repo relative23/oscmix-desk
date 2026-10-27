@@ -67,6 +67,15 @@ directory falls back to `$XDG_RUNTIME_DIR/oscmix-desk/`, then to the
 configuration directory, with a narrower coordination scope. A permission
 failure on the selected directory is a refusal, never a reason to pick a
 different one. `ReadWritePaths` names only the shared runtime directory.
+Beside the device lock, every writer stores its write journal
+(`<interface>.written.<uid>.json`, mode 0660, one per user because the
+sticky directory lets nobody replace another user's file): what it sent and
+the backend acknowledged, replaced atomically while the lock is held. Only
+the shared or runtime directory holds one, never the configuration
+directory. With `[desk] enforce = watch` the service keeps one more
+connection to its own backend: a reader, checked like every connection, that
+holds no lease and sends no write; the reconciles it asks for take the lock
+and lease like any other.
 
 The routing configuration is read-only to the service. The profile marker and
 `--dump-config` output are written by the CLI, outside the service, to a
@@ -78,7 +87,11 @@ temporary file that is then renamed.
 can hold a lock there; nobody else can. A member can still hold a lock
 indefinitely or plant a file at another member's lock path -- the latter is
 refused with its reason, the former is a wait. That is the trust the group
-grants, and it is the group that may drive the interface at all. The PIN and
+grants, and it is the group that may drive the interface at all. The same
+member can write a journal of their own that a reader merges; each is read
+with `O_NOFOLLOW`, bounded and schema-checked, and `--dump-config --include-written` labels what it
+renders as unconfirmed -- a member who can drive the interface gains nothing
+by falsifying a record of it. The PIN and
 REMEMBER policy decides whether a later desk operation overwrites a manual
 change; it never saves that change into the configuration.
 

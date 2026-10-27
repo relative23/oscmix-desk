@@ -85,6 +85,10 @@ acyclic graph.
 | `devices` | the tables themselves: the UCX II's rows and channel map, the 802's channel map, and which of them a config names |
 | `model` | a desk as data with validated level/balance claims on linked route aliases: routes, channel and global settings, device identity, `Overrides` (`CommandLine` remains an alias) and two retained legacy OSC ports; only device name, USB ID and serial select the machine |
 | `playback` | pure validation of unreadable playback-mute ownership: both adjacent flags must agree; unmute explicitly owns both complete matrix columns, including zero cells; no I/O or inferred DEVICE original |
+| `journal` | what desk last wrote per register of one interface, beside its device lock (`/run/oscmix-desk/<key>.written.<uid>.json`, one per user in the sticky directory; readers merge the latest write per register): every write the backend acknowledged, stored after each apply and at the end, atomically, under the lock; read with suspicion, never the reason an operation fails, never proof the hardware holds the value |
+| `base` | `[desk] base`: the matrix beneath the routes (`clear-inputs`, `clear-submixes`, `straight-playback`, `daw`; `keep` by default). Silent cells for every register no route writes, one per channel where no route declares the pair's link (the backend folds an even channel onto a linked pair), compared only where the device reports them; straight playback as routes of the base, linking only pairs the desk sets alike and never an input. Planning marks both so they are written on an explicit apply and REMEMBERed afterwards |
+| `mirrors` | `mirror =` in an output section: every route of the source output declared again for the mirror, without its output volume, when the config loads (manual 27.3); refuses mismatched widths, chains, shared targets and mirror targets with routes of their own |
+| `limits` | the manual's cross-channel DSP limits (Room EQ on at most 16 outputs, Crossfeed on at most 4 stereo outputs on the UCX II): a config's own declarations at load, and an apply's writes over every other output's observed state before the first write; a plan that switches nothing on is never counted |
 | `autogain` | pure AutoSet/gain ownership by input and stereo pair, typed dependency values and shared declaration validation; no transport or gain-policy change for other inputs |
 | `paths` | where a desk is looked for: the config, `profiles/` beside it, and what a profile name is |
 | `sections` | the sections the register table declares -- channels, families, globals -- refusing unsettable values; strict mode rejects unknown or unsupported sections, compatibility mode warns and ignores them |
@@ -111,8 +115,9 @@ acyclic graph.
 | `outcome` | the five `OutcomeState` results of a switch, with immutable paths, separate mismatched/missing/invalid feedback and validated persistence and service reload facts |
 | `profiles` | honour maintenance fences, then switch to `profiles/<name>.conf` under that lock: validate, write, check, finish the backend operation and persist the selection; hand over to the matching service, report exact outcomes and preserve the previous marker on incomplete operations |
 | `desk` | one coordinated operation: pin the interface, own the device lock and checked connection, take one write lease for apply/verify/repair, acknowledge its end and release resources on every path; readers use the same connection lifetime without a writer lock or lease |
-| `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` -- kept for the machine the session runs on, or refused as a desk for somewhere else |
-| `session` | the service lifecycle: wait for the device, start and stop the backend, apply, signal ready, verify, shut down |
+| `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` or a watch request -- kept for the machine the session runs on, or refused as a desk for somewhere else |
+| `session` | the service lifecycle: wait for the device, start and stop the backend, apply, signal ready, verify, watch, shut down |
+| `watch` | `[desk] enforce = watch`: one reader connection, opened before the start's apply, that judges device reports arriving outside every lease against the desk in effect -- only what a reconcile would write and the device reports -- and asks supervise for that reconcile; it never writes, and leaves a register the device keeps setting back to the device |
 | `launcher` | desktop entry point; checks GTK prerequisites and exact backend/desk identity before launch |
 | `reads` | the three actions that read the device and write nothing: `--snapshot`, `--diff`, `--dump-config` |
 | `cli` | one action per invocation and the exit-code mapping, including a switch's device, persistence and service reload facts |
@@ -145,7 +150,8 @@ reload run the same middle part (steps 3 to 8) with their own intent.
    `reconcile.application_plan` what to write
    for the intent (`reconcile.ApplyIntent`: explicit, repair or reconcile,
    which decides PIN and REMEMBER), refuses a plan that would lose a value it
-   must keep (`retention_problem`) or a changed playback mode
+   must keep (`retention_problem`), one that would exceed a DSP limit of the
+   device (`limits.dsp_problem`) or a changed playback mode
    (`streams.PlaybackGuard`), then sends links, waits at the link barrier
    for device reports (`await_link_echo`), and sends the mix and channel
    state.
@@ -213,9 +219,11 @@ The pure `application_plan` selects writes from the operation intent;
 observation classification remains separate. Retained values are not counted
 as confirmations. Indirect link/partner changes are checked before writing.
 
-PIN is enforced only at the enumerated startup, repair and reload/resume
-operations. Device reports outside those windows do not trigger a continuous
-reconciliation loop.
+PIN is enforced at the enumerated startup, repair and reload/resume
+operations. Device reports outside those windows trigger a reconcile only
+with `[desk] enforce = watch` (`watch`): once they rest, through the same
+reload path, and at most three times a minute for one register -- never a
+continuous loop.
 
 ## The two-phase apply
 

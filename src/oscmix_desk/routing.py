@@ -6,6 +6,7 @@ See docs/OSC-PROTOCOL.md for why."""
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from enum import Enum
 from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 
@@ -13,6 +14,7 @@ from .autogain import dependency_paths, flag_value, retained_gains
 from .backend import Control
 from .constants import LINK_ECHO_TIMEOUT, VERIFY_TIMEOUT
 from .errors import WriteFailed
+from .limits import dsp_problem, observation_paths, switches_on, switching_on
 from .log import log
 from .model import Config, Route
 from .observation import Observation
@@ -224,6 +226,7 @@ def apply_routing(config: Config, backend: Control, *,
         problem = _gain_problem(config, wanted.writes, latest, intent, sorted(skip), confirmed)
         if problem:
             raise WriteFailed(OSError(problem), [], [write.path for write in wanted.writes])
+    wanted = _within_dsp_limits(config, wanted, latest, backend, should_stop, intent)
     # A caller may supply the backend. The profile switch does, because
     # the alternative -- its own send/barrier/send -- is what it had
     # first, and it dropped the barrier: applying and verifying a
@@ -239,7 +242,11 @@ def apply_routing(config: Config, backend: Control, *,
 
 
 def _log_apply(config: Config, wanted: Plan, skip: Sequence[str]) -> None:
-    for route in config.routes:
+    based = [route for route in config.routes if route.base]
+    if based:
+        log.info("[desk] base = %s: %d route(s) of 1:1 playback beneath the desk's",
+                 config.base, len(based))
+    for route in (route for route in config.routes if not route.base):
         kind, source = route.source
         log.info(
             "route %r: %s %s -> output %s at %+.1f dB",
@@ -265,26 +272,67 @@ def _log_apply(config: Config, wanted: Plan, skip: Sequence[str]) -> None:
 
 def _read_gain_dependencies(backend: Control, paths: Sequence[str],
                             should_stop: StopCheck, *,
-                            links: Optional[Mapping[str, int]] = None
+                            links: Optional[Mapping[str, int]] = None,
+                            purpose: str = "AutoSet",
+                            settled: Optional[Callable[[Observation], bool]] = None
                             ) -> Dict[str, Tuple[str, Args]]:
-    """One fresh, completed DEVICE window; missing or malformed stays unknown."""
+    """One fresh, completed DEVICE window; missing or malformed stays unknown.
+
+    The window closes once every Boolean dependency and expected link reported validly, or
+    when ``settled`` says so for registers that are not Boolean.
+    """
     if not paths:
         return {}
     if should_stop():
-        raise OSError("stop requested before AutoSet observation; writes refused")
+        raise OSError("stop requested before %s observation; writes refused" % purpose)
     observed = Observation({path: ("i", (value,)) for path, value in (links or {}).items()},
                            dependency_paths=paths)
+    done = settled or (lambda seen: seen.dependencies_complete and seen.complete)
     backend.request_dump()
     deadline = time.monotonic() + VERIFY_TIMEOUT
-    while (not observed.dependencies_complete or not observed.complete) \
-            and time.monotonic() < deadline:
+    while not done(observed) and time.monotonic() < deadline:
         if should_stop():
-            raise OSError("stop requested during AutoSet observation; writes refused")
+            raise OSError("stop requested during %s observation; writes refused" % purpose)
         for report in backend.messages(.25):
             observed.absorb(report)
     if should_stop():
-        raise OSError("stop requested after AutoSet observation; writes refused")
+        raise OSError("stop requested after %s observation; writes refused" % purpose)
     return dict(observed.latest)
+
+
+def _dsp_limit_problem(config: Config, selected: Sequence[Write],
+                       latest: Mapping[str, Tuple[str, Args]], backend: Control,
+                       should_stop: StopCheck) -> Optional[str]:
+    """Room EQ and Crossfeed counted over every output before anything is switched on."""
+    writes = [(write.path, write.args) for write in selected]
+    if not switches_on(config, writes):
+        return None
+    missing = [path for path in observation_paths(config) if path not in latest]
+    counted = dict(latest)
+    # Crossfeed is a level (0..5), not a flag: any report of each register ends the window.
+    counted.update(_read_gain_dependencies(
+        backend, missing, should_stop, purpose="DSP limit",
+        settled=lambda seen: all(path in seen.latest for path in missing)))
+    return dsp_problem(config, writes, counted)
+
+
+def _within_dsp_limits(config: Config, wanted: Plan, latest: Mapping[str, Tuple[str, Args]],
+                       backend: Control, should_stop: StopCheck, intent: ApplyIntent) -> Plan:
+    """The plan if it keeps the DSP limits; refused on an explicit apply, else without them.
+
+    A start, repair or reconcile that refused everything over a Room EQ the device already
+    runs elsewhere would leave the desk unapplied -- and a start failing, restarting and
+    failing again. It leaves the switch-ons to the device and says so; a switch refuses.
+    """
+    problem = _dsp_limit_problem(config, wanted.writes, latest, backend, should_stop)
+    if problem is None:
+        return wanted
+    if intent == ApplyIntent.EXPLICIT:
+        raise WriteFailed(OSError(problem), [], [write.path for write in wanted.writes])
+    held = set(switching_on(config, [(write.path, write.args) for write in wanted.writes]))
+    log.warning("%s; not switching on %s now, so the rest of the desk applies",
+                problem, ", ".join(sorted(held)))
+    return replace(wanted, writes=tuple(w for w in wanted.writes if w.path not in held))
 
 
 def _gain_problem(config: Config, selected: Sequence[Write],

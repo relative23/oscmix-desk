@@ -50,10 +50,14 @@ def retained_pairs(retained: Collection[str]) -> FrozenSet[int]:
 
 
 def route_cells(config: Config, left: int) -> FrozenSet[Tuple[int, int]]:
-    """Explicit matrix cells addressed by routes using either own source."""
+    """Explicit matrix cells addressed by routes using either own source.
+
+    Not a base's routes: those are REMEMBERed, so a repair or a reload would release the
+    mute without rewriting them -- the columns an unmute owns are the desk's own.
+    """
     return frozenset(
         (out, source)
-        for route in config.routes
+        for route in config.routes if not route.base
         for source in route.playback
         if source in (left, left + 1)
         for out in route.output
@@ -140,7 +144,8 @@ def _require_complete_unmute(config: Config, device: Device,
             if missing:
                 raise ConfigError(
                     "playback %d/%d unmute requires a complete explicit matrix "
-                    "for both columns at all %d outputs (%d cells missing)"
+                    "for both columns at all %d outputs (%d cells missing; a "
+                    "[desk] base's routes do not count, the unmute owns its columns)"
                     % (left, left + 1, len(device.channels_for("output")), len(missing))
                 )
 

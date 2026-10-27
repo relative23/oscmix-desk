@@ -66,8 +66,14 @@ ALLOWED_IMPORTS = {
     "autogain": {"devices", "errors", "model", "numeric", "osc", "registers"},
     # Pure unreadable mute/pair/complete-column ownership, below config/planning.
     "playback": {"devices", "errors", "model", "numeric", "registers"},
-    "config": {"autogain", "constants", "devices", "errors", "model", "paths", "playback",
-               "registers", "sections"},
+    # The manual's cross-channel DSP limits, below config and routing like playback.
+    "limits": {"devices", "errors", "model", "numeric", "osc"},
+    "config": {"autogain", "base", "constants", "devices", "errors", "limits", "mirrors",
+               "model", "paths", "playback", "registers", "sections"},
+    # `[desk] base`: the matrix beneath the routes, as cells; below config and reconcile.
+    "base": {"constants", "errors", "model", "osc", "registers"},
+    # `mirror =`: routes of one output declared again for another, at load time.
+    "mirrors": {"errors", "model", "registers"},
     # link_messages/mix_messages moved down into reconcile: they are
     # pure message shapes, and keeping them here made reconcile sit
     # above routing while routing wanted to call it -- a cycle.
@@ -75,13 +81,15 @@ ALLOWED_IMPORTS = {
     # receive port that cannot be bound from one that is held,
     # and the leaf is where that exception lives -- imported from there,
     # because `__init__` is the only module that re-exports.
-    "routing": {"autogain", "backend", "constants", "errors", "log", "model", "observation",
-                "osc", "reconcile", "streams"},
+    "routing": {"autogain", "backend", "constants", "errors", "limits", "log", "model",
+                "observation", "osc", "reconcile", "streams"},
     "streams": {"constants", "log", "model"},
     "verify": {"autogain", "backend", "constants", "devices", "log", "model",
                "observation", "osc", "reconcile", "registers", "routing"},
-    "desk": {"autogain", "backend", "constants", "devices", "discovery", "errors", "locking",
-             "log", "model", "paths", "reconcile", "routing", "verify"},
+    "desk": {"autogain", "backend", "constants", "devices", "discovery", "errors", "journal",
+             "locking", "log", "model", "osc", "paths", "reconcile", "routing", "verify"},
+    # What desk last wrote per interface, beside the lock; below desk and reads.
+    "journal": {"locking", "log", "osc"},
     "observation": {"autogain", "numeric", "osc", "reconcile", "registers"},
     "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "hostservice", "log"},
@@ -92,9 +100,15 @@ ALLOWED_IMPORTS = {
     # asks reload.
     # `devices` since 0.7.0: a start says when the interface reports
     # another firmware than the one its register table was recorded on.
+    # `watch` since 0.9.0: `[desk] enforce = watch` keeps a reader beside
+    # the start's operation and asks supervise() for a reconcile.
     "session": {"constants", "desk", "devices", "discovery", "errors", "locking",
                 "log", "model", "notices", "notify", "process", "reconcile",
-                "reload"},
+                "reload", "watch"},
+    # Below session, which starts it; beside verify, whose observation it
+    # judges by. It only reads: a reconcile is session's and reload's.
+    "watch": {"backend", "constants", "devices", "errors", "log", "model",
+              "observation", "osc", "protocol", "reconcile", "registers"},
     # What a running session does with a desk it reads again, split out
     # of session in 0.7.0: below session, which starts it and hands it
     # the SIGHUP. `profiles` because a reload has to apply the same desk
@@ -102,7 +116,9 @@ ALLOWED_IMPORTS = {
     # answered in profiles.effective_config; profiles sits above verify
     # and imports nothing from here, so no cycle. `locking` for the lock
     # around every reconcile.
-    "reload": {"constants", "desk", "errors", "log", "model",
+    # `marker` since 0.9.0: the watcher re-reads the desk only after the
+    # marker, routing.conf or a profile changed.
+    "reload": {"constants", "desk", "errors", "log", "marker", "model",
                "notices", "notify", "paths", "profiles", "reconcile"},
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
@@ -115,8 +131,9 @@ ALLOWED_IMPORTS = {
     # serial and firmware, which are the leaf's to answer. `process` for
     # whose backend holds the port, `dump` for the device's state as a
     # config.
-    "reads": {"constants", "desk", "devices", "discovery", "dump",
-              "log", "model", "osc", "reconcile"},
+    # `autogain` since 0.9.0: a capture leaves the gains AutoSet owns to it.
+    "reads": {"autogain", "constants", "desk", "devices", "discovery", "dump", "journal",
+              "log", "model", "osc", "reconcile", "registers"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
     # an exit code -- the mapping to one is the CLI's business.
@@ -153,7 +170,7 @@ ALLOWED_IMPORTS = {
     # what there is to say about a desk; `config` is the loader on top.
     "model": {"constants", "registers"},
     "paths": {"errors"},
-    "sections": {"devices", "errors", "log", "model", "numeric", "registers"},
+    "sections": {"devices", "errors", "log", "mirrors", "model", "numeric", "registers"},
     "numeric": {"constants", "registers"},
     "notices": {"devices", "log", "model"},
     # A leaf: the shape of a row and of a device, and the questions asked
@@ -179,7 +196,7 @@ ALLOWED_IMPORTS = {
     # `osc` since 0.7.0, here and in whatever handles a register's value:
     # the leaf names what a value on this wire is, so that it is not an
     # `object` each reader casts past the type checker.
-    "reconcile": {"autogain", "constants", "devices", "model", "numeric", "osc",
+    "reconcile": {"autogain", "base", "constants", "devices", "model", "numeric", "osc",
                   "playback", "registers"},
     # The other direction, split out of reconcile in 0.7.0: what the device
     # reports, as a config and as its text. As pure as the reconciler,

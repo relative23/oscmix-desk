@@ -816,3 +816,18 @@ def test_the_factory_honours_a_stop_before_its_first_request(peer, monkeypatch):
     with pytest.raises(ReceivePortError, match='cancelled'):
         backend.connect_backend(Config(serial='00000000'), should_stop=lambda: True)
     assert server.requests == []
+
+
+@pytest.mark.parametrize(('code', 'held'), [(BUSY, True), (0, False)])
+def test_a_reader_knows_whether_an_operation_holds_the_lease(peer, code, held):
+    # The backend sends the lease state right after HELLO and on every
+    # change; the watcher (`[desk] enforce = watch`) does not judge reports
+    # that arrive while an operation owns it.
+    server = peer(after_hello=[(EVENT, code, None, b'')])
+    client = backend.Control(server.path, os.getpid(), reader=True)
+    try:
+        assert client.lease_held is False
+        assert client.next_delivery(0.3) is None
+        assert client.lease_held is held
+    finally:
+        client.close()

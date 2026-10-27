@@ -16,6 +16,7 @@ from enum import Enum, IntEnum
 from typing import Callable, Collection, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from .autogain import dependency_paths, flag_value, retained_gains, validate_autogain
+from .base import base_entries
 from .constants import LEVEL_MIN, UNLINKED_GAIN_OFFSET
 from .devices import device_for_name
 from .model import (
@@ -190,6 +191,13 @@ class Entry:
     tags: str
     args: Args
     phase: Phase
+    #: Written by `[desk] base` (its silent cells and routes): REMEMBERed after an explicit
+    #: apply.
+    base: bool = False
+    #: False for a register that may fold onto its linked partner, which the device then
+    #: never reports: written like any other, compared only when a dump reports it, and not
+    #: waited for by a read-back.
+    compared: bool = True
 
 
 @dataclass(frozen=True)
@@ -261,8 +269,14 @@ def desired(config: Config) -> Tuple[Entry, ...]:
     for phase, produce in ((PHASE_LINK, link_messages), (PHASE_MIX, mix_messages)):
         for route in config.routes:
             for path, tags, args in produce(route):
-                entries[path] = Entry(path, tags, tuple(args), phase)
+                # A route of the desk wins over one of the base on a shared register.
+                if not (route.base and path in entries and not entries[path].base):
+                    entries[path] = Entry(path, tags, tuple(args), phase, base=route.base)
     ordered = sorted(entries.values(), key=_send_order(config))
+    if device is not None:
+        ordered += [Entry(path, tags, args, PHASE_MIX, base=True, compared=compared)
+                    for path, tags, args, compared in base_entries(config.base, config.routes,
+                                                                   set(entries), device)]
     combined = tuple(ordered) + channel_entries(config) + global_entries(config)
     return tuple(sorted(combined, key=lambda entry: entry.phase))
 
@@ -273,7 +287,7 @@ def remembered_paths(config: Config,
     """Declared REMEMBER and gains owned by AutoSet, including undeclared partners."""
     device = device_for_name(config.device_name)
     kept = {entry.path for entry in desired(config)
-            if policy_for(entry.path, device, config.policies) != PIN}
+            if entry.base or policy_for(entry.path, device, config.policies) != PIN}
     kept.update(retained_gains(config, observed or {}, linked=linked))
     return tuple(sorted(kept))
 
@@ -600,7 +614,8 @@ def plan(entries: Sequence[Entry],
             writes.append(Write(entry.path, entry.tags, entry.args,
                                 entry.phase, UNCONDITIONAL))
             continue
-        if klass == REESTABLISHED:
+        if klass == REESTABLISHED or (not entry.compared
+                                      and entry.path not in observations):
             # Unverifiable *and* dependent on link state: rewritten from
             # a known-good state rather than compared. Comparing it would
             # mean trusting a value the dump never carries.

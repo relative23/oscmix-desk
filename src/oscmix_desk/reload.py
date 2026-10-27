@@ -2,7 +2,8 @@
 
 Twice: under the device lock at the start, since the file the start read
 is older than the wait for the device and the lock, and on SIGHUP, which
-is how a switch, a resume and a person tell the unit to reconcile.
+is how a switch, a resume and a person tell the unit to reconcile --
+or the watcher, when the device contradicts the desk (watch.py).
 Both keep the machine the session was started for and apply only
 a desk that is for it -- what a restart with the same command line would
 apply here -- and a reconcile says on the status
@@ -12,15 +13,18 @@ line whether it wrote.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import os
 import threading
 import time
 from pathlib import Path
-from typing import Dict, Optional, cast
+from typing import Callable, Dict, Optional, Tuple, cast
 
 from .constants import RECONCILE_WAIT_FOR_VERIFIER, SERVICE_UNIT
 from .desk import _operation
 from .errors import ConfigError, DeviceLockUnavailable, WriteFailed
 from .log import log
+from .marker import active_profile_path
 from .model import Config, Machine
 from .notices import log_desk_notices
 from .notify import sd_notify
@@ -47,6 +51,15 @@ def _desk_under_the_lock(config_path: Optional[Path],
     return fresh or running
 
 
+def _moved(fresh: Config, running: Config) -> str:
+    """How the desk now in effect is for another machine, or ""."""
+    live = Machine(running.device_name, running.usb_id, running.serial,
+                   running.osc_port, running.osc_recv_port)
+    declared_machine = fresh.loaded
+    return "" if declared_machine is None else \
+        declared_machine.under(running.overrides).elsewhere(live)
+
+
 def _kept_for_this_process(fresh: Config, running: Config
                            ) -> Optional[Config]:
     """Keep this process's identity, or refuse a desk for another device.
@@ -56,12 +69,8 @@ def _kept_for_this_process(fresh: Config, running: Config
     Profiles are already checked against their main config by the loader.
     A main config moved to another device requires a deliberate restart.
     """
-    live = Machine(running.device_name, running.usb_id, running.serial,
-                   running.osc_port, running.osc_recv_port)
-    declared_machine = fresh.loaded
-    moved = "" if declared_machine is None else \
-        declared_machine.under(running.overrides).elsewhere(live)
-    if declared_machine is None or not moved:
+    moved = _moved(fresh, running)
+    if not moved:
         return keep_machine_settings(fresh, running)
     log.error("the desk now in effect is for another backend or interface "
               "-- %s -- and a running session keeps the one it was started "
@@ -71,7 +80,7 @@ def _kept_for_this_process(fresh: Config, running: Config
 
 
 def _verifier_finished(verifier: Optional[threading.Thread],
-                       stop_requested: Dict[str, bool]) -> bool:
+                       stop_requested: Dict[str, bool], reason: str = "SIGHUP") -> bool:
     """Wait for the start-up verifier before a reconcile writes anything.
 
     Startup verification retains the operation's connection and ownership
@@ -88,15 +97,15 @@ def _verifier_finished(verifier: Optional[threading.Thread],
     """
     if verifier is None or not verifier.is_alive():
         return True
-    log.info("SIGHUP: waiting for the start-up verifier before reconciling")
+    log.info("%s: waiting for the start-up verifier before reconciling", reason)
     deadline = time.monotonic() + RECONCILE_WAIT_FOR_VERIFIER
     while verifier.is_alive():
         if stop_requested["stop"]:
             return False
         if time.monotonic() >= deadline:
-            log.warning("SIGHUP: verifier still running after %.0fs; reconcile "
+            log.warning("%s: verifier still running after %.0fs; reconcile "
                         "skipped -- send the reload again",
-                        RECONCILE_WAIT_FOR_VERIFIER)
+                        reason, RECONCILE_WAIT_FOR_VERIFIER)
             return False
         verifier.join(timeout=0.1)
     return True
@@ -104,8 +113,13 @@ def _verifier_finished(verifier: Optional[threading.Thread],
 
 def _reconcile(args: argparse.Namespace, config: Config,
                stop_requested: Dict[str, bool],
-               verifier: Optional[threading.Thread] = None) -> None:
+               verifier: Optional[threading.Thread] = None, *,
+               reason: str = "SIGHUP") -> None:
     """Re-read the config and selectively reconcile PIN settings on SIGHUP.
+
+    ``reason`` names what asked for it in the log and on the status line:
+    ``SIGHUP``, or ``watch`` when the device contradicted the desk
+    (``[desk] enforce = watch``, watch.py).
 
     Re-reading is what makes SIGHUP mean what it means everywhere else.
     A config that no longer parses is *not* applied and not fatal: the
@@ -119,7 +133,7 @@ def _reconcile(args: argparse.Namespace, config: Config,
     ``verifier`` is the start-up thread, when it exists: the reconcile
     is serialised behind it (``_verifier_finished``).
     """
-    outcome = _reconcile_once(args, config, stop_requested, verifier)
+    outcome = _reconcile_once(args, config, stop_requested, verifier, reason)
     if stop_requested["stop"]:
         return
     # What it did, not what it was asked to do: a reconcile that stood
@@ -133,45 +147,47 @@ def _reconcile(args: argparse.Namespace, config: Config,
 
 def _reconcile_once(args: argparse.Namespace, config: Config,
                     stop_requested: Dict[str, bool],
-                    verifier: Optional[threading.Thread]) -> str:
+                    verifier: Optional[threading.Thread], reason: str = "SIGHUP") -> str:
     """Report completion, a refused start, or an incomplete operation."""
-    if not _verifier_finished(verifier, stop_requested):
+    if not _verifier_finished(verifier, stop_requested, reason):
         return "reconcile skipped"
     path = _config_path(args)
     planned = False
     try:
         with _operation(config, path, resolved=True,
                         reread=lambda running: _reload_config(
-                            running, path, strict=getattr(args, "strict", False)),
+                            running, path, strict=getattr(args, "strict", False),
+                            reason=reason),
                         should_stop=lambda: stop_requested["stop"]) as desk:
-            sd_notify("STATUS=reconciling (SIGHUP)")
-            complete = desk.apply(ApplyIntent.RECONCILE, reason="SIGHUP")
+            sd_notify("STATUS=reconciling (%s)" % reason)
+            complete = desk.apply(ApplyIntent.RECONCILE, reason=reason)
             planned = True
             if stop_requested["stop"]:
                 return "reconcile incomplete"
             desk._finish()
     except DeviceLockUnavailable as exc:
         if stop_requested["stop"]:
-            log.info("SIGHUP: %s; reconcile skipped", exc)
+            log.info("%s: %s; reconcile skipped", reason, exc)
         else:
-            log.warning("SIGHUP: %s; reconcile skipped -- send the reload again", exc)
+            log.warning("%s: %s; reconcile skipped -- send the reload again", reason, exc)
         return "reconcile skipped"
     except ConfigError:
         return "reconcile skipped"
     except OSError as exc:
-        return _stood_down(exc, planned, stop_requested["stop"])
+        return _stood_down(exc, planned, stop_requested["stop"], reason)
     else:
         return "reconciled" if complete else "reconcile incomplete"
 
 
-def _reload_config(running: Config, path: Optional[Path], *, strict: bool = False) -> Config:
-    fresh = _reloaded_desk(running, path, strict=strict)
+def _reload_config(running: Config, path: Optional[Path], *, strict: bool = False,
+                   reason: str = "SIGHUP") -> Config:
+    fresh = _reloaded_desk(running, path, strict=strict, reason=reason)
     if fresh is None:
         raise ConfigError("the reloaded desk is not usable")
     return fresh
 
 
-def _stood_down(exc: OSError, planned: bool, stopping: bool) -> str:
+def _stood_down(exc: OSError, planned: bool, stopping: bool, reason: str = "SIGHUP") -> str:
     """Report a reconcile that ended early: skipped or incomplete.
 
     Skipped when nothing was submitted, incomplete otherwise.
@@ -185,22 +201,71 @@ def _stood_down(exc: OSError, planned: bool, stopping: bool) -> str:
     submitted = planned or (isinstance(exc, WriteFailed) and bool(exc.written))
     outcome = "reconcile incomplete" if submitted else "reconcile skipped"
     if stopping:
-        log.info("SIGHUP: stop requested; %s (%s)", outcome, exc)
+        log.info("%s: stop requested; %s (%s)", reason, outcome, exc)
     elif submitted:
-        log.error("SIGHUP: %s; %s", exc, outcome)
+        log.error("%s: %s; %s", reason, exc, outcome)
     else:
-        log.error("SIGHUP: %s; %s, nothing written", exc, outcome)
+        log.error("%s: %s; %s, nothing written", reason, exc, outcome)
     return outcome
 
 
 def _reloaded_desk(running: Config, path: Optional[Path], *,
-                   strict: bool = False) -> Optional[Config]:
+                   strict: bool = False, reason: str = "SIGHUP") -> Optional[Config]:
     """The SIGHUP desk, or None to skip an unusable or retargeted file."""
-    return _reread_desk(running, path, starting=False, strict=strict)
+    return _reread_desk(running, path, starting=False, strict=strict, reason=reason)
+
+
+def desk_in_effect(running: Config, path: Optional[Path], *,
+                   strict: bool = False) -> Optional[Config]:
+    """The desk a reconcile would apply now, or None; quiet, for the watcher.
+
+    The reconcile it may lead to reads the desk again under the lock and
+    says there why a file is unusable or for another machine.
+    """
+    if path is None:
+        return running
+    try:
+        fresh, _active = effective_config(path, running.overrides, strict=strict, quiet=True)
+    except ConfigError:
+        return None
+    return None if _moved(fresh, running) else keep_machine_settings(fresh, running)
+
+
+def _files_of(path: Path) -> Tuple[Tuple[str, int, int], ...]:
+    """What the desk in effect is read from: routing.conf, the marker and every profile."""
+    candidates = [path, active_profile_path(path) or path]
+    profiles = profile_path("x", path).parent
+    with contextlib.suppress(OSError):
+        candidates += sorted(profiles / name for name in os.listdir(profiles))
+    stats = []
+    for candidate in candidates:
+        try:
+            info = candidate.stat()
+        except OSError:
+            continue
+        stats.append((str(candidate), info.st_mtime_ns, info.st_size))
+    return tuple(stats)
+
+
+def watched_desk(running: Config, path: Optional[Path], *,
+                 strict: bool = False) -> Callable[[], Optional[Config]]:
+    """``desk_in_effect`` for the watcher, read again only after one of its files changed.
+
+    So a routing.conf with a section this version ignores warns once, not on every check.
+    """
+    last: Dict[str, object] = {}
+
+    def current() -> Optional[Config]:
+        files = _files_of(path) if path is not None else ()
+        if last.get("files") != files or "desk" not in last:
+            last["files"], last["desk"] = files, desk_in_effect(running, path, strict=strict)
+        return cast(Optional[Config], last["desk"])
+    return current
 
 
 def _reread_desk(running: Config, path: Optional[Path], *,
-                 starting: bool, strict: bool = False) -> Optional[Config]:
+                 starting: bool, strict: bool = False,
+                 reason: str = "SIGHUP") -> Optional[Config]:
     """Validate the selected desk under the lock without retargeting it."""
     if path is None:
         return running
@@ -214,8 +279,8 @@ def _reread_desk(running: Config, path: Optional[Path], *,
             log.error("%s is no longer usable (%s); applying the desk this "
                       "process started with", path, exc)
         else:
-            log.error("SIGHUP: %s is not usable (%s); keeping the running "
-                      "configuration", path, exc)
+            log.error("%s: %s is not usable (%s); keeping the running "
+                      "configuration", reason, path, exc)
         return None
     # A reload reconciles the desk through the running backend's checked
     # device connection. Its machine identity and accepted legacy port
@@ -223,8 +288,8 @@ def _reread_desk(running: Config, path: Optional[Path], *,
     kept = _kept_for_this_process(fresh, running)
     if kept is not None:
         if not starting:
-            log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
-                     profile_path(active, path) if active else path,
+            log.info("%s: reloaded %s (%d route(s), %d channel setting(s))",
+                     reason, profile_path(active, path) if active else path,
                      len(kept.routes), len(kept.channels))
         if not starting or kept != running:
             log_desk_notices(kept)

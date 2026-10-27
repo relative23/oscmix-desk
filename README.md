@@ -22,11 +22,12 @@ The latest release is **0.8.1**.
 |---|---|
 | `routing.conf` | routes, faders, per-channel state, EQ, room EQ, dynamics, low cut, auto level, crossfeed, reverb, echo, control room, clock |
 | `--diff` | what an apply would change, without changing it |
-| `--dump-config` | the reported device state exported as config |
+| `--dump-config` | the reported device state exported as config; `--include-written` adds the playback routes desk last wrote, marked unconfirmed |
 | `--snapshot` | every register the device reports |
 | `--status [--json]` | read-only diagnosis of installation, device, backend and mixer |
-| profiles | named alternatives, switched in one operation with a stated outcome |
+| profiles | named alternatives, switched in one operation with a stated outcome; `--capture NAME` saves the current desk as one, `--diff-profile A B` compares two without the device |
 | `[pin]` | per-option choice whether the config or the mixer wins after the first write |
+| `[desk]` | `base` makes a desk the whole matrix (TotalMix "Reset Mix", DAW mode); `enforce = watch` reconciles when a report contradicts a pinned value |
 | `--pipewire-sinks` | named outputs ("Monitors", "Headphones") in the desktop's sound settings |
 | service integration | systemd user service, udev hotplug and resume; OpenRC, runit, NixOS and Fedora Silverblue |
 | mixer | the upstream GTK mixer can stay open; desk operations and mixer edits do not interleave |
@@ -165,7 +166,10 @@ Pinning does not snap a value back while you work: the device reports
 changes only when asked, so the desk insists during its read-back after a
 start, a reload or a resume. Remembered values are never reset by those
 later checks. The playback mix matrix is re-established on each start but
-cannot be read back from the device.
+cannot be read back from the device. `[desk] enforce = watch` in
+routing.conf goes one step further and reconciles as soon as a report that
+contradicts a pinned value arrives -- a link change, which the device
+announces itself, or any value in a state dump another client asks for.
 
 ## Profiles
 

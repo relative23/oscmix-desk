@@ -147,11 +147,18 @@ def test_the_known_surface_is_stated_rather_than_discovered(session_mod):
     exit 2. It is opt-in and only needed on a machine with two
     interfaces of one model, so the example config ships it commented
     out -- a downgrade keeps working for everyone who never needed it.
+
+    `[desk]` was added in 0.9.0 as a *section*, deliberately the other
+    way round: an older install warns and ignores it, so the desk applies
+    without its base and without watching. Every declared route still
+    sounds; only cells nobody declared stay as they were, and a pinned
+    value is insisted on at the usual times instead of on a report.
     """
     from oscmix_desk import config as config_mod
 
     assert {
         "device": {"name", "usb-id", "serial"},
+        "desk": {"base", "enforce"},
         "osc": {"port", "recv-port"},
         "route": {"playback", "input", "output", "level", "volume", "stereo", "pan"},
     } == config_mod._KNOWN_OPTIONS
