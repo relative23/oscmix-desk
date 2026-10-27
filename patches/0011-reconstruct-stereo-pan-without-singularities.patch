@@ -1,0 +1,67 @@
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -590,7 +590,7 @@
+ calclevel(const struct output *out, const struct input *in, bool instereo, struct level *l)
+ {
+ 	int ich;
+-	float ll, lr, rl, rr, w;
++	float ll, lr, rl, rr, left, right, w;
+ 
+ 	if (instereo)
+ 		instereo = in->stereo;
+@@ -605,18 +605,25 @@
+ 		if (instereo) {
+ 			rl = out[0].mix[ich + 1];
+ 			rr = out[1].mix[ich + 1];
+-			w = ll + rl == 0 ? 1 : 2 * ll / (ll + rl) - 1;
+-			if (ll < rr) {  /* p > 0 */
+-				l->vol = 2 * rr / (1 + w);
+-				l->pan = lroundf(100 * (1 - ll / rr));
++			left = ll + rl;
++			right = lr + rr;
++			if (left == 0 && right == 0) {
++				l->vol = 0;
++				l->pan = 0;
++				w = 1;
++			} else if (left < right) {  /* p > 0 */
++				l->vol = right;
++				l->pan = lroundf(100 * (1 - left / right));
++				w = 2 * rr / right - 1;
+ 			} else {
+-				l->vol = 2 * ll / (1 + w);
+-				l->pan = ll == 0 ? 0 : lroundf(100 * (rr / ll - 1));
++				l->vol = left;
++				l->pan = lroundf(100 * (right / left - 1));
++				w = 2 * ll / left - 1;
+ 			}
+ 			l->width = lroundf(100 * w);
+ 		} else {
+ 			l->vol = sqrtf(ll * ll + lr * lr);
+-			l->pan = lroundf(acosf(ll / l->vol) * 400.f / PI - 100.f);
++			l->pan = l->vol == 0 ? 0 : lroundf(acosf(ll / l->vol) * 400.f / PI - 100.f);
+ 		}
+ 	} else {
+ 		ll = out[0].mix[ich];
+@@ -671,6 +678,12 @@
+ 				setmixlevel(in + 1, out, rl);
+ 				setmixlevel(in + 1, out + 1, rr);
+ 			}
++		} else if (l->pan == -100) {
++			ll = l->vol;
++			lr = 0;
++		} else if (l->pan == 100) {
++			ll = 0;
++			lr = l->vol;
+ 		} else {
+ 			theta = (l->pan + 100) * PI / 400.f;
+ 			ll = cosf(theta) * l->vol;
+@@ -805,7 +818,8 @@
+ 		if ((in - inputs) & 1)
+ 			--in;
+ 		calclevel(out, in, 1, &level);
+-		in->width = level.width;
++		if (out->stereo)
++			in->width = level.width;
+ 	}
+ 	/* Do not substitute a cached desired half or stereo partner for a
+ 	 * missing register. Suppression preserves the enclosing OSC bundle. */

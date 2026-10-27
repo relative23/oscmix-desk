@@ -62,6 +62,7 @@ DO_UDEV=1
 CHECK_ONLY=0
 MANUAL=0
 ENABLE=0
+DISABLE=0
 PREFLIGHT_ARGS=()
 
 usage() {
@@ -72,6 +73,8 @@ options:
   --check      report prerequisites and destinations without changing files
   --enable     enable automatic operation and start if the device is attached;
                first review routing.conf and inspect --dry-run
+  --disable    stop and disable automatic operation; keep installed files
+               and block hotplug starts without building or reinstalling
   --manual     install for foreground use without a systemd user manager
   --no-build   skip building oscmix (use already installed binaries)
   --no-udev    skip the root steps: the udev rule (no hotplug autostart),
@@ -90,6 +93,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --check) CHECK_ONLY=1 ;;
         --enable) ENABLE=1; PREFLIGHT_ARGS+=(--enable) ;;
+        --disable) DISABLE=1; PREFLIGHT_ARGS+=(--disable) ;;
         --manual) MANUAL=1; PREFLIGHT_ARGS+=(--manual) ;;
         --no-build) DO_BUILD=0; PREFLIGHT_ARGS+=(--no-build) ;;
         --no-udev) DO_UDEV=0 ;;
@@ -101,6 +105,10 @@ done
 
 if [ "$MANUAL" = 1 ] && [ "$ENABLE" = 1 ]; then
     echo "install.sh: --manual and --enable cannot be combined" >&2
+    exit 2
+fi
+if [ "$DISABLE" = 1 ] && { [ "$MANUAL" = 1 ] || [ "$ENABLE" = 1 ]; }; then
+    echo "install.sh: --disable cannot be combined with --manual or --enable" >&2
     exit 2
 fi
 
@@ -115,11 +123,11 @@ install_file() {
     if [ -e "$dst" ] && ! cmp -s "$src" "$dst"; then
         local backup older
         backup="$dst.bak.$(date +%Y%m%d-%H%M%S)"
-        cp -p "$dst" "$backup"
+        cp -p "$dst" "$backup" || return 1
         info "backed up $dst -> $backup"
         for older in "$dst".bak.*; do
             if [ "$older" != "$backup" ] && [ -f "$older" ]; then
-                rm -f "$older"
+                rm -f "$older" || return 1
             fi
         done
     fi
@@ -144,6 +152,27 @@ manages_this_home() {
     [ "$session_home" = "$HOME" ] && [ "$session_config" = "$CONFIG_HOME" ]
 }
 
+has_activation_guard() {
+    [ -f "$UNIT_DIR/oscmix.service" ] \
+        && grep -Fxq 'ConditionPathExists=%E/oscmix/service-allowed' "$UNIT_DIR/oscmix.service"
+}
+
+activation_guard_is_effective() {
+    # A custom ConditionPathExists= can reset earlier conditions. Only
+    # the Unit section counts, and a guard after the last reset is needed.
+    awk '
+        /^[[:blank:]]*\[/ { section = $0; gsub(/[[:blank:]]/, "", section) }
+        section == "[Unit]" && /^[[:blank:]]*ConditionPathExists[[:blank:]]*=/ {
+            value = $0
+            sub(/^[^=]*=[[:blank:]]*/, "", value)
+            sub(/[[:blank:]]*$/, "", value)
+            if (value == "") guarded = 0
+            if (value == "%E/oscmix/service-allowed") guarded = 1
+        }
+        END { exit !guarded }
+    ' "$UNIT_DIR/oscmix.service"
+}
+
 # --------------------------------------------------------------------------
 # Preflight checks
 # --------------------------------------------------------------------------
@@ -161,6 +190,9 @@ fi
 if [ "$ENABLE" = 1 ] && { [ "$HAS_MANAGER" = 0 ] || ! manages_this_home; }; then
     fail "--enable needs the systemd user manager for $HOME; no files changed"
 fi
+if [ "$DISABLE" = 1 ] && { [ "$HAS_MANAGER" = 0 ] || ! manages_this_home; }; then
+    fail "--disable needs the systemd user manager for $HOME; no files changed"
+fi
 if [ "$HAS_MANAGER" = 0 ]; then
     MANUAL=1
 fi
@@ -174,12 +206,18 @@ if [ "$HAS_MANAGER" = 1 ] && ! manages_this_home \
 fi
 WAS_ACTIVE=0
 WAS_ENABLED=0
+HAD_ACTIVATION_GUARD=0
+if has_activation_guard; then
+    HAD_ACTIVATION_GUARD=1
+fi
 if [ "$HAS_MANAGER" = 1 ] && manages_this_home; then
     systemctl --user is-active --quiet oscmix.service && WAS_ACTIVE=1
     systemctl --user is-enabled --quiet oscmix.service && WAS_ENABLED=1
 fi
-if [ "$MANUAL" = 1 ] && { [ "$WAS_ACTIVE" = 1 ] || [ "$WAS_ENABLED" = 1 ]; }; then
-    fail "an active or enabled oscmix.service exists; stop and disable it before choosing --manual"
+if [ "$MANUAL" = 1 ] && { [ "$WAS_ACTIVE" = 1 ] || [ "$WAS_ENABLED" = 1 ] \
+    || [ -e "$CONFIG_DIR/service-allowed" ] \
+    || { [ -e "$UNIT_DIR/oscmix.service" ] && ! activation_guard_is_effective; }; }; then
+    fail "an automatic oscmix.service exists; stop and disable it with ./install.sh --disable before choosing --manual"
 fi
 
 # Hold this through the build too: two installers for the same home
@@ -188,10 +226,40 @@ require flock "to serialise installation"
 mkdir -p "$LIB_DIR"
 exec 9>"$LIB_DIR/.install.lock"
 flock -n 9 || fail "another installer is using $LIB_DIR"
+HAD_ACTIVATION_GUARD=0
+has_activation_guard && HAD_ACTIVATION_GUARD=1
 if [ -f /etc/oscmix-desk/service.json ]; then
     # Recheck under the source-install lock. maintenance-finish takes the same
     # lock, so a preflight/activation race cannot replace a running host desk.
     python3 "$PROJECT_DIR/scripts/install-preflight.py" "${PREFLIGHT_ARGS[@]}"
+fi
+
+if [ "$DISABLE" = 1 ]; then
+    source_unit="$UNIT_DIR/oscmix.service"
+    [ -f "$source_unit" ] && [ ! -L "$source_unit" ] \
+        || fail "--disable needs an installed source service unit; no service changed"
+    if ! activation_guard_is_effective; then
+        # Retain custom contents while gating pre-0.9 units and units
+        # whose existing guard was reset before removing permission.
+        unit_stage="$(mktemp "$LIB_DIR/.unit.XXXXXX")"
+        # Append a Unit section: an earlier custom condition reset must
+        # not clear the new guard. Repeated sections are merged by systemd.
+        if ! { cat "$source_unit" && printf '\n[Unit]\nConditionPathExists=%%E/oscmix/service-allowed\n'; } \
+            > "$unit_stage" \
+            || ! install_file 644 "$unit_stage" "$source_unit"; then
+            rm -f "$unit_stage"
+            fail "could not add the source service opt-in condition; no service changed"
+        fi
+        rm -f "$unit_stage"
+    fi
+    systemctl --user daemon-reload || fail "could not reload the source service opt-in condition"
+    rm -f "$CONFIG_DIR/service-allowed" || fail "could not remove the service opt-in"
+    systemctl --user stop oscmix.service \
+        || fail "automatic starts are blocked, but oscmix.service could not be stopped"
+    systemctl --user disable --quiet oscmix.service \
+        || fail "service stopped and opt-in removed, but its enable links could not be removed"
+    info "automatic operation disabled; installed files and desk configuration are kept"
+    exit 0
 fi
 
 # --------------------------------------------------------------------------
@@ -354,6 +422,14 @@ if [ "$MANUAL" = 0 ]; then
     info "installing systemd user service"
     install_file 644 "$PROJECT_DIR/systemd/oscmix.service" "$UNIT_DIR/oscmix.service"
     if manages_this_home; then
+        # Adopt the previous state only once, from a pre-0.9 source unit.
+        # An absent opt-in on a guarded unit is an explicit refusal, even
+        # if an interrupted --disable left the enable links behind.
+        if [ "$ENABLE" = 1 ] || { [ "$HAD_ACTIVATION_GUARD" = 0 ] \
+            && { [ "$WAS_ACTIVE" = 1 ] || [ "$WAS_ENABLED" = 1 ]; }; }; then
+            printf '%s\n' 'Allowed by install.sh; remove with ./install.sh --disable' \
+                > "$CONFIG_DIR/service-allowed"
+        fi
         systemctl --user daemon-reload
         if [ "$ENABLE" = 1 ]; then
             systemctl --user enable --quiet oscmix.service
@@ -391,7 +467,8 @@ if [ "$DO_UDEV" = 1 ]; then
     # SYSTEMD_USER_WANTS can start even a disabled unit. Installing and
     # triggering this rule on a fresh install would therefore write the
     # example desk before its owner had asked for a first apply.
-    if [ "$MANUAL" = 0 ] && { [ "$ENABLE" = 1 ] || [ "$WAS_ENABLED" = 1 ]; }; then
+    if [ "$MANUAL" = 0 ] && [ -e "$CONFIG_DIR/service-allowed" ] \
+        && { [ "$ENABLE" = 1 ] || [ "$WAS_ENABLED" = 1 ]; }; then
     info "installing udev rule (needs root)"
     if $SUDO install -m 644 "$PROJECT_DIR/udev/90-rme-fireface.rules" "$UDEV_RULE" \
         && $SUDO udevadm control --reload-rules; then
@@ -485,7 +562,8 @@ if [ "$MANUAL" = 1 ]; then
 elif device_present && ! manages_this_home; then
     info "Fireface detected, but not restarting the backend: systemd's user"
     info "instance serves a different home than $HOME"
-elif [ "$WAS_ACTIVE" = 1 ] || { [ "$ENABLE" = 1 ] && device_present; }; then
+elif { [ "$WAS_ACTIVE" = 1 ] && [ -e "$CONFIG_DIR/service-allowed" ]; } \
+    || { [ "$ENABLE" = 1 ] && device_present; }; then
     info "Fireface detected; (re)starting backend"
     # Under set -e a failed start job would end the installer here, before
     # the lines that say what to do about it.
@@ -498,7 +576,7 @@ elif [ "$WAS_ACTIVE" = 1 ] || { [ "$ENABLE" = 1 ] && device_present; }; then
     fi
 elif [ "$ENABLE" = 1 ]; then
     info "Fireface not connected; the backend will start automatically on plug-in"
-elif [ "$WAS_ENABLED" = 1 ]; then
+elif [ "$WAS_ENABLED" = 1 ] && [ -e "$CONFIG_DIR/service-allowed" ]; then
     info "automatic startup remains enabled; the previously stopped service remains stopped"
 else
     info "files installed; automatic operation has not been enabled"

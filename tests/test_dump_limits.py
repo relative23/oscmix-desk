@@ -16,7 +16,7 @@ def stereo():
 
 
 @pytest.mark.parametrize("change", [
-    {"/mix/5/input/1": (-6., 50)},
+    {"/mix/5/input/1": (-6., 101)},
     {"/mix/5/input/1": (-6.,)},
     {"/mix/5/input/1": (-6., 0.5)},
     {"/mix/5/input/1": (math.nan, 0)},
@@ -175,7 +175,7 @@ def test_other_message_shapes_are_not_reconstructed_as_matrix_cells(path):
 
 
 def test_command_keeps_the_omissions_next_to_the_export(monkeypatch, capsys, tmp_path):
-    seen = dict(stereo(), **{"/mix/5/input/1": (-6., 50)})
+    seen = dict(stereo(), **{"/mix/5/input/1": (-6., 101)})
     monkeypatch.setattr(reads, "_read_device",
                         lambda _config, _path: reads.DeviceRead(seen, "00000000", "epoch"))
     assert reads._dump_config(Config()) == 0

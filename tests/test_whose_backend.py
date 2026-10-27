@@ -5,13 +5,14 @@ runs -- read from /proc, never assumed.
 
 import io
 import os
+import sys
 from pathlib import Path
 
 import pytest
 from two_boxes import DESK, unit
 
-from oscmix_desk import cli
 from oscmix_desk import outcome as outcome_mod
+from oscmix_desk import profiles
 from oscmix_desk.process import control_holder
 
 
@@ -86,28 +87,28 @@ def test_a_backend_whose_session_is_gone_is_stale(endpoint, monkeypatch):
 def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch,
                                                             capsys):
     """The unit re-applied its own routing.conf over the switch (0.6.9)."""
-    from oscmix_desk import cli
+    from oscmix_desk import profiles
 
     reloads = []
-    monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or cli.RELOAD_DONE)
+    monkeypatch.setattr(profiles, "reload_service",
+                        lambda: reloads.append(1) or profiles.RELOAD_DONE)
     outcome = outcome_mod.Outcome(state=outcome_mod.APPLIED_UNVERIFIED, name="x",
                                reason=outcome_mod.NOT_CHECKED, persisted=True)
     unit_desk = tmp_path / "unit" / "routing.conf"
     unit_desk.parent.mkdir()
     unit_desk.write_text(DESK)
-    monkeypatch.setattr(cli, "unit_process", unit())
-    monkeypatch.setattr(cli, "discover_config_path", lambda *a: unit_desk)
-    assert cli._report_outcome(outcome, tmp_path / "other.conf") == cli.EXIT_OK
+    monkeypatch.setattr(profiles, "unit_process", unit())
+    monkeypatch.setattr(profiles, "discover_config_path", lambda *a: unit_desk)
+    assert profiles._hand_over_to_the_unit(outcome, tmp_path / "other.conf") == outcome
     assert reloads == []
-    assert cli._report_outcome(outcome, unit_desk) == cli.EXIT_OK
-    assert cli._report_outcome(outcome, None) == cli.EXIT_OK
+    assert profiles._hand_over_to_the_unit(outcome, unit_desk) == outcome
+    assert profiles._hand_over_to_the_unit(outcome, None) == outcome
     assert reloads == [1, 1]
     capsys.readouterr()
 
 def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
         tmp_path, monkeypatch, capsys):
-    from oscmix_desk import cli
+    from oscmix_desk import profiles
 
     unit_desk = tmp_path / "unit" / "routing.conf"
     other = tmp_path / "other" / "routing.conf"
@@ -115,24 +116,24 @@ def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
         path.parent.mkdir()
         path.write_text(DESK)
     reloads = []
-    monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or cli.RELOAD_DONE)
+    monkeypatch.setattr(profiles, "reload_service",
+                        lambda: reloads.append(1) or profiles.RELOAD_DONE)
     outcome = outcome_mod.Outcome(state=outcome_mod.APPLIED_UNVERIFIED, name="x",
                                reason=outcome_mod.NOT_CHECKED, persisted=True)
     # The unit names its desk in its own Environment=.
-    monkeypatch.setattr(cli, "unit_process",
+    monkeypatch.setattr(profiles, "unit_process",
                         unit({"OSCMIX_CONFIG": str(unit_desk)}))
     # The shell's OSCMIX_CONFIG names another file: no --config, and the
     # switch was still for the other desk (the 0.6.9 bug via the env).
     monkeypatch.setenv("OSCMIX_CONFIG", str(other))
-    assert cli._report_outcome(outcome, other) == cli.EXIT_OK
+    assert profiles._hand_over_to_the_unit(outcome, other) == outcome
     assert reloads == []
     # A --config naming the unit's own file is the unit's desk.
-    assert cli._report_outcome(outcome, unit_desk) == cli.EXIT_OK
+    assert profiles._hand_over_to_the_unit(outcome, unit_desk) == outcome
     assert reloads == [1]
     # No unit process to read: reload as before.
-    monkeypatch.setattr(cli, "unit_process", lambda *a: None)
-    assert cli._report_outcome(outcome, other) == cli.EXIT_OK
+    monkeypatch.setattr(profiles, "unit_process", lambda *a: None)
+    assert profiles._hand_over_to_the_unit(outcome, other) == outcome
     assert reloads == [1, 1]
     capsys.readouterr()
 
@@ -153,17 +154,17 @@ def test_the_unit_s_desk_is_resolved_in_the_unit_s_environment(tmp_path,
     monkeypatch.setenv("XDG_CONFIG_HOME", str(shell.parent.parent))
     monkeypatch.setenv("OSCMIX_CONFIG", str(tmp_path / "elsewhere.conf"))
     by_xdg = desk(tmp_path / "unit-xdg")
-    monkeypatch.setattr(cli, "unit_process", unit({
+    monkeypatch.setattr(profiles, "unit_process", unit({
         "XDG_CONFIG_HOME": str(by_xdg.parent.parent)}))
-    assert cli._unit_desk() == (True, by_xdg)
+    assert profiles._unit_desk() == (True, by_xdg)
     by_home = desk(tmp_path / "unit-home" / ".config")
-    monkeypatch.setattr(cli, "unit_process", unit({
+    monkeypatch.setattr(profiles, "unit_process", unit({
         "HOME": str(tmp_path / "unit-home")}))
-    assert cli._unit_desk() == (True, by_home)
+    assert profiles._unit_desk() == (True, by_home)
     # OSCMIX_CONFIG in the unit wins over both, existing or not.
-    monkeypatch.setattr(cli, "unit_process", unit({
+    monkeypatch.setattr(profiles, "unit_process", unit({
         "OSCMIX_CONFIG": str(tmp_path / "named.conf"), "HOME": str(tmp_path)}))
-    assert cli._unit_desk() == (True, tmp_path / "named.conf")
+    assert profiles._unit_desk() == (True, tmp_path / "named.conf")
 
 def test_the_unit_s_desk_is_its_config_argument_before_its_environment(
         tmp_path, monkeypatch):
@@ -176,31 +177,31 @@ def test_the_unit_s_desk_is_its_config_argument_before_its_environment(
     for argv in (("oscmix-session", "--config", "/x/routing.conf"),
                  ("oscmix-session", "--config=/x/routing.conf"),
                  ("oscmix-session", "--conf", "/x/routing.conf", "--timeout", "5")):
-        monkeypatch.setattr(cli, "unit_process", unit(environ, argv, "/unit"))
-        assert cli._unit_desk() == (True, Path("/x/routing.conf")), argv
-    monkeypatch.setattr(cli, "unit_process",
+        monkeypatch.setattr(profiles, "unit_process", unit(environ, argv, "/unit"))
+        assert profiles._unit_desk() == (True, Path("/x/routing.conf")), argv
+    monkeypatch.setattr(profiles, "unit_process",
                         unit(environ, ("oscmix-session", "--config", "desk/r.conf"),
                               "/unit"))
-    assert cli._unit_desk() == (True, Path("/unit/desk/r.conf"))
-    monkeypatch.setattr(cli, "unit_process",
+    assert profiles._unit_desk() == (True, Path("/unit/desk/r.conf"))
+    monkeypatch.setattr(profiles, "unit_process",
                         unit({"OSCMIX_CONFIG": "desk/r.conf"}, cwd="/unit"))
-    assert cli._unit_desk() == (True, Path("/unit/desk/r.conf"))
+    assert profiles._unit_desk() == (True, Path("/unit/desk/r.conf"))
     # A command line this parser cannot read: cannot be told, and the
     # parser's usage text is the unit's, not this switch's stderr.
-    monkeypatch.setattr(cli, "unit_process",
+    monkeypatch.setattr(profiles, "unit_process",
                         unit(environ, ("oscmix-session", "--config"), "/unit"))
-    monkeypatch.setattr(cli.sys, "stderr", io.StringIO())
-    assert cli._unit_desk() == (False, None), "cannot be told"
-    assert cli.sys.stderr.getvalue() == ""
+    monkeypatch.setattr(sys, "stderr", io.StringIO())
+    assert profiles._unit_desk() == (False, None), "cannot be told"
+    assert sys.stderr.getvalue() == ""
     # An empty final argument is an argument, not a terminator: a unit
     # started with `--device ''` runs its --config, not "cannot be told".
-    monkeypatch.setattr(cli, "unit_process", unit(
+    monkeypatch.setattr(profiles, "unit_process", unit(
         environ, ("oscmix-session", "--config", "/x/r.conf", "--device", ""),
         "/unit"))
-    assert cli._unit_desk() == (True, Path("/x/r.conf"))
+    assert profiles._unit_desk() == (True, Path("/x/r.conf"))
     # No desk anywhere: told, and there is none -- an answer, not a guess.
-    monkeypatch.setattr(cli, "unit_process", unit({"HOME": str(tmp_path)}))
-    assert cli._unit_desk() == (True, None)
+    monkeypatch.setattr(profiles, "unit_process", unit({"HOME": str(tmp_path)}))
+    assert profiles._unit_desk() == (True, None)
 
 def test_the_unit_s_process_is_read_from_proc(tmp_path, monkeypatch):
     """/proc/<MainPID>/{cmdline,environ,cwd}: no quoting to undo, and the
@@ -309,13 +310,13 @@ def test_the_unit_desk_uses_the_selected_proc_and_compares_files_safely(
         monkeypatch.setenv('OSCMIX_PROC_ROOT', str(tmp_path / 'selected-proc'))
     else:
         monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
-    monkeypatch.setattr(cli, "unit_process", lambda root: roots.append(root))
-    assert cli._unit_desk() == (False, None)
+    monkeypatch.setattr(profiles, "unit_process", lambda root: roots.append(root))
+    assert profiles._unit_desk() == (False, None)
     assert roots == [tmp_path / 'selected-proc' if override else Path('/proc')]
-    assert cli._same_file(tmp_path / "a", None) is False
+    assert profiles._same_file(tmp_path / "a", None) is False
 
     def unreadable(self, *a, **k):
         raise OSError("loop")
 
-    monkeypatch.setattr(cli.Path, "resolve", unreadable)
-    assert cli._same_file(tmp_path / "a", tmp_path / "a") is False
+    monkeypatch.setattr(profiles.Path, "resolve", unreadable)
+    assert profiles._same_file(tmp_path / "a", tmp_path / "a") is False

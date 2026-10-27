@@ -87,7 +87,6 @@ mkdir -p "$DESTDIR/usr/lib/systemd/user"
 # installing a package (or having a routing.conf from another install)
 # must not start a desk through SYSTEMD_USER_WANTS.
 sed -e 's|^ExecStart=.*|ExecStart=/usr/bin/oscmix-session|' \
-    -e '/^Description=/a ConditionPathExists=%E/oscmix/service-allowed' \
     -e '/^Description=/a ConditionPathExists=!/var/lib/oscmix-desk/package-update' \
     -e '/^Description=/a ConditionPathExists=!/var/lib/oscmix-desk/gtk-package-update' \
     "$PROJECT_DIR/systemd/oscmix.service" > "$DESTDIR/usr/lib/systemd/user/oscmix.service"

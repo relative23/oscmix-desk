@@ -290,13 +290,17 @@ def test_a_phase_and_a_reason_are_closed_sets():
     and a reason prints as the word it always was -- by `.value`, since
     what `str()` makes of a string enum differs between Python versions."""
     assert [(p.name, int(p)) for p in reconcile.Phase] == [
-        ("LINK", 0), ("MIX", 1), ("CHANNEL", 2)]
+        ("PLAYBACK_MUTE_ON", -2), ("AUTOSET_OFF", -1), ("LINK", 0), ("MIX", 1),
+        ("CHANNEL", 2), ("AUTOSET_ON", 3), ("PLAYBACK_MUTE_OFF", 4)]
     assert sorted(reconcile.Phase) == list(reconcile.Phase)
-    assert tuple(reconcile.Phase) == (reconcile.PHASE_LINK, reconcile.PHASE_MIX,
-            reconcile.PHASE_CHANNEL)
+    assert tuple(reconcile.Phase) == (reconcile.Phase.PLAYBACK_MUTE_ON,
+                                     reconcile.Phase.AUTOSET_OFF, reconcile.PHASE_LINK,
+                                     reconcile.PHASE_MIX, reconcile.PHASE_CHANNEL,
+                                     reconcile.Phase.AUTOSET_ON,
+                                     reconcile.Phase.PLAYBACK_MUTE_OFF)
     assert {r.value for r in reconcile.WriteReason} == {
-        "missing", "mismatched", "re-established", "unconditional"}
+        "missing", "mismatched", "re-established", "unconditional", "prerequisite"}
     assert reconcile.REWRITE is reconcile.WriteReason.REWRITE
     assert reconcile.MISSING == "missing", "and compares as the string it was"
-    with pytest.raises(ValueError, match="3 is not a valid Phase"):
-        reconcile.Phase(3)
+    with pytest.raises(ValueError, match="5 is not a valid Phase"):
+        reconcile.Phase(5)

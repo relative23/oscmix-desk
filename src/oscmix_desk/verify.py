@@ -15,6 +15,7 @@ from typing import (
     Tuple,
 )
 
+from .autogain import dependency_paths
 from .backend import Control
 from .constants import VERIFY_SETTLE, VERIFY_TIMEOUT
 from .devices import device_for_name
@@ -25,7 +26,14 @@ from .osc import (
     Args,
     Value,
 )
-from .reconcile import PHASE_LINK, ApplyIntent, desired, policy_for, remembered_paths
+from .reconcile import (
+    PHASE_LINK,
+    ApplyIntent,
+    desired,
+    policy_for,
+    protected_entries,
+    remembered_paths,
+)
 from .registers import (
     PIN,
     VERIFIABLE,
@@ -182,6 +190,13 @@ class VerifyResult:
     # Invalid is a subset of mismatched, preserving strict callers' meaning
     # while avoiding a claim that a malformed value was a user adjustment.
     invalid: List[str] = field(default_factory=list)
+    # Observation metadata is not another expected-value classification.
+    # Excluding it from equality preserves existing result comparisons.
+    latest: Registers = field(default_factory=dict, compare=False)
+
+    def __post_init__(self) -> None:
+        self.latest = {path: (tags, tuple(args))
+                       for path, (tags, args) in self.latest.items()}
 
 
 def _observe(backend: Control, observed: Observation, prompt: Set[str],
@@ -198,8 +213,9 @@ def _observe(backend: Control, observed: Observation, prompt: Set[str],
     while time.monotonic() < deadline:
         if should_stop():
             return
-        if _window_may_close(observed.expected, prompt,
-                             observed.confirmed, observed.mismatched):
+        if (observed.dependencies_complete
+                and _window_may_close(observed.expected, prompt,
+                                      observed.confirmed, observed.mismatched)):
             return
         for report in backend.messages(0.25):
             observed.absorb(report)
@@ -240,8 +256,9 @@ def verify_routing(registers: Registers, backend: Control,
                    should_stop: StopCheck = never_stop,
                    *,
                    device_model: Optional[Device] = None,
+                   dependency_paths: Sequence[str] = (),
                    ) -> VerifyResult:
-    # device_model is keyword-only and last on purpose: inserting it into
+    # device_model is keyword-only on purpose: inserting it into
     # the positional signature silently shifted `timeout` into it for
     # every existing caller, which the suite caught immediately and a
     # reader would not have.
@@ -253,15 +270,21 @@ def verify_routing(registers: Registers, backend: Control,
     order is not an atomic hardware snapshot or a device timestamp.
 
     The checked request ACK opens the observation window. A failed connection,
-    malformed delivery or unavailable fresh window raises ``ReceivePortError``;
+    malformed delivery or unavailable fresh window raises ``BackendControlError``;
     GTK cannot take this connection's observations away.
 
     ``on_observed`` is called for each decoded report. It is an observation
     hook, not a safe write boundary: the remainder of the delivery may
     contradict that report. The internal mix reapply uses the completed
     result and shares this request rather than starting a second dump.
+
+    ``dependency_paths`` requests typed Boolean observations alongside the
+    declared expectations. Their last reports are retained in ``latest``;
+    they have no desired value and do not enter the result classifications.
+    Missing or invalid dependency feedback keeps the window open until its
+    timeout, cancellation, or a later valid report.
     """
-    observed = Observation(registers, device_model)
+    observed = Observation(registers, device_model, dependency_paths)
     # The early exit turns on what the backend reports *ever*, not on
     # what it reports promptly: closing the window on the prompt set
     # meant channel state was structurally unconfirmable, because the
@@ -278,25 +301,30 @@ def verify_routing(registers: Registers, backend: Control,
     backend.request_dump()
     _observe(backend, observed, prompt, on_observed, should_stop, timeout)
     return VerifyResult(sorted(observed.confirmed), sorted(observed.mismatched),
-                        sorted(observed.unobserved), sorted(observed.invalid))
+                        sorted(observed.unobserved), sorted(observed.invalid),
+                        latest=dict(observed.latest))
 
 
 def _report(result: VerifyResult, config: Config, device: Optional[Device],
             attempt: int) -> List[str]:
     """Classify results; write ownership is selected independently by intent."""
-    kept = _kept_by_the_device(result, device, config.policies)
+    linked = [entry.path for entry in desired(config)
+              if entry.phase == PHASE_LINK and entry.args == (1,)
+              and entry.path not in result.confirmed]
+    retained = remembered_paths(config, result.latest, linked=linked)
+    kept = _kept_by_the_device(result, device, config.policies, retained=retained)
     if kept:
         # Information, not a warning: the config asked for one value,
         # somebody set another, and this session is not going to argue.
         # Logged by name so "why is my fader not what the config says"
         # has an answer in the journal.
-        log.info("device value kept for %s (remembered, not pinned)",
+        log.info("device value kept for %s (REMEMBER or AutoSet gain ownership)",
                  ", ".join(kept))
-    problems = _unconfirmed(result, device, config.policies)
+    problems = _unconfirmed(result, device, config.policies, retained=retained)
     retained_unknown = [path for path in result.unobserved
-                        if policy_for(path, device, config.policies) != PIN]
+                        if path in retained]
     retained_invalid = [path for path in result.invalid
-                        if policy_for(path, device, config.policies) != PIN]
+                        if path in retained]
     absent = [path for path in result.unobserved if path not in retained_unknown]
     prompt = sum(register_promptly_reported(path, device) for path in absent)
     unavailable = sum(not register_ever_reported(path, device) for path in absent)
@@ -314,7 +342,8 @@ def _report(result: VerifyResult, config: Config, device: Optional[Device],
 
 
 def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
-                 overrides: Optional[Mapping[Tuple[str, str], Policy]] = None
+                 overrides: Optional[Mapping[Tuple[str, str], Policy]] = None, *,
+                 retained: Sequence[str] = ()
                  ) -> List[str]:
     """The registers that count as a problem worth re-sending for.
 
@@ -327,20 +356,23 @@ def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
     their separate result classifications must not select writes.
     """
     lost = [path for path in result.unobserved
-            if policy_for(path, device, overrides) == PIN
+            if path not in retained
+            and policy_for(path, device, overrides) == PIN
             and register_promptly_reported(path, device)]
     insisted = [path for path in result.mismatched
-                if policy_for(path, device, overrides) == PIN]
+                if path not in retained and policy_for(path, device, overrides) == PIN]
     return sorted(insisted + lost)
 
 
 def _kept_by_the_device(result: VerifyResult,
                         device: Optional[Device] = None,
-                        overrides: Optional[Mapping[Tuple[str, str], Policy]] = None
+                        overrides: Optional[Mapping[Tuple[str, str], Policy]] = None, *,
+                        retained: Sequence[str] = ()
                         ) -> List[str]:
     """Mismatches this session is deliberately letting the device keep."""
     return sorted(path for path in result.mismatched
-                  if path not in result.invalid and policy_for(path, device, overrides) != PIN)
+                  if path not in result.invalid and
+                  (path in retained or policy_for(path, device, overrides) != PIN))
 
 
 def reconcile_now(config: Config, reason: str, backend: Control,
@@ -351,15 +383,18 @@ def reconcile_now(config: Config, reason: str, backend: Control,
     decide REMEMBER ownership. An unavailable receiver refuses this
     operation; contradictions and unsafe indirect writes raise WriteFailed.
     Returns True after the selected plan completes, including an empty one.
+    A reportable PIN path still blocked by retained playback mute returns
+    False; finishing unrelated writes cannot certify its unresolved state.
     Triggers are enumerated and never a timer.
     """
     device = device_for_name(config.device_name)
     result = verify_routing(expected_registers(config), backend, VERIFY_TIMEOUT,
-                            should_stop=should_stop, device_model=device)
+                            should_stop=should_stop, device_model=device,
+                            dependency_paths=dependency_paths(config))
     if should_stop():
         return False
 
-    kept = remembered_paths(config)
+    kept = remembered_paths(config, result.latest)
     drifted = _report(result, config, device, 1)
     # "drifted", not "to correct". The write below is not selective: it
     # re-applies everything except `kept`, because the playback mix
@@ -373,10 +408,19 @@ def reconcile_now(config: Config, reason: str, backend: Control,
              if kept else "")
     apply_routing(config, backend,
                   intent=ApplyIntent.RECONCILE, confirmed=result.confirmed,
+                  observed=result.latest,
                   require_link_confirmation=[entry.path for entry in desired(config)
                                              if entry.phase == PHASE_LINK
                                              and entry.path in result.mismatched],
                   should_stop=should_stop)
+    unresolved = set(result.mismatched) | set(result.unobserved)
+    blocked = sorted(path for path in protected_entries(config, kept, result.confirmed)
+                     if path in unresolved and policy_for(path, device, config.policies) == PIN
+                     and register_ever_reported(path, device))
+    if blocked:
+        log.warning("reconcile retained unresolved PIN state to preserve playback mute: %s",
+                    ", ".join(blocked))
+        return False
     return True
 
 
@@ -410,7 +454,7 @@ def verify_and_repair(config: Config, backend: Control,
             return False
         result = verify_routing(registers, backend,
                                 VERIFY_TIMEOUT, should_stop=should_stop,
-                                device_model=device)
+                                device_model=device, dependency_paths=dependency_paths(config))
         if should_stop():
             return False
         wrong_links = links.intersection(result.mismatched)
@@ -432,6 +476,7 @@ def verify_and_repair(config: Config, backend: Control,
             # absent at the device.
             apply_routing(config, backend,
                           intent=ApplyIntent.REPAIR, confirmed=result.confirmed,
+                          observed=result.latest,
                           require_link_confirmation=sorted(wrong_links),
                           should_stop=should_stop)
             if wait_unless_stopped(VERIFY_SETTLE, should_stop, backend):
@@ -443,7 +488,7 @@ def verify_and_repair(config: Config, backend: Control,
             if missing:
                 log.warning("dump never reported %s; re-applying mix without confirmation",
                             ", ".join(sorted(missing)))
-            send_mix(config, backend, confirmed=result.confirmed)
+            send_mix(config, backend, confirmed=result.confirmed, observed=result.latest)
         if not problems:
             return not wrong_links
     log.warning("unconfirmed after retry: %s", ", ".join(problems))

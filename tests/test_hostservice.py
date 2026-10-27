@@ -320,7 +320,7 @@ def test_openrc_identity_uses_root_registration_and_readable_parent_identity(
 def test_persistent_maintenance_fence_blocks_manual_device_paths(tmp_path, monkeypatch, action):
     monkeypatch.setattr(hostservice, 'STATE', tmp_path)
     (tmp_path / 'service-update').write_text('{"stopped":true}')
-    monkeypatch.setattr(cli, '_desk_in_effect', lambda *_: Config())
+    monkeypatch.setattr(cli, '_desk_in_effect', lambda *_a, **_k: Config())
     monkeypatch.setattr(cli, 'run_session', lambda *_: pytest.fail('must not activate'))
     monkeypatch.setattr(cli, '_switch_profile', lambda *_: pytest.fail('must not write'))
     monkeypatch.setattr(cli, '_snapshot', lambda *_: pytest.fail('must not refresh'))
@@ -330,8 +330,8 @@ def test_persistent_maintenance_fence_blocks_manual_device_paths(tmp_path, monke
 def test_maintenance_does_not_block_status_or_pure_plan(tmp_path, monkeypatch):
     monkeypatch.setattr(hostservice, 'STATE', tmp_path)
     (tmp_path / 'service-update').write_text('pending')
-    monkeypatch.setattr(cli, '_desk_in_effect', lambda *_: Config())
-    monkeypatch.setattr(cli, 'print_status', lambda *_: 0)
+    monkeypatch.setattr(cli, '_desk_in_effect', lambda *_a, **_k: Config())
+    monkeypatch.setattr(cli, 'print_status', lambda *_a, **_k: 0)
     monkeypatch.setattr(cli, 'run_session', lambda args, _: 0 if args.dry_run else 1)
     assert cli.main(['--status', '--json']) == 0
     assert cli.main(['--dry-run', '--timeout', '0']) == 0

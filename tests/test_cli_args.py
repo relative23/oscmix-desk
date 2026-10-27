@@ -30,9 +30,11 @@ def test_verbose_is_an_optional_flag_and_changes_the_logging_level(monkeypatch, 
     settings, requests = [], []
     monkeypatch.setattr(cli.logging, 'basicConfig', lambda **options: settings.append(options))
     monkeypatch.setattr(cli, 'discover_config_path', lambda: None)
-    monkeypatch.setattr(cli, 'print_status', lambda *args: requests.append(args) or 0)
+    monkeypatch.setattr(cli, 'print_status',
+                        lambda *args, strict: requests.append((args, strict)) or 0)
     assert cli.main(['--status'] + (['--verbose'] if verbose else [])) == 0
     assert len(requests) == 1
+    assert requests[0][1] is False
     assert settings[0]['level'] == (logging.DEBUG if verbose else logging.INFO)
 
 

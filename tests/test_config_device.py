@@ -114,7 +114,7 @@ def test_a_config_records_what_its_file_said_and_what_the_command_line_did(
     assert named.overrides == CommandLine()
     assert named.loaded.differs_from(model_mod.Machine(
         "Fireface 802", "2a39:3fd9", "5", 9001, 9)) == (
-        "serial '11223344' (not '5'), osc recv port 8222 (not 9)")
+        "serial '11223344' (not '5')")
     said = CommandLine(device_name="Fireface UCX II", osc_port=9000)
     under = session_mod.load_config(path, said=said)
     assert (under.loaded, under.overrides) == (file, said)
@@ -172,12 +172,10 @@ def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():
     assert file._replace(serial="99887766").under(said).elsewhere(live) == \
         "serial '99887766' (not '24216011')"
     assert file._replace(usb_id="1234:5678", osc_recv_port=9).under(said) \
-        .elsewhere(live) == ("usb id '1234:5678' (not '2a39:3fd9'), "
-                             "osc recv port 9 (not 8222)")
-    # And with nothing on the command line, the file is all there is.
+        .elsewhere(live) == "usb id '1234:5678' (not '2a39:3fd9')"
+    # Ports remain irrelevant without command-line overrides too.
     assert file._replace(osc_port=9500).elsewhere(
-        live._replace(osc_port=7222, device_name=file.device_name)) == \
-        "osc port 9500 (not 7222)"
+        live._replace(osc_port=7222, device_name=file.device_name)) == ''
 
 def test_no_file_resolves_to_the_defaults_and_that_is_a_record(session_mod):
     from oscmix_desk.model import Machine

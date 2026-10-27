@@ -29,18 +29,20 @@ class DeviceLockUnavailable(Exception):
     """
 
 
-class ReceivePortError(OSError):
-    """The coordinated connection cannot supply usable observations.
+class BackendControlError(OSError):
+    """The coordinated backend operation cannot continue with valid observations.
 
-    The public exception name is retained from the UDP receiver.
-    In ODK1 it covers disconnect, cancellation, malformed deliveries,
-    acknowledgement deadlines and queue overflow. None is receiver silence.
-
-    An OSError, so existing receive handlers can name the failure. During
+    Covers disconnect, cancellation, malformed deliveries, acknowledgement
+    deadlines, queue overflow and an unavailable observation window.
+    An OSError, so existing handlers can name the failure. During
     an apply it becomes WriteFailed with exact sent and pending paths;
     a failed receiver must not erase a known link contradiction by falling
     back to blind writes.
     """
+
+
+#: Compatibility name from the UDP receiver; the same exception class.
+ReceivePortError = BackendControlError
 
 
 class WriteFailed(OSError):

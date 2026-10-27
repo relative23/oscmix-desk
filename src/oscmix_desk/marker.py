@@ -1,11 +1,9 @@
 """Which profile is in effect, remembered beside the config.
 
-One line in ``active-profile``: written by the CLI after an applied
-switch, removed by ``--no-profile``, and only ever *read* by the
-session, which is what keeps the unit's ``ProtectHome=read-only`` true.
-Written through a temporary file of its own name and a
-rename, and synced with its directory, so that a reader sees the old
-name or the new one and a power cut cannot bring a half of either back.
+Each config has its own marker. ``routing.conf`` retains ``active-profile``;
+other files use ``active-profile.<config filename>``. Writers replace it
+atomically and sync its directory. The session only reads it, so its
+``ProtectHome=read-only`` remains sufficient.
 """
 
 from __future__ import annotations
@@ -18,14 +16,9 @@ from typing import NamedTuple, Optional
 
 from .errors import ConfigError
 from .log import log
-from .paths import profile_path, regular_file
+from .paths import discover_config_path, profile_path, regular_file
 
-#: Where the active profile's name is kept: one line, beside
-#: routing.conf. Written by the CLI after an applied switch, removed by
-#: `--no-profile`, and only ever *read* by the session -- which is what
-#: keeps the unit's ProtectHome=read-only true. Beside the config rather
-#: than in a state directory, so that `--config` selects the profiles
-#: and the marker together.
+#: The marker for routing.conf, also the prefix of other configs' markers.
 ACTIVE_MARKER = "active-profile"
 
 
@@ -33,7 +26,10 @@ def active_profile_path(config_path: Optional[Path]) -> Optional[Path]:
     """The marker file for this config, or None without a config."""
     if config_path is None:
         return None
-    return Path(config_path).parent / ACTIVE_MARKER
+    config = Path(config_path)
+    name = ACTIVE_MARKER if config.name == "routing.conf" else \
+        "%s.%s" % (ACTIVE_MARKER, config.name)
+    return config.with_name(name)
 
 
 def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
@@ -42,6 +38,7 @@ def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
     A marker whose content is not a profile name is ignored with a
     warning rather than trusted: the name is used to build a path.
     """
+    config_path = config_path or discover_config_path()
     path = active_profile_path(config_path)
     if path is None:
         return None

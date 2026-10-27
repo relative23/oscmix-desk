@@ -12,10 +12,13 @@ true, so they are checked here rather than trusted:
 """
 
 import ast
+import dataclasses
+import inspect
 import os
 import re
 import sys
 from pathlib import Path
+from typing import get_args, get_type_hints
 
 import pytest
 from support import repo_file
@@ -41,6 +44,7 @@ ALLOWED_IMPORTS = {
     "osc": set(),
     # The ODK1 wire values, mirrored from control.h; nothing but struct.
     "protocol": set(),
+    "arguments": {"constants"},
     "notify": {"log"},
     # `errors` since 0.6.9: two identical interfaces without
     # `[device] serial` are a configuration the user has to fix, and the
@@ -59,8 +63,11 @@ ALLOWED_IMPORTS = {
     # config names reads devices.
     # `paths` since 0.8.1 for regular_file(): whether the file is there,
     # answered alike on every supported Python. paths sits on errors only.
-    "config": {"constants", "devices", "errors", "model", "paths", "registers",
-               "sections"},
+    "autogain": {"devices", "errors", "model", "numeric", "osc", "registers"},
+    # Pure unreadable mute/pair/complete-column ownership, below config/planning.
+    "playback": {"devices", "errors", "model", "numeric", "registers"},
+    "config": {"autogain", "constants", "devices", "errors", "model", "paths", "playback",
+               "registers", "sections"},
     # link_messages/mix_messages moved down into reconcile: they are
     # pure message shapes, and keeping them here made reconcile sit
     # above routing while routing wanted to call it -- a cycle.
@@ -68,12 +75,14 @@ ALLOWED_IMPORTS = {
     # receive port that cannot be bound from one that is held,
     # and the leaf is where that exception lives -- imported from there,
     # because `__init__` is the only module that re-exports.
-    "routing": {"backend", "constants", "errors", "log", "model", "observation",
-                "reconcile", "streams"},
+    "routing": {"autogain", "backend", "constants", "errors", "log", "model", "observation",
+                "osc", "reconcile", "streams"},
     "streams": {"constants", "log", "model"},
-    "verify": {"backend", "constants", "devices", "log", "model",
+    "verify": {"autogain", "backend", "constants", "devices", "log", "model",
                "observation", "osc", "reconcile", "registers", "routing"},
-    "observation": {"numeric", "osc", "reconcile", "registers"},
+    "desk": {"autogain", "backend", "constants", "devices", "discovery", "errors", "locking",
+             "log", "model", "paths", "reconcile", "routing", "verify"},
+    "observation": {"autogain", "numeric", "osc", "reconcile", "registers"},
     "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "hostservice", "log"},
     "hostservice": set(),
@@ -83,9 +92,9 @@ ALLOWED_IMPORTS = {
     # asks reload.
     # `devices` since 0.7.0: a start says when the interface reports
     # another firmware than the one its register table was recorded on.
-    "session": {"backend", "constants", "devices", "discovery", "errors", "locking",
+    "session": {"constants", "desk", "devices", "discovery", "errors", "locking",
                 "log", "model", "notices", "notify", "process", "reconcile",
-                "reload", "routing", "verify"},
+                "reload"},
     # What a running session does with a desk it reads again, split out
     # of session in 0.7.0: below session, which starts it and hands it
     # the SIGHUP. `profiles` because a reload has to apply the same desk
@@ -93,20 +102,20 @@ ALLOWED_IMPORTS = {
     # answered in profiles.effective_config; profiles sits above verify
     # and imports nothing from here, so no cycle. `locking` for the lock
     # around every reconcile.
-    "reload": {"backend", "constants", "discovery", "errors", "locking", "log", "model",
-               "notices", "notify", "paths", "profiles", "verify"},
+    "reload": {"constants", "desk", "errors", "log", "model",
+               "notices", "notify", "paths", "profiles", "reconcile"},
     # `process` since 0.6.3: an applied profile switch reloads the unit
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
-    "cli": {"config", "constants", "errors", "hostservice", "log", "model", "notices",
-            "outcome", "paths", "pipewire", "preview", "process", "profiles", "reads",
+    "cli": {"arguments", "constants", "errors", "hostservice", "log", "model", "notices",
+            "outcome", "paths", "pipewire", "preview", "profiles", "reads",
             "session", "status"},
     # The three actions that read the device, split out of cli in 0.7.0.
     # `discovery` since 0.6.2: the snapshot header names the device's
     # serial and firmware, which are the leaf's to answer. `process` for
     # whose backend holds the port, `dump` for the device's state as a
     # config.
-    "reads": {"backend", "constants", "devices", "discovery", "dump",
+    "reads": {"constants", "desk", "devices", "discovery", "dump",
               "log", "model", "osc", "reconcile"},
     # Sits above verify because a switch has to report whether the
     # device confirmed it. Below cli because the outcome is a value, not
@@ -118,9 +127,9 @@ ALLOWED_IMPORTS = {
     # the question the start's stale cleanup already asks through
     # process.socket_owner. process imports nothing above
     # discovery, so no cycle.
-    "profiles": {"backend", "config", "constants", "devices", "discovery",
-                 "errors", "locking", "log", "marker", "model", "notices",
-                 "outcome", "paths", "reconcile", "routing", "verify"},
+    "profiles": {"arguments", "backend", "config", "constants", "desk", "devices",
+                 "errors", "hostservice", "log", "marker", "model", "notices",
+                 "outcome", "paths", "process", "reconcile", "verify"},
     # The three things a switch is made of besides its order, split out of
     # profiles in 0.7.0. Each is a near-leaf: the lock knows its wait and
     # the journal, the marker knows what a profile name is, and an outcome
@@ -170,7 +179,8 @@ ALLOWED_IMPORTS = {
     # `osc` since 0.7.0, here and in whatever handles a register's value:
     # the leaf names what a value on this wire is, so that it is not an
     # `object` each reader casts past the type checker.
-    "reconcile": {"constants", "devices", "model", "numeric", "osc", "registers"},
+    "reconcile": {"autogain", "constants", "devices", "model", "numeric", "osc",
+                  "playback", "registers"},
     # The other direction, split out of reconcile in 0.7.0: what the device
     # reports, as a config and as its text. As pure as the reconciler,
     # whose message shapes and policy it reads.
@@ -178,9 +188,9 @@ ALLOWED_IMPORTS = {
     # The supported surface and nothing else since 0.7.0: what it imports
     # is what it re-exports, and the leaves it used to pull in for the
     # sake of their internals are reached through their own modules.
-    "__init__": {"config", "constants", "errors", "launcher", "marker",
+    "__init__": {"backend", "config", "constants", "desk", "errors", "launcher", "marker",
                  "model", "outcome", "paths", "pipewire", "profiles",
-                 "routing", "session", "verify"},
+                 "reconcile", "registers", "verify"},
 
 }
 
@@ -508,24 +518,52 @@ def test_the_supported_surface_is_this_and_grows_by_decision(session_mod):
     assert set(session_mod.__all__) == {
         # a desk, read
         "load_config", "Config", "Route", "ChannelSetting", "GlobalSetting",
-        "CommandLine", "Machine", "discover_config_path", "list_profiles",
+        "CommandLine", "Overrides", "Machine", "Policy", "discover_config_path", "list_profiles",
         "profile_path",
         # applied and verified
-        "apply_routing", "verify_routing", "verify_and_repair", "VerifyResult",
+        "open_desk", "Desk", "Control", "ApplyIntent", "VerifyResult",
         "expected_registers", "generate_pipewire_conf",
         # profiles
         "switch_profile", "restore_main", "load_profile", "effective_config",
-        "active_profile", "describe_profiles", "Outcome", "APPLIED_VERIFIED",
+        "active_profile", "describe_profiles", "Outcome", "OutcomeState", "APPLIED_MISMATCHED",
+        "APPLIED_VERIFIED",
         "APPLIED_UNVERIFIED", "REFUSED", "WRITTEN_IN_PART",
         # what goes wrong
         "ConfigError", "DeviceAmbiguous", "DeviceLockUnavailable",
-        "ReceivePortError", "WriteFailed",
+        "BackendControlError", "ReceivePortError", "WriteFailed",
         # entry points and their contract
-        "run_session", "launch_mixer", "EXIT_OK", "EXIT_FAILURE",
-        "EXIT_CONFIG", "__version__",
+        "launch_mixer", "EXIT_OK", "EXIT_FAILURE", "EXIT_DIFFERS",
+        "EXIT_CONFIG", "EXIT_NOT_PERSISTED", "EXIT_RELOAD_FAILED", "__version__",
     }
     # Gone from the root, reachable through their modules as they always
     # were (`oscmix_desk.log` and the rest still exist: they are modules).
     for internal in ("encode_osc", "link_messages", "select_seq_client",
                      "find_stale_backends", "sd_notify", "policy_for"):
         assert not hasattr(session_mod, internal), internal
+
+
+def test_project_types_in_public_functions_and_dataclass_fields_are_exported(session_mod):
+    """Callers can import the types needed to annotate supported operations.
+
+    Walk unions and containers too: Config.policies previously hid Policy,
+    and Optional[Control] in the profile functions hid the backend type.
+    """
+    exported = [getattr(session_mod, name) for name in session_mod.__all__]
+    missing = []
+
+    def check(owner, annotation):
+        arguments = get_args(annotation)
+        if arguments:
+            for argument in arguments:
+                check(owner, argument)
+        elif (inspect.isclass(annotation)
+              and annotation.__module__.startswith('oscmix_desk')
+              and not any(annotation is value for value in exported)):
+            missing.append('%s: %s.%s' % (owner, annotation.__module__, annotation.__name__))
+
+    for name in session_mod.__all__:
+        value = getattr(session_mod, name)
+        if inspect.isfunction(value) or dataclasses.is_dataclass(value):
+            for annotation in get_type_hints(value).values():
+                check(name, annotation)
+    assert missing == []

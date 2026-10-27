@@ -91,7 +91,7 @@ def test_a_flat_section_offers_neither_nested_options_nor_the_switch():
     Either one in `[input:3]` is a file an installed 0.3.0 refuses whole.
     """
     flat = settable_options(UCX2, "input")
-    assert sorted(flat) == ["gain", "hi-z", "mute", "phase", "reflevel"]
+    assert sorted(flat) == ["autoset", "fx", "gain", "hi-z", "msproc", "mute", "phase", "reflevel"]
     assert not [key for key in flat if "/" in key]
     assert "eq" not in flat
     assert ENABLE_OPTION in settable_nested(UCX2, "eq", "input")

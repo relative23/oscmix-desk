@@ -140,6 +140,10 @@ if record['home'] == sys.argv[1]:
 PY
 fi
 
+# Activation belongs to the removed service, not to the retained desk.
+# Reinstalling must not inherit a hotplug opt-in from this installation.
+rm -f "$CONFIG_DIR/service-allowed"
+
 if [ "$MANAGER" = this ]; then
     info "stopping and disabling oscmix.service"
     systemctl --user stop oscmix.service 2>/dev/null || true

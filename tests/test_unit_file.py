@@ -268,13 +268,13 @@ def test_verification_is_off_the_startup_path_structurally(unit):
                   if keyword.arg == "target")
     worker = next(node for node in tree.body[0].body
                   if isinstance(node, ast.FunctionDef) and node.name == target)
-    assert any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-               and node.func.id == "verify_and_repair" for node in ast.walk(worker))
+    assert any(isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+               and node.func.attr == "repair" for node in ast.walk(worker))
     # A return annotation mentioning threading.Thread is not proof that a
     # worker is actually created or that verification executes inside it.
     apply = ast.parse(inspect.getsource(session._apply_and_verify))
-    assert not any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-                   and node.func.id == "verify_and_repair" for node in ast.walk(apply))
+    assert not any(isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                   and node.func.attr == "repair" for node in ast.walk(apply))
 
     # ... and READY=1 follows the apply, and only a successful one. Since
     # 0.6.10 the apply sits in _apply_or_fail: the try body calls
@@ -325,6 +325,33 @@ def test_systemd_analyze_accepts_the_unit():
     if result.returncode == 77:
         pytest.skip("systemd-analyze is not installed")
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_the_real_source_unit_condition_tracks_per_user_permission(tmp_path):
+    """Evaluate the actual unit without starting a service or opening hardware."""
+    import os
+    import shutil
+    import subprocess
+
+    if shutil.which('systemd-analyze') is None:
+        pytest.skip('systemd-analyze is not installed')
+    source = repo_file('systemd', 'oscmix.service')
+    (tmp_path / source.name).write_bytes(source.read_bytes())
+    config = tmp_path / 'config'
+    config.mkdir()
+    env = dict(os.environ, XDG_CONFIG_HOME=str(config), SYSTEMD_UNIT_PATH=str(tmp_path))
+    allowed = config / 'oscmix/service-allowed'
+    allowed.parent.mkdir()
+    for permission in (False, True, False):
+        if permission:
+            allowed.touch()
+        else:
+            allowed.unlink(missing_ok=True)
+        result = subprocess.run(['systemd-analyze', 'condition', '--user',
+                                 '--unit=oscmix.service'], env=env, capture_output=True,
+                                text=True, timeout=10)
+        assert result.returncode == (0 if permission else 1), result.stdout + result.stderr
+        assert str(allowed) in result.stdout + result.stderr
 
 
 def test_the_verify_script_fails_on_an_unknown_directive(tmp_path):

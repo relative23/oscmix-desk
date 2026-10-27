@@ -156,10 +156,12 @@ def test_the_order_is_deterministic(session_mod):
 
 def test_the_playback_matrix_is_named_as_unrecoverable(session_mod):
     assert dump.unrecoverable(devices.UCX2) == \
-        ("/playback/{ch}/stereo", "/mix/{out}/playback/{pb}")
+        ("/playback/{ch}/stereo", "/playback/{ch}/mute", "/mix/{out}/playback/{pb}")
     text = dump.render_config(config_of(session_mod), devices.UCX2)
     assert "does not report" in text
     assert "#   /playback/{ch}/stereo\n" in text
+    assert "#   /playback/{ch}/mute\n" in text
+    assert "Playback mute remains unverified" in text
     assert "/mix/{out}/playback/{pb}" in text
     assert "link flags exist only in" in text
     assert "Merge, do not replace" in text

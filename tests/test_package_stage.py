@@ -32,7 +32,7 @@ def test_stage_runs_and_does_not_activate_a_new_desk(tmp_path):
     assert (stage / 'usr/bin/oscmix-setup').is_file()
     unit = (stage / 'usr/lib/systemd/user/oscmix.service').read_text()
     assert 'ExecStart=/usr/bin/oscmix-session' in unit
-    assert 'ConditionPathExists=%E/oscmix/service-allowed' in unit
+    assert unit.count('ConditionPathExists=%E/oscmix/service-allowed') == 1
     assert not list(stage.rglob('service-allowed'))
     assert not list(stage.rglob('routing.conf'))
     assert not list(stage.rglob('*.wants'))

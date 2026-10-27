@@ -11,13 +11,14 @@ import pytest
 from reconcile_desk import routes_file
 from support import device_key
 
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import locking
 from oscmix_desk import reload as reload_mod
 
 
 @pytest.fixture(autouse=True)
 def backend_connection(monkeypatch, recording_backend):
-    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
 
 
 def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
@@ -34,7 +35,7 @@ def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
 
     path = routes_file(tmp_path)
     applied = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda *a, **k: applied.append(a))
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
     held = locking.take_device_lock(path, device_key(path))
@@ -55,7 +56,7 @@ def test_a_reconcile_holds_the_lock_while_it_writes_and_frees_it_after(
 
     path = routes_file(tmp_path)
     during = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
         lambda *a, **k: during.append(
             locking.take_device_lock(path, device_key(path), wait=0.1)))
     reload_mod._reconcile(argparse.Namespace(config=path),
@@ -78,7 +79,7 @@ def test_a_reconcile_hands_on_the_trigger_the_stop_check_and_its_phases(
     path = routes_file(tmp_path)
     seen = []
     notices = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda *a: seen.append(a) or True)
     monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
     stop = {"stop": False}
@@ -115,7 +116,7 @@ def test_an_incomplete_reconcile_does_not_report_success(
 
     path = routes_file(tmp_path)
     notices = []
-    monkeypatch.setattr(reload_mod, "reconcile_now", lambda *a: False)
+    monkeypatch.setattr(desk_mod, "reconcile_now", lambda *a: False)
     monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
     reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
@@ -138,12 +139,12 @@ def test_every_reconcile_that_stands_down_says_so(cause, tmp_path, monkeypatch,
     notices = []
     written = []
     monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda *a: written.append(1) or True)
     verifier = None
     release = threading.Event()
     if cause == "lock held":
-        monkeypatch.setattr(reload_mod, "device_lock",
+        monkeypatch.setattr(desk_mod, "device_lock",
                             lambda *a, **k: locking.held_elsewhere())
     elif cause == "config broken":
         path.write_text("[route:x]\noutput = 99\nplayback = 1\n")
@@ -170,7 +171,7 @@ def test_a_reconcile_cut_short_by_a_stop_reports_nothing(tmp_path, monkeypatch,
 
     notices = []
     monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
-    monkeypatch.setattr(reload_mod, "reconcile_now", lambda *a: True)
+    monkeypatch.setattr(desk_mod, "reconcile_now", lambda *a: True)
     reload_mod._reconcile(argparse.Namespace(config=routes_file(tmp_path)),
                               session_mod.Config(), {"stop": True})
     assert not any(notice.startswith("STATUS=running") for notice in notices), \
@@ -193,7 +194,7 @@ def test_a_reconcile_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
     write_config(tmp_path / "profiles" / "later.conf",
                  "[route:y]\nplayback = 5/6\noutput = 5/6\n")
     applied = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda config, *a: applied.append(config) or True)
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
 
@@ -219,7 +220,7 @@ def test_the_reconcile_locks_the_desk_it_reloads(tmp_path, monkeypatch,
 
     path = routes_file(tmp_path)
     taken = []
-    monkeypatch.setattr(reload_mod, "device_lock",
+    monkeypatch.setattr(desk_mod, "device_lock",
                         lambda where, key, should_stop: taken.append((where, key)) or "not taken")
     monkeypatch.setattr(reload_mod, "sd_notify", lambda *_a: None)
     config = session_mod.Config(serial="24216011")

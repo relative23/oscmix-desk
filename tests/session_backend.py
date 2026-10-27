@@ -21,6 +21,8 @@ sys.path[:0] = [os.environ['STUB_TESTS_DIR'], os.environ['STUB_SOURCE_DIR']]
 from control_peer import REFRESH, REPLY, WRITE, ScriptedControl  # noqa: E402
 from support import control_owner  # noqa: E402
 
+from oscmix_desk.osc import encode_osc  # noqa: E402
+
 
 def main():
     # Linux/musl too: the current process's libc, not a glibc filename.
@@ -43,6 +45,8 @@ def main():
 
     with (root / 'datagrams.hex').open('a') as traffic, \
             (root / 'requests.jsonl').open('a') as requests:
+        initial = [encode_osc(path, tags, *values) for path, (tags, values) in
+                   json.loads(os.environ.get('STUB_INITIAL_REGISTERS', '{}')).items()]
         class LoggedPeer(ScriptedControl):
             def emit(self, kind, request=0, code=0, sequence=None, payload=b''):
                 if kind & REPLY:
@@ -58,7 +62,7 @@ def main():
                         traffic.write(b'/refresh\0\0\0\0,\0\0\0'.hex() + '\n')
                         traffic.flush()
                         # A fixture's simulated register state, not hardware evidence.
-                        latest = {raw.split(b'\0', 1)[0]: raw for raw in self.writes}
+                        latest = {raw.split(b'\0', 1)[0]: raw for raw in initial + self.writes}
                         self.reports = list(latest.values())
                 super().emit(kind, request, code, sequence, payload)
 

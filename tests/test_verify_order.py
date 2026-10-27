@@ -99,7 +99,8 @@ def test_summary_keeps_equality_policy_and_missing_reports_distinct(caplog):
         problems = verify._report(result, Config(), UCX2, 1)
     assert problems == []
     assert verify._kept_by_the_device(result, UCX2) == ["/output/5/volume"]
-    assert "device value kept for /output/5/volume (remembered, not pinned)" in caplog.text
+    assert ("device value kept for /output/5/volume (REMEMBER or AutoSet gain ownership)"
+            in caplog.text)
     assert "1 confirmed; 1 kept by REMEMBER" in caplog.text
     assert ("0 differing PIN; 0 missing prompt; 1 not observed; "
             "2 backend-unreportable") in caplog.text
@@ -139,9 +140,11 @@ def test_profile_confirmation_is_strict_even_for_a_remembered_fader(
     write_config(tmp_path / 'profiles/levels.conf',
                  '[output:5]\nvolume=0\n[output:7]\nvolume=0\n')
     result = profiles.switch_profile('levels', tmp_path / 'routing.conf', backend=contradiction)
-    assert result.state == outcome.APPLIED_UNVERIFIED
+    assert result.state == outcome.APPLIED_MISMATCHED
     assert result.read_back is True
-    assert result.unverified == ['/output/5/volume']
+    assert result.unverified == ('/output/5/volume',)
+    assert result.mismatched == ('/output/5/volume',)
+    assert result.unobserved == ()
 
 
 @pytest.mark.parametrize('pin', [False, True])

@@ -6,7 +6,13 @@ import sys
 from pathlib import Path
 
 import pytest
-from test_install_sh import PROJECT_ROOT, make_fake_home, run, session_home_stub
+from test_install_sh import (
+    PROJECT_ROOT,
+    backend_identity_stub,
+    make_fake_home,
+    run,
+    session_home_stub,
+)
 
 from oscmix_desk import __version__
 
@@ -15,6 +21,7 @@ BASES = [
     ("0.7.0", "25eb57dff7a305b0e6452010ce15992c90ad144b"),
     ("0.7.2", "2cf9b02a1c271582d042ce4ad064331fb09f3619"),
     ("0.8.0", "fd4f4bece9af3b0eb32cba386785a7e440ea6e9d"),
+    ("0.8.1", "9a12290fb9968c5f367d163b75df13116b41bdad"),
 ]
 pytestmark = pytest.mark.skipif(
     bool(os.environ.get("MUTANT_UNDER_TEST")),
@@ -44,6 +51,12 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless, previous_ver
     args = ["--no-build"] + (["--no-udev"] if rootless else [])
 
     def install(tree, expect_hotplug=True):
+        # --no-build installs against the backend that is already there, and
+        # each tree requires the one built from its own patch series. When a
+        # release changes the series, the upgrade rebuilds the backend and a
+        # rollback needs the previous one again: model that per phase.
+        for tool in ("oscmix", "alsaseqio", "oscmix-gtk"):
+            (home / ".local" / "bin" / tool).write_text(backend_identity_stub(tree))
         result = run(str(tree / "install.sh"), args, env)
         assert result.returncode == 0, result.stderr + result.stdout
         package = home / ".local" / "lib" / "oscmix-desk" / "oscmix_desk"

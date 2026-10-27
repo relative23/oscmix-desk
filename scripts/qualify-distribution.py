@@ -177,15 +177,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target', required=True, choices=TARGETS)
     parser.add_argument('--native', action='store_true')
-    parser.add_argument('--previous-tag', default='v0.8.0',
-                        help='released core version for actual native upgrade/rollback')
+    parser.add_argument('--previous-tag', default='v0.8.1',
+                        help='released core version for actual native upgrade/rollback '
+                             '(default: v0.8.1)')
     parser.add_argument('--development', action='store_true',
                         help='mark test packages as development versions')
     parser.add_argument('--output', required=True, type=Path,
                         help='new output directory; never overwrites earlier evidence')
     args = parser.parse_args()
     if not re.fullmatch(r'v\d+\.\d+\.\d+', args.previous_tag):
-        parser.error('--previous-tag must be a version tag such as v0.8.0')
+        parser.error('--previous-tag must be a version tag such as v0.8.1')
     args.output = args.output.resolve()
     try:
         result = qualify(args, Path(__file__).resolve().parent.parent)

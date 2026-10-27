@@ -10,7 +10,7 @@ sections; they are passed over with a warning that says what is modelled.
 from __future__ import annotations
 
 import configparser
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from .devices import device_for_name, modelled_names
 from .errors import ConfigError
@@ -60,10 +60,10 @@ def _has_register_model(device_name: str) -> bool:
     return device is not None and bool(device.registers)
 
 
-def _warn_unknown_section(section: str, device_name: str) -> None:
-    """Say that a section is ignored, and say the right why.
+def _unknown_section(section: str, device_name: str, *, strict: bool = False) -> None:
+    """Refuse or report an ignored section, with its device-specific cause.
 
-    A warning, not an error: a section this
+    By default this is a warning: a section this
     version does not know is how a *newer* version adds a feature, and
     refusing the whole file over it leaves the device in whatever state
     the last boot left it, with no restart (RestartPreventExitStatus=2).
@@ -76,17 +76,27 @@ def _warn_unknown_section(section: str, device_name: str) -> None:
     through to the "newer version" text, which sent the reader to the
     changelog when the cause was the device table. Nothing was newer;
     the model has no rows for that device, and the warning says so.
+    Strict parsing raises ConfigError with the same cause instead of
+    accepting a declaration that would be ignored.
     """
     if not _has_register_model(device_name):
-        log.warning(
-            "ignoring [%s]: no register model for %r declares it, so "
+        _ignored(
+            "[%s]: no register model for %r declares it, so "
             "nothing in it could reach the device (modelled: %s)",
-            section, device_name, modelled_names())
+            (section, device_name, modelled_names()), strict)
         return
-    log.warning(
-        "ignoring unknown section [%s] -- this config may have been "
+    _ignored(
+        "unknown section [%s] -- this config may have been "
         "written by a newer version of oscmix-desk (known: %s)",
-        section, _known_sections(device_name))
+        (section, _known_sections(device_name)), strict)
+
+
+def _ignored(message: str, values: Tuple[object, ...], strict: bool) -> None:
+    """Strict parsing refuses what tolerant parsing would ignore."""
+    detail = message % values
+    if strict:
+        raise ConfigError(detail)
+    log.warning("ignoring %s", detail)
 
 
 def _known_sections(device_name: str) -> str:
@@ -99,7 +109,7 @@ def _known_sections(device_name: str) -> str:
     """
     device = device_for_name(device_name)
     names = ["[device]", "[osc]", "[pin]", "[route:<name>]",
-             "[input:<n>]", "[output:<n>]"]
+             "[input:<n>]", "[output:<n>]", "[playback:<n>]"]
     names += ["[%s]" % family for family in global_families(device)]
     for family in ("input", "output"):
         names += ["[%s:%s:<n>]" % (sub, family)
@@ -221,7 +231,7 @@ def _parse_global_section(parser: "configparser.ConfigParser", section: str,
 
 def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
                            family: str, device: Optional[Device],
-                           device_name: str) -> List[ChannelSetting]:
+                           device_name: str, *, strict: bool = False) -> List[ChannelSetting]:
     """Parse ``[input:N]`` / ``[output:N]``.
 
     Everything here is checked against the register model rather than
@@ -238,6 +248,9 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
 
     known = settable_options(device, family)
     if device is None or not known:
+        if family == "playback":
+            raise ConfigError("[%s]: no playback register model for %r" % (
+                section, device_name))
         # No rows for this device: an unmodelled name, or the 802, which
         # lists channels and no registers. Routes still get no opinion.
         # A section that asks for registers the model cannot
@@ -245,10 +258,10 @@ def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
         # parsed, shown nothing in `--dry-run` and delivered nothing at
         # the device, while looking exactly like a section that worked.
         # That is the shape of the 0.6.1 route defect, one file over.
-        log.warning(
-            "ignoring [%s]: no register model for %r declares settable %s "
+        _ignored(
+            "[%s]: no register model for %r declares settable %s "
             "options, so nothing in it could reach the device "
-            "(modelled: %s)", section, device_name, family, modelled_names())
+            "(modelled: %s)", (section, device_name, family, modelled_names()), strict)
         return []
 
     unknown = set(parser.options(section)) - set(known)

@@ -16,12 +16,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .backend import connect_backend
 from .constants import (
     EXIT_DIFFERS,
     EXIT_FAILURE,
     EXIT_OK,
 )
+from .desk import _operation
 from .devices import device_for_name
 from .discovery import device_firmware, serial_in
 from .dump import (
@@ -220,33 +220,30 @@ def _read_device(config: Config, config_path: Optional[Path] = None
     Missing, derived or disconnected data is never a complete device snapshot.
     Physical changes and GUI writes may occur during this observation window.
     """
-    device = None
-    seen: Dict[str, Args] = {}
     try:
-        device = connect_backend(config, config_path, reader=True)
-        device.request_dump()
-        deadline = time.monotonic() + DUMP_READ_SECONDS
-        quiet_after = deadline
-        while time.monotonic() < deadline:
-            fresh = False
-            for path, _tags, args in device.messages(0.25):
-                if path not in seen or tuple(args) != seen[path]:
-                    fresh = True
-                seen[path] = tuple(args)
-            if fresh:
-                quiet_after = time.monotonic() + DUMP_QUIET_SECONDS
-            elif seen and time.monotonic() > quiet_after:
-                break
-        if not seen:
-            log.error("the backend supplied no device-origin reports in the refresh window")
-            return None
-        return DeviceRead(seen, serial_in(device.device_name) or "?", device.epoch.hex())
+        with _operation(config, config_path, reader=True) as desk:
+            device = desk._control
+            seen: Dict[str, Args] = {}
+            device.request_dump()
+            deadline = time.monotonic() + DUMP_READ_SECONDS
+            quiet_after = deadline
+            while time.monotonic() < deadline:
+                fresh = False
+                for path, _tags, args in device.messages(0.25):
+                    if path not in seen or tuple(args) != seen[path]:
+                        fresh = True
+                    seen[path] = tuple(args)
+                if fresh:
+                    quiet_after = time.monotonic() + DUMP_QUIET_SECONDS
+                elif seen and time.monotonic() > quiet_after:
+                    break
+            if not seen:
+                log.error("the backend supplied no device-origin reports in the refresh window")
+                return None
+            return DeviceRead(seen, serial_in(device.device_name) or "?", device.epoch.hex())
     except OSError as exc:
         log.error("cannot read the selected backend: %s", exc)
         return None
-    finally:
-        if device is not None:
-            device.close()
 
 
 def _dump_config(config: Config, config_path: Optional[Path] = None) -> int:

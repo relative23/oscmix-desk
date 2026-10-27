@@ -13,10 +13,12 @@ import pytest
 from support import fake_proc, free_udp_port, write_config
 from two_boxes import DESK
 
-from oscmix_desk import cli
+from oscmix_desk import cli, profiles
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import outcome as outcome_mod
 from oscmix_desk.constants import (
     EXIT_CONFIG,
+    EXIT_DIFFERS,
     EXIT_NOT_PERSISTED,
     EXIT_OK,
     EXIT_RELOAD_FAILED,
@@ -33,31 +35,43 @@ volume = -10.0
 """
 
 
-@pytest.mark.parametrize('state', [outcome_mod.APPLIED_VERIFIED, outcome_mod.WRITTEN_IN_PART])
+@pytest.mark.parametrize('state', [outcome_mod.APPLIED_VERIFIED, outcome_mod.APPLIED_MISMATCHED,
+                                  outcome_mod.WRITTEN_IN_PART])
 @pytest.mark.parametrize('selection', [('--profile', 'tracking'), ('--no-profile',)])
-def test_switch_and_restore_keep_the_selected_desk_through_partial_and_complete_outcomes(
-        tmp_path, monkeypatch, capsys, state, selection):
-    from two_boxes import unit
-
+@pytest.mark.parametrize('reload_failed', [False, True])
+@pytest.mark.parametrize('strict', [False, True])
+def test_switch_and_restore_pass_the_selected_desk_to_the_profile_api(
+        tmp_path, monkeypatch, capsys, state, selection, reload_failed, strict):
     path = tmp_path / 'selected.conf'
     path.write_text('')
-    other = tmp_path / 'other.conf'
-    other.write_text('')
     calls, reloads = [], []
 
-    def result(name, config_path):
-        calls.append((name, config_path))
+    def result(name, config_path, *, strict):
+        calls.append((name, config_path, strict))
+        if state == outcome_mod.APPLIED_VERIFIED:
+            return outcome_mod.Outcome(state, name, read_back=True,
+                                       persisted=True, durable=True,
+                                       reload_failed=reload_failed)
+        if state == outcome_mod.APPLIED_MISMATCHED:
+            return outcome_mod.Outcome(state, name, read_back=True, persisted=True,
+                                       durable=True, mismatched=('/input/3/gain',),
+                                       unverified=('/input/3/gain',), reload_failed=reload_failed)
         return outcome_mod.Outcome(
-            state, name, written=['/input/3/gain'], unwritten=['/input/4/gain'])
+            state, name, reason='disconnected', written=('/input/3/gain',),
+            unwritten=('/input/4/gain',), unverified=('/input/3/gain', '/input/4/gain'),
+            reload_failed=reload_failed)
 
     monkeypatch.setattr(cli, 'switch_profile', result)
     monkeypatch.setattr(cli, 'restore_main',
-                        lambda config_path: result('routing.conf', config_path))
-    monkeypatch.setattr(cli, 'unit_process', unit({'OSCMIX_CONFIG': str(other)}))
-    monkeypatch.setattr(cli, 'reload_service', lambda: reloads.append(True) or cli.RELOAD_DONE)
-    assert cli.main(['--config', str(path), *selection]) == (
-        cli.EXIT_FAILURE if state == outcome_mod.WRITTEN_IN_PART else EXIT_OK)
-    assert calls == [('tracking' if selection[0] == '--profile' else 'routing.conf', path)]
+                        lambda config_path, *, strict: result(
+                            'routing.conf', config_path, strict=strict))
+    monkeypatch.setattr(profiles, 'reload_service',
+                        lambda: reloads.append(True) or profiles.RELOAD_DONE)
+    assert cli.main(['--config', str(path), *selection, *(['--strict'] if strict else [])]) == (
+        cli.EXIT_FAILURE if state == outcome_mod.WRITTEN_IN_PART
+        else EXIT_RELOAD_FAILED if reload_failed
+        else EXIT_DIFFERS if state == outcome_mod.APPLIED_MISMATCHED else EXIT_OK)
+    assert calls == [('tracking' if selection[0] == '--profile' else 'routing.conf', path, strict)]
     assert reloads == []
     assert capsys.readouterr().out
 
@@ -72,7 +86,7 @@ def test_a_dry_run_never_switches_or_forgets_a_profile(
     marker.write_text("tracking\n")
     writes = []
     _quick_wire(monkeypatch)
-    monkeypatch.setattr(cli, "reload_service", lambda: writes.append("reload"))
+    monkeypatch.setattr(profiles, "reload_service", lambda: writes.append("reload"))
     from oscmix_desk.discovery import Device
 
     monkeypatch.setattr(session, "wait_for_device",
@@ -116,7 +130,6 @@ def _config_with(tmp_path, profiles, monkeypatch=None):
     if monkeypatch is not None:
         from backend_doubles import RecordingBackend
 
-        from oscmix_desk import profiles as profiles_mod
         from oscmix_desk.backend import OSCMIX
 
         # This module checks CLI outcomes. Wire identity and lifecycle run
@@ -126,7 +139,7 @@ def _config_with(tmp_path, profiles, monkeypatch=None):
             device.traits = OSCMIX
             return device
 
-        monkeypatch.setattr(profiles_mod, "connect_backend", quiet)
+        monkeypatch.setattr(desk_mod, "connect_backend", quiet)
         monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(
             tmp_path / "proc", boxes=[(24, "24216011")])))
     return write_config(tmp_path / "routing.conf",
@@ -190,10 +203,9 @@ def test_an_applied_but_unverifiable_switch_still_exits_ok(tmp_path, capsys,
     # mutant, which is what pushed the mutation job past a 90-minute
     # CI timeout. The outcome is what is under test here, not the
     # durations; the timing tests own those.
-    from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import routing as routing_mod
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
-    monkeypatch.setattr(profiles_mod, "VERIFY_TIMEOUT", 0.3)
+    monkeypatch.setattr(desk_mod, "VERIFY_TIMEOUT", 0.3)
 
     path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     assert cli.main(["--config", str(path),
@@ -208,6 +220,53 @@ def test_an_applied_but_unverifiable_switch_still_exits_ok(tmp_path, capsys,
         "closed as soon as the stereo flags matched")
 
 
+@pytest.mark.parametrize('selection', [('--profile', 'levels'), ('--no-profile',)])
+@pytest.mark.parametrize(('value', 'code'), [(-6., EXIT_OK), (-30., EXIT_DIFFERS),
+                                           (float('nan'), EXIT_DIFFERS), (None, EXIT_OK)])
+@pytest.mark.parametrize('persisted', [False, True])
+def test_reported_mismatch_never_exits_ok_and_does_not_claim_a_refusal(
+        tmp_path, monkeypatch, capsys, selection, value, code, persisted):
+    from backend_doubles import RecordingBackend
+
+    from oscmix_desk.backend import OSCMIX
+
+    text = '[output:5]\nvolume = -6\n'
+    path = _config_with(tmp_path, {'levels': text}, monkeypatch)
+    path.write_text(path.read_text() + text)
+    if not persisted:
+        (tmp_path / 'active-profile').mkdir()
+    reports = [] if value is None else [('/output/5/volume', 'f', (value,))]
+    backend = RecordingBackend(lambda _: reports)
+    backend.traits = OSCMIX
+    monkeypatch.setattr(desk_mod, 'connect_backend', lambda *a, **k: backend)
+    monkeypatch.setattr(desk_mod, 'VERIFY_TIMEOUT', .003)
+
+    assert cli.main(['--config', str(path), *selection]) == (
+        code if persisted else EXIT_NOT_PERSISTED)
+    out = capsys.readouterr().out
+    assert 'applied' in out
+    assert 'nothing written' not in out
+    assert backend.sent == [('/output/5/volume', 'f', (-6.,))]
+    if code == EXIT_DIFFERS:
+        assert 'read-back mismatched' in out
+
+
+@pytest.mark.parametrize('dry_run', [False, True])
+def test_restore_without_a_main_config_refuses_in_execution_and_preview(
+        tmp_path, monkeypatch, caplog, dry_run):
+    monkeypatch.setenv('OSCMIX_SYSTEM_CONFIG', str(tmp_path / 'absent-system.conf'))
+    monkeypatch.setenv('HOME', str(tmp_path / 'absent-home'))
+    monkeypatch.delenv('OSCMIX_CONFIG', raising=False)
+    monkeypatch.delenv('XDG_CONFIG_HOME', raising=False)
+    monkeypatch.setattr(cli, 'run_session', lambda *a: pytest.fail('must not discover hardware'))
+    monkeypatch.setattr(desk_mod, 'connect_backend',
+                        lambda *a, **k: pytest.fail('must not connect'))
+    monkeypatch.setattr(profiles, 'reload_service', lambda: pytest.fail('must not reload'))
+
+    assert cli.main(['--no-profile', *(['--dry-run'] if dry_run else [])]) == EXIT_CONFIG
+    assert 'no config file found' in caplog.text
+
+
 # --------------------------------------------------------------------------
 # --no-profile, and the listing's mark
 # --------------------------------------------------------------------------
@@ -215,11 +274,10 @@ def test_an_applied_but_unverifiable_switch_still_exits_ok(tmp_path, capsys,
 def _quick_wire(monkeypatch):
     # Nothing listens on the free ports: shorten the barrier and the
     # read-back window so the transaction runs in well under a second.
-    from oscmix_desk import profiles as profiles_mod
     from oscmix_desk import routing as routing_mod
 
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.05)
-    monkeypatch.setattr(profiles_mod, "VERIFY_TIMEOUT", 0.2)
+    monkeypatch.setattr(desk_mod, "VERIFY_TIMEOUT", 0.2)
 
 
 def test_no_profile_applies_routing_conf_and_forgets(tmp_path, capsys,
@@ -235,11 +293,12 @@ def test_no_profile_applies_routing_conf_and_forgets(tmp_path, capsys,
 def test_no_profile_with_a_broken_routing_conf_exits_config(tmp_path, capsys):
     path = write_config(tmp_path / "routing.conf", "[route:x]\nplayback = 1\n")
     (tmp_path / "active-profile").write_text("tracking\n")
-    # routing.conf itself does not parse, so the start-up load refuses
-    # before --no-profile is reached: exit 2 like any bad routing.conf,
-    # and the profile stays in effect for the next start.
+    # Explicit restore validates its target directly and reports a refusal:
+    # exit 2 like any bad routing.conf, without changing the old selection.
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_CONFIG
-    assert capsys.readouterr().out == ""
+    output = capsys.readouterr().out
+    assert "refused 'routing.conf', nothing written" in output
+    assert "missing required option 'output'" in output
     assert (tmp_path / "active-profile").read_text().strip() == "tracking"
 
 
@@ -267,8 +326,8 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     # tests in test_whose_backend.
     _quick_wire(monkeypatch)
     reloads = []
-    monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or cli.RELOAD_DONE)
+    monkeypatch.setattr(profiles, "reload_service",
+                        lambda: reloads.append(1) or profiles.RELOAD_DONE)
     path = _config_with(
         tmp_path,
         {"tracking": GOOD,
@@ -287,7 +346,7 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     assert reloads == [1, 1]
     # A stopped unit is not an error: there is nothing whose verifier
     # could revert the switch, and the log says so rather than nothing.
-    monkeypatch.setattr(cli, "reload_service", lambda: cli.RELOAD_NOT_RUNNING)
+    monkeypatch.setattr(profiles, "reload_service", lambda: profiles.RELOAD_NOT_RUNNING)
     caplog.clear()
     with caplog.at_level("INFO"):
         assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
@@ -296,7 +355,7 @@ def test_an_applied_switch_reloads_the_unit_and_a_refused_one_does_not(
     # up, on a desk it has not re-read, and the exit code says so.
     from oscmix_desk.process import RELOAD_FAILED
 
-    monkeypatch.setattr(cli, "reload_service", lambda: RELOAD_FAILED)
+    monkeypatch.setattr(profiles, "reload_service", lambda: RELOAD_FAILED)
     caplog.clear()
     with caplog.at_level("WARNING"):
         assert cli.main(["--config", str(path),
@@ -320,8 +379,8 @@ def test_a_switch_whose_marker_cannot_be_written_does_not_reload(
     """
     _quick_wire(monkeypatch)
     reloads = []
-    monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or cli.RELOAD_DONE)
+    monkeypatch.setattr(profiles, "reload_service",
+                        lambda: reloads.append(1) or profiles.RELOAD_DONE)
     path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     (tmp_path / "active-profile").mkdir()      # a directory: the write fails
     with caplog.at_level("WARNING"):
@@ -338,8 +397,8 @@ def test_no_profile_that_cannot_forget_the_marker_does_not_reload(
     # would bring the profile back over the restore.
     _quick_wire(monkeypatch)
     reloads = []
-    monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or cli.RELOAD_DONE)
+    monkeypatch.setattr(profiles, "reload_service",
+                        lambda: reloads.append(1) or profiles.RELOAD_DONE)
     path = _config_with(tmp_path, {"tracking": GOOD}, monkeypatch)
     marker = tmp_path / "active-profile"
     marker.mkdir()
@@ -356,18 +415,15 @@ def test_a_restore_reloads_the_unit_that_runs_its_desk(tmp_path, monkeypatch):
     which reloads whatever the switch was for: handing the reload decision
     no config at all went unnoticed (a survivor of `_main`, 0.6.11)."""
 
-    path = tmp_path / "routing.conf"
-    path.write_text(GOOD)
+    _quick_wire(monkeypatch)
+    path = _config_with(tmp_path, {}, monkeypatch)
     reloads = []
-    monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or cli.RELOAD_DONE)
-    monkeypatch.setattr(cli, "restore_main", lambda _path: outcome_mod.Outcome(
-        state=outcome_mod.APPLIED_UNVERIFIED, name="routing.conf",
-        reason=outcome_mod.NOT_CHECKED))
-    monkeypatch.setattr(cli, "_unit_desk", lambda: (True, path))
+    monkeypatch.setattr(profiles, "reload_service",
+                        lambda: reloads.append(1) or profiles.RELOAD_DONE)
+    monkeypatch.setattr(profiles, "_unit_desk", lambda: (True, path))
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert reloads == [1]
-    monkeypatch.setattr(cli, "_unit_desk",
+    monkeypatch.setattr(profiles, "_unit_desk",
                         lambda: (True, tmp_path / "another.conf"))
     assert cli.main(["--config", str(path), "--no-profile"]) == EXIT_OK
     assert reloads == [1], "the unit runs another desk"
@@ -379,13 +435,13 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
     desk, and an untold unit lets its verifier re-apply the old one
     (0.6.3). But a second review is right that it is a guess."""
 
-    monkeypatch.setattr(cli, "reload_service", lambda: cli.RELOAD_DONE)
-    monkeypatch.setattr(cli, "unit_process", lambda *_a: None)
+    monkeypatch.setattr(profiles, "reload_service", lambda: profiles.RELOAD_DONE)
+    monkeypatch.setattr(profiles, "unit_process", lambda *_a: None)
     applied = outcome_mod.Outcome(state=outcome_mod.APPLIED_UNVERIFIED, name="x",
-                               reason=outcome_mod.NOT_CHECKED)
+                               reason=outcome_mod.NOT_CHECKED, persisted=True, durable=True)
     with caplog.at_level("WARNING"):
-        assert cli._report_outcome(applied, tmp_path / "routing.conf") \
-            == EXIT_OK
+        assert profiles._hand_over_to_the_unit(applied, tmp_path / "routing.conf") \
+            == applied
     assert "could not tell which desk oscmix.service runs" in caplog.text
     # A unit that was read and resolves no config has no desk to re-apply:
     # that None is an answer, not a guess. A command line this parser
@@ -395,18 +451,18 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
     for argv, guessed in ((("oscmix-session",), False),
                           (("oscmix-session", "--timeout", "abc"), True)):
         caplog.clear()
-        monkeypatch.setattr(cli, "unit_process", lambda *_a, argv=argv:
+        monkeypatch.setattr(profiles, "unit_process", lambda *_a, argv=argv:
                             UnitProcess(argv=argv, cwd=tmp_path, environ={
                                 "HOME": str(tmp_path / "none")}))
         with caplog.at_level("WARNING"):
-            cli._report_outcome(applied, tmp_path / "routing.conf")
+            profiles._hand_over_to_the_unit(applied, tmp_path / "routing.conf")
         assert ("could not tell" in caplog.text) is guessed, argv
     # Nor was a unit that is not running guessed about.
     caplog.clear()
-    monkeypatch.setattr(cli, "unit_process", lambda *_a: None)
-    monkeypatch.setattr(cli, "reload_service", lambda: cli.RELOAD_NOT_RUNNING)
+    monkeypatch.setattr(profiles, "unit_process", lambda *_a: None)
+    monkeypatch.setattr(profiles, "reload_service", lambda: profiles.RELOAD_NOT_RUNNING)
     with caplog.at_level("WARNING"):
-        cli._report_outcome(applied, tmp_path / "routing.conf")
+        profiles._hand_over_to_the_unit(applied, tmp_path / "routing.conf")
     assert "could not tell" not in caplog.text
 
 

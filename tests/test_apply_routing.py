@@ -16,6 +16,7 @@ from backend_doubles import RecordingBackend
 from oscmix_fakes import make_config, make_route
 
 from oscmix_desk import reconcile, routing
+from oscmix_desk import routing as routing_api
 from oscmix_desk.backend import OSCMIX
 from oscmix_desk.errors import ReceivePortError, WriteFailed
 from oscmix_desk.routing import LinkEcho
@@ -61,7 +62,7 @@ class EchoBackend(RecordingBackend):
 
 def run_apply(session_mod, routes, **kwargs):
     device = EchoBackend(**kwargs)
-    session_mod.apply_routing(session_mod.Config(routes=list(routes)), device)
+    routing_api.apply_routing(session_mod.Config(routes=list(routes)), device)
     return device
 
 
@@ -248,7 +249,7 @@ def test_a_backend_that_updates_link_state_on_write_needs_no_barrier(
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 3.0)
     config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
     started = time.monotonic()
-    session_mod.apply_routing(config, silent_backend)
+    routing_api.apply_routing(config, silent_backend)
     assert time.monotonic() - started < 1.0, "the barrier ran anyway"
     paths = [p for p, _t, _a in silent_backend.sent]
     assert paths.index("/output/5/stereo") < paths.index("/mix/5/playback/1")

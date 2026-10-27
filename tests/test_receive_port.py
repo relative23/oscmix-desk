@@ -18,8 +18,8 @@ from control_peer import ScriptedControl
 from support import write_config
 
 from oscmix_desk import backend, locking, profiles, routing, verify
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import outcome as outcome_mod
-from oscmix_desk import reads as reads_mod
 from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.constants import EXIT_FAILURE
@@ -123,15 +123,18 @@ def test_the_status_says_failed_and_the_journal_says_why(
     statuses = []
     monkeypatch.setattr(session_module, "sd_notify", statuses.append)
     path = write_config(tmp_path / "routing.conf", DESK)
-    lock = locking.take_device_lock(path, "key")
+    operation = desk_mod._operation(profiles.load_config(path), path,
+                                    backend=unbindable_backend, resolved=True)
+    operation._open()
+    operation._begin()
     with caplog.at_level("ERROR"):
         thread = session_module._verify_in_background(
-            _Child(), profiles.load_config(path), {"stop": False}, lock, unbindable_backend)
+            _Child(), {"stop": False}, operation)
         thread.join(5)
     assert not thread.is_alive()
     assert "routing cannot be verified: " + DENIED_STR in caplog.text
     assert statuses[-1].startswith("STATUS=running; verifier failed at ")
-    again = locking.take_device_lock(path, "key", wait=.2)
+    again = locking.take_device_lock(path, "2a39-3fd9", wait=.2)
     assert again is not None
     again.release()
     assert unbindable_backend.operations[-1] == "close"
@@ -139,7 +142,7 @@ def test_the_status_says_failed_and_the_journal_says_why(
 
 def test_a_reconcile_stands_down_and_names_receive_failure(
         tmp_path, monkeypatch, caplog, unbindable_backend):
-    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: unbindable_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: unbindable_backend)
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
     path = write_config(tmp_path / "routing.conf", DESK)
@@ -162,9 +165,9 @@ def test_a_switch_keeps_the_marker_when_its_link_receiver_fails(
         outcome = profiles.switch_profile("tracking", config_path=path, backend=unbindable_backend)
     assert outcome.state == outcome_mod.WRITTEN_IN_PART
     assert DENIED in outcome.reason
-    assert outcome.unwritten == ["/mix/1/playback/1", "/output/1/volume"]
+    assert outcome.unwritten == ('/mix/1/playback/1', '/output/1/volume')
     assert outcome.persisted is False
-    assert outcome.written == ["/playback/1/stereo", "/output/1/stereo"]
+    assert outcome.written == ('/playback/1/stereo', '/output/1/stereo')
     assert outcome.read_back is False
     assert marker.read_text() == "previous\n"
     assert "written in part" in caplog.text
@@ -176,7 +179,7 @@ def test_a_read_fails_with_the_reason_and_not_with_a_traceback(
         tmp_path, monkeypatch, caplog, flag, unbindable_backend):
     from oscmix_desk import cli
 
-    monkeypatch.setattr(reads_mod, "connect_backend", lambda *_a, **_k: unbindable_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: unbindable_backend)
     path = write_config(tmp_path / "routing.conf", DESK)
     with caplog.at_level("ERROR"):
         assert cli.main(["--config", str(path), flag]) == EXIT_FAILURE

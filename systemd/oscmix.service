@@ -1,6 +1,9 @@
 [Unit]
 Description=oscmix backend for RME Fireface interfaces
 Documentation=https://github.com/michaelforney/oscmix
+# Hotplug can pull in a disabled unit. Removing this per-user opt-in
+# blocks every start until automatic operation is explicitly allowed again.
+ConditionPathExists=%E/oscmix/service-allowed
 After=sound.target
 # Started on hotplug via the udev rule (SYSTEMD_USER_WANTS). On unplug
 # the backend exits with its device and the session exits 0; this

@@ -245,6 +245,7 @@ UCX2 = Device(
         "input-gain-mic": (1, 2),
         "input-gain-inst": (3, 4),
         "input-gain-line": _seq(5, 8),
+        "input-autoset": _seq(1, 4),
         "input-reflevel": _seq(3, 8),
         "output-reflevel": _seq(1, 8),
     },
@@ -258,6 +259,9 @@ UCX2 = Device(
         # shape.
         Register("/playback/{ch}/stereo", "i", REESTABLISHED, "playback",
                  policy=PIN),
+        # Backend mute rewrites the cached coefficient columns.
+        # No DEVICE mute register/readback and no accepted hardware fixture yet.
+        Register("/playback/{ch}/mute", "i", REESTABLISHED, "playback", BOOL),
         Register("/output/{ch}/stereo", "i", VERIFIABLE, "output",
                  policy=PIN),
         Register("/output/{ch}/volume", "f", VERIFIABLE, "output", NUMBER,
@@ -298,10 +302,24 @@ UCX2 = Device(
         Register("/input/{ch}/gain", "f", VERIFIABLE, "input-gain-line",
                  NUMBER, lo=0.0, hi=24.0, unit="dB", policy=PIN,
                  scale=0.1, truncates=True),
+        # Direct i1 flags and own fresh i0 restoration measured on all
+        # four AutoSet inputs in warm linked pairs; both partners followed.
+        # input-autoset-probes-ucx2.json retains those limited observations,
+        # not induced overload, gain lowering, acoustic protection or cold
+        # completeness. AutoSet is a REMEMBER choice; shared gain ownership
+        # must be handled by the apply/repair logic rather than this row.
+        Register("/input/{ch}/autoset", "i", VERIFIABLE, "input-autoset", BOOL),
         Register("/input/{ch}/reflevel", "is", VERIFIABLE, "input-reflevel", ENUM,
                  ("+13dBu", "+19dBu"), policy=PIN),
         Register("/input/{ch}/mute", "i", VERIFIABLE, "input", BOOL),
         Register("/input/{ch}/phase", "i", VERIFIABLE, "input", BOOL),
+        # Direct 0/1 writes and DEVICE refresh readback measured on all
+        # 20 inputs in warm linked pairs; partners followed. Separately
+        # unlinked inputs 13/14 were independently set and restored.
+        # input-msproc-probes-ucx2.json retains the measured states;
+        # it does not claim cold-start completeness or acoustic decoding.
+        # M/S is a session choice: REMEMBER by default, with PIN available.
+        Register("/input/{ch}/msproc", "i", VERIFIABLE, "input", BOOL),
         Register("/input/{ch}/stereo", "i", VERIFIABLE, "input", policy=PIN),
         # Verifiable, but see complete_after_cold_plug below: a cold
         # plug delivers these only for some channels.
@@ -328,6 +346,36 @@ UCX2 = Device(
         # measured, so nothing here claims a scale.
         Register("/output/{ch}/crossfeed", "i", VERIFIABLE, "output", NUMBER,
                  lo=0.0, hi=5.0, unit="index"),
+
+        # FX send/return: direct writes and DEVICE readback measured on
+        # all 20 inputs and outputs in warm linked pairs; the observations
+        # are in tests/data/fx-probes-ucx2.json (not a cold/mono test).
+        # Intermediate -30 dB and both -65/0 dB limits were confirmed on
+        # input 13/14 and output 1/2. The backend rounds to 0.1 dB.
+        # Its output-node .min=-65 is not a raw-unit bound to scale:
+        # hardware and manual 25.3.1 confirm -65 dB, not -6.5 dB.
+        # Like faders, these are session choices, so default to REMEMBER.
+        Register("/input/{ch}/fx", "f", VERIFIABLE, "input", NUMBER,
+                 lo=-65.0, hi=0.0, unit="dB", scale=0.1),
+        Register("/output/{ch}/fx", "f", VERIFIABLE, "output", NUMBER,
+                 lo=-65.0, hi=0.0, unit="dB", scale=0.1),
+
+        # Output balance: integer writes/readback measured directly on
+        # all 20 outputs in warm linked pairs. Both -100/+100 endpoints
+        # were confirmed via output 1; see output-pan-probes-ucx2.json.
+        # Linked partners followed and both fresh values were restored.
+        # Like faders, balance is a REMEMBER session choice by default.
+        Register("/output/{ch}/pan", "i", VERIFIABLE, "output", NUMBER,
+                 lo=-100.0, hi=100.0),
+
+        # Fixed output calibration: all 20 direct warm linked writes were
+        # read back independently; 0.01/0.02 dB steps and -24/+3 dB were
+        # confirmed through output 1. Adjacent calibration stayed unchanged.
+        # See output-volumecal-probes-ucx2.json for the measured scope;
+        # this is not cold completeness or an acoustic gain measurement.
+        # Calibration describes the installation, so PIN is the default.
+        Register("/output/{ch}/volumecal", "f", VERIFIABLE, "output", NUMBER,
+                 lo=-24.0, hi=3.0, unit="dB", policy=PIN, scale=0.01),
 
         # --- global: no channel dimension (0.4.0) ----------------------
         # The echo send. Bounds and names are upstream's node table

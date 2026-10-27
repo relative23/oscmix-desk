@@ -17,7 +17,7 @@ from .diagnostics import backend_status, service_status
 from .discovery import resolve_binary
 from .errors import ConfigError
 from .marker import active_profile
-from .model import CommandLine, Config
+from .model import Config, Overrides, _resolve_overrides
 from .paths import profile_path
 from .profiles import effective_config
 from .streams import playback_problem, read_playback
@@ -25,11 +25,12 @@ from .streams import playback_problem, read_playback
 Info = Dict[str, object]
 
 
-def _configuration(path: Optional[Path], said: CommandLine) -> Tuple[Info, Optional[Config]]:
+def _configuration(path: Optional[Path], overrides: Overrides, *,
+                   strict: bool = False) -> Tuple[Info, Optional[Config]]:
     info: Info = {"path": str(path) if path else None}
     try:
         stored = active_profile(path)
-        config, active = effective_config(path, said)
+        config, active = effective_config(path, overrides, strict=strict)
     except (ConfigError, OSError, ValueError) as exc:
         info.update(state="invalid", detail=str(exc))
         return info, None
@@ -119,9 +120,11 @@ def _playback(config: Config, proc_root: Path) -> Info:
         return {"state": "unknown", "detail": str(exc)}
 
 
-def collect_status(path: Optional[Path], said: CommandLine) -> Info:
+def collect_status(path: Optional[Path], overrides: Optional[Overrides] = None, *,
+                   said: Optional[Overrides] = None, strict: bool = False) -> Info:
     """Only inspect files and query host metadata; no OSC or audio operation."""
-    configuration, config = _configuration(path, said)
+    overrides = _resolve_overrides(overrides, said)
+    configuration, config = _configuration(path, overrides, strict=strict)
     service = service_status()
     sections: Dict[str, Info] = {"installation": _installation(),
         "configuration": configuration, "service": {
@@ -149,7 +152,7 @@ def collect_status(path: Optional[Path], said: CommandLine) -> Info:
 
 
 #: Fields whose null means "there is none", not "not known". JSON keeps
-#: null for both; the text said "stored_profile: unknown" for a desk
+#: null for both; the text formerly printed "stored_profile: unknown" for a desk
 #: without a profile until 0.8.1.
 ABSENT_WHEN_NULL = frozenset(("stored_profile", "effective_profile", "configured_serial"))
 
@@ -170,8 +173,11 @@ def _text_lines(value: object, indent: str = "") -> List[str]:
     return [indent + str(value)]
 
 
-def print_status(path: Optional[Path], said: CommandLine, as_json: bool) -> int:
-    report = collect_status(path, said)
+def print_status(path: Optional[Path], overrides: Optional[Overrides] = None,
+                 as_json: bool = False, *, said: Optional[Overrides] = None,
+                 strict: bool = False) -> int:
+    overrides = _resolve_overrides(overrides, said)
+    report = collect_status(path, overrides, strict=strict)
     print(json.dumps(report, indent=2, sort_keys=True, allow_nan=False) if as_json else
           "\n".join(_text_lines(report)))
     return EXIT_OK if report["configuration_valid"] else EXIT_CONFIG

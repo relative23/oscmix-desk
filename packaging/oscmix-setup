@@ -74,6 +74,9 @@ def migrate(home, config, data):
     if not paths:
         print('No per-user installation to migrate.')
         return
+    if (config / 'oscmix/service-allowed').exists():
+        raise ValueError('remove the service opt-in with oscmix-setup --disable '
+                         'before migration; no files moved')
     state = xdg('XDG_STATE_HOME', home / '.local/state') / 'oscmix-desk'
     state.mkdir(parents=True, exist_ok=True)
     backup = Path(tempfile.mkdtemp(prefix='source-install-', dir=str(state)))

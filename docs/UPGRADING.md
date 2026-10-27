@@ -1,5 +1,185 @@
 # Upgrade and recovery
 
+## Developing 0.9.0
+
+The following changes are implemented in the development tree; 0.9.0 is
+not released yet.
+
+UCX II inputs 1–4 support `autoset = true` or `false`. AutoSet flags default
+to REMEMBER. Later repair/reconcile preserves affected gains when AutoSet
+is declared on, observed on, or its last feedback is missing or malformed.
+A fresh mono link observation limits partner ownership; a planned link
+joins the pair again. Gain PIN behavior on inputs 5–8 is unchanged.
+An explicit `input.gain = pin` together with declared AutoSet-on for a
+configured affected gain is refused before a connection or write lease.
+
+Initial application and explicit profile selection require fresh AutoSet-off
+feedback before changing an affected gain. An explicitly declared off flag
+is written and confirmed before dependent writes; enabling flags follow gains.
+Already active AutoSet is never disabled implicitly. A refusal after an off
+write or link change reports those submitted paths as partial writes; it is
+not permission to repeat the operation. Gain mismatches remain in read-back
+results even when ownership preserves them. The hardware evidence covers
+warm linked Boolean flags and restoration, not overload-driven gain reduction,
+cold completeness or acoustic protection.
+
+Python callers now open one coordinated operation:
+
+```python
+from oscmix_desk import ApplyIntent, load_config, open_desk
+
+with open_desk(load_config(path), path) as desk:
+    desk.apply(ApplyIntent.EXPLICIT)
+    result = desk.verify()
+```
+
+Entering checks the selected interface and backend while holding the device
+lock. The first apply, verify or repair takes one write lease; successful
+exit acknowledges its end. Every exit closes the connection and releases
+the lock. Failed operations cannot be reused or replayed through the same
+object. `Desk.repair()` retains REMEMBER values and permits at most one PIN
+repair; `Desk.verify()` compares every declared expectation. `config` and
+`config_path` are read-only. `open_desk()` discovers an omitted config path
+once, when the operation is prepared. It does not update the profile marker
+or reload the installed service; named profile selection uses
+`switch_profile()` or `restore_main()`.
+
+`Desk`, `ApplyIntent` and `VerifyResult` are exported. The lower-level
+`apply_routing`, `verify_routing`, `verify_and_repair` and CLI-only
+`run_session` leave the root API; they remain importable from their modules.
+`Policy` is exported for `Config.policies` (`Policy.PIN` and `Policy.REMEMBER`).
+`Control` is exported for the existing optional `backend` argument of
+`switch_profile` and `restore_main`; callers can annotate those values without
+importing an undeclared type. Ordinary profile calls manage their own checked
+connection. An explicitly supplied connection must belong to that desk;
+activation takes ownership and closes it. If parsing or maintenance refuses
+before activation begins, the supplied connection remains the caller's.
+Low-level connection construction and protocol options stay documented in
+their owning modules.
+The documented `EXIT_DIFFERS`, `EXIT_NOT_PERSISTED` and `EXIT_RELOAD_FAILED`
+constants are now exported beside the existing exit codes.
+
+`Overrides` names the config overrides, including the validation device:
+`load_config(path, overrides=Overrides(device_name="Fireface 802"))`.
+`load_profile` and `effective_config` accept the same argument. The third
+positional config/profile argument retains its meaning. `CommandLine` is
+an alias for the same type, and `said=` remains a keyword alias. Passing
+both non-None inputs raises `TypeError` before file lookup or reads, even
+when they contain equal values. File settings stay in `Config.loaded` and
+the invocation stays in `Config.overrides`.
+`Machine.under`, `status.collect_status` and `status.print_status` accept
+the same preferred and legacy names; status JSON keeps its existing schema.
+
+`BackendControlError` names failed coordinated backend operations,
+including connection loss, invalid observations, cancellation and missing
+acknowledgements. `ReceivePortError` is the same exception class under its
+legacy name; existing handlers still catch it. The errno and submitted/
+pending write facts retain their meaning. A control error does not imply
+that no hardware writes happened or that an automatic retry is safe.
+
+Python callers: `Outcome.state` must be an `OutcomeState` member, exported
+from `oscmix_desk`. The existing `APPLIED_VERIFIED`, `APPLIED_UNVERIFIED`,
+`REFUSED` and `WRITTEN_IN_PART` constants are those members; comparisons
+with the existing string values still work. Its `unverified`, `unverifiable`,
+`written` and `unwritten` fields are tuples. Incoming lists are copied, so
+mutating one cannot change a returned result. Construction and
+`dataclasses.replace` raise `TypeError` for wrong types or `ValueError`
+for contradictory facts. When constructing results, read-back, persistence
+and durability now default to false. A verified result requires
+`read_back=True`; a partial result includes every submitted and pending
+path in `unverified`. Results returned by profile operations state the facts
+explicitly.
+
+Completed profile read-backs retain separate `mismatched`, `unobserved` and
+`invalid` tuples. `invalid` is a subset of `mismatched`; `unverified` is the
+union of mismatched and unobserved paths, and `unverifiable` is the subset
+of unobserved paths the backend cannot report. No completed read-back means
+these classifications are empty and `unverified` contains the unknown paths.
+Manual construction must supply these consistent facts too.
+
+`APPLIED_MISMATCHED` is a fifth `OutcomeState`, exported from the root. It
+means writes completed but the device reported differing or invalid values.
+The intended profile selection may still be remembered; `persisted` records
+that selection, not confirmation of every value. This is an applied result,
+so callers must not treat it as a refusal or blindly repeat the writes.
+The CLI returns `EXIT_DIFFERS` (3) for this result, after its existing
+partial-write (1), persistence (4) and service-reload (5) priorities.
+Missing or fundamentally unavailable feedback remains `APPLIED_UNVERIFIED`,
+with those paths explicitly classified; its compatible CLI result stays 0
+when persistence and service hand-over succeed.
+
+`--no-profile --dry-run` uses the same main-config validation as the actual
+restore. Without a discovered config, both refuse with exit 2. Ordinary
+startup without a config still uses the empty default desk.
+
+Strict configuration validation is optional: use `--strict`, or the
+keyword-only `strict=True` with `load_config`, `load_profile`,
+`effective_config`, `switch_profile`, `restore_main` and `describe_profiles`.
+Unknown sections and sections the selected device model cannot apply now
+refuse instead of being ignored. Both the main file and a selected profile
+are validated. The default keeps compatibility warnings and its fallback
+from an unusable active profile to the main desk.
+
+A strict start refuses an unusable active profile. The same mode is retained
+when the session re-reads under the device lock: a now-invalid desk stops
+startup with exit 2 before writes or `READY=1`; an invalid SIGHUP desk is
+skipped while the existing session keeps running. The mode is chosen by the
+session's own startup arguments. An explicit valid `--profile` or
+`--no-profile` validates its target directly, so it can recover a broken
+active selection. Its dry-run validates the same target; the previously
+declared desk is only a comparison reference and keeps compatibility fallback.
+This parsing mode does not change the read-back outcomes or exit priorities
+documented above.
+
+Use `oscmix-session --config FILE --check` to strictly validate the main file,
+every `.conf` entry in its profiles directory, and the stored selection
+offline. It is always strict, independent of `--strict`, and returns 0 only
+after the complete check, or 2 with the first failure. An absent profiles
+directory is empty; a directory that cannot be enumerated or a broken profile
+entry refuses the check. It takes no device lock, connection or write lease,
+and changes no marker or service. A main config is required, and device/port
+overrides or other actions cannot be combined with this check.
+
+`switch_profile()` and `restore_main()` now honour installation maintenance
+fences and hand over to the running service, as CLI selections do. Refused
+operations never reload it. A completed operation reloads only after its
+marker change is in effect; partial writes request reconciliation of the
+previous declared desk. A service known to run another config is left alone.
+`Outcome.reload_failed` is true when the running service refused that reload.
+Its device state, read-back and marker facts remain valid; callers must not
+replay a completed switch merely because its service hand-over failed.
+The CLI maps this flag to exit 5, while partial writes retain exit 1.
+
+Source installations can return to an installed but inactive desk with
+`./install.sh --disable`. It requires the matching systemd user manager,
+blocks unit starts through the same `oscmix/service-allowed` opt-in as native
+packages, then stops and disables the unit. It keeps the installed runtime,
+configs and profile selection, needs no backend build and performs no root
+steps. An older source unit receives the condition with its custom contents
+and a backup retained. Ordinary migration from an older unit adopts its
+active/enabled state once; later upgrades honour an absent opt-in instead of
+recreating it. `--enable` restores permission explicitly.
+Before switching to manual mode or migrating to a native package, remove the
+opt-in. Native migration refuses it if still present. Source uninstallation
+also removes this service state while retaining desk files.
+
+Each config now selects its own profile marker beside the file.
+`routing.conf` retains `active-profile`, so its existing selection carries
+over. For `--config selected.conf`, the marker is
+`active-profile.selected.conf`. If a custom config used the old shared
+marker, explicitly select its intended profile again after upgrading.
+The old marker is never automatically adopted by a custom config: it does
+not record which file selected it. Back up the per-config markers with the
+configs and profiles. Before rolling back, select the intended profile
+using the older version, which reads only the shared marker.
+`active_profile()` without a path now uses config discovery, as the profile
+operations do.
+
+Legacy `[osc]` port changes no longer cause profile or reload refusals.
+They remain validated config data, while device name, USB ID and serial
+determine compatibility with the selected interface. The checked backend
+connection still determines which process may receive writes.
+
 ## Upgrading to 0.8.1
 
 0.8.1 uses the same backend patch series as 0.8.0, so the backend, ALSA
@@ -273,7 +453,7 @@ package-manager exit code, before treating a transaction as complete.
 | A profile names a different device, serial, USB ID or OSC port from `routing.conf` | Remove `[device]` and `[osc]` from the profile, or give the other machine its own config directory and `--config`. Repeating the main config's values remains valid. |
 | `--device` overrides a config validated for another interface | The file is now validated for the effective device. Correct any out-of-range routes before applying it. |
 | Python code assigns into `Config` or mutates its lists/policies | Use `dataclasses.replace`, tuples of settings and a new policy mapping. Parsed configs are immutable. |
-| Python code imports OSC helpers or discovery internals from `oscmix_desk` | Import from the owning module, for example `oscmix_desk.osc`. Only the 38 names in `__all__` are the supported root API. |
+| Python code imports OSC helpers or discovery internals from `oscmix_desk` | Import from the owning module, for example `oscmix_desk.osc`. The names in `__all__` define the supported root API. |
 | Code depends on plain phase/reason strings | Use `reconcile.Phase` and `reconcile.WriteReason`; use the typed barrier result in `routing.LinkEcho`. These modules are implementation APIs. |
 | A switch fails after some sends | Handle `written-in-part` / CLI exit 1, with `written` and `unwritten`; a refusal means no sends. Neither means hardware rollback occurred. |
 

@@ -5,18 +5,18 @@ under that lock rather than before it, and a desk for somewhere else not
 applied here.
 """
 
-
 import pytest
 from session_doubles import FakeChild, RunningChild, ready_count
 from support import device_key
 
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import locking
 from oscmix_desk import reload as reload_mod
 
 
 @pytest.fixture(autouse=True)
 def operation(monkeypatch, session_module, recording_backend):
-    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
 
 
 def _lock_probe(path):
@@ -39,10 +39,10 @@ def test_the_start_holds_the_device_lock_until_the_verifier_is_done(
     path = write_config(tmp_path / "routing.conf",
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
     during = []
-    monkeypatch.setattr(session_module, "apply_routing",
+    monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda *a, **k: during.append(("apply",
                                                        _lock_probe(path))))
-    monkeypatch.setattr(session_module, "verify_and_repair",
+    monkeypatch.setattr(desk_mod, "verify_and_repair",
                         lambda *a, **k: during.append(("verify",
                                                        _lock_probe(path))))
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
@@ -75,9 +75,9 @@ def test_a_start_that_cannot_take_the_lock_writes_nothing(
     path = write_config(tmp_path / "routing.conf",
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
     applied = []
-    monkeypatch.setattr(session_module, "apply_routing",
+    monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda *a, **k: applied.append(a))
-    monkeypatch.setattr(session_module, "verify_and_repair",
+    monkeypatch.setattr(desk_mod, "verify_and_repair",
                         lambda *a, **k: None)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 0.3)
@@ -142,9 +142,9 @@ def test_a_start_reads_the_desk_under_the_lock(tmp_path, monkeypatch,
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
     write_config(tmp_path / "profiles" / "later.conf", profile)
     applied = []
-    monkeypatch.setattr(session_module, "apply_routing",
+    monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda config, *a, **k: applied.append(config))
-    monkeypatch.setattr(session_module, "verify_and_repair",
+    monkeypatch.setattr(desk_mod, "verify_and_repair",
                         lambda *a, **k: None)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
@@ -185,7 +185,7 @@ def test_a_stop_during_the_lock_wait_applies_nothing(tmp_path, monkeypatch,
     path = write_config(tmp_path / "routing.conf",
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
     applied = []
-    monkeypatch.setattr(session_module, "apply_routing",
+    monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda *a, **k: applied.append(a))
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 5.0)
     stop = {"stop": False}
@@ -219,7 +219,7 @@ def test_a_stop_ends_the_lock_wait_within_the_stop_timeout(tmp_path, monkeypatch
     path = write_config(tmp_path / "routing.conf",
                         "[route:x]\nplayback = 1/2\noutput = 1/2\n")
     applied = []
-    monkeypatch.setattr(session_module, "apply_routing",
+    monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda *a, **k: applied.append(a))
     monkeypatch.setattr(locking, "SWITCH_LOCK_WAIT", 30.0)
     stop = {"stop": False}
@@ -289,7 +289,7 @@ def test_a_start_cut_short_by_a_stop_or_the_backend_is_not_a_failed_start(
         raise WriteFailed(OSError("stop requested; remaining writes refused"),
                           [], ["/output/1/stereo"])
 
-    monkeypatch.setattr(session_module, "apply_routing", cut_short)
+    monkeypatch.setattr(desk_mod, "apply_routing", cut_short)
     notified = []
     monkeypatch.setattr(session_module, "sd_notify", notified.append)
     with caplog.at_level("WARNING"):

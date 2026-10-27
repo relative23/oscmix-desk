@@ -15,24 +15,22 @@ import argparse
 import threading
 import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
-from .backend import connect_backend
 from .constants import RECONCILE_WAIT_FOR_VERIFIER, SERVICE_UNIT
-from .discovery import lock_key
-from .errors import ConfigError, WriteFailed
-from .locking import DeviceLock, device_lock
+from .desk import _operation
+from .errors import ConfigError, DeviceLockUnavailable, WriteFailed
 from .log import log
 from .model import Config, Machine
 from .notices import log_desk_notices
 from .notify import sd_notify
 from .paths import discover_config_path, profile_path
 from .profiles import effective_config, keep_machine_settings
-from .verify import reconcile_now
+from .reconcile import ApplyIntent
 
 
 def _desk_under_the_lock(config_path: Optional[Path],
-                         running: Config) -> Config:
+                         running: Config, *, strict: bool = False) -> Config:
     """Re-read the desk now that nothing else may write it.
 
     The config this process started with was read before the lock, and
@@ -40,62 +38,30 @@ def _desk_under_the_lock(config_path: Optional[Path],
     by a snapshot older than it: serialised writers, wrong result. So
     the desired state is read inside the lock that writes it (0.6.6).
 
-    Machine settings stay with the running process. The ports and the
-    device name belong to the process, not to the desk, which is the
-    same rule the reconcile follows.
+    Device identity stays with the running process, as on a reconcile.
+    Legacy port values are retained but select no backend.
     """
-    if config_path is None:
-        return running
-    try:
-        fresh, _active = effective_config(config_path, running.overrides)
-    except ConfigError as exc:
-        log.error("%s is no longer usable (%s); applying the desk this "
-                  "process started with", config_path, exc)
-        return running
-    kept = _kept_for_this_process(fresh, running)
-    if kept is None:
-        return running
-    # The start spoke about the desk as it read it, before the wait for
-    # the device and the lock. Another desk by now -- a file edited, a
-    # profile switched in between -- is spoken about here; the same one
-    # is not spoken about twice.
-    if kept != running:
-        log_desk_notices(kept)
-    return kept
+    fresh = _reread_desk(running, config_path, starting=True, strict=strict)
+    if fresh is None and strict:
+        raise ConfigError("the desk under the device lock is not usable; strict start refused")
+    return fresh or running
 
 
 def _kept_for_this_process(fresh: Config, running: Config
                            ) -> Optional[Config]:
-    """``fresh`` with this process's machine settings, or None when it is a
-    desk for somewhere else.
+    """Keep this process's identity, or refuse a desk for another device.
 
-    The lock was taken and the backend bound for this process's ports,
-    usb id and pinned serial, and nothing re-read under it moves them.
-    Until 0.6.11 that meant the re-read desk was applied
-    *here* whatever it named: a `routing.conf` edited to name a box with
-    42 outputs reached a UCX II, which has twenty.
-
-    The re-read file is resolved the way a restart would resolve it --
-    read and validated under the command line the start was given
-    (``running.overrides``) -- and then held against what this session
-    runs (``Machine.elsewhere``, which also says where the two still
-    differ). So a reload applies what a restart
-    would apply here, and refuses what a restart would take somewhere
-    else. The first cuts compared the bare file: they refused the
-    session's own desk under ``--osc-port``, with advice to restart that
-    a restart did not follow.
-
-    Only ``routing.conf`` can name another machine since 0.7.0 -- a
-    profile that does is refused where it is loaded, and the desk in
-    effect falls back to ``routing.conf`` -- so the advice is
-    the one a moved ``routing.conf`` gets: a restart follows it.
+    Re-read and validate under the same overrides as a restart, then
+    compare the device name, USB ID and pinned serial with this session.
+    Profiles are already checked against their main config by the loader.
+    A main config moved to another device requires a deliberate restart.
     """
     live = Machine(running.device_name, running.usb_id, running.serial,
                    running.osc_port, running.osc_recv_port)
-    said = fresh.loaded
-    moved = "" if said is None else \
-        said.under(running.overrides).elsewhere(live)
-    if said is None or not moved:
+    declared_machine = fresh.loaded
+    moved = "" if declared_machine is None else \
+        declared_machine.under(running.overrides).elsewhere(live)
+    if declared_machine is None or not moved:
         return keep_machine_settings(fresh, running)
     log.error("the desk now in effect is for another backend or interface "
               "-- %s -- and a running session keeps the one it was started "
@@ -172,43 +138,37 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
     if not _verifier_finished(verifier, stop_requested):
         return "reconcile skipped"
     path = _config_path(args)
-    # The same lock a switch takes: a reconcile that started while one
-    # was writing used to interleave with it.
-    lock = device_lock(path, lock_key(config.usb_id, config.serial),
-                       should_stop=lambda: stop_requested["stop"])
-    if not isinstance(lock, DeviceLock):
-        if stop_requested["stop"]:
-            log.info("SIGHUP: %s; reconcile skipped", lock)
-        else:
-            log.warning("SIGHUP: %s; reconcile skipped -- send the reload again", lock)
-        return "reconcile skipped"
+    planned = False
     try:
-        fresh = _reloaded_desk(config, path)
-        if fresh is None:
-            return "reconcile skipped"
-        sd_notify("STATUS=reconciling (SIGHUP)")
-        device = None
-        planned = False
-        try:
-            device = connect_backend(fresh, path, should_stop=lambda: stop_requested["stop"])
-            device.begin()
-            complete = reconcile_now(fresh, "SIGHUP", device,
-                                     lambda: stop_requested["stop"])
+        with _operation(config, path, resolved=True,
+                        reread=lambda running: _reload_config(
+                            running, path, strict=getattr(args, "strict", False)),
+                        should_stop=lambda: stop_requested["stop"]) as desk:
+            sd_notify("STATUS=reconciling (SIGHUP)")
+            complete = desk.apply(ApplyIntent.RECONCILE, reason="SIGHUP")
             planned = True
             if stop_requested["stop"]:
                 return "reconcile incomplete"
-            device.finish()
-        except OSError as exc:
-            # Out of `supervise` and `run_session` as a traceback until
-            # 0.6.10, with the backend left to systemd.
-            return _stood_down(exc, planned, stop_requested["stop"])
+            desk._finish()
+    except DeviceLockUnavailable as exc:
+        if stop_requested["stop"]:
+            log.info("SIGHUP: %s; reconcile skipped", exc)
         else:
-            return "reconciled" if complete else "reconcile incomplete"
-        finally:
-            if device is not None:
-                device.close()
-    finally:
-        lock.release()
+            log.warning("SIGHUP: %s; reconcile skipped -- send the reload again", exc)
+        return "reconcile skipped"
+    except ConfigError:
+        return "reconcile skipped"
+    except OSError as exc:
+        return _stood_down(exc, planned, stop_requested["stop"])
+    else:
+        return "reconciled" if complete else "reconcile incomplete"
+
+
+def _reload_config(running: Config, path: Optional[Path], *, strict: bool = False) -> Config:
+    fresh = _reloaded_desk(running, path, strict=strict)
+    if fresh is None:
+        raise ConfigError("the reloaded desk is not usable")
+    return fresh
 
 
 def _stood_down(exc: OSError, planned: bool, stopping: bool) -> str:
@@ -233,41 +193,46 @@ def _stood_down(exc: OSError, planned: bool, stopping: bool) -> str:
     return outcome
 
 
-def _reloaded_desk(running: Config, path: Optional[Path]) -> Optional[Config]:
-    """The desk a SIGHUP re-reads, or None when the file is not usable.
+def _reloaded_desk(running: Config, path: Optional[Path], *,
+                   strict: bool = False) -> Optional[Config]:
+    """The SIGHUP desk, or None to skip an unusable or retargeted file."""
+    return _reread_desk(running, path, starting=False, strict=strict)
 
-    The active profile if one is remembered, routing.conf otherwise --
-    the same answer the start gives, which is what makes the
-    resume hook's reload re-apply the desk that was chosen rather than
-    the default one. A config that no longer parses keeps the running
-    configuration, which is the state somebody is listening to.
-    """
+
+def _reread_desk(running: Config, path: Optional[Path], *,
+                 starting: bool, strict: bool = False) -> Optional[Config]:
+    """Validate the selected desk under the lock without retargeting it."""
     if path is None:
         return running
     try:
-        fresh, active = effective_config(path, running.overrides)
+        fresh, active = effective_config(path, running.overrides, strict=strict)
     except ConfigError as exc:
-        log.error("SIGHUP: %s is not usable (%s); keeping the running "
-                  "configuration", path, exc)
+        if starting and strict:
+            log.error("%s is no longer usable (%s); strict start refused, "
+                      "nothing written", path, exc)
+        elif starting:
+            log.error("%s is no longer usable (%s); applying the desk this "
+                      "process started with", path, exc)
+        else:
+            log.error("SIGHUP: %s is not usable (%s); keeping the running "
+                      "configuration", path, exc)
         return None
     # A reload reconciles the desk through the running backend's checked
     # device connection. Its machine identity and accepted legacy port
     # values remain fixed for this process; a reload cannot retarget it.
     kept = _kept_for_this_process(fresh, running)
-    if kept is None:
-        return None
-    # Name what was actually reloaded. On the first live run this line
-    # said routing.conf while the profile above it was in effect -- true
-    # of the file read, misleading about the desk. And only once it is
-    # the desk that will be applied: "reloaded X" above "X was not
-    # applied" read as a contradiction on the desk (0.6.11).
-    log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
-             profile_path(active, path) if active else path,
-             len(kept.routes), len(kept.channels))
-    log_desk_notices(kept)
+    if kept is not None:
+        if not starting:
+            log.info("SIGHUP: reloaded %s (%d route(s), %d channel setting(s))",
+                     profile_path(active, path) if active else path,
+                     len(kept.routes), len(kept.channels))
+        if not starting or kept != running:
+            log_desk_notices(kept)
     return kept
 
 
 def _config_path(args: argparse.Namespace) -> Optional[Path]:
-    """The config this session runs, for the lock and for the reload."""
-    return getattr(args, "config", None) or discover_config_path()
+    """Pin this invocation's selection, including no discovered config."""
+    if not hasattr(args, "_desk_config_path"):
+        args._desk_config_path = getattr(args, "config", None) or discover_config_path()
+    return cast(Optional[Path], args._desk_config_path)

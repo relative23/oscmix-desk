@@ -19,7 +19,6 @@ The property that matters is not "a good config applies". It is that a
 a live desk is that a typo costs you a message, not your monitoring.
 """
 
-
 import errno
 import re
 
@@ -28,6 +27,7 @@ from backend_doubles import RecordingBackend
 from profile_desk import GOOD, TRACKING, desk
 from support import write_config
 
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import outcome as outcome_mod
 from oscmix_desk import paths as paths_mod
 from oscmix_desk import profiles
@@ -169,17 +169,20 @@ def test_verified_means_the_device_confirmed_it(tmp_path, confirming_backend):
                                       backend=confirming_backend)
     assert outcome.state == outcome_mod.APPLIED_VERIFIED
     assert outcome.applied is True
-    assert outcome.unverified == []
+    assert outcome.unverified == ()
 
 
 def test_explicit_profile_checks_the_selected_models_quantized_report(tmp_path):
     write_config(tmp_path / "profiles" / "gain.conf", "[input:1]\ngain = 1.29\n")
-    backend = RecordingBackend(lambda _: [("/input/1/gain", "f", (1.2000000476837158,))])
+    backend = RecordingBackend(lambda _: [("/input/1/gain", "f", (1.2000000476837158,)),
+                                          ("/input/1/autoset", "i", (0,)),
+                                          ("/input/2/autoset", "i", (0,)),
+                                          ("/input/1/stereo", "i", (0,))])
     outcome = profiles.switch_profile("gain", config_path=tmp_path / "routing.conf",
                                       backend=backend)
     assert outcome.state == outcome_mod.APPLIED_VERIFIED
-    assert outcome.unverified == []
-    assert outcome.unverifiable == []
+    assert outcome.unverified == ()
+    assert outcome.unverifiable == ()
     assert outcome.read_back
     assert outcome.persisted
     assert backend.sent == [("/input/1/gain", "f", (1.29,))]
@@ -202,8 +205,8 @@ def test_failed_profile_readback_keeps_its_name_and_complete_unconfirmed_list(tm
     assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
     assert outcome.name == "levels"
     assert outcome.reason == "window unavailable"
-    assert outcome.unverified == ["/output/1/volume", "/output/5/volume"]
-    assert outcome.unverifiable == []
+    assert outcome.unverified == ('/output/1/volume', '/output/5/volume')
+    assert outcome.unverifiable == ()
     assert outcome.read_back is False
     assert backend.sent == [("/output/5/volume", "f", (-6.,)),
                             ("/output/1/volume", "f", (-12.,))]
@@ -212,13 +215,13 @@ def test_failed_profile_readback_keeps_its_name_and_complete_unconfirmed_list(tm
 
 def test_explicit_profile_distinguishes_missing_feedback_from_unreportable_state(
         tmp_path, recording_backend, monkeypatch):
-    monkeypatch.setattr(profiles, 'VERIFY_TIMEOUT', .002)
+    monkeypatch.setattr(desk_mod, 'VERIFY_TIMEOUT', .002)
     write_config(tmp_path / 'profiles/tracking.conf', GOOD)
     outcome = profiles.switch_profile('tracking', config_path=tmp_path / 'routing.conf',
                                       backend=recording_backend)
     assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
-    assert outcome.unverified == ['/mix/1/playback/1', '/output/1/volume']
-    assert outcome.unverifiable == ['/mix/1/playback/1']
+    assert outcome.unverified == ('/mix/1/playback/1', '/output/1/volume')
+    assert outcome.unverifiable == ('/mix/1/playback/1',)
     assert outcome.reason == '2 unconfirmed, 1 of them never reported by this backend'
     assert outcome.read_back
     assert outcome.persisted
@@ -248,7 +251,7 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
     # duration -- tests/test_apply_routing.py owns the timing.
     from oscmix_desk import routing as routing_mod
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 0.01)
-    monkeypatch.setattr(profiles, "VERIFY_TIMEOUT", 0.01)
+    monkeypatch.setattr(desk_mod, "VERIFY_TIMEOUT", 0.01)
 
     write_config(tmp_path / "profiles" / "tracking.conf", GOOD)
     outcome = profiles.switch_profile("tracking",
@@ -264,13 +267,10 @@ def test_an_unverifiable_switch_names_what_it_could_not_confirm(
     assert "mixer GUI" not in outcome.describe()
 
 
-def test_the_four_states_are_the_only_four(tmp_path):
-    # Three, until 0.7.0: "partly, and here is a traceback" was the state
-    # the contract forbade, and a wire that gives out half-way produced it
-    # all the same -- as the traceback. The fourth is that state with a
-    # name and both lists. A fifth arrives by decision too.
+def test_the_five_states_are_the_complete_contract(tmp_path):
     assert set(outcome_mod.STATES) == {outcome_mod.APPLIED_VERIFIED,
                                        outcome_mod.APPLIED_UNVERIFIED,
+                                       outcome_mod.APPLIED_MISMATCHED,
                                        outcome_mod.REFUSED,
                                        outcome_mod.WRITTEN_IN_PART}
 
@@ -278,9 +278,20 @@ def test_the_four_states_are_the_only_four(tmp_path):
 def test_every_outcome_answers_whether_the_device_was_written_to(tmp_path):
     # `applied` is the field a script branches on; it must never be
     # ambiguous, whatever the state.
-    for state in outcome_mod.STATES:
-        outcome = outcome_mod.Outcome(state=state, name="x", reason="",
-                                   unverified=[])
+    fields = {
+        outcome_mod.APPLIED_VERIFIED: dict(read_back=True),
+        outcome_mod.APPLIED_UNVERIFIED: dict(reason=outcome_mod.NOT_CHECKED),
+        outcome_mod.APPLIED_MISMATCHED: dict(read_back=True,
+                                            unverified=("/input/1/mute",),
+                                            mismatched=("/input/1/mute",)),
+        outcome_mod.REFUSED: dict(reason="backend absent"),
+        outcome_mod.WRITTEN_IN_PART: dict(
+            reason="disconnected", written=("/input/1/mute",),
+            unwritten=("/input/2/mute",),
+            unverified=("/input/1/mute", "/input/2/mute")),
+    }
+    for state, kwargs in fields.items():
+        outcome = outcome_mod.Outcome(state=state, name="x", **kwargs)
         assert isinstance(outcome.applied, bool)
         assert outcome.applied is (state != outcome_mod.REFUSED)
 
@@ -421,8 +432,13 @@ def test_profile_path_maps_a_name_to_a_file(tmp_path):
 @pytest.mark.parametrize('state', [outcome_mod.APPLIED_UNVERIFIED, outcome_mod.WRITTEN_IN_PART])
 def test_outcome_abbreviation_retains_exact_counts_and_the_complete_result(count, state):
     paths = ['/input/%d/mute' % n for n in range(1, count + 1)]
-    outcome = outcome_mod.Outcome(state, 'tracking', unverified=list(paths),
-                                  written=list(paths), unwritten=['/output/5/volume'])
+    partial = state == outcome_mod.WRITTEN_IN_PART
+    outcome = outcome_mod.Outcome(
+        state, 'tracking', reason='disconnected' if partial else '',
+        unverified=tuple(paths + ['/output/5/volume']) if partial else tuple(paths),
+        written=tuple(paths) if partial else (),
+        unwritten=('/output/5/volume',) if partial else (), read_back=not partial,
+        unobserved=() if partial else tuple(paths))
     text = outcome.describe()
     shown = ', '.join(paths[:6])
     expected = shown if count == 6 else shown + ' and 2 more'
@@ -437,15 +453,24 @@ def test_outcome_abbreviation_retains_exact_counts_and_the_complete_result(count
         assert 'not written: /output/5/volume' in text
     else:
         assert '%d register(s) unconfirmed' % count in text
-    assert outcome.unverified == paths
-    assert outcome.written == paths
-    assert outcome.unwritten == ['/output/5/volume']
+    assert outcome.unverified == tuple(paths + ['/output/5/volume'] if partial else paths)
+    assert outcome.written == (tuple(paths) if partial else ())
+    assert outcome.unwritten == (('/output/5/volume',) if partial else ())
 
 
 def test_the_outcome_describes_itself_in_one_line(tmp_path):
-    for state in outcome_mod.STATES:
-        line = outcome_mod.Outcome(state=state, name="tracking", reason="why",
-                                unverified=["/output/1/volume"]).describe()
+    outcomes = (
+        outcome_mod.Outcome(outcome_mod.APPLIED_VERIFIED, "tracking", read_back=True),
+        outcome_mod.Outcome(outcome_mod.APPLIED_UNVERIFIED, "tracking", reason="why",
+                            unverified=("/output/1/volume",), read_back=True,
+                            unobserved=("/output/1/volume",)),
+        outcome_mod.Outcome(outcome_mod.REFUSED, "tracking", reason="why"),
+        outcome_mod.Outcome(outcome_mod.WRITTEN_IN_PART, "tracking", reason="why",
+                            written=("/output/1/volume",),
+                            unverified=("/output/1/volume",)),
+    )
+    for outcome in outcomes:
+        line = outcome.describe()
         assert "tracking" in line
         assert "\n" not in line
 
@@ -472,8 +497,8 @@ def test_the_playback_matrix_is_named_as_uncheckable_not_as_a_miss(
                                       backend=confirming_backend)
 
     assert outcome.state == outcome_mod.APPLIED_UNVERIFIED
-    assert outcome.unverified == ["/mix/1/playback/1"]
-    assert outcome.unverifiable == ["/mix/1/playback/1"]
+    assert outcome.unverified == ('/mix/1/playback/1',)
+    assert outcome.unverifiable == ('/mix/1/playback/1',)
     line = outcome.describe()
     assert "cannot report" in line
     assert "unconfirmed" not in line
@@ -483,8 +508,9 @@ def test_a_genuine_miss_reads_differently_from_an_uncheckable_one(tmp_path):
     """The distinction the message exists to make."""
     both = outcome_mod.Outcome(
         state=outcome_mod.APPLIED_UNVERIFIED, name="x",
-        unverified=["/mix/1/playback/1", "/output/1/volume"],
-        unverifiable=["/mix/1/playback/1"])
+        unverified=("/mix/1/playback/1", "/output/1/volume"),
+        unverifiable=("/mix/1/playback/1",), read_back=True,
+        unobserved=("/mix/1/playback/1", "/output/1/volume"))
     assert "1 register(s) unconfirmed" in both.describe()
     assert "/output/1/volume" in both.describe()
     assert "plus 1 this backend cannot report" in both.describe()
@@ -523,8 +549,8 @@ def test_a_switch_can_be_asked_not_to_check(tmp_path, recording_backend):
     assert outcome.name == "tracking"
     assert outcome.reason == outcome_mod.NOT_CHECKED
     assert outcome.persisted is True, "the marker was written either way"
-    assert outcome.unverified == sorted(
-        profiles.expected_registers(profiles.load_profile("tracking", path)))
+    assert outcome.unverified == tuple(sorted(
+        profiles.expected_registers(profiles.load_profile("tracking", path))))
 
 
 # --------------------------------------------------------------------------
@@ -625,18 +651,18 @@ def test_target_resolution_uses_host_defaults_without_overrides(monkeypatch):
     seen = []
     present = [True]
     target = [Device(usb_id="2a39:3fd9", serial="24216011", client=24)]
-    monkeypatch.setattr(profiles, "usb_device_present",
+    monkeypatch.setattr(desk_mod, "usb_device_present",
                         lambda usb_id, sysfs: seen.append(sysfs) or present[0])
-    monkeypatch.setattr(profiles, "resolve_device",
+    monkeypatch.setattr(desk_mod, "resolve_device",
                         lambda usb, name, serial, proc: seen.append(proc) or target[0])
-    assert profiles._target(Config(), reach=True) == target[0]
+    assert desk_mod._target(Config(), reach=True) == target[0]
     assert seen == [Path("/proc"), Path("/sys/bus/usb/devices")]
     target[0] = Device(usb_id="2a39:3fd9", serial="24216011", client=None)
-    with pytest.raises(profiles._Refused, match="not visible to ALSA"):
-        profiles._target(Config(), reach=True)
+    with pytest.raises(OSError, match="not visible to ALSA"):
+        desk_mod._target(Config(), reach=True)
     present[0] = False
-    with pytest.raises(profiles._Refused, match="not connected"):
-        profiles._target(Config(), reach=True)
+    with pytest.raises(OSError, match="not connected"):
+        desk_mod._target(Config(), reach=True)
 
 
 # --------------------------------------------------------------------------
@@ -663,7 +689,7 @@ def test_an_operation_the_backend_did_not_finish_is_unverified_and_not_remembere
         state=outcome_mod.APPLIED_UNVERIFIED, name="tracking",
         reason="backend operation did not finish: [Errno 104] backend "
                "disconnected; observations invalid",
-        unverified=sorted(expected_registers(desk)), persisted=False, read_back=False)
+        unverified=tuple(sorted(expected_registers(desk))), persisted=False, read_back=False)
     assert recording_backend.sent, "every write went out before the finish failed"
     assert recording_backend.operations[-2:] == ["finish", "close"]
     assert active_profile(tmp_path / "routing.conf") is None
@@ -696,14 +722,14 @@ def test_a_switch_connects_for_its_desk_and_the_resolved_interface(
     path = write_config(tmp_path / "routing.conf", GOOD)
     write_config(tmp_path / "profiles" / "tracking.conf", GOOD)
     target = Device("2a39:3fd9", "24216011", 24)
-    monkeypatch.setattr(profiles, "_target", lambda _config, reach: target)
+    monkeypatch.setattr(desk_mod, "_target", lambda _config, reach: target)
     connected = []
 
-    def connect(config, config_path):
+    def connect(config, config_path, **_options):
         connected.append((config.serial, config_path))
         return recording_backend
 
-    monkeypatch.setattr(profiles, "connect_backend", connect)
+    monkeypatch.setattr(desk_mod, "connect_backend", connect)
     outcome = profiles.switch_profile("tracking", config_path=path, verify=False)
     assert outcome.applied is True
     assert connected == [("24216011", path)]

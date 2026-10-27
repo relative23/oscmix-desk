@@ -54,6 +54,8 @@ def raw_value(value: object, register: Register) -> int:
     The backend masks to 16 bits and sign-extends on read. Reject overflow
     instead of permitting a wraparound that changes the requested value.
     """
+    if register.domain == NUMBER and isinstance(value, bool):
+        raise TypeError("expected a quantity, not a boolean")
     if register.scale is None:
         raw = integer(value)
     else:
@@ -81,6 +83,8 @@ def expected_report(value: object, register: Register) -> float:
 def number_value(value: object, register: Register, *,
                  reported: bool = False) -> float:
     """Validate domain bounds separately from wire/backend representation."""
+    if isinstance(value, bool):
+        raise TypeError("expected a quantity, not a boolean")
     number = finite(value)
     if register.tags.startswith("i") or register.scale is not None:
         raw_value(number, register)
@@ -118,8 +122,8 @@ def equal_float(want: object, got: object, register: Optional[Register],
         return abs(wanted - finite(got)) <= .5
     reported = finite(got)
     if register is not None and register.domain == NUMBER:
-        number_value(wanted, register)
-        number_value(reported, register, reported=True)
+        number_value(want, register)
+        number_value(got, register, reported=True)
         if register.scale is not None:
             expected = expected_report(wanted, register)
             return math.isclose(reported, expected, rel_tol=2e-7,
@@ -148,7 +152,7 @@ def render_number(value: object, register: Optional[Register]) -> str:
     """Preserve a reported quantum without displaying Float32 noise."""
     number = finite(value)
     if register is not None:
-        number_value(number, register, reported=True)
+        number_value(value, register, reported=True)
         if register.tags.startswith("i"):
             return str(integer(number))
         if register.scale is not None:

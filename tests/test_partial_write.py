@@ -14,6 +14,7 @@ from profile_desk import GOOD, TRACKING, desk
 
 from oscmix_desk import backend as backend_mod
 from oscmix_desk import cli, profiles
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import marker as marker_mod
 from oscmix_desk import outcome as outcome_mod
 from oscmix_desk.constants import EXIT_CONFIG, EXIT_FAILURE
@@ -89,8 +90,8 @@ def test_a_write_that_fails_part_of_the_way_says_how_far_it_came(tmp_path,
                                       backend=device, verify=False)
     assert outcome.state == outcome_mod.WRITTEN_IN_PART
     assert outcome.applied, "something reached the device, and it says so"
-    assert outcome.written == everything[:allowed]
-    assert outcome.unwritten == everything[allowed:]
+    assert outcome.written == tuple(everything[:allowed])
+    assert outcome.unwritten == tuple(everything[allowed:])
     assert (outcome.persisted, outcome.read_back) == (False, False)
     assert marker_mod.active_profile(path) is None, \
         "the desk in effect is still the one a reload writes back"
@@ -125,22 +126,24 @@ def test_a_read_back_that_cannot_be_asked_for_is_not_a_traceback(tmp_path):
     assert outcome.reason == "Network is unreachable"
 
 
+@pytest.mark.parametrize('strict', [False, True])
 def test_the_command_exits_1_and_asks_the_unit_to_put_the_desk_back(
-        tmp_path, monkeypatch, capsys):
+        tmp_path, monkeypatch, capsys, strict):
     path = desk(tmp_path, main=GOOD, tracking=TRACKING)
     reloads = []
-    monkeypatch.setattr(cli, "reload_service",
-                        lambda: reloads.append(1) or cli.RELOAD_DONE)
-    monkeypatch.setattr(cli, "_unit_desk", lambda: (True, path))
+    monkeypatch.setattr(profiles, "reload_service",
+                        lambda: reloads.append(1) or profiles.RELOAD_DONE)
+    monkeypatch.setattr(profiles, "_unit_desk", lambda: (True, path))
     for allowed, code, reloaded in ((2, EXIT_FAILURE, [1]),
                                     (0, EXIT_CONFIG, [])):
         del reloads[:]
         monkeypatch.setattr(
             cli, "switch_profile",
-            lambda name, config_path, n=allowed: profiles.switch_profile(
+            lambda name, config_path, n=allowed, *, strict: profiles.switch_profile(
                 name, config_path=config_path, backend=FailingBackend(n),
-                verify=False))
-        assert cli.main(["--config", str(path), "--profile", "tracking"]) \
+                verify=False, strict=strict))
+        assert cli.main(["--config", str(path), "--profile", "tracking",
+                         *(['--strict'] if strict else [])]) \
             == code
         assert reloads == reloaded
     assert "nothing written" in capsys.readouterr().out
@@ -184,9 +187,9 @@ def test_connection_exhaustion_before_a_switch_is_a_refusal(tmp_path, monkeypatc
 
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(tmp_path / "proc",
                        boxes=[(24, "24216011")])))
-    monkeypatch.setattr(profiles, "connect_backend", exhausted)
+    monkeypatch.setattr(desk_mod, "connect_backend", exhausted)
     result = profiles.switch_profile("tracking", config_path=path)
     assert result.state == outcome_mod.REFUSED
-    assert result.written == []
+    assert result.written == ()
     assert "Too many open files" in result.reason
     assert marker_mod.active_profile(path) is None

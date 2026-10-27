@@ -1,0 +1,273 @@
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -182,6 +182,41 @@
+ 	return 0;
+ }
+ 
++/* A setmix has at most four coefficients plus two DB/PAN pairs.
++ * This is one local synchronous packet, not a persistent register queue. */
++#define MIX_WRITE_MAX_WORDS 8
++struct mixwrites {
++	int count;
++	int regs[MIX_WRITE_MAX_WORDS];
++	unsigned vals[MIX_WRITE_MAX_WORDS];
++};
++
++static int
++mixwrite(struct mixwrites *writes, int reg, unsigned val)
++{
++	if (reg < 0 || reg > 0x7fff || writes->count < 0 ||
++	    writes->count >= MIX_WRITE_MAX_WORDS)
++		return -1;
++	writes->regs[writes->count] = reg;
++	writes->vals[writes->count++] = val;
++	return 0;
++}
++
++static void
++writemix(const struct mixwrites *writes)
++{
++	unsigned char buf[4 * MIX_WRITE_MAX_WORDS];
++	unsigned char sysexbuf[7 + 5 * MIX_WRITE_MAX_WORDS];
++	int i;
++
++	assert(writes->count >= 0 && writes->count <= MIX_WRITE_MAX_WORDS);
++	if (!writes->count)
++		return;
++	for (i = 0; i < writes->count; ++i)
++		putle32(buf + 4 * i, regword(writes->regs[i], writes->vals[i]));
++	writesysex(0, buf, 4 * writes->count, sysexbuf);
++}
++
+ static void
+ setval(struct context *ctx, int val)
+ {
+@@ -306,6 +341,26 @@
+ 	if (reg == -1)
+ 		return;
+ 	setreg(reg, mixlevelvalue(level));
++}
++
++static int
++planmixlevel(struct mixwrites *writes, const struct input *in,
++    const struct output *out, float level)
++{
++	struct param p;
++	int reg, i;
++
++	if (!isfinite(level) || level < 0 || level > 2)
++		return -1;
++	p.in = in - inputs;
++	p.out = out - outputs;
++	reg = device->ctltoreg(MIX_LEVEL, &p);
++	/* Coefficient addresses must be distinct; DB/PAN intentionally share
++	 * their metadata address in the later setmix part of the packet. */
++	for (i = 0; i < writes->count; ++i)
++		if (writes->regs[i] == reg)
++			return -1;
++	return mixwrite(writes, reg, mixlevelvalue(level));
+ }
+ 
+ static void
+@@ -636,6 +691,18 @@
+ {
+ }
+ 
++static int
++dbvalue(float db)
++{
++	return (isinf(db) && db < 0 ? -650 : lroundf(db * 10.f)) & 0x7fff;
++}
++
++static int
++panvalue(int pan)
++{
++	return (pan & 0x7fff) | 0x8000;
++}
++
+ static void
+ setdb(const struct output *out, const struct input *in, float db)
+ {
+@@ -647,7 +714,7 @@
+ 	reg = device->ctltoreg(MIX, &p);
+ 	if (reg == -1)
+ 		return;
+-	val = (isinf(db) && db < 0 ? -650 : lroundf(db * 10.f)) & 0x7fff;
++	val = dbvalue(db);
+ 	setreg(reg, val);
+ }
+ 
+@@ -662,7 +729,7 @@
+ 	reg = device->ctltoreg(MIX, &p);
+ 	if (reg == -1)
+ 		return;
+-	val = (pan & 0x7fff) | 0x8000;
++	val = panvalue(pan);
+ 	setreg(reg, val);
+ }
+ 
+@@ -729,19 +796,26 @@
+ 	}
+ }
+ 
+-static void
+-setlevel(struct output *out, const struct input *in, bool instereo, const struct level *l)
++static int
++planlevel(struct output *out, const struct input *in, bool instereo,
++    const struct level *l, struct mixwrites *writes)
+ {
+ 	float w, theta;
+-	float ll, lr, rl, rr;
+-	float *mix[2];
+-
++	float ll, lr = 0, rl = 0, rr = 0;
++	float *mix[2] = {NULL, NULL};
++	struct mixwrites pending = *writes;
++
++	if (pending.count < 0 || pending.count > MIX_WRITE_MAX_WORDS)
++		return -1;
+ 	if (instereo)
+ 		instereo = in->stereo;
+ 	if (instereo && (in - inputs) & 1)
+ 		--in;
+ 	if (out->stereo && (out - outputs) & 1)
+ 		--out;
++	if (!isfinite(l->vol) || l->vol < 0 || l->pan < -100 || l->pan > 100 ||
++	    (instereo && out->stereo && (l->width < -100 || l->width > 100)))
++		return -1;
+ 	mix[0] = &out[0].mix[in - inputs];
+ 	if (out->stereo) {
+ 		mix[1] = &out[1].mix[in - inputs];
+@@ -758,12 +832,6 @@
+ 				rl = (1 - w) / 2.f * l->vol;
+ 				rr = (100 + l->pan) * (1 + w) / 200.f * l->vol;
+ 			}
+-			mix[0][1] = rl;
+-			mix[1][1] = rr;
+-			if (!in->mute) {
+-				setmixlevel(in + 1, out, rl);
+-				setmixlevel(in + 1, out + 1, rr);
+-			}
+ 		} else if (l->pan == -100) {
+ 			ll = l->vol;
+ 			lr = 0;
+@@ -775,12 +843,6 @@
+ 			ll = cosf(theta) * l->vol;
+ 			lr = sinf(theta) * l->vol;
+ 		}
+-		mix[0][0] = ll;
+-		mix[1][0] = lr;
+-		if (!in->mute) {
+-			setmixlevel(in, out, ll);
+-			setmixlevel(in, out + 1, lr);
+-		}
+ 	} else {
+ 		if (instereo) {
+ 			if (l->pan > 0) {
+@@ -790,16 +852,50 @@
+ 				ll = l->vol / 2;
+ 				rl = (100 + l->pan) / 200.f * l->vol;
+ 			}
+-			mix[0][1] = rl;
+-			if (!in->mute)
+-				setmixlevel(in + 1, out, rl);
+ 		} else {
+ 			ll = l->vol;
+ 		}
+-		mix[0][0] = ll;
+-		if (!in->mute)
+-			setmixlevel(in, out, ll);
+-	}
++	}
++	/* Validate every proposed coefficient even for a muted cache-only edit. */
++	if (!isfinite(ll) || ll < 0 || ll > 2 ||
++	    !isfinite(lr) || lr < 0 || lr > 2 ||
++	    !isfinite(rl) || rl < 0 || rl > 2 ||
++	    !isfinite(rr) || rr < 0 || rr > 2)
++		return -1;
++	if (!in->mute) {
++		if (instereo && planmixlevel(&pending, in + 1, out, rl) < 0)
++			return -1;
++		if (instereo && out->stereo && planmixlevel(&pending, in + 1, out + 1, rr) < 0)
++			return -1;
++		if (planmixlevel(&pending, in, out, ll) < 0)
++			return -1;
++		if (out->stereo && planmixlevel(&pending, in, out + 1, lr) < 0)
++			return -1;
++	}
++	/* Preserve the old successful cache and word order. Transport failure
++	 * can still leave hardware partial; this is never device readback. */
++	if (instereo)
++		mix[0][1] = rl;
++	if (out->stereo) {
++		if (instereo)
++			mix[1][1] = rr;
++		mix[1][0] = lr;
++	}
++	mix[0][0] = ll;
++	*writes = pending;
++	return 0;
++}
++
++static void
++setlevel(struct output *out, const struct input *in, bool instereo, const struct level *l)
++{
++	struct mixwrites writes = {0};
++
++	if (planlevel(out, in, instereo, l, &writes) < 0) {
++		fprintf(stderr, "invalid mix coefficient or mapping\n");
++		return;
++	}
++	writemix(&writes);
+ }
+ 
+ static void
+@@ -811,7 +907,9 @@
+ 	struct level level;
+ 	struct output *out;
+ 	struct input *in;
+-	int base;
++	struct mixwrites writes = {0};
++	struct param p;
++	int base, metadata[2], count, j;
+ 
+ 	i = strtoul(ctx->pattern + 1, &end, 10) - 1;
+ 	if (*end != '/' || i >= device->outputslen)
+@@ -857,15 +955,28 @@
+ 	}
+ 	if (oscend(msg) != 0)
+ 		return;
+-	setlevel(out, in, 1, &level);
+-	calclevel(out, in, 0, &level);
+-	setdb(out, in, 20.f * log10f(level.vol));
+-	setpan(out, in, level.pan);
+-	if (in->stereo) {
+-		calclevel(out, in + 1, 0, &level);
+-		setdb(out, in + 1, 20.f * log10f(level.vol));
+-		setpan(out, in + 1, level.pan);
+-	}
++	count = in - inputs < device->inputslen ? (in->stereo ? 2 : 1) : 0;
++	for (j = 0; j < count; ++j) {
++		p.in = in - inputs + j;
++		p.out = out - outputs;
++		metadata[j] = device->ctltoreg(MIX, &p);
++		if (metadata[j] < 0 || metadata[j] > 0x7fff) {
++			msg->err = "invalid mix metadata mapping";
++			return;
++		}
++	}
++	if (planlevel(out, in, 1, &level, &writes) < 0) {
++		msg->err = "invalid mix coefficient or mapping";
++		return;
++	}
++	for (j = 0; j < count; ++j) {
++		calclevel(out, in + j, 0, &level);
++		/* Capacity and metadata addresses were validated before cache commit. */
++		assert(writes.count + 2 <= MIX_WRITE_MAX_WORDS);
++		mixwrite(&writes, metadata[j], dbvalue(20.f * log10f(level.vol)));
++		mixwrite(&writes, metadata[j], panvalue(level.pan));
++	}
++	writemix(&writes);
+ }
+ 
+ static void

@@ -1,5 +1,107 @@
 # Changelog
 
+## 0.9.0 -- unreleased
+
+### Changed
+
+- Output sections accept `volumecal =` from -24.00 to +3.00 dB in 0.01 dB
+  steps. DEVICE feedback is verifiable and PIN is the default. Calibration
+  is separate from the normal output fader.
+- Stereo routes accept `pan =` as an integer from -100 to 100, with a
+  finite level above -65 dB and linked source/output pairs. Conflicting
+  aliases and unsupported mono/split configurations refuse before writes;
+  export omits states this syntax cannot reproduce.
+- Playback sections accept `mute =`, with REMEMBER as the default and
+  re-established rather than DEVICE-verified state. Both pair members
+  must agree. OFF requires a complete declared pair-to-20-output matrix,
+  including silent cells. Temporary ON precedes the matrix and final OFF
+  follows it; unknown cached ownership blocks indirect unmute repairs.
+- The prepared backend reconstructs stereo pan without endpoint divisions
+  or negative-width singularities. Mix coefficients and metadata share
+  one MIDI frame. Playback mute re-establishes every column cell, including
+  zero values and repeated OFF. MIDI writes have a bounded deadline and
+  propagate failures; these rules do not make audio transitions atomic.
+- UCX II inputs 1–4 accept `autoset = true` or `false`, with verifiable
+  warm DEVICE feedback and REMEMBER flags. Repairs preserve AutoSet-owned
+  gains and linked partners, including when ownership feedback is unknown.
+  Initial or explicit gain changes require fresh AutoSet-off confirmation;
+  explicit off flags are confirmed first and on flags follow gains.
+  Declared AutoSet-on conflicts with explicit PIN for an affected gain.
+  Direct measurements cover flags and restoration, not overload protection.
+- Input channel sections accept `msproc = true` or `false` for M/S
+  processing. DEVICE feedback is verifiable; REMEMBER is the default
+  and `[pin] input.msproc = pin` enables later repair. Direct warm linked
+  measurements cover all 20 inputs; independent unlinked behavior was
+  measured on inputs 13/14.
+- Programmatic boolean settings reject values outside 0/1 before writes.
+  A known channel option on an unsupported channel also refuses the
+  entire write plan, matching file-based validation.
+- Input and output channel sections accept `fx =` for FX send/return,
+  from -65 to 0 dB with the backend's 0.1 dB rounding. DEVICE feedback
+  is verifiable; values default to REMEMBER and `[pin]` overrides apply.
+  Config validation, write planning and config export share these rows.
+- Output channel sections accept `pan =` for balance, as an integer
+  from -100 to 100. DEVICE feedback is verifiable, REMEMBER is the
+  default, and `[pin] output.pan = pin` enables later repair. Direct
+  warm linked measurements cover all 20 outputs and both endpoints.
+- Python callers use `open_desk()` and `Desk.apply()`, `.verify()` and
+  `.repair()`. Startup, profile switching, SIGHUP and read commands share
+  its connection lifetime and writers retain one device lock and lease.
+  `ApplyIntent`, `VerifyResult` and all documented exit constants are
+  exported. `apply_routing`, `verify_routing`, `verify_and_repair` and
+  CLI-internal `run_session` leave the root API; their modules remain importable.
+- `Policy` and `Control` are exported for the existing config fields and
+  optional profile-backend argument. Profile injection remains compatible;
+  ordinary operations still manage the checked connection themselves.
+- `Overrides` and `overrides=` name config/profile invocation settings;
+  `CommandLine`, the existing positional arguments and `said=` remain
+  compatible. Supplying both override inputs is a `TypeError` before I/O.
+  `BackendControlError` names failed coordinated backend operations;
+  `ReceivePortError` remains an alias for the same exception class.
+- `Outcome.state` is an `OutcomeState` enum. The four original exported
+  state constants are its members and still compare equal to their string values.
+  Path fields are immutable tuples; construction and `dataclasses.replace`
+  reject contradictory facts. Read-back, persistence and durability default
+  to false and must be stated explicitly when constructing a result.
+- Profile results preserve differing, missing and invalid feedback in
+  separate immutable fields. `APPLIED_MISMATCHED` reports a completed write
+  with a known read-back problem; the CLI returns `EXIT_DIFFERS` (3), while
+  retaining the write, marker and service facts and existing failure priorities.
+  Missing or unreportable feedback remains `APPLIED_UNVERIFIED`.
+- Restore and its dry-run preview share main-config validation. Both refuse
+  when no main config exists, instead of previewing defaults as a valid restore.
+- `--strict` and keyword-only `strict=True` config/profile API options reject
+  unknown or unsupported sections instead of ignoring declarations. Strict
+  effective selection refuses an unusable active profile. Startup re-reads
+  under the lock retain this mode: an invalid desk fails before writes or
+  readiness; an invalid SIGHUP desk is skipped. Explicit valid selection or
+  restore can recover a broken active profile, and previews validate the
+  same target. The default compatibility and startup fallback remain.
+- `--check` strictly validates the main config, every profile and the stored
+  selection offline. Unreadable directories and broken `.conf` entries
+  refuse the check; it never opens a device connection or changes a marker.
+- Active profiles are remembered per config file. `routing.conf` keeps
+  `active-profile`; a custom config uses `active-profile.<config filename>`.
+  Selecting or restoring one desk no longer changes another desk's marker
+  in the same directory. `active_profile()` now discovers the config when
+  called without a path.
+- Legacy `[osc]` ports remain accepted and validated but no longer make a
+  profile or reloaded desk belong to another machine. Device name, USB ID
+  and serial still determine compatibility.
+- Python `switch_profile()` and `restore_main()` now honour installation
+  maintenance fences and the same service hand-over as the CLI.
+  `Outcome.reload_failed` reports a refused service reload while preserving
+  the device and profile marker result; partial writes still exit with code 1.
+- Property tests have no per-example deadline: host load must not turn a
+  correctness check into a latency test.
+- The source service requires the same per-user opt-in as native packages.
+  `install.sh --disable` stops automatic operation without rebuilding or
+  replacing the runtime; hotplug cannot restart the disabled desk. Older
+  source units retain their custom contents and receive the condition with
+  a backup. Upgrades adopt old activation once and then preserve an explicit
+  opt-out, including after a failed disable. Source uninstall removes this
+  permission, and native migration refuses a remaining opt-in.
+
 ## 0.8.1 -- 2026-10-02
 
 ### Changed

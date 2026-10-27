@@ -64,7 +64,8 @@ EXIT_CONFIG = 2
 # those are opposite situations and the second one makes the first
 # unknowable.
 #
-# Only `--diff` ever returns it. The service never runs that flag, so
+# `--diff` and a profile with a known read-back mismatch return it.
+# The service never runs those flags, so
 # systemd never sees a 3; if it ever did, `Restart=on-failure` would
 # treat it as a failure, which is the safe direction for a code that
 # means "the state is not what was asked for".

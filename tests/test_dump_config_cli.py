@@ -16,6 +16,7 @@ import pytest
 from control_peer import HELLO, REFRESH
 
 from oscmix_desk import cli
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import reads as reads_mod
 
 
@@ -123,13 +124,13 @@ def test_read_commands_keep_the_selected_configuration_and_reader_role(
     path = tmp_path / 'selected/routing.conf'
     calls = []
     with read_peer([('/input/3/gain', 'f', (12.0,))]) as peer, monkeypatch.context() as patch:
-        connect = reads_mod.connect_backend
+        connect = desk_mod.connect_backend
 
-        def checked(selected, selected_path, *, reader):
+        def checked(selected, selected_path, *, reader, **options):
             calls.append((selected, selected_path, reader))
-            return connect(selected, selected_path, reader=reader)
+            return connect(selected, selected_path, reader=reader, **options)
 
-        patch.setattr(reads_mod, 'connect_backend', checked)
+        patch.setattr(desk_mod, 'connect_backend', checked)
         assert getattr(reads_mod, action)(config, path) == 0
     assert calls == [(config, path, True)]
     assert peer.requests == [HELLO, REFRESH]
@@ -148,7 +149,7 @@ def test_refused_connection_is_a_read_failure_without_output_or_cleanup_of_a_non
         attempts.append((args, kwargs))
         raise OSError('selected backend identity changed')
 
-    monkeypatch.setattr(reads_mod, 'connect_backend', refused)
+    monkeypatch.setattr(desk_mod, 'connect_backend', refused)
     assert getattr(reads_mod, action)(Config()) == 1
     assert len(attempts) == 1
     assert capsys.readouterr().out == ''
@@ -249,7 +250,7 @@ def test_a_changed_register_extends_the_quiet_window_to_receive_later_changes(mo
     peer = SimpleNamespace(request_dump=lambda: None, messages=messages,
         device_name='Fireface UCX II (24216011)', epoch=b'\xab' * 16,
         close=lambda: closed.append(True))
-    monkeypatch.setattr(reads_mod, 'connect_backend', lambda *_args, **_kwargs: peer)
+    monkeypatch.setattr(desk_mod, 'connect_backend', lambda *_args, **_kwargs: peer)
     monkeypatch.setattr(reads_mod.time, 'monotonic', lambda: clock[0])
     monkeypatch.setattr(reads_mod, 'DUMP_QUIET_SECONDS', 1.0)
     reading = reads_mod._read_device(Config())

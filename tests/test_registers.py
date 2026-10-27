@@ -168,7 +168,10 @@ def test_the_playback_matrix_and_links_are_the_re_established_families(warm):
     reest = [r for r in devices.UCX2.registers
              if r.verify == registers.REESTABLISHED]
     assert [r.template for r in reest] == ["/playback/{ch}/stereo",
+                                           "/playback/{ch}/mute",
                                            "/mix/{out}/playback/{pb}"]
+    assert not [p for p in warm["registers"]
+                if p.startswith("/playback/") and p.endswith("/mute")]
     # The links are in the recording only as the backend's own view; the
     # matrix is absent, which is what forces its class.
     assert not [p for p in warm["registers"]

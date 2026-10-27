@@ -119,8 +119,8 @@ Common findings in the journal:
   advance. The desk never changes the clock to make a route fit.
 - `the desk now in effect is for another backend or interface -- ...`
   with `Status: running; reconcile skipped` -- `routing.conf`, or the
-  active profile, now resolves to another device name, usb id, serial or
-  port than this session runs with, and a restart with the same command
+  active profile, now resolves to another device name, USB ID or serial
+  than this session runs with, and a restart with the same command
   line would go there; the line says which, and what to do. A running
   session keeps its backend, so the desk was **not** applied. For
   `routing.conf`: `systemctl --user restart oscmix.service` follows it.
@@ -133,15 +133,18 @@ Common findings in the journal:
   2 and leaves the hardware untouched.
 - `profile '<name>' names another backend or interface than
   .../routing.conf -- <what differs>` -- a profile is the desk, not the
-  machine, so one whose `[osc]` or `[device]` resolve to
-  something else than `routing.conf`'s is refused: a switch to it exits
+  machine, so one whose `[device]` names another model, USB ID or serial
+  than the main config is refused: a switch to it exits
   2 and writes nothing, a listing shows it as broken, and if it is
-  still the active profile, the start and every reload apply
-  `routing.conf` and say `ignoring ...` with this reason. A profile made with `--dump-config` restates the main config's
-  values and is not meant -- until `routing.conf`'s port or device
-  changes, after which the dump names the old one. Taking `[osc]` and
-  `[device]` out of the profile is the remedy either way; a desk that
-  really is for another backend needs its own directory and `--config`.
+  still the active profile, compatibility mode warns and falls back to the
+  main config. With `--strict`, an unusable selection is refused instead;
+  a running session keeps its previous configuration. A profile made with
+  `--dump-config` restates device settings; omit `[device]` to inherit them
+  from the main config. Legacy `[osc]` ports remain parsed and validated
+  but no longer select a machine or prevent a profile switch or reload.
+  A desk for another device needs its own main config selected with
+  `--config`. Profile selections are per config filename; see the
+  [0.9.0 marker migration](UPGRADING.md#developing-090).
 - `unconfirmed after retry: ...` -- PIN values remain mismatched or lack
   expected feedback. Inspect the per-register result and backend/device
   identity. A GUI label or working audio does not confirm every register.

@@ -3,43 +3,33 @@
 from __future__ import annotations
 
 import argparse
-import contextlib
-import io
 import logging
 import math
-import os
 import sys
-from argparse import ArgumentParser
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence
 
-from .config import load_config
+from .arguments import build_arg_parser
 from .constants import (
-    DEFAULT_DEVICE_TIMEOUT,
     EXIT_CONFIG,
+    EXIT_DIFFERS,
     EXIT_FAILURE,
     EXIT_NOT_PERSISTED,
     EXIT_OK,
     EXIT_RELOAD_FAILED,
-    SERVICE_UNIT,
-    __version__,
 )
 from .errors import ConfigError
 from .hostservice import maintenance_problem
 from .log import log
-from .model import CommandLine, Config
+from .model import Config, Overrides
 from .notices import log_desk_notices
-from .outcome import REFUSED, WRITTEN_IN_PART, Outcome
+from .outcome import APPLIED_MISMATCHED, REFUSED, WRITTEN_IN_PART, Outcome
 from .paths import discover_config_path, profile_path
 from .pipewire import find_sink, generate_pipewire_conf, pw_dump_objects
 from .preview import transition_lines
-from .process import (
-    RELOAD_DONE,
-    RELOAD_NOT_RUNNING,
-    reload_service,
-    unit_process,
-)
 from .profiles import (
+    _check_configurations,
+    _restore_config,
     describe_profiles,
     effective_config,
     load_profile,
@@ -49,62 +39,6 @@ from .profiles import (
 from .reads import _diff, _dump_config, _snapshot
 from .session import run_session
 from .status import print_status
-
-
-def build_arg_parser() -> ArgumentParser:
-    parser = ArgumentParser(
-        prog="oscmix-session",
-        description="Supervise the oscmix backend for an RME Fireface interface.",
-    )
-    parser.add_argument("--config", type=Path, metavar="FILE",
-                        help="routing config (default: $OSCMIX_CONFIG, then "
-                             "$XDG_CONFIG_HOME/oscmix/routing.conf or "
-                             "~/.config/oscmix/routing.conf, then "
-                             "/etc/oscmix/routing.conf)")
-    parser.add_argument("--device", metavar="NAME",
-                        help="ALSA client name to wait for (overrides config)")
-    parser.add_argument("--timeout", type=float, default=DEFAULT_DEVICE_TIMEOUT,
-                        metavar="SECONDS", help="how long to wait for the device")
-    parser.add_argument("--osc-port", type=int, metavar="PORT",
-                        help="legacy port value (overrides config; "
-                             "control uses a local Unix socket)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="show what would be started and sent, then exit")
-    parser.add_argument("--status", action="store_true",
-                        help="inspect installation, device and control endpoint "
-                             "without connecting or writing")
-    parser.add_argument("--json", action="store_true",
-                        help="versioned JSON output for --status")
-    parser.add_argument("--snapshot", action="store_true",
-                        help="print every register the device reports, for "
-                             "comparing two moments; unlike --dump-config "
-                             "this is not a config and holds nothing back")
-    parser.add_argument("--diff", action="store_true",
-                        help="compare the running device against the config "
-                             "and print what an apply would write, without "
-                             "writing it")
-    parser.add_argument("--dump-config", action="store_true",
-                        help="ask the running device for its state and print "
-                             "a routing.conf that reproduces what it reports")
-    parser.add_argument("--pipewire-sinks", action="store_true",
-                        help="print a PipeWire config with one named sink "
-                             "per stereo output pair, then exit")
-    parser.add_argument("--pipewire-target", metavar="NODE",
-                        help="Fireface sink node.name for --pipewire-sinks "
-                             "(default: auto-detect via pw-dump)")
-    parser.add_argument("--profile", metavar="NAME",
-                        help="switch the desk to profiles/NAME.conf and "
-                             "report the outcome, then exit")
-    parser.add_argument("--list-profiles", action="store_true",
-                        help="list the profiles found beside the config; "
-                             "the active one is marked")
-    parser.add_argument("--no-profile", action="store_true",
-                        help="apply routing.conf again and forget the "
-                             "active profile, then exit")
-    parser.add_argument("--verbose", action="store_true", help="debug logging")
-    parser.add_argument("--version", action="version", version=__version__)
-    return parser
-
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -121,7 +55,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 130
 
 
-def _command_line(args: "argparse.Namespace") -> Optional[CommandLine]:
+def _config_overrides(args: "argparse.Namespace") -> Optional[Overrides]:
     """``--device`` and ``--osc-port`` as the parser takes them, or None.
 
     Handed to the parser rather than put over its result: the desk is then
@@ -140,19 +74,19 @@ def _command_line(args: "argparse.Namespace") -> Optional[CommandLine]:
         return None
     # Stripped like `[device] name` is: the client search compares the
     # name as given, and padding matched nothing.
-    return CommandLine(args.device.strip() if args.device else None,
+    return Overrides(args.device.strip() if args.device else None,
                        args.osc_port)
 
 
 def _desk_in_effect(config_path: Optional[Path],
-                    said: CommandLine) -> Optional[Config]:
+                    overrides: Overrides, *, strict: bool = False) -> Optional[Config]:
     """The desk this invocation is about, named in the log; None if refused.
 
     The active profile if one is remembered, else routing.conf; only
-    routing.conf itself can refuse.
+    the selected validation mode can refuse either file.
     """
     try:
-        config, active = effective_config(config_path, said)
+        config, active = effective_config(config_path, overrides, strict=strict)
     except ConfigError as exc:
         log.error("configuration error: %s", exc)
         return None
@@ -181,17 +115,33 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     config_path = args.config or discover_config_path()
-    said = _command_line(args)
-    if args.status and said is not None:
-        return print_status(config_path, said, args.json)
-    if said is not None and args.dry_run and (args.profile is not None or args.no_profile):
+    overrides = _config_overrides(args)
+    if args.check and overrides is not None:
+        return _check_files(config_path)
+    if args.status and overrides is not None:
+        return print_status(config_path, overrides, args.json, strict=args.strict)
+    if overrides is not None and args.dry_run and (args.profile is not None or args.no_profile):
         return _dry_run_desk(args, config_path)
-    config = None if said is None else _desk_in_effect(config_path, said)
+    if overrides is None:
+        return EXIT_CONFIG
+
+    # An explicit target can recover an unusable active profile. Its loader
+    # validates the main config and target; it does not use an old selection.
+    if args.profile is not None or args.no_profile:
+        problem = maintenance_problem()
+        if problem:
+            log.error("%s; complete installation recovery before activation", problem)
+            return EXIT_CONFIG
+        if args.profile is not None:
+            return _switch_profile(args.profile, config_path, strict=args.strict)
+        return _report_outcome(restore_main(config_path, strict=args.strict))
+
+    config = _desk_in_effect(config_path, overrides, strict=args.strict)
     if config is None:
         return EXIT_CONFIG
 
     if args.list_profiles:
-        for line in describe_profiles(config_path):
+        for line in describe_profiles(config_path, strict=args.strict):
             sys.stdout.write(line + "\n")
         return EXIT_OK
 
@@ -200,12 +150,6 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
         if problem:
             log.error("%s; complete installation recovery before activation", problem)
             return EXIT_CONFIG
-
-    if args.profile is not None:
-        return _switch_profile(args.profile, config_path)
-
-    if args.no_profile:
-        return _report_outcome(restore_main(config_path), config_path)
 
     if args.snapshot:
         return _snapshot(config, config_path)
@@ -224,6 +168,19 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
         return _pipewire_sinks(args, config)
 
     return run_session(args, config)
+
+
+def _check_files(config_path: Optional[Path]) -> int:
+    """Report strict offline validation, without entering a device operation."""
+    try:
+        checked = _check_configurations(config_path)
+    except ConfigError as exc:
+        log.error("configuration check refused: %s", exc)
+        return EXIT_CONFIG
+    for path in checked:
+        print("valid: %s" % path)
+    print("configuration check passed (%d file(s)); no device access" % len(checked))
+    return EXIT_OK
 
 
 def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
@@ -264,10 +221,10 @@ def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
 _ACTIONS = (("--profile", "profile"), ("--no-profile", "no_profile"),
             ("--diff", "diff"), ("--dump-config", "dump_config"),
             ("--snapshot", "snapshot"), ("--pipewire-sinks", "pipewire_sinks"),
-            ("--list-profiles", "list_profiles"), ("--status", "status"))
+            ("--list-profiles", "list_profiles"), ("--status", "status"), ("--check", "check"))
 
 
-def _refuse_conflicting_actions(parser: ArgumentParser,
+def _refuse_conflicting_actions(parser: argparse.ArgumentParser,
                                 args: "argparse.Namespace") -> None:
     """Two actions asked for in one command is a config error.
 
@@ -292,18 +249,19 @@ def _refuse_conflicting_actions(parser: ArgumentParser,
     if args.device is not None and not args.device.strip():
         # '' was skipped without a word, and '  ' was searched for.
         parser.error("--device needs a name")
-    overrides = [flag for flag, given in (("--device", args.device),
-                                          ("--osc-port", args.osc_port))
-                 if given is not None]
-    if overrides and asked and asked[0] in ("--profile", "--no-profile"):
+    override_flags = [flag for flag, given in (("--device", args.device),
+                                               ("--osc-port", args.osc_port))
+                      if given is not None]
+    if override_flags and asked and asked[0] in ("--profile", "--no-profile", "--check"):
         # A switch and a restore resolve their interface and ports from
         # the config (profiles._target). The overrides never reached
         # them: they were dropped without a word, while the dry run of
         # the same switch looked for the interface --device named, and
         # so showed something the switch would not do.
-        parser.error("%s cannot be combined with %s: a switch or a restore "
+        operation = "a check" if asked[0] == "--check" else "a switch or a restore"
+        parser.error("%s cannot be combined with %s: %s "
                      "takes its interface and ports from the config"
-                     % (" and ".join(overrides), asked[0]))
+                     % (" and ".join(override_flags), asked[0], operation))
     if not (math.isfinite(args.timeout) and args.timeout >= 0):
         parser.error("--timeout must be a finite number of seconds, not %r"
                      % args.timeout)
@@ -319,9 +277,13 @@ def _dry_run_desk(args: "argparse.Namespace",
     for the same reason: it is the desk that command would restore.
     """
     try:
+        desk = (load_profile(args.profile, config_path, strict=args.strict)
+                if args.profile is not None
+                else _restore_config(config_path, strict=args.strict))
+        # Only the target is applied. The previous declared desk is a preview
+        # reference; its compatibility fallback also permits recovery from a
+        # broken active selection, as the real explicit operation does.
         previous, active = effective_config(config_path)
-        desk = (load_profile(args.profile, config_path) if args.profile is not None
-                else load_config(config_path))
     except ConfigError as exc:
         log.error("configuration error: %s", exc)
         return EXIT_CONFIG
@@ -339,131 +301,32 @@ def _dry_run_desk(args: "argparse.Namespace",
     return run_session(args, desk)
 
 
-def _switch_profile(name: str, config_path: Optional[Path]) -> int:
+def _switch_profile(name: str, config_path: Optional[Path], *, strict: bool = False) -> int:
     """Apply a profile and turn its outcome into an exit code.
 
     The codes are in docs/ARCHITECTURE.md, and the distinction the caller
     needs most is between "nothing happened" (2) and "something happened"
-    (0, 1, 4, 5) -- a script that treats those the same will re-run a
+    (0, 1, 3, 4, 5) -- a script that treats those the same will re-run a
     switch that already took effect.
 
     EXIT_CONFIG for a refusal is the same code a bad routing.conf gives
     at startup, because it is the same failure: the config did not parse
     and nothing was written.
     """
-    return _report_outcome(switch_profile(name, config_path=config_path),
-                           config_path)
+    return _report_outcome(switch_profile(name, config_path=config_path, strict=strict))
 
 
-def _report_outcome(outcome: "Outcome",
-                    config_path: Optional[Path] = None) -> int:
-    """One line on stdout and the exit code the outcome maps to.
-
-    Shared by the switch and by `--no-profile`, which is the same
-    transaction with routing.conf as the desk. Four outcome states and
-    the unit's reload give five codes: 2 refused, 1 written in part, 4
-    applied but not remembered, 5 applied but the running unit refused the
-    reload, 0 applied (the line says whether verified). A script that
-    branches on `$?` has to be able to tell "the desk is yours and will
-    stay" from "it is yours until the next start", and neither from "the
-    unit did not hear about it".
-    """
+def _report_outcome(outcome: Outcome) -> int:
+    """Print the result and map device, persistence and reload facts to a code."""
     sys.stdout.write(outcome.describe() + "\n")
     if outcome.state == REFUSED:
         return EXIT_CONFIG
     if outcome.state == WRITTEN_IN_PART:
-        # The marker was left alone, so the unit's reconcile writes the
-        # desk in effect's pinned values and mix back over the part that
-        # went out; remembered values (volume, mute, phase) stay as sent
-        # (0.8.0). Selecting that desk again restores all of it.
-        # Exit 1 whatever the reload says: the switch did not happen.
-        _hand_over_to_the_unit(config_path)
         return EXIT_FAILURE
     if not outcome.persisted:
-        # Measured on the desk: with the marker unwritten, the reload's
-        # reconcile re-read routing.conf and undid the switch two
-        # seconds after it was reported as applied.
-        log.warning("%s not reloaded: the marker was not written, and its "
-                    "reconcile would undo what was just applied",
-                    SERVICE_UNIT)
         return EXIT_NOT_PERSISTED
-    return _hand_over_to_the_unit(config_path)
-
-
-def _hand_over_to_the_unit(config_path: Optional[Path]) -> int:
-    """Reload the unit when it is the unit's desk that changed.
-
-    The unit's own state has to follow, or its start-up verifier may
-    still be re-applying the desk it started with
-    (process.reload_service). Only when it is the unit's desk that
-    changed: a reload after a switch of some other file -- named by
-    --config, or by OSCMIX_CONFIG in this shell -- made the unit re-apply
-    its own routing.conf over that switch (0.6.9). The unit's desk is
-    what the unit resolved -- its own --config, else its own environment
-    -- not what this process would.
-    """
-    told, unit_desk = _unit_desk()
-    if config_path is not None and unit_desk is not None \
-            and not _same_file(config_path, unit_desk):
-        log.info("%s not reloaded: it runs %s, and this switch was for %s",
-                 SERVICE_UNIT, unit_desk, config_path)
-        return EXIT_OK
-    reloaded = reload_service()
-    if reloaded == RELOAD_DONE:
-        # The unit decides what it does with the desk: it has the facts.
-        # One that names another backend is not applied there, and its
-        # journal says so (reload._kept_for_this_process).
-        log.info("%s reloaded; its own reconcile follows the new desk, or "
-                 "says in its journal why it does not", SERVICE_UNIT)
-        if config_path is not None and not told:
-            # Reloaded all the same: nearly every switch is for the unit's
-            # own desk, and leaving the unit untold lets its verifier
-            # re-apply the old one (0.6.3). But it is a guess, so say so.
-            log.warning("could not tell which desk %s runs (its /proc entry "
-                        "or its command line could not be read): if this "
-                        "switch was for another desk, the unit has "
-                        "re-applied its own over it", SERVICE_UNIT)
-        return EXIT_OK
-    if reloaded == RELOAD_NOT_RUNNING:
-        log.info("%s is not running; nothing to reload", SERVICE_UNIT)
-        return EXIT_OK
-    log.error("%s is running but refused the reload, so it may still be "
-              "acting on the previous desk; send it again with "
-              "systemctl --user reload %s", SERVICE_UNIT, SERVICE_UNIT)
-    return EXIT_RELOAD_FAILED
-
-
-def _unit_desk() -> Tuple[bool, Optional[Path]]:
-    """(whether it could be told, the config the running unit resolves).
-
-    ``(True, None)`` is an answer -- the unit resolves no config, so it has
-    no desk to re-apply -- and ``(False, None)`` is not: read once, because
-    a second look after the reload may see another unit state.
-
-    Worked out the way the unit did (session._config_path): --config on
-    its command line first, then its environment. Its own parser reads
-    the command line, so an abbreviated or ``--config=`` form counts as
-    it did there. A relative path is the unit's, taken against the
-    unit's working directory, not this shell's.
-    """
-    unit = unit_process(Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
-    if unit is None:
-        return False, None
-    # A line this parser cannot read is "cannot be told", and its usage
-    # text belongs to the unit, not on this switch's stderr.
-    try:
-        with contextlib.redirect_stderr(io.StringIO()):
-            args, _ = build_arg_parser().parse_known_args(list(unit.argv[1:]))
-    except SystemExit:
-        return False, None
-    named = args.config or discover_config_path(unit.environ)
-    return True, None if named is None else unit.cwd / named
-
-
-def _same_file(one: Path, other: Optional[Path]) -> bool:
-    if other is None:
-        return False
-    try:
-        return one.resolve() == other.resolve()
-    except OSError:
-        return False
+    if outcome.reload_failed:
+        return EXIT_RELOAD_FAILED
+    if outcome.state == APPLIED_MISMATCHED:
+        return EXIT_DIFFERS
+    return EXIT_OK

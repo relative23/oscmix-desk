@@ -12,6 +12,8 @@ import pytest
 from session_doubles import RunningChild
 from support import device_key
 
+from oscmix_desk import desk as desk_mod
+
 
 class PollingChild:
     """A backend whose exit can be scheduled by poll count."""
@@ -50,8 +52,8 @@ def test_a_failed_apply_releases_the_device_lock(
     def fail(*args, **kwargs):
         raise OSError("send failed")
 
-    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
-    monkeypatch.setattr(session_module, "apply_routing", fail)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "apply_routing", fail)
     with pytest.raises(OSError, match="send failed"):
         session_module._apply_and_verify(
             RunningChild(), session_mod.load_config(path), {"stop": False}, path)

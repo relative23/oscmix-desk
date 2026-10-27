@@ -393,8 +393,59 @@ def test_silence_on_an_unbounded_register_is_not_a_defect(sweep):
                          bounded=True)["verdict"] == "ignored"
 
 
-def test_the_artifact_covers_every_settable_register(sweep):
-    """The evidence file in this repository, checked against the model.
+@pytest.fixture(scope="module")
+def fx_artifact():
+    import json
+
+    return json.loads(
+        repo_file("tests", "data", "fx-probes-ucx2.json").read_text())
+
+
+@pytest.fixture(scope="module")
+def pan_artifact():
+    import json
+
+    return json.loads(
+        repo_file("tests", "data", "output-pan-probes-ucx2.json").read_text())
+
+
+@pytest.fixture(scope="module")
+def msproc_artifact():
+    import json
+
+    from support import repo_file
+
+    return json.loads(
+        repo_file("tests", "data", "input-msproc-probes-ucx2.json").read_text())
+
+
+@pytest.fixture(scope="module")
+def autoset_artifact():
+    import json
+
+    return json.loads(repo_file("tests", "data", "input-autoset-probes-ucx2.json").read_text())
+
+
+@pytest.fixture(scope="module")
+def volumecal_artifact():
+    import json
+
+    from support import repo_file
+
+    return json.loads(repo_file("tests", "data", "output-volumecal-probes-ucx2.json").read_text())
+
+
+@pytest.fixture(scope="module")
+def playback_artifact():
+    import json
+
+    return json.loads(repo_file("tests", "data", "playback-mute-probes-ucx2.json").read_text())
+
+
+def test_the_artifact_covers_every_settable_register(
+        sweep, fx_artifact, pan_artifact, msproc_artifact, autoset_artifact,
+        volumecal_artifact, playback_artifact):
+    """The hardware evidence in this repository, checked against the model.
 
     An artifact that silently stopped short would still look like a
     clean result. Every settable register has to appear, and the only
@@ -407,11 +458,202 @@ def test_the_artifact_covers_every_settable_register(sweep):
     artifact = json.loads(
         repo_file("tests", "data", "write-sweep-ucx2.json").read_text())
     covered = {f["path"] for f in artifact["findings"]}
+    # Preserve the historical sweep. New FX/pan/M/S/calibration coverage comes only from
+    # directly probed targets, not their linked partner's readback.
+    covered.update(case["target"] for case in fx_artifact["cases"])
+    covered.update(case["target"] for case in pan_artifact["cases"])
+    covered.update(case["target"] for case in msproc_artifact["cases"])
+    covered.update(case["target"] for case in autoset_artifact["cases"])
+    covered.update(case["target"] for case in volumecal_artifact["cases"])
+    from playback_mute_evidence import covered_paths
+
+    # Each pair records ON/OFF on odd and a submitted OFF on even. This covers
+    # twenty direct addresses, with exactly ten independent ON measurements.
+    covered.update(covered_paths(playback_artifact))
     declared = {path for path, _r in sweep.settable()}
-    assert covered == declared
+    assert covered == declared, {
+        "missing_hardware_evidence": sorted(declared - covered),
+        "unexpected_hardware_evidence": sorted(covered - declared),
+    }
     assert artifact["not_restored"] == []
     assert set(artifact["summary"]) <= {
         "confirmed", "clamped", "ignored", "skipped", "undetermined"}
+
+
+def test_fx_artifact_records_device_probes_and_restoration(fx_artifact):
+    """ACKs alone cannot prove that an FX write reached the device.
+
+    The published projection retains DEVICE reports and source/raw hashes;
+    the full private dumps were checked before projection. This test checks
+    the retained evidence, including both linked partners and restoration.
+    """
+    import math
+    import re
+    from datetime import datetime
+
+    assert fx_artifact["schema"] == 1
+    assert fx_artifact["device"] == "Fireface UCX II"
+    assert fx_artifact["serial"] == "24216011"
+    assert fx_artifact["firmware"] == {"usb_revision": "3.01", "dsp_version": 36}
+    backend = fx_artifact["backend"]
+    assert re.fullmatch(r"[0-9a-f]{40}", backend["upstream"])
+    for key in ("binary_sha256", "series_sha256"):
+        assert re.fullmatch(r"[0-9a-f]{64}", backend[key])
+    assert backend["protocol"] == "ODK1"
+    expected_targets = {
+        f"/{kind}/{channel}/fx"
+        for kind in ("input", "output") for channel in range(1, 21)}
+    cases = fx_artifact["cases"]
+    assert len(cases) == 44
+    assert {case["target"] for case in cases} == expected_targets
+    assert len({case["raw_evidence_sha256"] for case in cases}) == len(cases)
+    small_steps = set()
+    range_probes = set()
+    for case in cases:
+        target = case["target"]
+        assert datetime.fromisoformat(case["taken"]).utcoffset().total_seconds() == 0
+        for key in ("probe_source_sha256", "raw_evidence_sha256"):
+            assert re.fullmatch(r"[0-9a-f]{64}", case[key]), target
+        _, kind, channel, _ = target.split("/")
+        first = (int(channel) - 1) // 2 * 2 + 1
+        pair = [f"/{kind}/{ch}/fx" for ch in (first, first + 1)]
+        assert case["pair"] == pair, target
+        stereo = {path.removesuffix("fx") + "stereo" for path in pair}
+        phantom = {"/input/1/48v", "/input/2/48v"}
+        states = case["states"]
+        assert set(states) == {
+            "baseline_first", "baseline", "probe", "restoration", "final"}
+        for state in states.values():
+            assert set(state) == set(pair) | stereo | phantom, target
+            for path, report in state.items():
+                assert report["origin"] == "DEVICE", (target, path)
+                assert type(report["sequence"]) is int
+                assert report["sequence"] > 0
+                assert len(report["args"]) == 1, (target, path)
+                value = report["args"][0]
+                if path in pair:
+                    assert report["tags"] == "f"
+                    assert type(value) is float
+                    assert math.isfinite(value)
+                    assert -65 <= value <= 0
+                    assert math.isclose(value, round(value, 1), abs_tol=1e-5)
+                else:
+                    assert report["tags"] == "i"
+                    assert type(value) is int
+                    assert value == (1 if path in stereo else 0), (target, path)
+        baseline = states["baseline"]
+        for phase in ("baseline_first", "restoration", "final"):
+            for path, report in baseline.items():
+                assert states[phase][path]["args"] == report["args"], (target, phase, path)
+        phases = ("baseline_first", "baseline", "probe", "restoration", "final")
+        for path in baseline:
+            sequences = [states[phase][path]["sequence"] for phase in phases]
+            assert all(a < b for a, b in zip(sequences, sequences[1:])), (target, path)
+        requested = case["requested_db"]
+        assert math.isfinite(requested), target
+        assert -65 <= requested <= 0, target
+        assert requested == round(requested, 1), target
+        assert not math.isclose(requested, baseline[target]["args"][0], abs_tol=1e-5)
+        for path in pair:
+            assert math.isclose(states["probe"][path]["args"][0], requested, abs_tol=1e-5)
+        expected_writes = [(target, requested, "probe")]
+        expected_writes.extend((path, baseline[path]["args"][0], "restore") for path in pair)
+        assert case["writes"] == [
+            {"path": path, "tags": "f", "args": [value], "phase": phase,
+             "submitted": True, "acknowledged": True}
+            for path, value, phase in expected_writes], target
+        assert case["nonvolatile_device_paths"] == 2232, target
+        assert case["full_restoration_matches_baseline"] is True, target
+        assert case["watch_seconds"] == 24, target
+        assert case["watch_device_events"] == 0, target
+        assert case["end_acknowledged"] is True, target
+        if math.isclose(abs(requested - baseline[target]["args"][0]), 0.1, abs_tol=1e-5):
+            small_steps.add(target)
+        range_probes.add((target, requested))
+    assert small_steps == expected_targets
+    assert {(path, value) for path in ("/input/13/fx", "/output/1/fx")
+            for value in (-30, 0)} <= range_probes
+
+
+def test_output_pan_artifact_records_integer_device_readbacks_and_restoration(pan_artifact):
+    """Check retained actual pan reports and direct coverage, not ACKs alone."""
+    import re
+    from datetime import datetime
+
+    assert pan_artifact["schema"] == 1
+    assert pan_artifact["device"] == "Fireface UCX II"
+    assert pan_artifact["serial"] == "24216011"
+    assert pan_artifact["firmware"] == {"usb_revision": "3.01", "dsp_version": 36}
+    backend = pan_artifact["backend"]
+    assert re.fullmatch(r"[0-9a-f]{40}", backend["upstream"])
+    for key in ("binary_sha256", "series_sha256"):
+        assert re.fullmatch(r"[0-9a-f]{64}", backend[key])
+    assert backend["protocol"] == "ODK1"
+    expected_targets = {f"/output/{channel}/pan" for channel in range(1, 21)}
+    cases = pan_artifact["cases"]
+    assert len(cases) == 22
+    assert {case["target"] for case in cases} == expected_targets
+    assert len({case["raw_evidence_sha256"] for case in cases}) == 22
+    small_steps = set()
+    range_probes = set()
+    phases = ("baseline_first", "baseline", "probe", "restoration", "final")
+    for case in cases:
+        target = case["target"]
+        assert datetime.fromisoformat(case["taken"]).utcoffset().total_seconds() == 0
+        for key in ("probe_source_sha256", "raw_evidence_sha256"):
+            assert re.fullmatch(r"[0-9a-f]{64}", case[key]), target
+        channel = int(target.split("/")[2])
+        first = (channel - 1) // 2 * 2 + 1
+        pair = [f"/output/{member}/pan" for member in (first, first + 1)]
+        assert case["pair"] == pair
+        stereo = {path.removesuffix("pan") + "stereo" for path in pair}
+        phantom = {"/input/1/48v", "/input/2/48v"}
+        states = case["states"]
+        assert set(states) == set(phases)
+        for state in states.values():
+            assert set(state) == set(pair) | stereo | phantom
+            for path, report in state.items():
+                assert report["origin"] == "DEVICE"
+                assert report["tags"] == "i"
+                assert type(report["sequence"]) is int
+                assert report["sequence"] > 0
+                assert len(report["args"]) == 1
+                assert type(report["args"][0]) is int
+                value = report["args"][0]
+                if path in pair:
+                    assert -100 <= value <= 100
+                else:
+                    assert value == (1 if path in stereo else 0)
+        baseline = states["baseline"]
+        for phase in ("baseline_first", "restoration", "final"):
+            assert all(states[phase][path]["args"] == report["args"]
+                       for path, report in baseline.items())
+        for path in baseline:
+            sequences = [states[phase][path]["sequence"] for phase in phases]
+            assert all(first < second for first, second in zip(sequences, sequences[1:]))
+        requested = case["requested_pan"]
+        assert type(requested) is int
+        assert -100 <= requested <= 100
+        before = baseline[target]["args"][0]
+        assert requested != before
+        assert all(states["probe"][path]["args"] == [requested] for path in pair)
+        expected_writes = [(target, requested, "probe")]
+        expected_writes.extend((path, baseline[path]["args"][0], "restore") for path in pair)
+        assert case["writes"] == [
+            {"path": path, "tags": "i", "args": [value], "phase": phase,
+             "submitted": True, "acknowledged": True}
+            for path, value, phase in expected_writes]
+        assert case["baseline_refreshes"] in (2, 3)
+        assert case["nonvolatile_device_paths"] == 2232
+        assert case["full_restoration_matches_baseline"] is True
+        assert case["watch_seconds"] == 24
+        assert case["watch_device_events"] == 0
+        assert case["end_acknowledged"] is True
+        if abs(requested - before) == 1:
+            small_steps.add(target)
+        range_probes.add((target, requested))
+    assert small_steps == expected_targets
+    assert {("/output/1/pan", -100), ("/output/1/pan", 100)} <= range_probes
 
 
 def test_the_artifact_names_the_device_and_the_pin(sweep):
@@ -895,4 +1137,3 @@ def test_the_first_baseline_is_read_twice(sweep, monkeypatch):
     assert unrestored == []
     assert operations[0]['before'] == operations[0]['after']
     assert withheld in operations[0]['before']
-

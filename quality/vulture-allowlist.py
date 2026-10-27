@@ -29,7 +29,7 @@ _.reports_unchanged_registers    # noqa: F821  -- why the barrier is opportunist
 # sum; the gate does.
 startup_budget                   # noqa: F821
 
-# profiles.STATES and Outcome.applied: the public contract of a switch.
+# outcome.STATES and Outcome.applied: the public contract of a switch.
 # STATES is what tests/test_profiles.py asserts is exhaustive; applied is
 # the field a script branches on (README, *Profiles*).
 STATES                           # noqa: F821

@@ -5,11 +5,11 @@ reload waits for the start-up verifier, a broken file keeps the running
 desk, and what is re-read keeps the machine the session runs on.
 """
 
-
 import pytest
 from reconcile_desk import CONF, routes_file
 from support import repo_file, started_with
 
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import reload as reload_mod
 
 
@@ -17,7 +17,7 @@ from oscmix_desk import reload as reload_mod
 def operation(monkeypatch, recording_backend):
     # These tests drive signal/configuration orchestration; the actual
     # connection and lease are covered with competing real processes.
-    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
 
 
 def test_the_signal_handler_only_sets_a_flag():
@@ -135,7 +135,7 @@ def test_a_broken_config_on_reload_keeps_the_running_one(tmp_path, session_mod,
     path = tmp_path / "routing.conf"
     path.write_text(invalid)
     applied = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda *a, **k: applied.append(a))
 
     reload_mod._reconcile(argparse.Namespace(config=path),
@@ -174,7 +174,7 @@ def test_a_reload_waits_for_the_startup_verifier(tmp_path, session_mod,
     from oscmix_desk import session as session_module
 
     applied = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda *a, **k: applied.append(time.monotonic()))
     release = threading.Event()
     verifier = threading.Thread(target=release.wait, daemon=True)
@@ -203,7 +203,7 @@ def test_a_stop_during_the_wait_abandons_the_reload(tmp_path, session_mod,
     from oscmix_desk import session as session_module
 
     applied = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda *a, **k: applied.append(1))
     release = threading.Event()
     verifier = threading.Thread(target=release.wait, daemon=True)
@@ -231,7 +231,7 @@ def test_a_verifier_that_outlives_the_bound_is_not_waited_for_forever(
     from oscmix_desk import session as session_module
 
     applied = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda *a, **k: applied.append(1))
     monkeypatch.setattr(reload_mod, "RECONCILE_WAIT_FOR_VERIFIER", 0.3)
     release = threading.Event()
@@ -254,7 +254,7 @@ def test_a_finished_verifier_does_not_delay_the_reload(tmp_path, session_mod,
     from oscmix_desk import session as session_module
 
     applied = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda *a, **k: applied.append(1))
     verifier = threading.Thread(target=lambda: None)
     verifier.start()
@@ -284,7 +284,7 @@ def test_a_reload_applies_the_remembered_profile(tmp_path, session_mod,
                  "[route:direct]\noutput = 5/6\nplayback = 5/6\n")
     (tmp_path / "active-profile").write_text("tracking\n")
     applied = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda config, *a, **k: applied.append(config))
     with caplog.at_level("INFO"):
         reload_mod._reconcile(argparse.Namespace(config=path),
@@ -325,7 +325,7 @@ def _reconciled(monkeypatch, args, running):
     """Run the SIGHUP path and return the Config it reconciled with."""
 
     seen = []
-    monkeypatch.setattr(reload_mod, "reconcile_now",
+    monkeypatch.setattr(desk_mod, "reconcile_now",
                         lambda config, *a, **k: seen.append(config))
     reload_mod._reconcile(args, running, {"stop": False})
     return seen[0] if seen else None

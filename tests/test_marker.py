@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 from profile_desk import GOOD, TRACKING, desk, shared_lock_dir
+from support import write_config
 
 from oscmix_desk import marker as marker_mod
 from oscmix_desk import outcome as outcome_mod
@@ -50,6 +51,47 @@ def test_the_marker_functions_answer_nothing_without_a_config(tmp_path):
     assert marker_mod.forget_active_profile(path) == (True, True), "twice is fine"
     assert not (tmp_path / "active-profile").exists()
 
+
+def test_switch_and_restore_only_change_the_selected_configs_marker(tmp_path, recording_backend):
+    paths = [write_config(tmp_path / name, GOOD)
+             for name in ('routing.conf', 'selected.conf', 'other.conf')]
+    write_config(tmp_path / 'profiles/tracking.conf', TRACKING)
+    write_config(tmp_path / 'profiles/mixdown.conf', GOOD)
+    names = ('tracking', 'mixdown', 'tracking')
+    for path, name in zip(paths, names):
+        result = profiles.switch_profile(name, path, recording_backend, verify=False)
+        assert result.applied
+        assert result.persisted
+    assert (tmp_path / 'active-profile').read_text() == 'tracking\n'
+    assert (tmp_path / 'active-profile.selected.conf').read_text() == 'mixdown\n'
+    assert (tmp_path / 'active-profile.other.conf').read_text() == 'tracking\n'
+    assert [profiles.effective_config(path)[1] for path in paths] == list(names)
+    result = profiles.restore_main(paths[1], recording_backend, verify=False)
+    assert result.applied
+    assert result.persisted
+    assert [marker_mod.active_profile(path) for path in paths] == ['tracking', None, 'tracking']
+    assert not (tmp_path / 'active-profile.selected.conf').exists()
+
+
+def test_a_custom_config_does_not_adopt_the_legacy_directory_marker(tmp_path):
+    path = write_config(tmp_path / 'selected.conf', GOOD)
+    write_config(tmp_path / 'profiles/tracking.conf', TRACKING)
+    (tmp_path / 'active-profile').write_text('tracking\n')
+    config, active = profiles.effective_config(path)
+    assert active is None
+    assert config == profiles.load_config(path)
+    assert marker_mod.forget_active_profile(path) == (True, True)
+    assert (tmp_path / 'active-profile').read_text() == 'tracking\n'
+
+
+def test_the_public_marker_read_discovers_the_same_config_as_profiles(tmp_path, monkeypatch):
+    path = write_config(tmp_path / 'selected.conf', GOOD)
+    write_config(tmp_path / 'profiles/tracking.conf', TRACKING)
+    monkeypatch.setenv('OSCMIX_CONFIG', str(path))
+    assert marker_mod.remember_active_profile('tracking', path) == (True, True)
+    assert marker_mod.active_profile() == 'tracking'
+    assert profiles.effective_config(None)[1] == 'tracking'
+
 def test_a_marker_write_that_fails_leaves_the_old_marker_whole(tmp_path,
                                                               monkeypatch,
                                                               caplog):
@@ -59,7 +101,7 @@ def test_a_marker_write_that_fails_leaves_the_old_marker_whole(tmp_path,
     def refuse(src, dst):
         raise OSError("disk full")
 
-    monkeypatch.setattr(profiles.os, "replace", refuse)
+    monkeypatch.setattr(marker_mod.os, "replace", refuse)
     with caplog.at_level("WARNING"):
         assert marker_mod.remember_active_profile("mixdown", path) == (False,
                                                                      False)
@@ -81,7 +123,7 @@ def test_the_marker_goes_through_a_temporary_file_and_a_rename(tmp_path,
         renames.append((os.path.basename(src), os.path.basename(dst)))
         real_replace(src, dst)
 
-    monkeypatch.setattr(profiles.os, "replace", record)
+    monkeypatch.setattr(marker_mod.os, "replace", record)
     umask = os.umask(0o022)
     try:
         assert marker_mod.remember_active_profile("tracking", path).in_effect is True
@@ -164,7 +206,7 @@ def test_fsync_of_the_directory_reports_what_it_did(tmp_path, monkeypatch):
     def refuse(fd):
         raise OSError("fsync unsupported")
 
-    monkeypatch.setattr(profiles.os, "fsync", refuse)
+    monkeypatch.setattr(marker_mod.os, "fsync", refuse)
     assert marker_mod._fsync_directory(tmp_path) is False
 
 def test_an_empty_marker_means_no_profile(tmp_path):
@@ -208,7 +250,7 @@ def test_a_short_write_is_finished_rather_than_truncated(tmp_path,
         return real_write(fd, data[:1])
 
     path = desk(tmp_path, tracking=TRACKING)
-    monkeypatch.setattr(profiles.os, "write", one_byte_at_a_time)
+    monkeypatch.setattr(marker_mod.os, "write", one_byte_at_a_time)
     assert marker_mod.remember_active_profile("tracking", path).in_effect is True
     assert (tmp_path / "active-profile").read_text() == "tracking\n"
 

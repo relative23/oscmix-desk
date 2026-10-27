@@ -8,6 +8,7 @@ import pytest
 from backend_doubles import RecordingBackend
 
 from oscmix_desk import config as config_mod
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import routing, verify
 from oscmix_desk.backend import OSCMIX
 from oscmix_desk.devices import UCX2
@@ -40,6 +41,13 @@ def recorded(monkeypatch, reports):
 LINKS = [("/playback/1/stereo", "i", (1,)), ("/output/5/stereo", "i", (1,))]
 
 
+def manual_gain_pair(left):
+    """These manual-gain cases explicitly observe AutoSet off and mono linkage."""
+    return [(f"/input/{left}/autoset", "i", (0,)),
+            (f"/input/{left + 1}/autoset", "i", (0,)),
+            (f"/input/{left}/stereo", "i", (0,))]
+
+
 @pytest.mark.parametrize("value", [None, -30., -6., float("nan")])
 def test_reconcile_preserves_every_remember_volume(monkeypatch, value):
     reports = [] if value is None else [("/output/5/volume", "f", (value,))]
@@ -55,7 +63,10 @@ def test_other_pin_repair_cannot_reset_either_route_volume(monkeypatch, value, i
     def reports(sent):
         gain = 6. if any(path == "/input/3/gain" for path, _, _ in sent) else 0.
         volumes = [] if value is None else [("/output/5/volume", "f", (value,))]
-        return LINKS + volumes + [("/input/3/gain", "f", (gain,))]
+        return LINKS + volumes + [("/input/3/gain", "f", (gain,)),
+                                  ("/input/3/autoset", "i", (0,)),
+                                  ("/input/4/autoset", "i", (0,)),
+                                  ("/input/3/stereo", "i", (0,))]
     backend = recorded(monkeypatch, reports)
     config = route_config(channels=[ChannelSetting("input", 3, "gain", 6.)])
     if intent is ApplyIntent.REPAIR:
@@ -170,7 +181,7 @@ def test_reconcile_reports_the_selected_models_pin_and_gain_quantization(
     path.write_text('[input:1]\ngain = 6.19\n')
     config = config_mod.load_config(path)
     reports = [] if reported is None else [('/input/1/gain', 'f', (reported,))]
-    backend = RecordingBackend(lambda _: reports)
+    backend = RecordingBackend(lambda _: manual_gain_pair(1) + reports)
     with caplog.at_level(logging.INFO):
         assert verify.reconcile_now(config, 'measured gain conversion', backend=backend)
     summary, = [record.message for record in caplog.records if 'confirmed;' in record.message]
@@ -240,7 +251,7 @@ def test_effective_policy_controls_missing_or_invalid_link_repair_summary(caplog
 
 
 @pytest.mark.parametrize("reports", [[], [("/output/5/volume", "f", (-30.,))]])
-def test_explicit_profile_remains_strict_and_persists_after_unverified_apply(
+def test_explicit_profile_distinguishes_missing_and_differing_remember_feedback(
         tmp_path, monkeypatch, reports):
     from oscmix_desk import outcome, profiles
 
@@ -250,10 +261,12 @@ def test_explicit_profile_remains_strict_and_persists_after_unverified_apply(
     backend = recorded(monkeypatch, lambda _: reports)
     result = profiles.switch_profile("quiet", config_path=tmp_path / "routing.conf",
                                      backend=backend)
-    assert result.state == outcome.APPLIED_UNVERIFIED
-    assert result.unverified == ["/output/5/volume"]
+    assert result.state == (outcome.APPLIED_MISMATCHED if reports else outcome.APPLIED_UNVERIFIED)
+    assert result.unverified == ("/output/5/volume",)
     assert result.persisted
     assert result.read_back
+    assert result.mismatched == (('/output/5/volume',) if reports else ())
+    assert result.unobserved == (() if reports else ('/output/5/volume',))
     assert (tmp_path / "active-profile").read_text() == "quiet\n"
     assert backend.sent == [("/output/5/volume", "f", (-6.,))]
 
@@ -290,7 +303,7 @@ def test_reload_waits_for_startup_verification_without_resetting_missing_remembe
     path.write_text("[output:5]\nvolume=-6\n")
     config = config_mod.load_config(path)
     backend = recorded(monkeypatch, lambda _: [])
-    monkeypatch.setattr(reload, "connect_backend", lambda *_a, **_k: backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: backend)
     statuses = []
     monkeypatch.setattr(reload, "sd_notify", statuses.append)
     routing.apply_routing(config, backend)
@@ -348,7 +361,8 @@ def test_link_sync_preserves_retention_and_reports_its_actual_result(monkeypatch
 
 def test_failed_pin_repair_is_false_after_exactly_one_retry(monkeypatch):
     config = Config(channels=[ChannelSetting('input', 3, 'gain', 6.)])
-    backend = recorded(monkeypatch, lambda _: [('/input/3/gain', 'f', (0.,))])
+    backend = recorded(monkeypatch, lambda _: manual_gain_pair(3) +
+                       [('/input/3/gain', 'f', (0.,))])
     assert verify.verify_and_repair(config, backend) is False
     assert backend.dumps == 2
     assert backend.sent == [('/input/3/gain', 'f', (6.,))]
@@ -357,7 +371,8 @@ def test_failed_pin_repair_is_false_after_exactly_one_retry(monkeypatch):
 @pytest.mark.parametrize('stage', ['before', 'refresh', 'repair'])
 def test_cancelled_verification_never_reports_success(monkeypatch, stage):
     config = Config(channels=[ChannelSetting('input', 3, 'gain', 6.)])
-    backend = recorded(monkeypatch, lambda _: [('/input/3/gain', 'f', (0.,))])
+    backend = recorded(monkeypatch, lambda _: manual_gain_pair(3) +
+                       [('/input/3/gain', 'f', (0.,))])
     stopped = [stage == 'before']
     request, send = backend.request_dump, backend.send
 
@@ -386,7 +401,7 @@ def test_cancellation_after_the_readback_summary_prevents_repair_and_returns_fal
                 stopped.set()
 
     handler = StopAfterSummary()
-    backend = RecordingBackend(lambda _: [('/input/3/gain', 'f', (0.,))])
+    backend = RecordingBackend(lambda _: manual_gain_pair(3) + [('/input/3/gain', 'f', (0.,))])
     config = Config(channels=[ChannelSetting('input', 3, 'gain', 6.)])
     verify.log.addHandler(handler)
     try:

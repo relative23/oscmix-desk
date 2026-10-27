@@ -717,7 +717,7 @@ def test_profile_lost_backend_never_commits_marker_even_after_all_writes(
         assert outcome.state == 'applied-unverified'
         assert not outcome.persisted
         assert not outcome.read_back
-        assert outcome.unverified == ['/output/5/volume']
+        assert outcome.unverified == ('/output/5/volume',)
         assert 'did not finish' in outcome.reason
         assert marker.read_text() == 'previous\n'
         wait_for(lambda: midi.registers())

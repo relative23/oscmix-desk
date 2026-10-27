@@ -1,22 +1,25 @@
 """A desk as data: what a ``routing.conf`` says, once it has been read.
 
-Routes, channel and global settings, and the five settings that say
-*where* the desk goes rather than what it is. Nothing here parses,
-validates or talks to anything; ``config`` builds these and everything
-else reads them.
+Routes, channel and global settings, device identity and retained legacy
+OSC ports. Nothing here parses or talks to anything; ``config`` builds
+these and everything else reads them.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Mapping, NamedTuple, Optional, Tuple, Union
+from typing import Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union
 
 from .constants import (
+    CHANNEL_MAX,
+    CHANNEL_MIN,
     DEFAULT_DEVICE_NAME,
     DEFAULT_OSC_PORT,
     DEFAULT_OSC_RECV_PORT,
     DEFAULT_USB_ID,
+    LEVEL_MAX,
+    LEVEL_MIN,
 )
 from .registers import ENABLE_OPTION, Policy
 
@@ -47,6 +50,36 @@ class Route:
     stereo: bool = True
     #: Hardware input channels, as an alternative to ``playback``.
     input: Tuple[int, ...] = ()
+    #: Balance of a linked stereo source and output pair, as OSC Int32.
+    #: Level and balance belong to one compound matrix register.
+    pan: int = 0
+
+    def __post_init__(self) -> None:
+        _ = self.checked_pan
+
+    @property
+    def checked_pan(self) -> int:
+        """A declared balance supported by this route's addressing shape."""
+        if type(self.pan) is not int:
+            raise ValueError("pan must be an integer, not a boolean or float")
+        if not -100 <= self.pan <= 100:
+            raise ValueError("pan out of range -100..100")
+        if self.pan:
+            if bool(self.input) == bool(self.playback):
+                raise ValueError("nonzero pan requires exactly one input or playback source")
+            _kind, source = self.source
+            if (self.stereo is not True or len(source) != 2 or len(self.output) != 2
+                    or any(type(ch) is not int for ch in (*source, *self.output))
+                    or any(not CHANNEL_MIN <= ch <= CHANNEL_MAX
+                           for ch in (*source, *self.output))
+                    or any(pair[0] % 2 != 1 or pair[1] != pair[0] + 1
+                           for pair in (source, self.output))):
+                raise ValueError("nonzero pan requires linked source and output stereo pairs")
+            if (isinstance(self.level, bool) or not isinstance(self.level, (int, float))
+                    or not LEVEL_MIN < self.level <= LEVEL_MAX):
+                raise ValueError("nonzero pan is neither preserved nor reported for a silent "
+                                 "route; level must be finite and above -65 dB, at most +6 dB")
+        return self.pan
 
     @property
     def source(self) -> Tuple[str, Tuple[int, ...]]:
@@ -118,15 +151,32 @@ class GlobalSetting:
         return "/%s/%s" % (self.family, self.option)
 
 
-class CommandLine(NamedTuple):
-    """What ``--device`` and ``--osc-port`` put in place of a file's settings."""
+class Overrides(NamedTuple):
+    """Config overrides: device name and the retained legacy OSC port."""
 
     device_name: Optional[str] = None
     osc_port: Optional[int] = None
 
 
+#: Compatibility name for callers constructing command-line overrides.
+CommandLine = Overrides
+
+
+def _resolve_overrides(overrides: Optional[Overrides], said: Optional[Overrides]) -> Overrides:
+    """Accept the legacy keyword once, without choosing between two inputs."""
+    if overrides is not None and said is not None:
+        raise TypeError("use overrides or the legacy said argument, not both")
+    if overrides is not None:
+        return overrides
+    return said if said is not None else Overrides()
+
+
 class Machine(NamedTuple):
-    """The five settings that say *where* a desk goes, not what it is."""
+    """Device identity and the two retained legacy OSC port values.
+
+    Only device_name, usb_id and serial select the machine. The ports
+    remain parseable config data and do not participate in identity checks.
+    """
 
     device_name: str
     usb_id: str
@@ -135,32 +185,27 @@ class Machine(NamedTuple):
     osc_recv_port: int
 
     def differs_from(self, other: "Machine") -> str:
-        """The settings that differ, for a person: ``serial '2' (not '1')``."""
+        """The identity settings that differ, for a person."""
         return ", ".join(
             "%s %r (not %r)" % (name.replace("_", " "), mine, theirs)
             for name, mine, theirs in zip(self._fields, self, other)
-            if mine != theirs)
+            if name not in ("osc_port", "osc_recv_port") and mine != theirs)
 
-    def under(self, said: CommandLine) -> "Machine":
+    def under(self, overrides: Optional[Overrides] = None, *,
+              said: Optional[Overrides] = None) -> "Machine":
         """This machine as a start resolves it: the command line over the file."""
+        overrides = _resolve_overrides(overrides, said)
         return self._replace(
-            device_name=said.device_name or self.device_name,
-            osc_port=self.osc_port if said.osc_port is None else said.osc_port)
+            device_name=overrides.device_name or self.device_name,
+            osc_port=self.osc_port if overrides.osc_port is None else overrides.osc_port)
 
     def elsewhere(self, live: "Machine") -> str:
-        """Why this is not the machine a session runs on, or "" when it is.
+        """Why this names another device than the session, or "".
 
-        ``self`` is what a restart of that session would resolve its file
-        to, the command line included (``under``), and ``live`` what the
-        session runs with. Naming no serial means "the only one", which a
-        running session takes to be the box its start pinned: it does not
-        count the boxes again, so with a second one plugged in since, a
-        restart asks for the serial where a reload goes on writing to
-        the pinned box. And a name is compared as written, where a start
-        looks for it as a substring: another spelling that finds the
-        same client is refused until a restart. The first cuts compared the bare file and refused
-        the session's own desk: the pinned box once routing.conf named
-        it, then a file under ``--osc-port``.
+        ``self`` is resolved under the session's command-line overrides.
+        An empty serial means the box its start pinned. Device names are
+        compared as written, even when another spelling would match the
+        same sequencer client. Legacy ports never change the answer.
         """
         mine = self if self.serial else self._replace(serial=live.serial)
         return mine.differs_from(live)
@@ -170,13 +215,9 @@ class Machine(NamedTuple):
 class Config:
     """A desk, parsed and validated, and not changed after that.
 
-    Frozen since 0.7.0. It was built by assignment
-    and then assigned to from four more places -- the command line's
-    overrides, the serial a start pins, a running session keeping its
-    machine settings, a profile's base -- so "the config" was whatever
-    the last of them had left in it, and a function handed one could not
-    know whether its caller's copy moved with it. Each of those makes a
-    new one now (``dataclasses.replace``).
+    Overrides, pinned serials and retained machine settings produce a new
+    config with ``dataclasses.replace``. Tuple fields and the policy map
+    are owned and immutable; consumers cannot alter the caller's desk.
     """
 
     device_name: str = DEFAULT_DEVICE_NAME
@@ -199,12 +240,13 @@ class Config:
     #: replaced afterwards -- by ``--device`` and ``--osc-port``, by the
     #: serial a start pins, by a running session that keeps its own -- and
     #: this is what remembers which interface the file was validated for
-    #: and which backend it names (0.6.11). None only for a ``Config``
+    #: before command-line overrides. The OSC ports select no backend.
+    #: None only for a ``Config``
     #: that ``load_config`` never saw; no file resolves to the defaults.
     loaded: Optional[Machine] = None
     #: What the command line put in place of the file's settings. No file
     #: this process reads again has a say in these, exactly as at its start.
-    overrides: CommandLine = field(default_factory=CommandLine)
+    overrides: Overrides = field(default_factory=Overrides)
 
     def __post_init__(self) -> None:
         # A frozen dataclass alone leaves a dict writable. Copy first:
@@ -212,3 +254,36 @@ class Config:
         # a later reconcile pins, after this desk was validated.
         object.__setattr__(self, "policies",
                            MappingProxyType(dict(self.policies)))
+        validate_route_pan(self.routes)
+
+
+def validate_route_pan(routes: Sequence[Route]) -> None:
+    """Reject incompatible compound claims where a new balance is declared.
+
+    Pure pan-0 duplicates keep their existing file-order semantics. A
+    nonzero balance owns the whole level/pan register, including aliases
+    folded through the pair links. It must agree with every other claim.
+    """
+    if not any(route.checked_pan for route in routes):
+        return
+    links: Dict[Tuple[str, int], int] = {}
+    claims: Dict[Tuple[int, str, int], List[Route]] = {}
+    for route in routes:
+        for family, channel, linked in route.link_requirements:
+            key = (family, channel)
+            if key in links and links[key] != linked:
+                raise ValueError("routes disagree on linked %s pair %d/%d while declaring pan"
+                                 % (family, channel, channel + 1))
+            links[key] = linked
+        source, output = route.link_requirements
+        cell_key = (output[1] if output[2] else route.output[0], source[0],
+               source[1] if source[2] else route.source[1][0])
+        claims.setdefault(cell_key, []).append(route)
+    for (out, kind, src), declarations in claims.items():
+        if not any(route.checked_pan for route in declarations):
+            continue
+        first = declarations[0]
+        for route in declarations[1:]:
+            if (first.level, first.pan) != (route.level, route.pan):
+                raise ValueError("routes %r and %r disagree on level/pan for /mix/%d/%s/%d"
+                                 % (first.name, route.name, out, kind, src))

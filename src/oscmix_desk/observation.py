@@ -7,31 +7,60 @@ starts without any confirmations, including when retrying the same request.
 
 from __future__ import annotations
 
-from typing import Mapping, Optional, Set, Tuple
+from typing import Dict, Mapping, Optional, Sequence, Set, Tuple
 
+from .autogain import flag_value
 from .numeric import float32, integer, report_value
 from .osc import Args, Message
 from .reconcile import matches
-from .registers import Device, register_at
+from .registers import VERIFIABLE, Device, register_at
+
+
+def boolean_dependency(report: Optional[Tuple[str, Args]]) -> Optional[int]:
+    """A last typed Boolean report, without accepting numeric coercions.
+
+    Missing or malformed feedback cannot authorize a dependent write. Both
+    0 and 1 are valid observations; neither implies a desired value.
+    """
+    return flag_value(report)
 
 
 class Observation:
     """A match can be revoked and restored; an absent report is neither."""
 
     def __init__(self, expected: Mapping[str, Tuple[str, Args]],
-                 device: Optional[Device] = None) -> None:
-        self.expected = dict(expected)
+                 device: Optional[Device] = None,
+                 dependency_paths: Sequence[str] = ()) -> None:
+        self.expected = {path: (tags, tuple(args))
+                         for path, (tags, args) in expected.items()}
         self.device = device
+        self.dependency_paths = frozenset(dependency_paths)
+        self.latest: Dict[str, Tuple[str, Args]] = {}
         self.confirmed: Set[str] = set()
         self.mismatched: Set[str] = set()
         self.invalid: Set[str] = set()
 
     def absorb(self, report: Message) -> None:
-        path, _tags, args = report
+        path, tags, args = report
+        if path in self.expected or path in self.dependency_paths:
+            # Retain malformed last reports too: an older valid value must
+            # never survive its contradiction as write permission.
+            self.latest[path] = (tags, tuple(args))
         expected = self.expected.get(path)
         if expected is None:
             return
-        valid = self._valid(path, expected[0], args)
+        register = register_at(self.device, path)
+        if (register is not None and register.verify != VERIFIABLE
+                and register.domain is not None):
+            # An echo/cache value cannot turn a declared unobservable path
+            # into DEVICE confirmation. A future readable backend needs a
+            # measured table change, not accidental acceptance of an echo.
+            # Existing structural link hints keep their legacy comparison;
+            # they have no settable scalar domain and are not mute feedback.
+            return
+        valid = tags.startswith(expected[0]) and self._valid(path, expected[0], args)
+        if path.endswith("/autoset"):
+            valid = valid and flag_value((tags, args)) is not None
         if valid and matches(expected[0], expected[1], args,
                    register=register_at(self.device, path)):
             self.confirmed.add(path)
@@ -54,7 +83,7 @@ class Observation:
                 if register is not None and register.mix_level:
                     if index == 0 and value == float("-inf"):
                         continue
-                    if index == 1 and not -100 <= integer(value) <= 100:
+                    if index == 1 and (type(value) is not int or not -100 <= value <= 100):
                         return False
                 elif register is not None and register.domain is not None:
                     report_value(value, register)
@@ -77,3 +106,9 @@ class Observation:
     @property
     def complete(self) -> bool:
         return len(self.confirmed) == len(self.expected)
+
+    @property
+    def dependencies_complete(self) -> bool:
+        """Every requested Boolean dependency has a valid last report."""
+        return all(boolean_dependency(self.latest.get(path)) is not None
+                   for path in self.dependency_paths)

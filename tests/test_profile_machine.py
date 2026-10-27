@@ -45,7 +45,7 @@ _MAIN = ("[device]\nname = Some Box\nusb-id = 1111:2222\n"
 
 
 @pytest.mark.parametrize(("section", "option", "attr"),
-                         profiles.MACHINE_SETTINGS)
+                         [row for row in profiles.MACHINE_SETTINGS if row[0] == 'device'])
 def test_a_profile_that_states_another_machine_setting_is_refused(
         tmp_path, section, option, attr):
     """Option by option: until 0.7.0 the stated one won and the other four
@@ -66,7 +66,7 @@ def test_a_profile_that_states_another_machine_setting_is_refused(
     assert str(refused.value) == (
         "profile 'one' names another backend or interface than %s -- %s %r "
         "(not %r). A profile is the desk, not the machine: take "
-        "[osc] and [device] out of %s"
+        "[device] out of %s"
         % (path, attr.replace("_", " "), stated, getattr(main, attr), other))
 
 
@@ -74,10 +74,8 @@ def test_restating_what_routing_conf_says_is_not_naming_another_machine(
         tmp_path):
     """`--dump-config > profiles/x.conf`, the documented way to make a
     profile, writes `[device]` and `[osc]` into every one: the sections
-    cannot be the rule, only what they resolve to. Stating the compiled-in
-    default is naming another machine when routing.conf says otherwise --
-    "equals the default" cannot tell "said 7222" from "said nothing", and
-    the parser can."""
+    cannot be the rule, only the device identity they resolve to.
+    Legacy ports can differ, including a stated compiled-in default."""
     from oscmix_desk.constants import DEFAULT_OSC_PORT
 
     path = write_config(tmp_path / "routing.conf", _MAIN)
@@ -86,9 +84,22 @@ def test_restating_what_routing_conf_says_is_not_naming_another_machine(
     assert (same.osc_port, same.serial) == (9001, "99887766")
     write_config(tmp_path / "profiles" / "default.conf",
                  "[osc]\nport = %d\n" % DEFAULT_OSC_PORT + GOOD)
-    with pytest.raises(profiles.ConfigError,
-                       match=r"osc port 7222 \(not 9001\)"):
-        profiles.load_profile("default", path)
+    assert profiles.load_profile("default", path).osc_port == DEFAULT_OSC_PORT
+
+
+@pytest.mark.parametrize(('option', 'value', 'attr'), [
+    ('port', 9500, 'osc_port'), ('recv-port', 9600, 'osc_recv_port'),
+])
+def test_legacy_ports_are_validated_but_do_not_retarget_a_profile(tmp_path, option, value, attr):
+    path = write_config(tmp_path / 'routing.conf', _MAIN)
+    write_config(tmp_path / 'profiles/old.conf', '[osc]\n%s = %d\n' % (option, value) + GOOD)
+    profile = profiles.load_profile('old', path)
+    assert getattr(profile, attr) == value
+    assert (profile.device_name, profile.usb_id, profile.serial) == (
+        'Some Box', '1111:2222', '99887766')
+    write_config(tmp_path / 'profiles/invalid.conf', '[osc]\n%s = 65536\n' % option + GOOD)
+    with pytest.raises(profiles.ConfigError, match=r'1\.\.65535'):
+        profiles.load_profile('invalid', path)
 
 
 def test_every_machine_level_field_on_config_is_inherited(tmp_path):
@@ -205,8 +216,8 @@ def test_a_profile_that_names_another_machine_changes_nothing_anywhere(
     outcome = profiles.switch_profile("there", config_path=path,
                                       backend=recording_backend, verify=False)
     assert outcome.state == outcome_mod.REFUSED
-    assert "serial '99887766' (not ''), osc port 9500 (not 9001)" \
-        in outcome.reason
+    assert "serial '99887766' (not '')" in outcome.reason
+    assert 'osc port' not in outcome.reason
     assert recording_backend.sent == []
     assert marker_mod.active_profile(path) is None
     listed = "\n".join(profiles.describe_profiles(path))
@@ -230,8 +241,9 @@ def test_a_dumped_profile_is_accepted_until_routing_conf_moves(tmp_path):
     assert "[osc]" in dumped
     write_config(tmp_path / "profiles" / "dumped.conf", dumped)
     assert profiles.load_profile("dumped", path).routes
-    # routing.conf moves to another port; the dump still names the old one.
+    # Legacy port edits select no interface and cannot invalidate a dump.
     write_config(tmp_path / "routing.conf", "[osc]\nport = 9100\n" + GOOD)
-    with pytest.raises(profiles.ConfigError,
-                       match=r"osc port 7222 \(not 9100\)"):
+    assert profiles.load_profile('dumped', path).routes
+    write_config(path, '[device]\nname = Some Box\n' + GOOD)
+    with pytest.raises(profiles.ConfigError, match="device name 'Fireface UCX II'"):
         profiles.load_profile("dumped", path)

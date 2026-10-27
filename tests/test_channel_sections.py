@@ -30,11 +30,11 @@ DEVICE = "[device]\nname = Fireface UCX II\n\n"
 
 def test_the_options_come_from_the_register_model():
     assert set(registers.settable_options(devices.UCX2, "input")) == {
-        "gain", "hi-z", "mute", "phase", "reflevel"}
+        "autoset", "fx", "gain", "hi-z", "msproc", "mute", "phase", "reflevel"}
     # `phase` joined with the f2fdd5e pin: this project's PR #36,
     # merged upstream. See test_output_phase_is_settable_since_the_pin_moved.
     assert set(registers.settable_options(devices.UCX2, "output")) == {
-        "crossfeed", "mute", "phase", "reflevel", "volume"}
+        "crossfeed", "fx", "mute", "pan", "phase", "reflevel", "volumecal", "volume"}
 
 
 def test_phantom_power_is_modelled_but_not_settable():
@@ -119,7 +119,7 @@ def test_an_unknown_option_lists_what_is_valid(session_mod, tmp_path):
     with pytest.raises(session_mod.ConfigError) as excinfo:
         session_mod.load_config(write(tmp_path, DEVICE +
                                       "[output:5]\nnosuchoption = 3\n"))
-    assert "crossfeed, mute, phase, reflevel, volume" in str(excinfo.value)
+    assert "crossfeed, fx, mute, pan, phase, reflevel, volume" in str(excinfo.value)
 
 
 def test_a_gain_outside_the_range_is_refused(session_mod, tmp_path):

@@ -38,7 +38,7 @@ PROFILE_PROCESS = """\
 import os, runpy, sys, time
 sys.path[:0] = [os.environ['STUB_SOURCE'], os.environ['STUB_TESTS']]
 from backend_doubles import RecordingBackend
-from oscmix_desk import profiles, osc
+from oscmix_desk import desk, osc
 from oscmix_desk.backend import OSCMIX
 
 class IndependentRecorder(RecordingBackend):
@@ -52,7 +52,7 @@ class IndependentRecorder(RecordingBackend):
                 log.write(osc.encode_osc(message[0], message[1], *message[2]).hex() + '\\n')
             time.sleep(.05)
 
-profiles.connect_backend = lambda *a, **k: IndependentRecorder()
+desk.connect_backend = lambda *a, **k: IndependentRecorder()
 runpy.run_path(os.environ['STUB_ENTRY'], run_name='__main__')
 """
 

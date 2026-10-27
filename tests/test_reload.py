@@ -9,12 +9,28 @@ from support import started_with, write_config
 from two_boxes import DESK, lock_dir
 
 from oscmix_desk import CommandLine, profiles
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import notices as notices_mod
 from oscmix_desk import reload as reload_mod
 from oscmix_desk import session as session_module
 from oscmix_desk.errors import ReceivePortError, WriteFailed
 
 UNREACHABLE = OSError(101, "Network is unreachable")
+
+
+@pytest.mark.parametrize("initial", [False, True])
+def test_session_pins_its_discovered_config_even_when_none_was_found(
+        tmp_path, monkeypatch, initial):
+    first = write_config(tmp_path / "first.conf", "")
+    second = write_config(tmp_path / "second.conf", "")
+    calls = []
+    choice = first if initial else None
+    monkeypatch.setattr(reload_mod, "discover_config_path", lambda: calls.append(1) or choice)
+    args = argparse.Namespace(config=None)
+    assert reload_mod._config_path(args) == choice
+    choice = second
+    assert reload_mod._config_path(args) == (first if initial else None)
+    assert calls == [1]
 
 
 @pytest.mark.parametrize(("failure", "line", "status"), [
@@ -39,8 +55,8 @@ def test_a_reconcile_that_ends_early_says_whether_it_wrote(
     def fails(*_a, **_k):
         raise failure
 
-    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: recording_backend)
-    monkeypatch.setattr(reload_mod, "reconcile_now", fails)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "reconcile_now", fails)
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
     lock_dir(tmp_path, monkeypatch)
@@ -64,7 +80,7 @@ def test_a_stop_during_the_lock_wait_does_not_ask_for_another_reload(
         stop["stop"] = True                  # SIGTERM while another writer held it
         return locking.STOPPED_WAITING
 
-    monkeypatch.setattr(reload_mod, "device_lock", stopped)
+    monkeypatch.setattr(desk_mod, "device_lock", stopped)
     path = write_config(tmp_path / "routing.conf", DESK)
     with caplog.at_level("INFO"):
         reload_mod._reconcile(argparse.Namespace(config=path), Config(), stop)
@@ -82,8 +98,8 @@ def test_a_reconcile_whose_lease_cannot_be_finished_after_writing_is_incomplete(
         raise ReceivePortError(71, "backend operation did not finish")
 
     monkeypatch.setattr(recording_backend, "finish", finish)
-    monkeypatch.setattr(reload_mod, "connect_backend", lambda *_a, **_k: recording_backend)
-    monkeypatch.setattr(reload_mod, "reconcile_now", lambda *_a: True)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "reconcile_now", lambda *_a: True)
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
     lock_dir(tmp_path, monkeypatch)
@@ -138,8 +154,8 @@ def _reread(name, running, path):
 @pytest.mark.parametrize(("elsewhere", "named"), [
     ("[device]\nname = Some Box\n", "device name 'Some Box'"),
     ("[device]\nserial = 99887766\n", "serial '99887766' (not '')"),
-    ("[osc]\nport = 9500\n", "osc port 9500 (not 7222)"),
-], ids=["another model", "another box of the model", "another backend"])
+    ("[device]\nusb-id = 1234:5678\n", "usb id '1234:5678' (not '2a39:3fd9')"),
+], ids=["another model", "another box of the model", "another USB identity"])
 def test_a_re_read_desk_for_somewhere_else_is_not_applied_here(
         tmp_path, caplog, reread, elsewhere, named):
     """Until 0.6.11 it was pinned to this session's interface and written.
@@ -280,7 +296,7 @@ def test_a_routing_conf_that_moved_is_followed_by_a_restart_whatever_is_active(
     running = profiles.load_config(path)
     write_config(tmp_path / "profiles" / "plain.conf",
                  "[route:p]\nplayback = 1/2\noutput = 3/4\n")
-    path.write_text("[osc]\nport = 9500\n"
+    path.write_text("[device]\nserial = 99887766\n"
                     "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     for marker in ("plain\n", None):
         caplog.clear()
@@ -290,11 +306,27 @@ def test_a_routing_conf_that_moved_is_followed_by_a_restart_whatever_is_active(
             (tmp_path / "active-profile").unlink()
         with caplog.at_level("ERROR"):
             assert _reread("_reloaded_desk", running, path) is None
-        assert ("osc port 9500 (not 7222) -- and a running session keeps the "
+        assert ("serial '99887766' (not '') -- and a running session keeps the "
                 "one it was started for, so it was not applied; restart the "
                 "session to follow it (systemctl --user restart "
                 "oscmix.service)") in caplog.text
         assert "profile" not in caplog.text
+
+
+@pytest.mark.parametrize('reread', ['_desk_under_the_lock', '_reloaded_desk'])
+def test_legacy_ports_cannot_refuse_a_reread_of_this_device(tmp_path, caplog, reread):
+    path = write_config(tmp_path / 'routing.conf',
+                        '[route:main]\nplayback = 1/2\noutput = 1/2\n')
+    running = profiles.load_config(path)
+    path.write_text('[osc]\nport = 9500\nrecv-port = 9600\n'
+                    '[route:main]\nplayback = 1/2\noutput = 3/4\n')
+    with caplog.at_level('ERROR'):
+        fresh = _reread(reread, running, path)
+    assert fresh is not None
+    assert fresh.routes[0].output == (3, 4)
+    assert fresh.osc_port == running.osc_port
+    assert fresh.osc_recv_port == running.osc_recv_port
+    assert caplog.text == ''
 
 
 @pytest.mark.parametrize("reread", ["_desk_under_the_lock", "_reloaded_desk"])
@@ -373,11 +405,11 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Some Box\n")
     started = profiles.load_config(path)
-    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
     applied = []
-    monkeypatch.setattr(session_module, "apply_routing",
+    monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda config, *a, **k: applied.append(config))
-    monkeypatch.setattr(session_module, "verify_and_repair",
+    monkeypatch.setattr(desk_mod, "verify_and_repair",
                         lambda *a, **k: None)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
     path.write_text("[device]\nname = Some Box\n"

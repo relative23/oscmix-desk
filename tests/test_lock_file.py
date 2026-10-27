@@ -14,7 +14,7 @@ import pytest
 from support import repo_file
 from two_boxes import lock_dir
 
-from oscmix_desk import locking, profiles
+from oscmix_desk import locking
 
 
 def _take(key, wait=0.2):
@@ -131,7 +131,7 @@ def test_a_lock_file_that_cannot_be_regrouped_is_still_a_lock(
     def refuse(*_args):
         raise OSError(errno.EINVAL, "Invalid argument")
 
-    monkeypatch.setattr(profiles.os, "fchown", refuse)
+    monkeypatch.setattr(locking.os, "fchown", refuse)
     umask = os.umask(0o077)
     try:
         held = _take("k")
@@ -174,7 +174,7 @@ def test_a_read_only_lock_directory_is_named_as_such(tmp_path, monkeypatch,
     class ReadOnly:
         f_flag = os.ST_RDONLY
 
-    monkeypatch.setattr(profiles.os, "statvfs",
+    monkeypatch.setattr(locking.os, "statvfs",
                         lambda p: ReadOnly() if str(p) == str(shared) else real(p))
     try:
         with caplog.at_level("ERROR"):

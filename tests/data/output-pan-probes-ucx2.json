@@ -1,0 +1,6641 @@
+{
+  "schema": 1,
+  "device": "Fireface UCX II",
+  "serial": "24216011",
+  "firmware": {
+    "usb_revision": "3.01",
+    "dsp_version": 36
+  },
+  "backend": {
+    "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+    "binary_sha256": "ed2ec21bda599b5e52ebc26e266efa218383b93768e289c372c75bf16307d69a",
+    "series_sha256": "48a6bcab7cc6703bbdc39fce315906f6f3192c238e1648cf5fa15c217abd9402",
+    "protocol": "ODK1"
+  },
+  "method": "One direct integer pan WRITE per case, two separate complete stable fresh DEVICE windows, both partner values restored, full-state comparison, 24-second watch, final window and END ACK.",
+  "scope": "Warm linked pairs: small steps directly on every output, -100/+100 via output 1. No mono, cold-start, exhaustive-domain, long-term or acoustic-safety qualification.",
+  "cases": [
+    {
+      "taken": "2026-10-04T09:33:58.015186+00:00",
+      "target": "/output/1/pan",
+      "pair": [
+        "/output/1/pan",
+        "/output/2/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "7d84e8a20f1922e8ce8c26894c4bf66699a8eff23ef39f4cc5b8913ee324af32",
+      "states": {
+        "baseline_first": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7064296
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7064296
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7064298
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7064298
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7064354
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7064355
+          }
+        },
+        "baseline": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7065537
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7065537
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7065538
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7065538
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7065594
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7065596
+          }
+        },
+        "probe": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7066809
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7066809
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7066836
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7066872
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7066951
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7066953
+          }
+        },
+        "restoration": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7068171
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7068171
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7068198
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7068234
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7068315
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7068318
+          }
+        },
+        "final": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7072029
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7072029
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7072029
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7072031
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7072084
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7072086
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/1/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/1/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/2/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:17:03.754302+00:00",
+      "target": "/output/2/pan",
+      "pair": [
+        "/output/1/pan",
+        "/output/2/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "62857d447b7851718a595b0bc573740e01e688a052e4d4778e566ed1429676af",
+      "states": {
+        "baseline_first": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7384114
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7384114
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7384133
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7384169
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7384249
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7384251
+          }
+        },
+        "baseline": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7385460
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7385460
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7385487
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7385523
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7385604
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7385606
+          }
+        },
+        "probe": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7386812
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7386812
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7386839
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7386875
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7386957
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7386958
+          }
+        },
+        "restoration": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7388142
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7388142
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7388144
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7388144
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7388199
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7388200
+          }
+        },
+        "final": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7391916
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7391916
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7391943
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7391979
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7392059
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7392061
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/2/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/1/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/2/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:18:10.963139+00:00",
+      "target": "/output/3/pan",
+      "pair": [
+        "/output/3/pan",
+        "/output/4/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "26cf0d0b35e217dce14a861d66ab8a91a4f18104ea51bf9cb98d62de35640ffa",
+      "states": {
+        "baseline_first": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7393271
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7393271
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7393296
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7393301
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7393359
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7393367
+          }
+        },
+        "baseline": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7394534
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7394534
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7394536
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7394536
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7394597
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7394605
+          }
+        },
+        "probe": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7395782
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7395782
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7395803
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7395839
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7395928
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7395935
+          }
+        },
+        "restoration": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7397135
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7397135
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7397160
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7397196
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7397283
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7397292
+          }
+        },
+        "final": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7401036
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7401036
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7401061
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7401097
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7401185
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7401192
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/3/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/3/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/4/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:19:21.648247+00:00",
+      "target": "/output/4/pan",
+      "pair": [
+        "/output/3/pan",
+        "/output/4/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "1246d292b07a2c28aed0d09b1d6c3e5a50e27c7bfe07d183f2019fe9a75c5085",
+      "states": {
+        "baseline_first": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7402399
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7402399
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7402423
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7402459
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7402545
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7402553
+          }
+        },
+        "baseline": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7405098
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7405098
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7405123
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7405159
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7405248
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7405256
+          }
+        },
+        "probe": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7406424
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7406424
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7406426
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7406426
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7406491
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7406498
+          }
+        },
+        "restoration": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7407710
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7407710
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7407734
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7407770
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7407854
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7407862
+          }
+        },
+        "final": {
+          "/output/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7411559
+          },
+          "/output/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7411559
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7411561
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7411561
+          },
+          "/output/3/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7411627
+          },
+          "/output/4/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7411633
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/4/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/3/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/4/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 3,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:20:42.270737+00:00",
+      "target": "/output/5/pan",
+      "pair": [
+        "/output/5/pan",
+        "/output/6/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "7e755d657e87a6e0e62852dfaf8ad6f8e866a2f68218d338dd11d669ac16028c",
+      "states": {
+        "baseline_first": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7412796
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7412796
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7412796
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7412798
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7412869
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7412875
+          }
+        },
+        "baseline": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7414044
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7414044
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7414044
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7414046
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7414119
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7414126
+          }
+        },
+        "probe": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7415312
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7415312
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7415335
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7415371
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7415470
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7415479
+          }
+        },
+        "restoration": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7416639
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7416639
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7416639
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7416639
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7416714
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7416722
+          }
+        },
+        "final": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7420426
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7420426
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7420449
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7420485
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7420585
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7420591
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/5/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/5/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/6/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:21:52.663271+00:00",
+      "target": "/output/6/pan",
+      "pair": [
+        "/output/5/pan",
+        "/output/6/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "57494ff1e7c36e4f08ab073bd0a8858a851d15379cb354bd8016ec1db6389f71",
+      "states": {
+        "baseline_first": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7421781
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7421781
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7421797
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7421797
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7421867
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7421876
+          }
+        },
+        "baseline": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7423030
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7423030
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7423032
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7423032
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7423105
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7423114
+          }
+        },
+        "probe": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7424296
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7424296
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7424319
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7424355
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7424452
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7424458
+          }
+        },
+        "restoration": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7425643
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7425643
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7425654
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7425690
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7425788
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7425797
+          }
+        },
+        "final": {
+          "/output/5/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7429489
+          },
+          "/output/6/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7429489
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7429512
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7429538
+          },
+          "/output/5/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7429604
+          },
+          "/output/6/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7429613
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/6/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/5/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/6/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:23:03.203829+00:00",
+      "target": "/output/7/pan",
+      "pair": [
+        "/output/7/pan",
+        "/output/8/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "fa8378ea50ab65227e74c99b5ed0b9326bfef74bdfe5519557e576b4a8d71f6c",
+      "states": {
+        "baseline_first": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7430818
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7430818
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7430839
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7430875
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7430982
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7430989
+          }
+        },
+        "baseline": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7432176
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7432176
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7432197
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7432233
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7432342
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7432348
+          }
+        },
+        "probe": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7433523
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7433523
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7433544
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7433580
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7433687
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7433696
+          }
+        },
+        "restoration": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7434885
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7434885
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7434905
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7434941
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7435055
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7435064
+          }
+        },
+        "final": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7438783
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7438783
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7438804
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7438840
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7438953
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7438963
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/7/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/7/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/8/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:24:13.734906+00:00",
+      "target": "/output/8/pan",
+      "pair": [
+        "/output/7/pan",
+        "/output/8/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "e712fbe3d020c00444e1775f72a3b0c21d36f4d9280bc83f8c12710b87324760",
+      "states": {
+        "baseline_first": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7440152
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7440152
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7440173
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7440209
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7440322
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7440330
+          }
+        },
+        "baseline": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7441506
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7441506
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7441527
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7441563
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7441672
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7441681
+          }
+        },
+        "probe": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7442869
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7442869
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7442890
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7442926
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7443038
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7443047
+          }
+        },
+        "restoration": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7444226
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7444226
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7444226
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7444232
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7444350
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7444357
+          }
+        },
+        "final": {
+          "/output/7/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7448026
+          },
+          "/output/8/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7448026
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7448026
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7448028
+          },
+          "/output/7/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7448114
+          },
+          "/output/8/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7448124
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/8/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/7/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/8/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:25:24.297401+00:00",
+      "target": "/output/9/pan",
+      "pair": [
+        "/output/9/pan",
+        "/output/10/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "741069a1a722a5e6b93dca6fb751e02a71903a19ba6aae4aefeb9a4a6c50ba4d",
+      "states": {
+        "baseline_first": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7449321
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7449321
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7449340
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7449376
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7449508
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7449509
+          }
+        },
+        "baseline": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7450686
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7450686
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7450704
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7450740
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7450874
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7450876
+          }
+        },
+        "probe": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7452020
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7452020
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7452020
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7452021
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7452130
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7452132
+          }
+        },
+        "restoration": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7453274
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7453274
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7453276
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7453276
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7453384
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7453387
+          }
+        },
+        "final": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7457082
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7457082
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7457100
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7457136
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7457269
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7457270
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/9/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/9/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/10/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:26:34.881635+00:00",
+      "target": "/output/10/pan",
+      "pair": [
+        "/output/9/pan",
+        "/output/10/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "65d732a778eb9160c30ff0bbba7fbc536356a73c02bd2b3abf7c202167ff327c",
+      "states": {
+        "baseline_first": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7458420
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7458420
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7458420
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7458422
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7458530
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7458532
+          }
+        },
+        "baseline": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7459713
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7459713
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7459731
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7459767
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7459897
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7459899
+          }
+        },
+        "probe": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7461066
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7461066
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7461066
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7461068
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7461175
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7461176
+          }
+        },
+        "restoration": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7462356
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7462356
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7462375
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7462411
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7462545
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7462547
+          }
+        },
+        "final": {
+          "/output/9/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7466218
+          },
+          "/output/10/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7466218
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7466236
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7466272
+          },
+          "/output/9/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7466401
+          },
+          "/output/10/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7466403
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/10/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/9/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/10/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:27:45.417379+00:00",
+      "target": "/output/11/pan",
+      "pair": [
+        "/output/11/pan",
+        "/output/12/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "64ba66f2d41bab54f6a27e8eac0f7743b26937efb0b500a0119203c586d506f1",
+      "states": {
+        "baseline_first": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7467589
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7467589
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7467605
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7467641
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7467785
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7467787
+          }
+        },
+        "baseline": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7468956
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7468956
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7468973
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7469009
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7469154
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7469155
+          }
+        },
+        "probe": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7470292
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7470292
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7470292
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7470292
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7470412
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7470413
+          }
+        },
+        "restoration": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7471575
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7471575
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7471592
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7471628
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7471767
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7471769
+          }
+        },
+        "final": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7475424
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7475424
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7475426
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7475426
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7475549
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7475549
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/11/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/11/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/12/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T10:28:55.896497+00:00",
+      "target": "/output/12/pan",
+      "pair": [
+        "/output/11/pan",
+        "/output/12/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "e06cc26b8844a95acc395ad1d4fb8c85c8f5b48f12efca4000d89d70871b9746",
+      "states": {
+        "baseline_first": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7476679
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7476679
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7476681
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7476681
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7476804
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7476806
+          }
+        },
+        "baseline": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7477982
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7477982
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7477998
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7478034
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7478175
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7478177
+          }
+        },
+        "probe": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7479353
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7479353
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7479370
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7479406
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7479548
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7479550
+          }
+        },
+        "restoration": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7480697
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7480697
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7480699
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7480699
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7480833
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7480835
+          }
+        },
+        "final": {
+          "/output/11/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7484542
+          },
+          "/output/12/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7484542
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7484558
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7484594
+          },
+          "/output/11/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7484745
+          },
+          "/output/12/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7484746
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/12/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/11/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/12/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:05:43.752019+00:00",
+      "target": "/output/13/pan",
+      "pair": [
+        "/output/13/pan",
+        "/output/14/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "964af169ccf624a3c1b50b534f4c66ad0053cb0be7967ea548b8a1a40228e12b",
+      "states": {
+        "baseline_first": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7750982
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7750982
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7750982
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7750983
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7751130
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7751140
+          }
+        },
+        "baseline": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7752245
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7752245
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7752245
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7752247
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7752392
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7752402
+          }
+        },
+        "probe": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7753575
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7753575
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7753589
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7753625
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7753792
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7753801
+          }
+        },
+        "restoration": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7754957
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7754957
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7754957
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7754959
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7755093
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7755103
+          }
+        },
+        "final": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7758784
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7758784
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7758798
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7758834
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7758996
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7759006
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/13/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/13/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/14/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:06:50.984545+00:00",
+      "target": "/output/14/pan",
+      "pair": [
+        "/output/13/pan",
+        "/output/14/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "0de6484d64e1cb641451da3b6a95aa4a3ff2959006e2a194678bcd70c2b993d1",
+      "states": {
+        "baseline_first": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7760158
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7760158
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7760172
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7760208
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7760373
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7760383
+          }
+        },
+        "baseline": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7761547
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7761547
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7761561
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7761597
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7761762
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7761774
+          }
+        },
+        "probe": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7762935
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7762935
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7762949
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7762985
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7763150
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7763160
+          }
+        },
+        "restoration": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7764282
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7764282
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7764282
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7764282
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7764427
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7764435
+          }
+        },
+        "final": {
+          "/output/13/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7768118
+          },
+          "/output/14/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7768118
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7768132
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7768168
+          },
+          "/output/13/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7768330
+          },
+          "/output/14/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7768340
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/14/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/13/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/14/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:08:01.451961+00:00",
+      "target": "/output/15/pan",
+      "pair": [
+        "/output/15/pan",
+        "/output/16/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "65ee4323e0306a1638da3ce27449ff53b932024f90d8f74830f0deb7d20bb092",
+      "states": {
+        "baseline_first": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7770829
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7770829
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7770841
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7770877
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7771051
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7771062
+          }
+        },
+        "baseline": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7772190
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7772190
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7772190
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7772192
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7772336
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7772346
+          }
+        },
+        "probe": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7773470
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7773470
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7773472
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7773508
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7773687
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7773698
+          }
+        },
+        "restoration": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7774811
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7774811
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7774811
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7774812
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7774969
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7774981
+          }
+        },
+        "final": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7778660
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7778660
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7778672
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7778708
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7778886
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7778895
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/15/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/15/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/16/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 3,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:09:22.206353+00:00",
+      "target": "/output/16/pan",
+      "pair": [
+        "/output/15/pan",
+        "/output/16/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "c644d63ed3a745c1eeb83ca92a0df2a8e56f3bab8f749068e33caeaf8cbef1b3",
+      "states": {
+        "baseline_first": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7780046
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7780046
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7780058
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7780094
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7780270
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7780280
+          }
+        },
+        "baseline": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7781435
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7781435
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7781448
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7781484
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7781660
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7781670
+          }
+        },
+        "probe": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7782811
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7782811
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7782823
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7782859
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7783031
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7783041
+          }
+        },
+        "restoration": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7784215
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7784215
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7784227
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7784263
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7784436
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7784445
+          }
+        },
+        "final": {
+          "/output/15/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7788080
+          },
+          "/output/16/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7788080
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7788080
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7788082
+          },
+          "/output/15/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7788238
+          },
+          "/output/16/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7788248
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/16/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/15/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/16/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:10:32.622754+00:00",
+      "target": "/output/17/pan",
+      "pair": [
+        "/output/17/pan",
+        "/output/18/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "df6e8a2888316c962fb7dd315b2cc04942b98276b29d034d1681bffbc6fe2dba",
+      "states": {
+        "baseline_first": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7789405
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7789405
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7789415
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7789451
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7789633
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7789642
+          }
+        },
+        "baseline": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7790795
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7790795
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7790805
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7790841
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7791029
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7791040
+          }
+        },
+        "probe": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7792183
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7792183
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7792193
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7792229
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7792412
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7792424
+          }
+        },
+        "restoration": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7793572
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7793572
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7793582
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7793618
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7793808
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7793819
+          }
+        },
+        "final": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7797463
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7797463
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7797463
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7797465
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7797626
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7797635
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/17/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/17/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/18/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:11:43.094864+00:00",
+      "target": "/output/18/pan",
+      "pair": [
+        "/output/17/pan",
+        "/output/18/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "ac5cf8d40557fa45c9af8cc84b06b856aae5aca75ef96b21842b03d1215be851",
+      "states": {
+        "baseline_first": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7798781
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7798781
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7798791
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7798827
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7799018
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7799026
+          }
+        },
+        "baseline": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7800158
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7800158
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7800168
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7800204
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7800391
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7800402
+          }
+        },
+        "probe": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7801548
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7801548
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7801558
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7801594
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7801777
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7801786
+          }
+        },
+        "restoration": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7802908
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7802908
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7802908
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7802910
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7803078
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7803086
+          }
+        },
+        "final": {
+          "/output/17/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7806703
+          },
+          "/output/18/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7806703
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7806705
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7806705
+          },
+          "/output/17/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7806873
+          },
+          "/output/18/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7806883
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/18/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/17/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/18/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:12:53.615370+00:00",
+      "target": "/output/19/pan",
+      "pair": [
+        "/output/19/pan",
+        "/output/20/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "dfe01c35f9c64de7b0e2bba51dcee932af3bf0db5f1e81cda3f2f82686dfd86b",
+      "states": {
+        "baseline_first": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7808035
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7808035
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7808043
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7808079
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7808282
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7808284
+          }
+        },
+        "baseline": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7809426
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7809426
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7809434
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7809470
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7809680
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7809681
+          }
+        },
+        "probe": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7810812
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7810812
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7810820
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7810856
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7811062
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7811064
+          }
+        },
+        "restoration": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7812157
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7812157
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7812157
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7812157
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7812359
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7812361
+          }
+        },
+        "final": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7816007
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7816007
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7816015
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7816051
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7816256
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7816257
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/19/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/19/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/20/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:14:04.083095+00:00",
+      "target": "/output/20/pan",
+      "pair": [
+        "/output/19/pan",
+        "/output/20/pan"
+      ],
+      "requested_pan": -1,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "0e15241d72cf41f46d9c7d5f27c8afa9d17e1c1747d26c718e91dfc2770e5fd4",
+      "states": {
+        "baseline_first": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7817349
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7817349
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7817351
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7817351
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7817541
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7817542
+          }
+        },
+        "baseline": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7818627
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7818627
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7818627
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7818627
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7818816
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7818818
+          }
+        },
+        "probe": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7819951
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7819951
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7819959
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7819995
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7820199
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -1
+            ],
+            "sequence": 7820201
+          }
+        },
+        "restoration": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7821302
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7821302
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7821302
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7821303
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7821493
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7821495
+          }
+        },
+        "final": {
+          "/output/19/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7825135
+          },
+          "/output/20/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 7825135
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7825143
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7825179
+          },
+          "/output/19/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7825360
+          },
+          "/output/20/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 7825362
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/20/pan",
+          "tags": "i",
+          "args": [
+            -1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/19/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/20/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:51:51.037235+00:00",
+      "target": "/output/1/pan",
+      "pair": [
+        "/output/1/pan",
+        "/output/2/pan"
+      ],
+      "requested_pan": -100,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "b34eda9c0b4365d54d6950b36a0f3158ea509781f459e87ff196a7419c11aba2",
+      "states": {
+        "baseline_first": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8098590
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8098590
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8098594
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8098594
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8098652
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8098656
+          }
+        },
+        "baseline": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8099869
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8099869
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8099869
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8099874
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8099965
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8099968
+          }
+        },
+        "probe": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8101194
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8101194
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8101220
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8101256
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -100
+            ],
+            "sequence": 8101341
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              -100
+            ],
+            "sequence": 8101345
+          }
+        },
+        "restoration": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8102569
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8102569
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8102570
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8102570
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8102639
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8102643
+          }
+        },
+        "final": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8106400
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8106400
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8106426
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8106434
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8106493
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8106496
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/1/pan",
+          "tags": "i",
+          "args": [
+            -100
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/1/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/2/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    },
+    {
+      "taken": "2026-10-04T11:52:58.351728+00:00",
+      "target": "/output/1/pan",
+      "pair": [
+        "/output/1/pan",
+        "/output/2/pan"
+      ],
+      "requested_pan": 100,
+      "probe_source_sha256": "e4dd099405194be294ed7d4c9c7408b021347031caf127748e6f6de95322ed5b",
+      "raw_evidence_sha256": "994ea46144c431b455ad5bcacc31f37b58ad08e7dbc829dc0fd8c014d7dbec41",
+      "states": {
+        "baseline_first": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8107710
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8107710
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8107713
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8107713
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8107778
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8107781
+          }
+        },
+        "baseline": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8109018
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8109018
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8109044
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8109080
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8109168
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8109172
+          }
+        },
+        "probe": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8110385
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8110385
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8110385
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8110386
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              100
+            ],
+            "sequence": 8110453
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              100
+            ],
+            "sequence": 8110457
+          }
+        },
+        "restoration": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8111671
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8111671
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8111671
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8111672
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8111737
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8111740
+          }
+        },
+        "final": {
+          "/output/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8115489
+          },
+          "/output/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 8115489
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8115516
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8115552
+          },
+          "/output/1/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8115640
+          },
+          "/output/2/pan": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 8115644
+          }
+        }
+      },
+      "writes": [
+        {
+          "path": "/output/1/pan",
+          "tags": "i",
+          "args": [
+            100
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/1/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        },
+        {
+          "path": "/output/2/pan",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore",
+          "submitted": true,
+          "acknowledged": true
+        }
+      ],
+      "baseline_refreshes": 2,
+      "nonvolatile_device_paths": 2232,
+      "full_restoration_matches_baseline": true,
+      "watch_seconds": 24,
+      "watch_device_events": 0,
+      "end_acknowledged": true
+    }
+  ]
+}

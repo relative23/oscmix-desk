@@ -110,7 +110,7 @@ python3 scripts/prepare-backend.py --upstream /path/to/upstream-checkout \
     --destination /path/to/new-build
 make -C /path/to/new-build 'CC=cc -std=c11' oscmix alsaseqio gtk
 OSCMIX_CONTROL_BINARY=/path/to/new-build/oscmix \
-    python3 -m pytest tests/backend_control.py
+    python3 -m pytest tests/backend_control.py tests/backend_mixer.py
 ```
 
 `tests/gtk_control.py` runs the actual GTK executable against the same

@@ -13,6 +13,7 @@ from support import started_with, write_config
 from two_boxes import lock_dir
 
 from oscmix_desk import CommandLine, profiles
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import reload as reload_mod
 from oscmix_desk.config import load_config
 from oscmix_desk.errors import ConfigError
@@ -86,7 +87,7 @@ def sighup(tmp_path, monkeypatch, recording_backend):
         connected.append((config_path, options))
         return recording_backend
 
-    monkeypatch.setattr(reload_mod, "connect_backend", connect)
+    monkeypatch.setattr(desk_mod, "connect_backend", connect)
     monkeypatch.setattr(reload_mod, "sd_notify", lambda _text: None)
     stop = {"stop": False}
 
@@ -100,11 +101,13 @@ def sighup(tmp_path, monkeypatch, recording_backend):
 def test_a_reconcile_connects_for_its_desk_and_can_be_stopped_while_connecting(
         sighup, monkeypatch, recording_backend):
     run, path, connected, stop = sighup
-    monkeypatch.setattr(reload_mod, "reconcile_now", lambda *_a: True)
+    monkeypatch.setattr(desk_mod, "reconcile_now", lambda *_a: True)
     assert run() == "reconciled"
     [(config_path, options)] = connected
     assert config_path == path
-    assert set(options) == {"should_stop"}
+    assert set(options) == {"should_stop", "reader", "expected_pid"}
+    assert options["reader"] is False
+    assert options["expected_pid"] is None
     assert options["should_stop"]() is False
     stop["stop"] = True
     assert options["should_stop"]() is True
@@ -118,7 +121,7 @@ def test_a_reconcile_whose_connection_fails_is_skipped_and_releases_the_lock(
     def refused(*_a, **_k):
         raise OSError(111, "Connection refused")
 
-    monkeypatch.setattr(reload_mod, "connect_backend", refused)
+    monkeypatch.setattr(desk_mod, "connect_backend", refused)
     # Nothing was submitted; "incomplete" until 0.8.1.
     assert run() == "reconcile skipped"
     assert run() == "reconcile skipped", "the device lock was released"
@@ -132,6 +135,6 @@ def test_a_stop_during_the_reconcile_is_reported_incomplete_without_finishing(
         stop["stop"] = True
         return True
 
-    monkeypatch.setattr(reload_mod, "reconcile_now", stopped)
+    monkeypatch.setattr(desk_mod, "reconcile_now", stopped)
     assert run() == "reconcile incomplete"
     assert recording_backend.operations == ["begin", "close"]

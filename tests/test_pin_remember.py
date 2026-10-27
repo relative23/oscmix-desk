@@ -62,7 +62,7 @@ def test_the_installation_and_the_routing_are_pinned(path):
 
 @pytest.mark.parametrize("path", [
     "/output/1/volume", "/output/1/mute", "/input/1/mute",
-    "/output/1/phase", "/input/1/phase",
+    "/output/1/phase", "/input/1/phase", "/output/1/pan",
 ])
 def test_what_a_person_reaches_for_during_a_session_is_remembered(path):
     """Remembered by default, now stated per register instead of implied.
@@ -94,13 +94,20 @@ def test_every_settable_option_has_a_deliberate_policy():
     decided = {
         "stereo": PIN, "hi-z": PIN, "gain": PIN, "reflevel": PIN,
         "volume": REMEMBER, "mute": REMEMBER, "phase": REMEMBER,
+        # Installation calibration is deliberate PIN state, unlike a fader.
+        "volumecal": PIN,
+        # FX sends/returns are mix choices, like ordinary faders.
+        "fx": REMEMBER,
+        "pan": REMEMBER,
+        "msproc": REMEMBER,
+        "autoset": REMEMBER,
         # A headphone listening preference, not installation state: it
         # changes how a mix sounds to one listener and breaks nothing if
         # somebody turns it. The default, decided rather than
         # inherited -- which is what this test is for.
         "crossfeed": REMEMBER,
     }
-    for family in ("input", "output"):
+    for family in ("input", "output", "playback"):
         for option, register in settable_options(UCX2, family).items():
             assert option in decided, (
                 "%s/%s is settable but its policy was never decided"

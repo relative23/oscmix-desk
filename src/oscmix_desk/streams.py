@@ -182,6 +182,11 @@ def playback_problem(config: Config, mode: PlaybackMode) -> Optional[str]:
         if unavailable:
             return ("route %r needs playback %s, but %s carries playback 1..%d"
                     % (route.name, "/".join(map(str, unavailable)), description, limit))
+    unavailable = sorted({setting.channel for setting in config.channels
+                          if setting.family == "playback" and setting.channel > limit})
+    if unavailable:
+        return ("channel settings need playback %s, but %s carries playback 1..%d"
+                % ("/".join(map(str, unavailable)), description, limit))
     return None
 
 
@@ -200,7 +205,8 @@ class PlaybackGuard:
     def check(self) -> None:
         config = self.config
         if (config.device_name != DEFAULT_DEVICE_NAME or config.usb_id != DEFAULT_USB_ID
-                or not any(route.playback for route in config.routes)):
+                or not (any(route.playback for route in config.routes)
+                        or any(setting.family == "playback" for setting in config.channels))):
             return
         state = read_playback(config, Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
         if self.before is not None and state != self.before:

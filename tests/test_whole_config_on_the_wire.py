@@ -7,6 +7,7 @@ from oscmix_fakes import make_route
 from support import repo_file
 
 from oscmix_desk import osc
+from oscmix_desk import routing as routing_api
 
 
 def test_the_dry_run_prints_exactly_the_datagrams_the_apply_sends(
@@ -35,7 +36,7 @@ def test_the_dry_run_prints_exactly_the_datagrams_the_apply_sends(
                if line.startswith("would send: ")]
 
     with wire_peer(echo=True) as (device, peer):
-        session_mod.apply_routing(config, device)
+        routing_api.apply_routing(config, device)
     sent = ["%s ,%s %s" % (path, tags, " ".join(map(str, args)))
             for path, tags, args in map(osc.decode_osc, peer.writes)]
     assert printed == sent
@@ -96,8 +97,12 @@ def test_everything_the_config_asks_for_reaches_the_wire(session_mod,
     from oscmix_desk import reconcile
 
     wanted = [e.path for e in reconcile.desired(config)]
-    with wire_peer(echo=True) as (device, peer):
-        session_mod.apply_routing(config, device)
+    reports = [osc.encode_osc(f"/input/{channel}/autoset", "i", 0)
+               for channel in range(1, 5)]
+    reports.extend(osc.encode_osc(f"/input/{left}/stereo", "i", int(left == 1))
+                   for left in (1, 3))
+    with wire_peer(echo=True, reports=reports) as (device, peer):
+        routing_api.apply_routing(config, device)
     sent = {osc.decode_osc(packet)[0] for packet in peer.writes}
     missing = [p for p in wanted if p not in sent]
     assert missing == [], (

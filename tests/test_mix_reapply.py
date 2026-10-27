@@ -9,12 +9,13 @@ from oscmix_fakes import make_route
 from support import osc_bundle
 
 from oscmix_desk import osc, routing
+from oscmix_desk import verify as verify_api
 from oscmix_desk.errors import ReceivePortError
 
 
 def run_verify_and_repair(session_mod, routes, dump, *, wire_peer):
     with wire_peer(reports=[osc_bundle(dump)], echo=True) as (device, peer):
-        session_mod.verify_and_repair(session_mod.Config(routes=routes), device)
+        verify_api.verify_and_repair(session_mod.Config(routes=routes), device)
     return peer
 
 def full_dump(session_mod, routes):
@@ -73,7 +74,7 @@ def test_refresh_disconnect_cannot_trigger_blind_reapply(session_mod, wire_peer)
     routes = [make_route(session_mod, volume=0.0)]
     with wire_peer(lose_reply=REFRESH) as (device, peer):
         with pytest.raises(ReceivePortError, match="disconnected"):
-            session_mod.verify_and_repair(session_mod.Config(routes=routes), device)
+            verify_api.verify_and_repair(session_mod.Config(routes=routes), device)
         assert peer.order == ["/refresh"]
         assert peer.writes == []
 

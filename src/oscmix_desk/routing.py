@@ -7,19 +7,25 @@ from __future__ import annotations
 
 import time
 from enum import Enum
-from typing import Callable, Dict, Mapping, Optional, Sequence
+from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 
+from .autogain import dependency_paths, flag_value, retained_gains
 from .backend import Control
-from .constants import LINK_ECHO_TIMEOUT
+from .constants import LINK_ECHO_TIMEOUT, VERIFY_TIMEOUT
 from .errors import WriteFailed
 from .log import log
 from .model import Config, Route
 from .observation import Observation
+from .osc import Args
 from .reconcile import (
     ApplyIntent,
+    Phase,
     Plan,
+    Write,
     application_plan,
     link_messages,
+    matrix_repair_plan,
+    mix_messages,
     remembered_paths,
     retention_problem,
 )
@@ -168,6 +174,7 @@ def apply_routing(config: Config, backend: Control, *,
                   require_link_confirmation: Sequence[str] = (),
                   intent: ApplyIntent = ApplyIntent.INITIAL,
                   confirmed: Sequence[str] = (),
+                  observed: Optional[Mapping[str, Tuple[str, Args]]] = None,
                   should_stop: StopCheck = never_stop) -> None:
     """Send the routing in two phases: link the pairs, then fill the mix.
 
@@ -191,13 +198,32 @@ def apply_routing(config: Config, backend: Control, *,
     the device. `tests/test_apply_routing.py` now fails on any function
     that rebuilds a Config from a subset of its fields.
     """
+    # Validate the complete declaration before requesting or sending anything.
+    application_plan(config, intent, leave_alone, confirmed, observed=observed)
+    dependencies = dependency_paths(config)
+    latest = ({p: (tags, tuple(args)) for p, (tags, args) in observed.items()}
+              if observed is not None else
+              _read_gain_dependencies(backend, dependencies, should_stop))
     skip = set(leave_alone)
+    if not intent.preserves_remember and retained_gains(config, latest, use_declarations=False):
+        stable = [w.path for w in application_plan(config, intent).links()
+                  if w.path.startswith("/input/")
+                  and flag_value(latest.get(w.path)) == w.args[0]]
+        skip.update(stable)
+        confirmed = tuple(set(confirmed) | set(stable))
     if intent.preserves_remember:
-        skip.update(remembered_paths(config))
-    wanted = application_plan(config, intent, leave_alone, confirmed)
-    problem = retention_problem(config, wanted.writes, sorted(skip), confirmed)
+        linked = [w.path for w in application_plan(config, intent, leave_alone, confirmed,
+                                                  observed=latest).links() if w.args == (1,)]
+        skip.update(remembered_paths(config, latest, linked=linked))
+    wanted = application_plan(config, intent, sorted(skip), confirmed, observed=latest)
+    problem = retention_problem(config, wanted.writes, sorted(skip), confirmed, observed=latest)
     if problem:
         raise WriteFailed(OSError(problem), [], [write.path for write in wanted.writes])
+    off = tuple(w for w in wanted.channel() if w.path.endswith("/autoset") and w.args == (0,))
+    if not off:
+        problem = _gain_problem(config, wanted.writes, latest, intent, sorted(skip), confirmed)
+        if problem:
+            raise WriteFailed(OSError(problem), [], [write.path for write in wanted.writes])
     # A caller may supply the backend. The profile switch does, because
     # the alternative -- its own send/barrier/send -- is what it had
     # first, and it dropped the barrier: applying and verifying a
@@ -208,7 +234,11 @@ def apply_routing(config: Config, backend: Control, *,
     # while /output/<n>/stereo relies on the device report -- see
     # backend.Traits.reports_link_state_on_write.
     _send_in_order(wanted, config, backend,
-                   require_link_confirmation, should_stop)
+                   require_link_confirmation, should_stop, intent, latest, sorted(skip), confirmed)
+    _log_apply(config, wanted, sorted(skip))
+
+
+def _log_apply(config: Config, wanted: Plan, skip: Sequence[str]) -> None:
     for route in config.routes:
         kind, source = route.source
         log.info(
@@ -233,9 +263,79 @@ def apply_routing(config: Config, backend: Control, *,
                  "the device", len(skip))
 
 
+def _read_gain_dependencies(backend: Control, paths: Sequence[str],
+                            should_stop: StopCheck, *,
+                            links: Optional[Mapping[str, int]] = None
+                            ) -> Dict[str, Tuple[str, Args]]:
+    """One fresh, completed DEVICE window; missing or malformed stays unknown."""
+    if not paths:
+        return {}
+    if should_stop():
+        raise OSError("stop requested before AutoSet observation; writes refused")
+    observed = Observation({path: ("i", (value,)) for path, value in (links or {}).items()},
+                           dependency_paths=paths)
+    backend.request_dump()
+    deadline = time.monotonic() + VERIFY_TIMEOUT
+    while (not observed.dependencies_complete or not observed.complete) \
+            and time.monotonic() < deadline:
+        if should_stop():
+            raise OSError("stop requested during AutoSet observation; writes refused")
+        for report in backend.messages(.25):
+            observed.absorb(report)
+    if should_stop():
+        raise OSError("stop requested after AutoSet observation; writes refused")
+    return dict(observed.latest)
+
+
+def _gain_problem(config: Config, selected: Sequence[Write],
+                  latest: Mapping[str, Tuple[str, Args]], intent: ApplyIntent,
+                  retained: Sequence[str], confirmed: Sequence[str]) -> Optional[str]:
+    """No direct or indirect gain write may defeat AutoSet's ownership."""
+    linked = [w.path for w in selected if w.path.endswith("/stereo") and w.args == (1,)]
+    gains = retained_gains(config, latest, linked=linked,
+                           use_declarations=intent.preserves_remember)
+    blocked = sorted(w.path for w in selected if w.path in gains)
+    if blocked:
+        return "AutoSet is active or not confirmed off for gain writes: %s" % ", ".join(blocked)
+    pending_links = {w.path for w in selected if w.path.endswith("/stereo")}
+    wrong = sorted(path for path, value in _input_link_expectations(config, selected).items()
+                   if path not in pending_links and flag_value(latest.get(path)) != value)
+    if wrong:
+        return ("fresh input link state is not confirmed for dependent mix writes: %s"
+                % ", ".join(wrong))
+    return retention_problem(config, selected, tuple(set(retained) | gains), confirmed,
+                             observed=latest)
+
+
+def _input_link_expectations(config: Config, selected: Sequence[Write]) -> Dict[str, int]:
+    """AutoSet-relevant input links needed by the selected matrix writes."""
+    writes = {w.path for w in selected}
+    dependencies = set(dependency_paths(config))
+    links: Dict[str, int] = {}
+    for route in config.routes:
+        kind, _source = route.source
+        if kind != "input" or not writes.intersection(
+                p for p, _t, _a in mix_messages(route) if p.startswith("/mix/")):
+            continue
+        for path, _tags, args in link_messages(route):
+            if path in dependencies and path.endswith("/stereo"):
+                links[path] = int(args[0])
+    return links
+
+
+def _require_gain_ownership(config: Config, selected: Sequence[Write],
+                            latest: Mapping[str, Tuple[str, Args]], intent: ApplyIntent,
+                            retained: Sequence[str], confirmed: Sequence[str]) -> None:
+    problem = _gain_problem(config, selected, latest, intent, retained, confirmed)
+    if problem:
+        raise OSError(problem)
+
+
 def _send_in_order(wanted: Plan, config: Config,
                    device: Control, require_confirmation: Sequence[str],
-                   should_stop: StopCheck) -> None:
+                   should_stop: StopCheck, intent: ApplyIntent,
+                   latest: Mapping[str, Tuple[str, Args]], retained: Sequence[str],
+                   confirmed: Sequence[str]) -> None:
     """Links, the barrier, the mix, then channel state.
 
     Channel state last: it does not depend on the barrier, and a fader or
@@ -244,22 +344,43 @@ def _send_in_order(wanted: Plan, config: Config,
     for the whole apply: the backend knows how far its burst came, and how
     far the *apply* came is that plus the bursts on either side.
     """
-    bursts = (wanted.links(), wanted.mix(), wanted.channel())
+    # Explicit AutoSet-off is a prerequisite, AutoSet-on follows every gain.
+    off = tuple(w for w in wanted.channel() if w.path.endswith("/autoset") and w.args == (0,))
+    phases = tuple(Phase)
+    bursts = tuple(tuple(w for w in wanted.writes if w.phase == phase) for phase in phases)
     echoes = {write.path: int(write.args[0]) for write in wanted.links()
               if write.path.startswith("/output/") or write.path in require_confirmation}
     guard = PlaybackGuard(config)
     for index, burst in enumerate(bursts):
+        phase = phases[index]
         before = [w.path for done in bursts[:index] for w in done]
         after = [w.path for rest in bursts[index + 1:] for w in rest]
+        if not burst and not after:
+            break
         if should_stop():
             raise WriteFailed(OSError("stop requested; remaining writes refused"),
                               before, [w.path for w in burst] + after)
         try:
-            if index == 1 and burst and (echoes or require_confirmation):
+            if phase == Phase.LINK and off:
+                latest = _read_gain_dependencies(device, dependency_paths(config), should_stop)
+                _require_gain_ownership(config, tuple(w for rest in bursts[index:] for w in rest),
+                                        latest, intent, retained, confirmed)
+            if phase == Phase.MIX and burst and (echoes or require_confirmation):
                 _cross_the_barrier(config, device,
                                    expected=echoes,
                                    require_confirmation=require_confirmation,
                                    should_stop=should_stop)
+            if phase == Phase.MIX and burst:
+                needed = _input_link_expectations(config, burst)
+                if needed and wanted.links():
+                    latest = _read_gain_dependencies(device, dependency_paths(config), should_stop,
+                                                     links=needed)
+                _require_gain_ownership(config, burst, latest, intent, retained, confirmed)
+            if phase == Phase.CHANNEL and burst:
+                if (any(w.path.startswith("/input/") for w in wanted.links())
+                        and not _input_link_expectations(config, wanted.mix())):
+                    latest = _read_gain_dependencies(device, dependency_paths(config), should_stop)
+                _require_gain_ownership(config, burst, latest, intent, retained, confirmed)
             if burst:
                 guard.check()
                 device.send(w.message() for w in burst)
@@ -290,7 +411,8 @@ def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
     return state
 
 
-def send_mix(config: Config, backend: Control, *, confirmed: Sequence[str] = ()) -> None:
+def send_mix(config: Config, backend: Control, *, confirmed: Sequence[str] = (),
+             observed: Optional[Mapping[str, Tuple[str, Args]]] = None) -> None:
     """Repair the mix matrix without reasserting REMEMBER starting values.
 
     Through the planner, like the apply: a register two routes share
@@ -301,10 +423,23 @@ def send_mix(config: Config, backend: Control, *, confirmed: Sequence[str] = ())
     describe the runtime as four overlapping paths long after the apply
     had moved over.
     """
-    mix = application_plan(config, ApplyIntent.REPAIR).mix()
-    problem = retention_problem(config, mix, remembered_paths(config), confirmed)
+    wanted = matrix_repair_plan(config, confirmed, observed=observed)
+    retained = remembered_paths(config, observed)
+    problem = retention_problem(config, wanted.writes, retained, confirmed,
+                                observed=observed)
     if problem:
-        raise WriteFailed(OSError(problem), [], [write.path for write in mix])
-    PlaybackGuard(config).check()
-    backend.send(write.message() for write in mix)
+        raise WriteFailed(OSError(problem), [], [write.path for write in wanted.writes])
+    mute_phases = (Phase.PLAYBACK_MUTE_ON, Phase.PLAYBACK_MUTE_OFF)
+    if any(write.phase in mute_phases for write in wanted.writes):
+        latest = (dict(observed) if observed is not None else
+                  _read_gain_dependencies(backend, dependency_paths(config), never_stop))
+        problem = _gain_problem(config, wanted.writes, latest, ApplyIntent.REPAIR,
+                                retained, confirmed)
+        if problem:
+            raise WriteFailed(OSError(problem), [], [write.path for write in wanted.writes])
+        _send_in_order(wanted, config, backend, (), never_stop, ApplyIntent.REPAIR,
+                       latest, retained, confirmed)
+    else:
+        PlaybackGuard(config).check()
+        backend.send(write.message() for write in wanted.mix())
     log.info("mix matrix re-applied against the synchronized link state")

@@ -35,6 +35,9 @@ The latest release is **0.8.1**.
 
 - Linux with ALSA; a Fireface UCX II in class-compliant mode
 - Python 3.9 or newer (standard library only)
+  CI covers 3.9 through 3.14 and Python 3.15 RC2 for early compatibility.
+  Release 0.9.0 waits until final stable Python 3.15 is available and
+  passes qualification.
 - To build the backend: `git`, `make`, a C compiler, `pkg-config`, the ALSA
   headers and, for the mixer GUI, GTK 3
 
@@ -54,8 +57,10 @@ From a [verified source release](docs/RELEASE-ARTIFACTS.md):
 ~/.local/bin/oscmix-session --dry-run --timeout 0
 ```
 
-Installing does not start anything. Review `~/.config/oscmix/routing.conf`,
+The first installation does not start anything. Review `~/.config/oscmix/routing.conf`,
 then enable automatic operation with `./install.sh --no-build --enable`.
+From 0.9.0, `./install.sh --disable` stops automatic operation and blocks
+hotplug starts while keeping the installed desk.
 Native packages, signed package repositories, OpenRC/runit, NixOS and
 Silverblue are covered in the [installation guide](docs/INSTALLATION.md).
 Read the [upgrade notes](docs/UPGRADING.md) before upgrading an existing desk.
@@ -105,6 +110,42 @@ options: `--device NAME` and `--timeout SECONDS` for the interface search,
 `--pipewire-sinks` when auto-detection picks the wrong node, and `--verbose`
 for debug logging. `--osc-port` is still accepted from old unit files and
 selects nothing.
+
+In the 0.9.0 development tree, `--strict` refuses unknown or unsupported
+sections and an unusable active profile instead of ignoring them or choosing
+another desk. `oscmix-session --check` strictly validates the main config,
+all profiles and the stored selection offline, with no device access.
+See [the development upgrade notes](docs/UPGRADING.md#developing-090).
+
+The 0.9.0 development tree also accepts `fx = -30.0` in `[input:N]`
+(FX send) and `[output:N]` (FX return). The range is -65..0 dB; the
+backend rounds to 0.1 dB. Omitted FX is left alone. Declared values are
+written on initial application or explicit profile selection, then
+remembered unless `[pin] input.fx = pin` or `output.fx = pin` overrides it.
+
+Output sections also accept `pan = -25` for output balance, using integers
+from -100 to 100. DEVICE feedback is verifiable. Balance is written on
+initial application or explicit profile selection and remembered later;
+`[pin] output.pan = pin` enables repair to the declared value. Linked
+partners follow an output-pan change. This is separate from route pan.
+
+Input sections accept `msproc = true` or `false` for M/S processing,
+with verifiable DEVICE feedback. The starting value is remembered;
+`[pin] input.msproc = pin` enables later repair. Linked partners follow
+an M/S change; unlinked inputs 13/14 were measured independently.
+These measurements confirm the register flags and restoration; they
+do not qualify acoustic M/S decoding or cold-start completeness.
+
+UCX II inputs 1–4 accept `autoset = true` or `false`. The flag is remembered
+after its initial value. Later repair preserves gains owned by declared or
+live AutoSet, including linked partners; missing dependency feedback also
+withholds gain writes. Explicit `input.gain = pin` conflicts with declared
+AutoSet-on for an affected gain and is refused before device access.
+An initial or explicit gain change requires fresh AutoSet-off feedback.
+Declared `autoset = false` is written and read back first; AutoSet-on is
+written after gains. An already active, omitted AutoSet is never disabled
+implicitly. Measurements cover warm linked flags and restoration, without
+testing overload-driven gain reduction or acoustic protection.
 
 ### Who wins: pin and remember
 

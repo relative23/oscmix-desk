@@ -1,0 +1,108 @@
+diff --git a/oscmix.c b/oscmix.c
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -979,12 +979,66 @@
+ 	writemix(&writes);
+ }
+ 
++/* calclevel(false) followed by calclevel(true) reads exactly these
++ * active mono/stereo rows and columns. Enforce planlevel's native cache
++ * invariant before arithmetic. A refusal invalidates this compound's
++ * observations, including old floor witnesses; it never repairs coefficients. */
++static bool
++admitmixcache(struct output *out, const struct input *in)
++{
++	int i = in - inputs, o = out - outputs;
++	int first = in->stereo ? i & ~1 : i;
++	int columns = in->stereo ? 2 : 1, rows = out->stereo ? 2 : 1;
++	int row, column;
++	bool valid = first >= 0 && o >= 0
++	    && first + columns <= device->inputslen
++	    && o + rows <= device->outputslen;
++
++	if (valid)
++		for (row = 0; row < rows; ++row)
++			for (column = 0; column < columns; ++column) {
++				float value = out[row].mix[first + column];
++				if (!isfinite(value) || value < 0 || value > 2)
++					valid = false;
++			}
++	if (!valid)
++		for (row = 0; row < rows && o + row < device->outputslen; ++row)
++			for (column = 0; column < columns; ++column)
++				if (first + column >= 0 && first + column < device->inputslen)
++					out[row].mix_observed[first + column] = 0;
++	return valid;
++}
++
++/* Both fresh physical DB floors determine canonical stereo silence even
++ * when a PAN register is absent. This proves no actual PAN register value.
++ * mix_observed bits: DBseen1, PANseen2, latest fresh DBfloor4. All are reset
++ * together on commands/REFRESH/link changes; non-floor DB clears bit4. */
++static bool
++freshstereosilence(const struct output *out, const struct input *in)
++{
++	int i = in - inputs, o = out - outputs;
++	float ll, lr, rl, rr;
++
++	if (i < 0 || o < 0 || (i & 1) || (o & 1)
++	 || i + 1 >= device->inputslen || o + 1 >= device->outputslen
++	 || !in[0].stereo || !in[1].stereo || !out[0].stereo || !out[1].stereo
++	 || !in[0].stereo_observed || !in[1].stereo_observed
++	 || !out[0].stereo_observed || !out[1].stereo_observed
++	 || (out->mix_observed[i] & 5) != 5
++	 || (out->mix_observed[i + 1] & 5) != 5)
++		return false;
++	ll = out[0].mix[i]; lr = out[1].mix[i];
++	rl = out[0].mix[i + 1]; rr = out[1].mix[i + 1];
++	return isfinite(ll) && isfinite(lr) && isfinite(rl) && isfinite(rr)
++	    && ll == 0 && lr == 0 && rl == 0 && rr == 0;
++}
++
+ static void
+ newmix(struct context *ctx, int val)
+ {
+ 	struct output *out;
+ 	struct input *in;
+-	bool ispan;
++	bool ispan, complete;
+ 	struct level level;
+ 
+ 	if (ctx->param.out >= device->outputslen || ctx->param.in >= device->inputslen)
+@@ -995,9 +1049,17 @@
+ 	out = &outputs[ctx->param.out];
+ 	if ((out - outputs) & 1 && out->stereo)
+ 		return;
++	if (!admitmixcache(out, in))
++		return;
+ 	ispan = val & 0x8000;
+-	out->mix_observed[in - inputs] |= ispan ? 2 : 1;
+ 	val = ((val & 0x7fff) ^ 0x4000) - 0x4000;
++	if (ispan) {
++		out->mix_observed[in - inputs] |= 2;
++	} else {
++		/* Bit4 witnesses the latest fresh DB floor, never a cached PAN. */
++		out->mix_observed[in - inputs] &= ~4;
++		out->mix_observed[in - inputs] |= val <= -650 ? 5 : 1;
++	}
+ 	calclevel(out, in, 0, &level);
+ 	if (ispan) {
+ 		if (val < -100)
+@@ -1018,11 +1080,13 @@
+ 		if (out->stereo)
+ 			in->width = level.width;
+ 	}
+-	/* Do not substitute a cached desired half or stereo partner for a
+-	 * missing register. Suppression preserves the enclosing OSC bundle. */
++	/* The ordinary path still requires all fresh halves. The sole
++	 * additional derivation is canonical silence from both fresh DB floors
++	 * and four exact finite zero coefficients, with fresh stereo links. */
++	complete = (out->mix_observed[in - inputs] & 3) == 3
++	    && (!in->stereo || (out->mix_observed[in - inputs + 1] & 3) == 3);
+ 	if (!out->stereo_observed || !in->stereo_observed
+-	 || out->mix_observed[in - inputs] != 3
+-	 || (in->stereo && out->mix_observed[in - inputs + 1] != 3))
++	 || (!complete && !freshstereosilence(out, in)))
+ 		return;
+ 	snprintf(ctx->addr, ctx->addrend - ctx->addr, "/mix/%d/input/%d", (int)(out - outputs) + 1, (int)(in - inputs) + 1);
+ 	oscsend(ctx->addr, ",fi", level.vol > 0 ? 20.f * log10f(level.vol) : -INFINITY, level.pan);

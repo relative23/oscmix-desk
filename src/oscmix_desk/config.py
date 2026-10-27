@@ -1,9 +1,8 @@
 """routing.conf, read: the parser that turns a file into a ``Config``.
 
-Parsing is total -- every input yields a Config or a ConfigError that
-names the section and option, never a traceback. ``[device]`` and
-``[osc]``, ``[route:*]`` and ``[pin]`` are read here; the sections the
-register table declares are read by ``sections``.
+Unreadable or invalid files raise ConfigError with file or section context.
+``[device]``, ``[osc]``, ``[route:*]`` and ``[pin]`` are read here; the
+sections the register table declares are read by ``sections``.
 """
 
 from __future__ import annotations
@@ -14,6 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from .autogain import validate_autogain
 from .constants import (
     CHANNEL_MAX,
     CHANNEL_MIN,
@@ -25,13 +25,16 @@ from .devices import device_for_name
 from .errors import ConfigError
 from .model import (
     ChannelSetting,
-    CommandLine,
     Config,
     GlobalSetting,
     Machine,
+    Overrides,
     Route,
+    _resolve_overrides,
+    validate_route_pan,
 )
 from .paths import regular_file
+from .playback import validate_playback_mute
 from .registers import POLICIES, Policy, global_families, register_at, settable_options
 from .sections import (
     _is_nested_section,
@@ -39,7 +42,7 @@ from .sections import (
     _parse_channel_section,
     _parse_global_section,
     _parse_nested_section,
-    _warn_unknown_section,
+    _unknown_section,
 )
 
 
@@ -86,7 +89,7 @@ def _parse_db(raw: str, section: str, option: str) -> float:
 _KNOWN_OPTIONS = {
     "device": {"name", "usb-id", "serial"},
     "osc": {"port", "recv-port"},
-    "route": {"playback", "input", "output", "level", "volume", "stereo"},
+    "route": {"playback", "input", "output", "level", "volume", "stereo", "pan"},
 }
 
 #: Overrides for who wins after the initial write, as
@@ -125,9 +128,9 @@ def _parse_pin(parser: "configparser.ConfigParser", section: str,
                 "[pin] %s: expected '<family>.<option>', e.g. 'output.volume'"
                 % key)
         family, option = key.split(".", 1)
-        if family not in ("input", "output"):
+        if family not in ("input", "output", "playback"):
             raise ConfigError(
-                "[pin] %s: unknown family %r (input or output)" % (key, family))
+                "[pin] %s: unknown family %r (input, output or playback)" % (key, family))
         known = set(settable_options(device, family))
         # Routes own the declared stereo value; this only changes who may
         # restore it later, without making stereo a channel-section option.
@@ -193,8 +196,19 @@ def _parse_route(parser: configparser.ConfigParser, section: str) -> Route:
     if len(output) == 2 and not stereo and level > 0:
         raise ConfigError("[%s] level: an unlinked pair supports at most 0 dB; "
                           "its gain compensation uses the available headroom" % section)
-    return Route(name=name, playback=playback, input=inputs, output=output,
-                 level=level, volume=volume, stereo=stereo)
+    pan = 0
+    if parser.has_option(section, "pan"):
+        raw = parser.get(section, "pan")
+        try:
+            pan = int(raw)
+        except ValueError:
+            raise ConfigError("[%s] pan: %r is not an integer -100..100"
+                              % (section, raw)) from None
+    try:
+        return Route(name=name, playback=playback, input=inputs, output=output,
+                     level=level, volume=volume, stereo=stereo, pan=pan)
+    except ValueError as exc:
+        raise ConfigError("[%s] pan: %s" % (section, exc)) from None
 
 
 def _parse_osc(parser: configparser.ConfigParser, section: str,
@@ -231,7 +245,7 @@ class _Draft:
     #: What the command line puts over the file. The five fields above
     #: stay what the *file* says; everything that is checked against a
     #: device is checked against ``used``, the one the desk goes to.
-    said: CommandLine = field(default_factory=CommandLine)
+    overrides: Overrides = field(default_factory=Overrides)
     routes: List[Route] = field(default_factory=list)
     channels: List[ChannelSetting] = field(default_factory=list)
     globals: List[GlobalSetting] = field(default_factory=list)
@@ -240,41 +254,39 @@ class _Draft:
     @property
     def used(self) -> str:
         """The device name the desk is for: ``--device``, else the file's."""
-        return self.said.device_name or self.device_name
+        return self.overrides.device_name or self.device_name
 
     def frozen(self) -> Config:
         file = Machine(self.device_name, self.usb_id, self.serial,
                        self.osc_port, self.osc_recv_port)
-        run = file.under(self.said)
+        run = file.under(self.overrides)
         return Config(run.device_name, run.usb_id, run.serial, run.osc_port,
                       run.osc_recv_port, tuple(self.routes),
                       tuple(self.channels), tuple(self.globals),
-                      dict(self.policies), file, self.said)
+                      dict(self.policies), file, self.overrides)
 
 
 def load_config(path: Optional[Path], base: Optional[Config] = None,
-                said: Optional[CommandLine] = None) -> Config:
+                overrides: Optional[Overrides] = None, *,
+                said: Optional[Overrides] = None, strict: bool = False) -> Config:
     """Load routing.conf. ``path=None`` returns built-in defaults.
 
-    ``said`` is what the command line puts over the file: ``--device`` and
-    ``--osc-port``. The parser knows it since 0.7.0, so a desk is
-    validated *for* the interface it goes to. Until then the override was
-    applied to a finished ``Config`` that had been checked for the device
-    its file named, and the most that could be done about outputs 41/42
-    reaching a box with twenty was a warning (0.6.11). The file's own
-    values are kept as ``Config.loaded``, the command line as
-    ``Config.overrides``; a running session resolves what it reads again
-    with the same one.
+    ``overrides`` selects the device used during validation and carries the
+    legacy OSC port value. The file's machine settings remain in
+    ``Config.loaded``; ``Config.overrides`` records the invocation. ``said``
+    is a compatible keyword alias; supplying both is a TypeError before I/O.
 
-    ``base`` is what the file is read onto, a fresh ``Config`` by
-    default. A profile is read onto the machine settings of its main
-    config, so that ``[device] name`` is known *while* the profile is
-    validated: read onto the defaults and patched afterwards, a profile
-    was checked against the UCX II whatever the desk was for (0.6.11).
+    ``base`` supplies defaults, including a profile's main-config device.
+    The selected model is known while every section is validated.
+
+    ``strict=True`` rejects unknown sections and sections the selected
+    device cannot apply. The default warns and ignores them for config
+    compatibility. Both modes validate all supported options and values.
     """
+    overrides = _resolve_overrides(overrides, said)
     onto = Config() if base is None else base
     config = _Draft(onto.device_name, onto.usb_id, onto.serial, onto.osc_port,
-                    onto.osc_recv_port, said or CommandLine())
+                    onto.osc_recv_port, overrides)
     if path is None:
         # No file resolves to the defaults, and that is a record like any
         # other: which interface the (empty) desk was checked for.
@@ -297,7 +309,7 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
     pending: List[str] = []
     pending_globals: List[str] = []
     pending_nested: List[str] = []
-    _dispatch(parser, config, pending, pending_globals, pending_nested)
+    _dispatch(parser, config, pending, pending_globals, pending_nested, strict=strict)
     device = device_for_name(config.used)
     for section in pending_globals:
         config.globals.extend(_parse_global_section(parser, section, device))
@@ -307,17 +319,24 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
         family = section.split(":", 1)[0]
         config.channels.extend(
             _parse_channel_section(parser, section, family, device,
-                                   config.used))
+                                   config.used, strict=strict))
 
     _check_device_channels(config)
     _check_link_agreement(config.routes)
-    return config.frozen()
+    try:
+        validate_route_pan(config.routes)
+    except ValueError as exc:
+        raise ConfigError(str(exc)) from None
+    result = config.frozen()
+    validate_autogain(result)
+    validate_playback_mute(result)
+    return result
 
 
 def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
               pending: List[str], pending_globals: List[str],
-              pending_nested: List[str]) -> None:
-    """Route each section to its parser, or warn that we do not know it.
+              pending_nested: List[str], *, strict: bool = False) -> None:
+    """Route each section to its parser, or refuse/report an ignored section.
 
     Channel and nested sections are only *collected* here: both need the
     device, and `[device]` may appear anywhere in the file.
@@ -365,7 +384,7 @@ def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
             _parse_osc(parser, section, config)
         elif section.startswith("route:"):
             config.routes.append(_parse_route(parser, section))
-        elif section.startswith(("input:", "output:")):
+        elif section.startswith(("input:", "output:", "playback:")):
             pending.append(section)
         elif section == "pin":
             _parse_pin(parser, section, config)
@@ -374,7 +393,7 @@ def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
         elif _is_nested_section(section, config.used):
             pending_nested.append(section)
         else:
-            _warn_unknown_section(section, config.used)
+            _unknown_section(section, config.used, strict=strict)
 
 
 def _check_device_channels(config: _Draft) -> None:

@@ -32,6 +32,9 @@ def test_fresh_install_with_device_present_never_applies_example(tmp_path):
                       'resume.service'):
         assert forbidden not in calls
     assert 'automatic operation has not been enabled' in result.stdout
+    assert not (home / '.config/oscmix/service-allowed').exists()
+    assert 'ConditionPathExists=%E/oscmix/service-allowed' in (
+        home / '.config/systemd/user/oscmix.service').read_text()
 
 
 def test_manual_install_does_not_need_a_user_manager(tmp_path):
@@ -81,6 +84,7 @@ def test_enabled_but_stopped_upgrade_does_not_restart(tmp_path):
     assert result.returncode == 0, result.stderr + result.stdout
     assert 'restart' not in log.read_text()
     assert 'enable --quiet' not in log.read_text()
+    assert (home / '.config/oscmix/service-allowed').is_file()
 
 
 def test_active_but_disabled_upgrade_restarts_without_enabling(tmp_path):
@@ -92,6 +96,7 @@ def test_active_but_disabled_upgrade_restarts_without_enabling(tmp_path):
     assert 'stop oscmix.service' in calls
     assert 'restart oscmix.service' in calls
     assert 'enable --quiet' not in calls
+    assert (home / '.config/oscmix/service-allowed').is_file()
 
 
 def test_same_home_other_config_cannot_enable_another_desk(tmp_path):

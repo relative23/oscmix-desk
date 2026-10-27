@@ -30,6 +30,7 @@ from .registers import (
     BOOL,
     ENABLE_OPTION,
     ENUM,
+    NUMBER,
     PIN,
     REESTABLISHED,
     Device,
@@ -52,8 +53,9 @@ def _linked(seen: Mapping[str, Args], family: str,
     if not args:
         return None
     try:
-        value = integer(args[0])
-        if value not in (0, 1) or (partner and integer(partner[0]) != value):
+        value = args[0]
+        if (type(value) is not int or value not in (0, 1)
+                or (partner and (type(partner[0]) is not int or partner[0] != value))):
             return None
         return bool(value)
     except (TypeError, ValueError):
@@ -83,8 +85,8 @@ def _mix_cell(parts: List[str], args: Args, device: Optional[Device]
         raise ValueError("mix level outside the supported range")
     if len(args) < 2:
         raise ValueError("missing pan")
-    pan = integer(args[1])
-    if not -100 <= pan <= 100:
+    pan = args[1]
+    if type(pan) is not int or not -100 <= pan <= 100:
         raise ValueError("invalid pan")
     return out, src, (level, pan)
 
@@ -216,6 +218,32 @@ def _config_value(register: "Register", args: Args) -> SettingValue:
     return args[0]
 
 
+def _canonicalize_balanced_cells(entries: Dict[Tuple[int, int], Args],
+                                  seen: Mapping[str, Args],
+                                  warnings: Optional[List[str]]) -> None:
+    """Fold linked aliases only when every declared level/balance agrees."""
+    # Nonzero linked balances include both components of one crosspoint.
+    # Equivalent aliases can be canonicalized; contradictory aliases must
+    # not yield an export that silently chooses one requested balance.
+    groups: Dict[Tuple[int, int], List[Tuple[int, int]]] = {}
+    for out, src in entries:
+        if _linked(seen, "output", out) and _linked(seen, "input", src):
+            key = (out - (out - 1) % 2, src - (src - 1) % 2)
+            groups.setdefault(key, []).append((out, src))
+    for key, aliases in groups.items():
+        if not any(entries[alias][1] for alias in aliases):
+            continue
+        cell = entries[aliases[0]]
+        inconsistent = any(entries[alias] != cell for alias in aliases[1:])
+        for alias in aliases:
+            del entries[alias]
+        if inconsistent:
+            _omitted(warnings, "/mix/%d/input/%d" % key,
+                     "contradictory linked level/pan aliases")
+        else:
+            entries[key] = cell
+
+
 def routes_from_observed(seen: Mapping[str, Args],
                          device: Optional[Device] = None,
                          warnings: Optional[List[str]] = None) -> Tuple[Route, ...]:
@@ -229,6 +257,7 @@ def routes_from_observed(seen: Mapping[str, Args],
     Only what the dump carries. See ``unrecoverable`` for the rest.
     """
     entries = _mix_entries(seen, device, warnings)
+    _canonicalize_balanced_cells(entries, seen, warnings)
     routes = []
     claimed = set()
     for (out, src) in sorted(entries):
@@ -240,6 +269,9 @@ def routes_from_observed(seen: Mapping[str, Args],
         out_linked = _linked(seen, "output", out)
         in_linked = _linked(seen, "input", src)
         path = "/mix/%d/input/%d" % (out, src)
+        if pan and round(level, 1) <= LEVEL_MIN:
+            _omitted(warnings, path, "nonzero balance would round level to digital mute")
+            continue
         if out_linked is None or in_linked is None:
             _omitted(warnings, path, "missing or contradictory stereo-link report")
             continue
@@ -247,12 +279,12 @@ def routes_from_observed(seen: Mapping[str, Args],
                 and out + 1 in device.channels["output"]
                 and src + 1 in device.channels["input"])
 
-        if pair and out_linked and in_linked and pan == 0 and level <= LEVEL_MAX:
+        if pair and out_linked and in_linked and level <= LEVEL_MAX:
             # A linked pair folds onto its odd channel, and the register
-            # is the pair's. pan 0 is a plain stereo pass-through.
+            # is the pair's. Its declared balance stays with its level.
             routes.append(Route(name="in%d-%d-out%d-%d" % (src, src + 1, out, out + 1),
                                 input=(src, src + 1), output=(out, out + 1),
-                                level=round(level, 1)))
+                                level=round(level, 1), pan=pan))
             claimed.add((out, src))
         elif (pair and not out_linked and in_linked and pan == -100
               and (out + 1, src) in entries
@@ -320,8 +352,9 @@ def render_config(config: Config, device: Optional[Device] = None,
             "# A `/mix` write to the playback matrix draws no reply and the",
             "# state dump omits it, and the playback link flags exist only in",
             "# the backend, so software routing cannot be read back -- only",
-            "# re-established from a config. If you had playback",
-            "# routes, they are not below and this file will not restore",
+            "# re-established from a config. Playback mute flags/columns cannot be",
+            "# recovered from this dump either. Playback mute remains unverified.",
+            "# Playback routes are not below and this file will not restore",
             "# them. Merge, do not replace.",
         ]
     lines += [
@@ -331,7 +364,7 @@ def render_config(config: Config, device: Optional[Device] = None,
         "# 'I meant this' from 'this is where I left it', so for anything a",
         "# person turns during a session it does not decide. Uncommenting",
         "# declares an initial value; it does not change the policy. Only",
-        "# flat input/output options support overrides in [pin].",
+        "# flat input/output/playback options support overrides in [pin].",
         "",
         "[device]",
         "name = %s" % config.device_name,
@@ -355,6 +388,8 @@ def render_config(config: Config, device: Optional[Device] = None,
         ]
         if not route.stereo:
             lines.append("stereo = false")
+        if route.pan:
+            lines.append("pan = %d" % route.checked_pan)
         lines.append("")
     lines += _global_sections(config, device)
     lines += _channel_sections(config, device)
@@ -442,6 +477,8 @@ def _render_value(value: SettingValue,
     """
     if register is not None and register.domain == BOOL:
         return "true" if value else "false"
+    if register is not None and register.domain == NUMBER:
+        return render_number(value, register)
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, float):

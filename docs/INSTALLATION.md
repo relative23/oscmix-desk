@@ -54,9 +54,34 @@ installing automatic resume activation. To opt into automatic operation:
 
 This can write to a connected interface. The systemd user manager must use
 the same `HOME` and effective `XDG_CONFIG_HOME`. Do not redirect those
-variables to another desk while operating its service. An upgrade preserves
-the previous active/enabled state: an active service is stopped before
-replacement and restarted afterward; a stopped service remains stopped.
+variables to another desk while operating its service. Upgrading from an
+older source installation adopts its previous active/enabled state: an active
+service is stopped before replacement and restarted afterward; a stopped
+service remains stopped.
+
+From 0.9.0 the source unit, like the native unit, also requires the per-user
+`oscmix/service-allowed` file under the effective `XDG_CONFIG_HOME`. Every
+unit start, including hotplug and a direct `systemctl --user start`, needs
+this opt-in. To return to an installed desk without automatic operation:
+
+```sh
+./install.sh --check --disable
+./install.sh --disable
+```
+
+This stops and disables the user service and removes its opt-in. It does not
+build or replace the runtime and works even if the backend binaries are
+missing. Configs, profiles, selection markers and host integration files
+remain. No root operation is needed. An old source unit receives the opt-in
+condition, with its custom contents retained and backed up, before permission
+is removed. The user manager must belong to the same home and config base.
+Custom service drop-ins still need review, as they can override unit conditions.
+
+Later upgrades preserve this opt-in state. Once a guarded unit's permission
+is removed, an upgrade does not recreate it, even if a failed disable left
+enable links behind. Use `--enable` explicitly to allow the service again.
+Source uninstallation removes the opt-in while retaining desk files unless
+`--purge` is given.
 
 Resume requests a reload only for already active desks. On ordinary systemd
 installations the sleep hook queues `oscmix-resume.service`, ordered after all
@@ -79,9 +104,10 @@ desktop shortcut. This does not implement the deferred oscmix-desk GUI.
 
 A missing user manager selects manual mode automatically. There is no
 automatic startup, hotplug restart or resume reconciliation in this mode.
-An existing active/enabled service must be stopped and disabled before
-switching to manual operation. Close manual sessions before replacing or
-removing their installed code.
+An existing automatic service must first be deactivated with
+`./install.sh --disable` before switching to manual operation. Removing its
+opt-in also prevents an existing hotplug rule from starting it. Close manual
+sessions before replacing or removing their installed code.
 
 Live use requires access to `/dev/snd/seq` and the interface. For a shared
 writer lock, an administrator must create the `audio` group if absent, add
@@ -249,8 +275,10 @@ per-user units that override the package.
 
 ```sh
 systemctl --user disable --now oscmix.service
+# For a 0.9.0 source installation, use ./install.sh --disable instead.
 # Install the selected native package with your package manager.
 oscmix-setup --check
+oscmix-setup --disable
 oscmix-setup --migrate-source
 hash -r
 oscmix-session --version
@@ -279,6 +307,8 @@ Migration prints its backup directory before moving files. Its manifest
 records every intended move, so a migration interrupted between moves is
 recoverable. Runtime, entry points, old unit and project desktop resources
 are preserved there. Config, profiles and active-profile remain in place.
+Migration refuses a remaining service opt-in: source permission must not
+silently activate the native unit that takes its place.
 Custom service drop-ins and `/etc/udev` overrides remain visible for review.
 Only known project paths are moved. Cross-filesystem renames are refused;
 choose a suitable backup location through `XDG_STATE_HOME` or perform an

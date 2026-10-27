@@ -87,9 +87,17 @@ def make_fake_home(tmp_path):
     return home, env, log
 
 
-def backend_identity_stub():
-    """A simulated binary from this exact series, with no hardware entry point."""
-    digest = hashlib.sha256(repo_file('patches/backend-series.json').read_bytes()).hexdigest()
+def backend_identity_stub(tree=None):
+    """A simulated binary from the series of ``tree`` (this one by default).
+
+    A tree that predates the series manifest has no series of its own and
+    gets this tree's, which is what its installer ignores anyway. No
+    hardware entry point.
+    """
+    manifest = repo_file('patches/backend-series.json')
+    if tree is not None and (Path(tree) / 'patches' / 'backend-series.json').is_file():
+        manifest = Path(tree) / 'patches' / 'backend-series.json'
+    digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
     return ('#!/bin/sh\ncase "$1" in\n--control-version) echo ODK1 ;;\n'
             '--desk-build-id) echo ' + digest + ' ;;\n*) exit 0 ;;\nesac\n')
 

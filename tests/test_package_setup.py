@@ -160,3 +160,24 @@ def test_source_restore_requires_removing_native_hotplug_opt_in(setup, tmp_path)
     allowed.write_text('still allowed despite systemctl stop')
     with pytest.raises(ValueError, match='--disable'):
         setup.restore(tmp_path / 'nonexistent-backup', tmp_path, config)
+
+
+def test_source_migration_cannot_transfer_hotplug_permission_to_the_native_unit(setup, tmp_path):
+    home, config, data = tmp_path / 'home', tmp_path / 'config', tmp_path / 'data'
+    unit = config / 'systemd/user/oscmix.service'
+    unit.parent.mkdir(parents=True)
+    contents = 'source service with opt-in condition\n'
+    unit.write_text(contents)
+    allowed = config / 'oscmix/service-allowed'
+    allowed.parent.mkdir(parents=True)
+    allowed.touch()
+    with pytest.raises(ValueError, match=r'opt-in.*--disable.*no files moved'):
+        setup.migrate(home, config, data)
+    assert unit.read_text() == contents
+    assert not (tmp_path / 'state').exists()
+    allowed.unlink()
+    setup.migrate(home, config, data)
+    backup = next((tmp_path / 'state/oscmix-desk').glob('source-install-*'))
+    setup.restore(backup, home, config)
+    assert unit.read_text() == contents
+    assert not allowed.exists()

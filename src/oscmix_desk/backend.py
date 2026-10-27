@@ -23,7 +23,7 @@ from typing import Callable, Deque, Iterable, Iterator, List, NoReturn, Optional
 from .constants import CONTROL_ACK_TIMEOUT, CONTROL_ACQUIRE_TIMEOUT
 from .diagnostics import backend_status
 from .discovery import serial_in
-from .errors import ReceivePortError, WriteFailed
+from .errors import BackendControlError, WriteFailed
 from .model import Config
 from .osc import Message, decode_delivery, encode_osc
 from .protocol import (
@@ -123,7 +123,7 @@ class Control:
     instead of a long unserviced sleep while it owns an operation.
 
     Every failure that closes the connection -- sending, receiving, a
-    protocol violation, a cancelled operation -- raises ReceivePortError
+    protocol violation, a cancelled operation -- raises BackendControlError
     (since 0.8.1; a failed send was a plain OSError). So does a refresh
     window that stays unavailable, since no observation can follow. A
     refusal that leaves the connection usable, such as a busy lease, is a
@@ -200,17 +200,17 @@ class Control:
 
     def _check(self) -> None:
         if self._closed:
-            raise ReceivePortError(errno.ENOTCONN, "backend connection is no longer valid")
+            raise BackendControlError(errno.ENOTCONN, "backend connection is no longer valid")
         if self.should_stop is not None and self.should_stop():
             self.close()
-            raise ReceivePortError(errno.ECANCELED, "backend operation cancelled")
+            raise BackendControlError(errno.ECANCELED, "backend operation cancelled")
 
     def _send_request(self, kind: Request, code: int = 0,
                       payload: bytes = b"", token: Optional[int] = None) -> int:
         self._check()
         if len(payload) > PAYLOAD or self._request_id == 0xffffffff:
             self.close()
-            raise ReceivePortError(errno.EOVERFLOW, "control request exceeds protocol limits")
+            raise BackendControlError(errno.EOVERFLOW, "control request exceeds protocol limits")
         self._request_id += 1
         packet = HEADER.pack(
             MAGIC, kind, self._request_id, code,
@@ -222,11 +222,11 @@ class Control:
             self.close()
             # A send timeout has no errno, and an errno-less failure reads
             # as a refusal the plan made (WriteFailed.refused).
-            raise ReceivePortError(exc.errno or errno.ETIMEDOUT,
+            raise BackendControlError(exc.errno or errno.ETIMEDOUT,
                                    "backend send failed: %s" % exc) from exc
         if sent != len(packet):
             self.close()
-            raise ReceivePortError(errno.EIO, "incomplete control request")
+            raise BackendControlError(errno.EIO, "incomplete control request")
         return self._request_id
 
     def _receive(self, timeout: float) -> Optional[Tuple[int, int, int, int, bytes]]:
@@ -239,10 +239,11 @@ class Control:
             return None
         except OSError as exc:
             self.close()
-            raise ReceivePortError(exc.errno, "backend receive failed: %s" % exc) from exc
+            raise BackendControlError(exc.errno, "backend receive failed: %s" % exc) from exc
         if not packet:
             self.close()
-            raise ReceivePortError(errno.ECONNRESET, "backend disconnected; observations invalid")
+            raise BackendControlError(
+                errno.ECONNRESET, "backend disconnected; observations invalid")
         if (len(packet) < HEADER.size
                 or len(packet) > HEADER.size + PAYLOAD
                 or flags & (socket.MSG_TRUNC | socket.MSG_CTRUNC)):
@@ -254,7 +255,7 @@ class Control:
 
     def _protocol_error(self, reason: str) -> NoReturn:
         self.close()
-        raise ReceivePortError(errno.EPROTO, reason)
+        raise BackendControlError(errno.EPROTO, reason)
 
     def _event(self, frame: Tuple[int, int, int, int, bytes]) -> None:
         kind, request, code, sequence, payload = frame
@@ -280,7 +281,7 @@ class Control:
             if (len(self._queue) >= CONTROL_QUEUE_PACKETS
                     or self._queue_bytes + size > CONTROL_QUEUE_BYTES):
                 self.close()
-                raise ReceivePortError(errno.ENOBUFS, "backend observation queue overflowed")
+                raise BackendControlError(errno.ENOBUFS, "backend observation queue overflowed")
             self._queue.append(Delivery(Source(code), sequence, self.epoch, payload))
             self._queue_bytes += size
         else:
@@ -292,7 +293,7 @@ class Control:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 self.close()
-                raise ReceivePortError(errno.ETIMEDOUT, "backend acknowledgement timed out")
+                raise BackendControlError(errno.ETIMEDOUT, "backend acknowledgement timed out")
             frame = self._receive(min(remaining, 0.25))
             if frame is None:
                 continue
@@ -405,7 +406,7 @@ class Control:
             if code == Status.OK:
                 return
             if code != Status.BUSY or time.monotonic() >= deadline:
-                raise ReceivePortError(errno.EBUSY, "no fresh backend refresh window available")
+                raise BackendControlError(errno.EBUSY, "no fresh backend refresh window available")
             self.wait(min(0.1, max(0.0, deadline - time.monotonic())))
 
     def send(self, messages: Iterable[Message]) -> None:

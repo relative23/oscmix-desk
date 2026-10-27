@@ -9,9 +9,10 @@ Until now these rules were stated in a module docstring and exercised by
 one integration test. Here they are the assertion.
 """
 
-
 import pytest
 from session_doubles import RunningChild, ready_count
+
+from oscmix_desk import desk as desk_mod
 
 
 def test_no_device_exits_zero_and_signals_ready_once(session_mod, lifecycle):
@@ -156,14 +157,14 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch, r
     from oscmix_desk import ChannelSetting, Config
     from oscmix_desk.model import GlobalSetting
 
-    monkeypatch.setattr(session_module, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
     applied = []
     verified = []
     notices = []
     monkeypatch.setattr(session_module, "sd_notify", notices.append)
-    monkeypatch.setattr(session_module, "apply_routing",
+    monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda *args, **kwargs: applied.append((args, kwargs)))
-    monkeypatch.setattr(session_module, "verify_and_repair",
+    monkeypatch.setattr(desk_mod, "verify_and_repair",
                         lambda *args, **kwargs: verified.append((args, kwargs)) or True)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
 
@@ -178,7 +179,10 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch, r
     assert len(applied) == 1
     apply_args, apply_options = applied[0]
     assert apply_args == (config, recording_backend)
-    assert set(apply_options) == {"should_stop"}
+    from oscmix_desk import ApplyIntent
+
+    assert set(apply_options) == {"should_stop", "intent"}
+    assert apply_options["intent"] == ApplyIntent.INITIAL
     apply_stop = apply_options["should_stop"]
     assert not apply_stop()
     # Verified on a thread the session can outlive: a daemon,
@@ -218,9 +222,9 @@ def test_an_empty_config_leaves_the_desk_alone(session_module, monkeypatch,
     from oscmix_desk import Config
 
     checked = []
-    monkeypatch.setattr(session_module, "connect_backend",
+    monkeypatch.setattr(desk_mod, "connect_backend",
                         lambda *a, **k: checked.append(k) or recording_backend)
-    monkeypatch.setattr(session_module, "apply_routing",
+    monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda *a, **k: pytest.fail("nothing to apply"))
     with caplog.at_level("INFO"):
         verifier = session_module._apply_and_verify(RunningChild(), Config(),
@@ -330,8 +334,9 @@ def test_a_backend_that_cannot_be_written_to_fails_the_start_cleanly(
     assert lifecycle.children[-1].terminated
 
 
+@pytest.mark.parametrize('strict', [False, True])
 def test_a_start_that_applied_says_ready_exactly_and_hands_on_its_config(
-        monkeypatch, tmp_path):
+        monkeypatch, tmp_path, strict):
     """The mutation run of 0.6.10 found no test that read the READY line
     itself, nor one that saw the config path reach the verifier -- the
     path its lock is keyed beside when there is no shared directory."""
@@ -341,13 +346,13 @@ def test_a_start_that_applied_says_ready_exactly_and_hands_on_its_config(
     handed = []
     monkeypatch.setattr(session, "sd_notify", notices.append)
     monkeypatch.setattr(session, "_apply_and_verify",
-                        lambda child, config, stop, path: handed.append(path)
+                        lambda child, config, stop, path, *, strict: handed.append((path, strict))
                         or "verifier")
     path = tmp_path / "routing.conf"
-    assert session._apply_or_fail(None, session.Config(), {"stop": False},
-                                  path) == ("verifier", None)
+    assert session._apply_or_fail(RunningChild(), session.Config(), {"stop": False},
+                                  path, strict=strict) == ("verifier", None)
     assert notices == ["READY=1"]
-    assert handed == [path]
+    assert handed == [(path, strict)]
 
 
 @pytest.mark.parametrize('missing', [None, 'alsaseqio', 'oscmix'])

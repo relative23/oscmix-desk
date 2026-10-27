@@ -20,6 +20,7 @@ import pytest
 from support import fake_proc, free_udp_port, repo_file, write_config
 from two_boxes import DESK, A, B, add_clients, lock_dir
 
+from oscmix_desk import desk as desk_mod
 from oscmix_desk import diagnostics, locking, profiles
 from oscmix_desk import marker as marker_mod
 from oscmix_desk import outcome as outcome_mod
@@ -64,18 +65,15 @@ def _desk(tmp_path, port, serial=""):
     return path
 
 
-def _record_keys(monkeypatch, module, keys, who=None):
-    """Record who took the lock with which key. The start and the reload
-    each call `device_lock` by the name in their own module; a
-    switch and a restore take it through `locking._switch_lock`."""
-    real = module.device_lock
-    who = who or module.__name__.rsplit(".", 1)[1]
+def _record_keys(monkeypatch, keys):
+    """Every writer uses the same operation's resolved lock identity."""
+    real = desk_mod.device_lock
 
     def take(config_path, key=None, wait=None, should_stop=None):
-        keys.append((who, key))
+        keys.append(key)
         return real(config_path, key, wait, should_stop)
 
-    monkeypatch.setattr(module, "device_lock", take)
+    monkeypatch.setattr(desk_mod, "device_lock", take)
 
 
 def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
@@ -88,8 +86,7 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
     monkeypatch.setattr(session_module, "_install_stop_handlers", lambda *a: None)
     monkeypatch.setattr(session_module, "_install_reload_handler", lambda *a: None)
     monkeypatch.setattr(session_module, "_await_backend_port", lambda *a: True)
-    monkeypatch.setattr(session_module, "apply_routing", lambda *a, **k: None)
-    monkeypatch.setattr(session_module, "verify_and_repair", lambda *a, **k: True)
+    monkeypatch.setattr(desk_mod, "verify_and_repair", lambda *a, **k: True)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
 
     def start(client, config, config_path=None):
@@ -105,7 +102,7 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
         return 0
 
     monkeypatch.setattr(session_module, "_start_backend", start)
-    monkeypatch.setattr(reload_mod, "reconcile_now", reconcile)
+    monkeypatch.setattr(desk_mod, "reconcile_now", reconcile)
     monkeypatch.setattr(session_module, "supervise", supervise)
     config = profiles.load_config(path)
     args = argparse.Namespace(timeout=0.5, dry_run=False, config=path)
@@ -123,9 +120,7 @@ def test_every_path_takes_b_s_lock_and_reaches_only_b(tmp_path, monkeypatch, coo
     with coordinated() as peer:
         path = _desk(tmp_path, 7222, serial=B[1])
         keys, started, reconciled = [], [], []
-        _record_keys(monkeypatch, session_module, keys)
-        _record_keys(monkeypatch, reload_mod, keys)
-        _record_keys(monkeypatch, locking, keys, who="switch")
+        _record_keys(monkeypatch, keys)
         code, unit, notified = _run_the_unit(tmp_path, monkeypatch, path,
                                             started, reconciled)
         switched = profiles.switch_profile("b", config_path=path, verify=False)
@@ -134,8 +129,7 @@ def test_every_path_takes_b_s_lock_and_reaches_only_b(tmp_path, monkeypatch, coo
         assert "READY=1" in notified
         assert started == [B[0]]
         assert unit.serial == B[1]
-        assert [who for who, _key in keys] == ["session", "reload", "switch", "switch"]
-        assert {key for _who, key in keys} == {KEY_B}
+        assert keys == [KEY_B] * 4
         assert switched.applied
         assert restored.applied
         assert reconciled == [B[1]]
@@ -180,13 +174,11 @@ def test_one_box_gives_the_unit_and_a_switch_the_same_key(tmp_path, monkeypatch,
     with coordinated(serial=A[1], client=A[0], boxes=(A,)):
         path = _desk(tmp_path, 7222)
         keys = []
-        _record_keys(monkeypatch, session_module, keys)
-        _record_keys(monkeypatch, reload_mod, keys)
-        _record_keys(monkeypatch, locking, keys, who="switch")
+        _record_keys(monkeypatch, keys)
         code, _, _ = _run_the_unit(tmp_path, monkeypatch, path, [], [])
         assert code == session_module.EXIT_OK
         assert profiles.switch_profile("b", config_path=path, verify=False).applied
-        assert {key for _who, key in keys} == {lock_key("2a39:3fd9", A[1])}
+        assert set(keys) == {lock_key("2a39:3fd9", A[1])}
 
 
 # --------------------------------------------------------------------------
@@ -204,8 +196,8 @@ def test_a_strangers_socket_is_refused_without_connecting(tmp_path, tmp_path_fac
     stranger.setblocking(False)
     try:
         box = fake_proc(tmp_path / "box", boxes=[A])
-        resolve = profiles.resolve_device
-        for module in (profiles, diagnostics):
+        resolve = desk_mod.resolve_device
+        for module in (desk_mod, diagnostics):
             monkeypatch.setattr(module, "resolve_device",
                                 lambda usb, name, serial, _proc: resolve(usb, name, serial, box))
         monkeypatch.setenv("OSCMIX_PROC_ROOT", "/proc")
@@ -309,7 +301,7 @@ def test_a_backend_left_without_its_interface_is_not_written_to(
     lock_dir(tmp_path, monkeypatch)
     path = _desk(tmp_path, port)
     keys = []
-    _record_keys(monkeypatch, locking, keys, who="switch")
+    _record_keys(monkeypatch, keys)
     outcome = profiles.switch_profile("b", config_path=path, verify=False)
     assert outcome.state == outcome_mod.REFUSED
     assert outcome.reason == "the selected interface and its serial are not visible to ALSA"
@@ -467,7 +459,7 @@ def test_a_restore_that_cannot_reach_its_interface_takes_no_lock(
                        str(fake_proc(tmp_path / "proc", bound=[(port, "oscmix", 28)])))
     lock_dir(tmp_path, monkeypatch)
     keys = []
-    _record_keys(monkeypatch, locking, keys, who="switch")
+    _record_keys(monkeypatch, keys)
     outcome = profiles.restore_main(config_path=_desk(tmp_path, port),
                                     verify=False)
     assert outcome.state == outcome_mod.REFUSED
@@ -488,15 +480,17 @@ def test_a_verifier_that_cannot_reach_the_backend_ends_quietly(
     def unreachable(*_a, **_k):
         raise OSError(101, "Network is unreachable")
 
-    monkeypatch.setattr(session_module, "verify_and_repair", unreachable)
+    monkeypatch.setattr(desk_mod, "verify_and_repair", unreachable)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
     statuses = []
     monkeypatch.setattr(session_module, "sd_notify", statuses.append)
     lock_dir(tmp_path, monkeypatch)
-    lock = locking.take_device_lock(None, KEY_B)
+    operation = desk_mod._operation(Config(serial=B[1]), backend=recording_backend,
+                                    resolved=True)
+    operation._open()
+    operation._begin()
     with caplog.at_level("ERROR"):
-        thread = session_module._verify_in_background(_Child(), Config(),
-                                                      {"stop": False}, lock, recording_backend)
+        thread = session_module._verify_in_background(_Child(), {"stop": False}, operation)
         thread.join(5)
     assert not thread.is_alive()
     assert "verifier lost its backend operation" in caplog.text
@@ -508,16 +502,18 @@ def test_a_verifier_that_cannot_reach_the_backend_ends_quietly(
 def _verifier_ending(tmp_path, monkeypatch, caplog, backend, verify, stop=None):
     from oscmix_desk import Config
 
-    monkeypatch.setattr(session_module, "verify_and_repair", verify)
+    monkeypatch.setattr(desk_mod, "verify_and_repair", verify)
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
     statuses = []
     monkeypatch.setattr(session_module, "sd_notify", statuses.append)
     lock_dir(tmp_path, monkeypatch)
-    lock = locking.take_device_lock(None, KEY_B)
+    stop = stop or {"stop": False}
+    operation = desk_mod._operation(Config(serial=B[1]), backend=backend, resolved=True,
+                                    should_stop=lambda: stop["stop"])
+    operation._open()
+    operation._begin()
     with caplog.at_level("INFO"):
-        thread = session_module._verify_in_background(_Child(), Config(),
-                                                      stop or {"stop": False}, lock,
-                                                      backend)
+        thread = session_module._verify_in_background(_Child(), stop, operation)
         thread.join(5)
     assert not thread.is_alive()
     assert locking.take_device_lock(None, KEY_B, wait=0.2) is not None, \

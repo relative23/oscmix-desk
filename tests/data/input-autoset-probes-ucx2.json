@@ -1,0 +1,5411 @@
+{
+  "schema": 1,
+  "device": "Fireface UCX II",
+  "serial": "24216011",
+  "firmware": {
+    "usb_revision": "3.01",
+    "dsp_version": 36
+  },
+  "backend": {
+    "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",
+    "binary_sha256": "ed2ec21bda599b5e52ebc26e266efa218383b93768e289c372c75bf16307d69a",
+    "series_sha256": "48a6bcab7cc6703bbdc39fce315906f6f3192c238e1648cf5fa15c217abd9402",
+    "protocol": "ODK1"
+  },
+  "accepted_summary_sha256": "e48cde87cb804b4ab507b4a690d178e14f3b145dee6d1bac3f39b016d192645e",
+  "method": "Direct i1 AutoSet WRITE on each input, two independently complete fresh DEVICE baselines, separate fresh METERS reader, both own i0 flags restored, whole own state reconfirmed, sole END ACK, then a passive 24-second watch and full final DEVICE window on the retained Control connection without exclusive ownership.",
+  "scope": "Warm linked AutoSet flags only, with all four gains at 0 dB and quiet input meters. No induced overload, gain lowering, acoustic protection, cold completeness or mono independence qualification. Full DEVICE windows are observed projections, not atomic snapshots; METERS receipt times are host times, not device timestamps.",
+  "host_write_count": 12,
+  "full_fresh_windows": 20,
+  "cases": [
+    {
+      "id": "linked-input-1",
+      "kind": "linked-flag",
+      "taken": "2026-10-05T08:49:06.091561+00:00",
+      "channel": 1,
+      "target": "/input/1/autoset",
+      "pair": [
+        "/input/1/autoset",
+        "/input/2/autoset"
+      ],
+      "requested_autoset": 1,
+      "partner_finding": "followed",
+      "evidence_id": "build/0.9.0-m2/input-autoset-tool-20261005/pilot/probe.json",
+      "raw_evidence_sha256": "b92fab96b2a7d8cd2958ef771a484145582132eca434567386380f076203d11f",
+      "wrapper_sha256": "7d9303c8170fdce552f3504b5cb536eae9f2a1e05d6f8366402f10ec36c9ecf7",
+      "probe_source_sha256": "b691cef55ab620adc0bcb3c148fb4fcb3bdd711b3a442d2688d9bc4a7ea4d9d7",
+      "review_source_sha256": "be14c1636bd454d11a9441fe69b0b98bad74eeab4b43759d57c224e639bd6f10",
+      "hardware_review_sha256": "5d6e79c5031a602a26bf473934ac3c5beca5427e1011e8e8ebd81401f2ac2cad",
+      "hardware_review_passed": true,
+      "acceptance_review_sha256": "1a61651c459a5bfed48261a5b232117b167e0bf868d0da830012d0d36441083b",
+      "same_control_connection": true,
+      "baseline_refreshes": 2,
+      "states": {
+        "baseline_first": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17327802
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17327755
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17327800
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17327838
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17327755
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17327836
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17327863
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17327757
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17327863
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17327865
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17327757
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17327865
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17327801
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17327837
+          }
+        },
+        "baseline": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17329181
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17329158
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17329179
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17329217
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17329158
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17329215
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17329246
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17329158
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17329246
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17329246
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17329158
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17329246
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17329180
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17329216
+          }
+        },
+        "probe": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17330526
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17330522
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17330524
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17330562
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17330522
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17330560
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17330590
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17330522
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17330590
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17330592
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17330522
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17330592
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17330525
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17330561
+          }
+        },
+        "restoration": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17331913
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17331866
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17331911
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17331949
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17331866
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17331947
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17331975
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17331868
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17331975
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17331977
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17331868
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17331977
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17331912
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17331948
+          }
+        },
+        "final": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17335475
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17335473
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17335475
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17335475
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17335473
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17335475
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17335485
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17335473
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17335485
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17335485
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17335473
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17335485
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17335475
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17335475
+          }
+        }
+      },
+      "complete_device_paths": {
+        "baseline_first": 2232,
+        "baseline": 2232,
+        "probe": 2232,
+        "restoration": 2232,
+        "final": 2232
+      },
+      "full_state_sha256": {
+        "baseline_first": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "baseline": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "probe": "cc383b43faba61a4fa904bc6a89d09cbadff88bfaf0a1eb629727b9e224b250d",
+        "restoration": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "final": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf"
+      },
+      "receipt_boundaries": {
+        "baseline_first": 17327750,
+        "baseline": 17329154,
+        "probe": 17330518,
+        "restoration": 17331855,
+        "final": 17335470
+      },
+      "capture_timing": {
+        "baseline_first": {
+          "elapsed_started": 0.0036525391042232513,
+          "elapsed_finished": 4.005458302097395,
+          "refresh_ack_elapsed": 0.004055872093886137,
+          "after_end": false
+        },
+        "baseline": {
+          "elapsed_started": 4.043555127107538,
+          "elapsed_finished": 14.106684507103637,
+          "refresh_ack_elapsed": 10.105044907075353,
+          "after_end": false
+        },
+        "probe": {
+          "elapsed_started": 15.329635996022262,
+          "elapsed_finished": 24.207501296070404,
+          "refresh_ack_elapsed": 20.205963929067366,
+          "after_end": false
+        },
+        "restoration": {
+          "elapsed_started": 24.41379105206579,
+          "elapsed_finished": 34.308456671074964,
+          "refresh_ack_elapsed": 30.307092385017313,
+          "after_end": false
+        },
+        "final": {
+          "elapsed_started": 58.58354047802277,
+          "elapsed_finished": 62.585054056020454,
+          "refresh_ack_elapsed": 58.58396473003086,
+          "after_end": true
+        }
+      },
+      "full_restoration_matches_original": true,
+      "begin_count": 1,
+      "end_count": 1,
+      "end_acknowledged": true,
+      "writer_limit_seconds": 87.0,
+      "writer_elapsed_seconds": 34.48349815804977,
+      "backend_lease_limit_seconds": 90,
+      "end_elapsed_started": 34.397186428075656,
+      "end_elapsed_finished": 34.39727729000151,
+      "watch_seconds": 24.0,
+      "watch_device_events": 0,
+      "watch_after_end": true,
+      "watch_nonexclusive": true,
+      "watch_timing": {
+        "elapsed_started": 34.48351944005117,
+        "elapsed_finished": 58.48538087611087,
+        "after_end": true
+      },
+      "observation": {
+        "nonexclusive": true,
+        "limit": 40.0,
+        "elapsed_started": 34.48350675904658,
+        "begin_attempt_count": 0,
+        "elapsed_finished": 62.70126981602516,
+        "elapsed_after_persist": 62.8033966650255
+      },
+      "counts": {
+        "passed": true,
+        "target": "/input/1/autoset",
+        "partner_finding": "followed",
+        "full_device_paths": 2232,
+        "full_fresh_windows": 5,
+        "watch_windows": 1,
+        "host_write_count": 3,
+        "raw_device_events": 11360,
+        "raw_derived_events": 100,
+        "raw_meter_events": 36,
+        "minimum_distinct_meter_deliveries": 2,
+        "whole_own_baseline_restored": true,
+        "end_acknowledged": true,
+        "writer_elapsed": 34.48349815804977,
+        "begin_elapsed": 0.00010967592243105173,
+        "observer_nonexclusive": true,
+        "observer_elapsed": 28.319889905978926,
+        "meter_total_seconds": 0.9957534249406308,
+        "receipt_time_is_device_time": false,
+        "limitation": "One warm linked input1 flag; no induced overload, acoustic protection, cold or mono proof"
+      },
+      "writes": [
+        {
+          "path": "/input/1/autoset",
+          "tags": "i",
+          "args": [
+            1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 14.170660603092983,
+          "submission_check_elapsed": 15.269651923095807,
+          "socket_send_reserve": 0.5
+        },
+        {
+          "path": "/input/1/autoset",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore-autoset",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 24.282689084066078
+        },
+        {
+          "path": "/input/2/autoset",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore-autoset",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 24.28268999105785
+        }
+      ],
+      "meters": {
+        "new_connection": true,
+        "reader_closed": true,
+        "passed": true,
+        "receipt_time_is_device_time": false,
+        "total_seconds": 0.9957534249406308,
+        "origin": "METERS",
+        "finished_elapsed": 15.214551961049438,
+        "levels": {
+          "/input/1/level": {
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -112.96244049072266,
+              -104.8489761352539,
+              -112.92337036132812,
+              0
+            ],
+            "sequences": [
+              17329791,
+              17329803,
+              17329815,
+              17329828,
+              17329840,
+              17329854,
+              17329866,
+              17329880,
+              17329892
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.200812333030626
+          },
+          "/input/2/level": {
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -113.11467742919922,
+              -103.3563003540039,
+              -113.08396911621094,
+              0
+            ],
+            "sequences": [
+              17329791,
+              17329803,
+              17329815,
+              17329828,
+              17329840,
+              17329854,
+              17329866,
+              17329880,
+              17329892
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.200812333030626
+          },
+          "/input/3/level": {
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -112.76641082763672,
+              -103.3563003540039,
+              -112.73054504394531,
+              0
+            ],
+            "sequences": [
+              17329791,
+              17329803,
+              17329815,
+              17329828,
+              17329840,
+              17329854,
+              17329866,
+              17329880,
+              17329892
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.200812333030626
+          },
+          "/input/4/level": {
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequences": [
+              17329791,
+              17329803,
+              17329815,
+              17329828,
+              17329840,
+              17329854,
+              17329866,
+              17329880,
+              17329892
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.200812333030626
+          }
+        },
+        "events": [
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -113.01531982421875,
+              -105.60474395751953,
+              -113.0587387084961,
+              0
+            ],
+            "sequence": 17329791,
+            "receipt_elapsed": 14.413579470012337
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -113.20646667480469,
+              -104.8489761352539,
+              -113.18573760986328,
+              0
+            ],
+            "sequence": 17329791,
+            "receipt_elapsed": 14.413579470012337
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.20523834228516,
+              -112.80638885498047,
+              -103.20523834228516,
+              -112.80831909179688,
+              0
+            ],
+            "sequence": 17329791,
+            "receipt_elapsed": 14.413579470012337
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329791,
+            "receipt_elapsed": 14.413579470012337
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -102.76720428466797,
+              -113.0877456665039,
+              -102.76720428466797,
+              -113.08396911621094,
+              0
+            ],
+            "sequence": 17329803,
+            "receipt_elapsed": 14.50075963709969
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.66654205322266,
+              -113.28531646728516,
+              -104.8489761352539,
+              -113.29122924804688,
+              0
+            ],
+            "sequence": 17329803,
+            "receipt_elapsed": 14.50075963709969
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -112.87561798095703,
+              -104.49440002441406,
+              -112.89070129394531,
+              0
+            ],
+            "sequence": 17329803,
+            "receipt_elapsed": 14.50075963709969
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329803,
+            "receipt_elapsed": 14.50075963709969
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -103.05675506591797,
+              -113.11754608154297,
+              -103.05675506591797,
+              -113.12095642089844,
+              0
+            ],
+            "sequence": 17329815,
+            "receipt_elapsed": 14.600775439059362
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.51004028320312,
+              -113.20153045654297,
+              -103.51004028320312,
+              -113.17810821533203,
+              0
+            ],
+            "sequence": 17329815,
+            "receipt_elapsed": 14.600775439059362
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.51004028320312,
+              -112.77037811279297,
+              -103.51004028320312,
+              -112.77562713623047,
+              0
+            ],
+            "sequence": 17329815,
+            "receipt_elapsed": 14.600775439059362
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329815,
+            "receipt_elapsed": 14.600775439059362
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -102.91077423095703,
+              -113.12773895263672,
+              -102.91077423095703,
+              -113.11759185791016,
+              0
+            ],
+            "sequence": 17329828,
+            "receipt_elapsed": 14.700799580081366
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.66654205322266,
+              -113.21101379394531,
+              -103.66654205322266,
+              -113.18875122070312,
+              0
+            ],
+            "sequence": 17329828,
+            "receipt_elapsed": 14.700799580081366
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -112.73294067382812,
+              -104.49440002441406,
+              -112.77356719970703,
+              0
+            ],
+            "sequence": 17329828,
+            "receipt_elapsed": 14.700799580081366
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329828,
+            "receipt_elapsed": 14.700799580081366
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -113.08406829833984,
+              -104.49440002441406,
+              -113.10777282714844,
+              0
+            ],
+            "sequence": 17329840,
+            "receipt_elapsed": 14.800785709056072
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.2459945678711,
+              -104.66987609863281,
+              -113.27203369140625,
+              0
+            ],
+            "sequence": 17329840,
+            "receipt_elapsed": 14.800785709056072
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.51004028320312,
+              -112.74512481689453,
+              -103.51004028320312,
+              -112.77330017089844,
+              0
+            ],
+            "sequence": 17329840,
+            "receipt_elapsed": 14.800785709056072
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329840,
+            "receipt_elapsed": 14.800785709056072
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -103.82592010498047,
+              -113.10392761230469,
+              -104.15373229980469,
+              -113.1341781616211,
+              0
+            ],
+            "sequence": 17329854,
+            "receipt_elapsed": 14.900811966042966
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -113.16604614257812,
+              -104.49440002441406,
+              -113.14511108398438,
+              0
+            ],
+            "sequence": 17329854,
+            "receipt_elapsed": 14.900811966042966
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -112.7991714477539,
+              -104.66987609863281,
+              -112.79196166992188,
+              0
+            ],
+            "sequence": 17329854,
+            "receipt_elapsed": 14.900811966042966
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329854,
+            "receipt_elapsed": 14.900811966042966
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -103.82592010498047,
+              -112.93416595458984,
+              -103.82592010498047,
+              -112.92403411865234,
+              0
+            ],
+            "sequence": 17329866,
+            "receipt_elapsed": 15.00079751003068
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.82592010498047,
+              -113.09703063964844,
+              -103.82592010498047,
+              -113.12135314941406,
+              0
+            ],
+            "sequence": 17329866,
+            "receipt_elapsed": 15.00079751003068
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -102.76720428466797,
+              -112.74925994873047,
+              -102.76720428466797,
+              -112.74576568603516,
+              0
+            ],
+            "sequence": 17329866,
+            "receipt_elapsed": 15.00079751003068
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329866,
+            "receipt_elapsed": 15.00079751003068
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -113.12278747558594,
+              -104.49440002441406,
+              -113.09265899658203,
+              0
+            ],
+            "sequence": 17329880,
+            "receipt_elapsed": 15.10080724908039
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -113.13288879394531,
+              -103.82592010498047,
+              -113.11211395263672,
+              0
+            ],
+            "sequence": 17329880,
+            "receipt_elapsed": 15.10080724908039
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -112.74317932128906,
+              -104.32239532470703,
+              -112.7816162109375,
+              0
+            ],
+            "sequence": 17329880,
+            "receipt_elapsed": 15.10080724908039
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329880,
+            "receipt_elapsed": 15.10080724908039
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -112.96244049072266,
+              -104.8489761352539,
+              -112.92337036132812,
+              0
+            ],
+            "sequence": 17329892,
+            "receipt_elapsed": 15.200812333030626
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -113.11467742919922,
+              -103.3563003540039,
+              -113.08396911621094,
+              0
+            ],
+            "sequence": 17329892,
+            "receipt_elapsed": 15.200812333030626
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -112.76641082763672,
+              -103.3563003540039,
+              -112.73054504394531,
+              0
+            ],
+            "sequence": 17329892,
+            "receipt_elapsed": 15.200812333030626
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17329892,
+            "receipt_elapsed": 15.200812333030626
+          }
+        ]
+      }
+    },
+    {
+      "id": "linked-input-2",
+      "kind": "linked-flag",
+      "taken": "2026-10-05T09:15:11.514281+00:00",
+      "channel": 2,
+      "target": "/input/2/autoset",
+      "pair": [
+        "/input/1/autoset",
+        "/input/2/autoset"
+      ],
+      "requested_autoset": 1,
+      "partner_finding": "followed",
+      "evidence_id": "build/0.9.0-m2/input-autoset-rest-tool-20261005/input2/probe.json",
+      "raw_evidence_sha256": "fe5469a455a49f651730664cf5cbc7d72fd22267308927cd449d73ecf47c4aa3",
+      "wrapper_sha256": "8e799a525b6e4bd6293bbff07d57a248c1fb5cf8709c958cf29b081f2685cb0e",
+      "probe_source_sha256": "fa789e13e65e67439cd5609d2d48d828d602866b7f421f475249b8503e608dae",
+      "review_source_sha256": "982eae1f2edac84169e8aad837e201786381eb2ee06c22c0cc1604459587ce4d",
+      "hardware_review_sha256": "76b9852be630aaaf3e2821f5a5010ce946018cc82206b12eba0ab46a94059a2f",
+      "hardware_review_passed": false,
+      "acceptance_review_sha256": "ee598a49e46814f39da24d4d836cedf3010ac1e02818da7d2cbf9c7544c4eed3",
+      "same_control_connection": true,
+      "baseline_refreshes": 2,
+      "states": {
+        "baseline_first": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17519509
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17519462
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17519507
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17519545
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17519462
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17519543
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17519572
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17519464
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17519572
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17519572
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17519464
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17519572
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17519508
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17519544
+          }
+        },
+        "baseline": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17520894
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17520847
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17520892
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17520930
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17520847
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17520928
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17520957
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17520849
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17520957
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17520959
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17520849
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17520959
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17520893
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17520929
+          }
+        },
+        "probe": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17522281
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17522234
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17522279
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17522317
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17522234
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17522315
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17522343
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17522236
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17522343
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17522345
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17522236
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17522345
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17522280
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17522316
+          }
+        },
+        "restoration": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17523669
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17523622
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17523667
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17523705
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17523622
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17523703
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17523732
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17523624
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17523732
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17523732
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17523624
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17523732
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17523668
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17523704
+          }
+        },
+        "final": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17527273
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17527226
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17527271
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17527309
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17527226
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17527307
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17527335
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17527228
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17527334
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17527337
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17527228
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17527337
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17527272
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17527308
+          }
+        }
+      },
+      "complete_device_paths": {
+        "baseline_first": 2232,
+        "baseline": 2232,
+        "probe": 2232,
+        "restoration": 2232,
+        "final": 2232
+      },
+      "full_state_sha256": {
+        "baseline_first": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "baseline": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "probe": "cc383b43faba61a4fa904bc6a89d09cbadff88bfaf0a1eb629727b9e224b250d",
+        "restoration": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "final": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf"
+      },
+      "receipt_boundaries": {
+        "baseline_first": 17519452,
+        "baseline": 17520839,
+        "probe": 17522225,
+        "restoration": 17523613,
+        "final": 17527216
+      },
+      "capture_timing": {
+        "baseline_first": {
+          "elapsed_started": 0.0026939259842038155,
+          "elapsed_finished": 4.004966255975887,
+          "refresh_ack_elapsed": 0.0030718210618942976,
+          "after_end": false
+        },
+        "baseline": {
+          "elapsed_started": 4.035786539083347,
+          "elapsed_finished": 14.10534909600392,
+          "refresh_ack_elapsed": 10.103813015040942,
+          "after_end": false
+        },
+        "probe": {
+          "elapsed_started": 15.334553115069866,
+          "elapsed_finished": 24.206274750991724,
+          "refresh_ack_elapsed": 20.204905073042028,
+          "after_end": false
+        },
+        "restoration": {
+          "elapsed_started": 24.41256790503394,
+          "elapsed_finished": 34.307319096056744,
+          "refresh_ack_elapsed": 30.305856199003756,
+          "after_end": false
+        },
+        "final": {
+          "elapsed_started": 58.59882712108083,
+          "elapsed_finished": 62.60029294900596,
+          "refresh_ack_elapsed": 58.59937401604839,
+          "after_end": true
+        }
+      },
+      "full_restoration_matches_original": true,
+      "begin_count": 1,
+      "end_count": 1,
+      "end_acknowledged": true,
+      "writer_limit_seconds": 87.0,
+      "writer_elapsed_seconds": 34.51144050201401,
+      "backend_lease_limit_seconds": 90,
+      "end_elapsed_started": 34.419817734044045,
+      "end_elapsed_finished": 34.41993261699099,
+      "watch_seconds": 24.0,
+      "watch_device_events": 0,
+      "watch_after_end": true,
+      "watch_nonexclusive": true,
+      "watch_timing": {
+        "elapsed_started": 34.51147344801575,
+        "elapsed_finished": 58.513454387080856,
+        "after_end": true
+      },
+      "observation": {
+        "nonexclusive": true,
+        "limit": 40.0,
+        "elapsed_started": 34.511454835068434,
+        "begin_attempt_count": 0,
+        "elapsed_finished": 62.70824173500296,
+        "elapsed_after_persist": 62.80717241007369
+      },
+      "counts": {
+        "passed": true,
+        "target": "/input/2/autoset",
+        "channel": 2,
+        "partner_finding": "followed",
+        "full_device_paths": 2232,
+        "full_fresh_windows": 5,
+        "watch_windows": 1,
+        "host_write_count": 3,
+        "raw_device_events": 11360,
+        "raw_derived_events": 100,
+        "raw_meter_events": 36,
+        "minimum_distinct_meter_deliveries": 2,
+        "whole_own_baseline_restored": true,
+        "end_acknowledged": true,
+        "writer_elapsed": 34.51144050201401,
+        "begin_elapsed": 9.450607467442751e-05,
+        "observer_nonexclusive": true,
+        "observer_elapsed": 28.295717575005256,
+        "meter_total_seconds": 1.0235442499397323,
+        "receipt_time_is_device_time": false,
+        "limitation": "One warm linked AutoSet flag; no induced overload, acoustic protection, cold or mono proof"
+      },
+      "writes": [
+        {
+          "path": "/input/2/autoset",
+          "tags": "i",
+          "args": [
+            1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 14.155708629987203,
+          "submission_check_elapsed": 15.277199952979572,
+          "socket_send_reserve": 0.5
+        },
+        {
+          "path": "/input/1/autoset",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore-autoset",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 24.286110626067966
+        },
+        {
+          "path": "/input/2/autoset",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore-autoset",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 24.286111623980105
+        }
+      ],
+      "meters": {
+        "new_connection": true,
+        "reader_closed": true,
+        "passed": true,
+        "receipt_time_is_device_time": false,
+        "total_seconds": 1.0235442499397323,
+        "origin": "METERS",
+        "finished_elapsed": 15.224512704997323,
+        "levels": {
+          "/input/1/level": {
+            "tags": "ffffi",
+            "args": [
+              -103.66654205322266,
+              -112.94721221923828,
+              -103.66654205322266,
+              -112.96826934814453,
+              0
+            ],
+            "sequences": [
+              17521512,
+              17521525,
+              17521536,
+              17521549,
+              17521560,
+              17521572,
+              17521583,
+              17521595,
+              17521606
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.19176246598363
+          },
+          "/input/2/level": {
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.21277618408203,
+              -104.66987609863281,
+              -113.1936264038086,
+              0
+            ],
+            "sequences": [
+              17521512,
+              17521525,
+              17521536,
+              17521549,
+              17521560,
+              17521572,
+              17521583,
+              17521595,
+              17521606
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.19176246598363
+          },
+          "/input/3/level": {
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -112.8899917602539,
+              -104.8489761352539,
+              -112.86548614501953,
+              0
+            ],
+            "sequences": [
+              17521512,
+              17521525,
+              17521536,
+              17521549,
+              17521560,
+              17521572,
+              17521583,
+              17521595,
+              17521606
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.19176246598363
+          },
+          "/input/4/level": {
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequences": [
+              17521512,
+              17521525,
+              17521536,
+              17521549,
+              17521560,
+              17521572,
+              17521583,
+              17521595,
+              17521606
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.19176246598363
+          }
+        },
+        "events": [
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -112.96688079833984,
+              -104.49440002441406,
+              -113.01382446289062,
+              0
+            ],
+            "sequence": 17521512,
+            "receipt_elapsed": 14.423247472033836
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -113.24650573730469,
+              -104.49440002441406,
+              -113.23551940917969,
+              0
+            ],
+            "sequence": 17521512,
+            "receipt_elapsed": 14.423247472033836
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -112.57451629638672,
+              -104.8489761352539,
+              -112.592529296875,
+              0
+            ],
+            "sequence": 17521512,
+            "receipt_elapsed": 14.423247472033836
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521512,
+            "receipt_elapsed": 14.423247472033836
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -113.0383529663086,
+              -104.32239532470703,
+              -113.02904510498047,
+              0
+            ],
+            "sequence": 17521525,
+            "receipt_elapsed": 14.491738873068243
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -113.27751922607422,
+              -104.32239532470703,
+              -113.29174041748047,
+              0
+            ],
+            "sequence": 17521525,
+            "receipt_elapsed": 14.491738873068243
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -112.73542785644531,
+              -103.3563003540039,
+              -112.73267364501953,
+              0
+            ],
+            "sequence": 17521525,
+            "receipt_elapsed": 14.491738873068243
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521525,
+            "receipt_elapsed": 14.491738873068243
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -113.07270050048828,
+              -104.32239532470703,
+              -113.06483459472656,
+              0
+            ],
+            "sequence": 17521536,
+            "receipt_elapsed": 14.59173116798047
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.60474395751953,
+              -113.31159210205078,
+              -105.80442810058594,
+              -113.32604217529297,
+              0
+            ],
+            "sequence": 17521536,
+            "receipt_elapsed": 14.59173116798047
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.51004028320312,
+              -112.68338012695312,
+              -103.51004028320312,
+              -112.67305755615234,
+              0
+            ],
+            "sequence": 17521536,
+            "receipt_elapsed": 14.59173116798047
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521536,
+            "receipt_elapsed": 14.59173116798047
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -112.99072265625,
+              -104.49440002441406,
+              -113.04340362548828,
+              0
+            ],
+            "sequence": 17521549,
+            "receipt_elapsed": 14.69172929506749
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -113.22041320800781,
+              -104.49440002441406,
+              -113.24513244628906,
+              0
+            ],
+            "sequence": 17521549,
+            "receipt_elapsed": 14.69172929506749
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.66654205322266,
+              -112.76886749267578,
+              -104.66987609863281,
+              -112.75798034667969,
+              0
+            ],
+            "sequence": 17521549,
+            "receipt_elapsed": 14.69172929506749
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521549,
+            "receipt_elapsed": 14.69172929506749
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -112.92848205566406,
+              -104.66987609863281,
+              -112.90837097167969,
+              0
+            ],
+            "sequence": 17521560,
+            "receipt_elapsed": 14.791742832981981
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.15611267089844,
+              -104.66987609863281,
+              -113.19221496582031,
+              0
+            ],
+            "sequence": 17521560,
+            "receipt_elapsed": 14.791742832981981
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -112.80956268310547,
+              -103.66654205322266,
+              -112.8520278930664,
+              0
+            ],
+            "sequence": 17521560,
+            "receipt_elapsed": 14.791742832981981
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521560,
+            "receipt_elapsed": 14.791742832981981
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -112.8731918334961,
+              -104.66987609863281,
+              -112.92384338378906,
+              0
+            ],
+            "sequence": 17521572,
+            "receipt_elapsed": 14.891743820044212
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -113.19432830810547,
+              -105.0318374633789,
+              -113.2303466796875,
+              0
+            ],
+            "sequence": 17521572,
+            "receipt_elapsed": 14.891743820044212
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -102.48698425292969,
+              -112.75871276855469,
+              -102.48698425292969,
+              -112.78472900390625,
+              0
+            ],
+            "sequence": 17521572,
+            "receipt_elapsed": 14.891743820044212
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521572,
+            "receipt_elapsed": 14.891743820044212
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -112.92030334472656,
+              -104.32239532470703,
+              -112.92545318603516,
+              0
+            ],
+            "sequence": 17521583,
+            "receipt_elapsed": 14.991865593008697
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -113.1091537475586,
+              -103.3563003540039,
+              -113.16400146484375,
+              0
+            ],
+            "sequence": 17521583,
+            "receipt_elapsed": 14.991865593008697
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.15373229980469,
+              -112.70930480957031,
+              -104.15373229980469,
+              -112.75943756103516,
+              0
+            ],
+            "sequence": 17521583,
+            "receipt_elapsed": 14.991865593008697
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521583,
+            "receipt_elapsed": 14.991865593008697
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.15373229980469,
+              -112.89013671875,
+              -104.15373229980469,
+              -112.88732147216797,
+              0
+            ],
+            "sequence": 17521595,
+            "receipt_elapsed": 15.091852197074331
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -113.19271850585938,
+              -105.60474395751953,
+              -113.20329284667969,
+              0
+            ],
+            "sequence": 17521595,
+            "receipt_elapsed": 15.091852197074331
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -112.80670928955078,
+              -104.32239532470703,
+              -112.7779541015625,
+              0
+            ],
+            "sequence": 17521595,
+            "receipt_elapsed": 15.091852197074331
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521595,
+            "receipt_elapsed": 15.091852197074331
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -103.66654205322266,
+              -112.94721221923828,
+              -103.66654205322266,
+              -112.96826934814453,
+              0
+            ],
+            "sequence": 17521606,
+            "receipt_elapsed": 15.19176246598363
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.21277618408203,
+              -104.66987609863281,
+              -113.1936264038086,
+              0
+            ],
+            "sequence": 17521606,
+            "receipt_elapsed": 15.19176246598363
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -112.8899917602539,
+              -104.8489761352539,
+              -112.86548614501953,
+              0
+            ],
+            "sequence": 17521606,
+            "receipt_elapsed": 15.19176246598363
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17521606,
+            "receipt_elapsed": 15.19176246598363
+          }
+        ]
+      }
+    },
+    {
+      "id": "linked-input-3",
+      "kind": "linked-flag",
+      "taken": "2026-10-05T09:16:25.205697+00:00",
+      "channel": 3,
+      "target": "/input/3/autoset",
+      "pair": [
+        "/input/3/autoset",
+        "/input/4/autoset"
+      ],
+      "requested_autoset": 1,
+      "partner_finding": "followed",
+      "evidence_id": "build/0.9.0-m2/input-autoset-rest-tool-20261005/input3/probe.json",
+      "raw_evidence_sha256": "020d6efd482c28b0e53bd5e07b0a4f37647ead75bc57e4e618857837e7f7c7a3",
+      "wrapper_sha256": "22517bfca46e9bb4e6a448b42e6d95e1b643ade635c5d77b3fd7e1f86c6e7f0f",
+      "probe_source_sha256": "fa789e13e65e67439cd5609d2d48d828d602866b7f421f475249b8503e608dae",
+      "review_source_sha256": "982eae1f2edac84169e8aad837e201786381eb2ee06c22c0cc1604459587ce4d",
+      "hardware_review_sha256": "76b9852be630aaaf3e2821f5a5010ce946018cc82206b12eba0ab46a94059a2f",
+      "hardware_review_passed": false,
+      "acceptance_review_sha256": "ee598a49e46814f39da24d4d836cedf3010ac1e02818da7d2cbf9c7544c4eed3",
+      "same_control_connection": true,
+      "baseline_refreshes": 2,
+      "states": {
+        "baseline_first": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17529286
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17529238
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17529284
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17529322
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17529238
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17529320
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17529345
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17529240
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17529345
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17529345
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17529240
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17529345
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17529285
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17529321
+          }
+        },
+        "baseline": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17530670
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17530623
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17530668
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17530706
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17530623
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17530704
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17530727
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17530625
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17530727
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17530729
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17530625
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17530729
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17530669
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17530705
+          }
+        },
+        "probe": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17532061
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17532013
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17532059
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17532097
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17532013
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17532095
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17532118
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17532015
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17532118
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17532120
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17532015
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17532120
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17532060
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17532096
+          }
+        },
+        "restoration": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17533462
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17533415
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17533460
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17533498
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17533415
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17533496
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17533521
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17533417
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17533521
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17533521
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17533417
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17533521
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17533461
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17533497
+          }
+        },
+        "final": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17537070
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17537025
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17537068
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17537106
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17537025
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17537104
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17537130
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17537027
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17537130
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17537131
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 17537027
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 17537131
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17537069
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 17537105
+          }
+        }
+      },
+      "complete_device_paths": {
+        "baseline_first": 2232,
+        "baseline": 2232,
+        "probe": 2232,
+        "restoration": 2232,
+        "final": 2232
+      },
+      "full_state_sha256": {
+        "baseline_first": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "baseline": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "probe": "75384561661e7428e7771064a96de53e60a9115947bf545c44a7e089bf8ae40e",
+        "restoration": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "final": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf"
+      },
+      "receipt_boundaries": {
+        "baseline_first": 17529233,
+        "baseline": 17530615,
+        "probe": 17532008,
+        "restoration": 17533407,
+        "final": 17537017
+      },
+      "capture_timing": {
+        "baseline_first": {
+          "elapsed_started": 0.002976499032229185,
+          "elapsed_finished": 4.006115996977314,
+          "refresh_ack_elapsed": 0.0034700019750744104,
+          "after_end": false
+        },
+        "baseline": {
+          "elapsed_started": 4.042350681964308,
+          "elapsed_finished": 14.105106146074831,
+          "refresh_ack_elapsed": 10.103798139025457,
+          "after_end": false
+        },
+        "probe": {
+          "elapsed_started": 15.736653291038238,
+          "elapsed_finished": 24.205351834069006,
+          "refresh_ack_elapsed": 20.204526743968017,
+          "after_end": false
+        },
+        "restoration": {
+          "elapsed_started": 24.409922144026496,
+          "elapsed_finished": 34.30598738300614,
+          "refresh_ack_elapsed": 30.304720459040254,
+          "after_end": false
+        },
+        "final": {
+          "elapsed_started": 58.59486090799328,
+          "elapsed_finished": 62.59994203702081,
+          "refresh_ack_elapsed": 58.59885640104767,
+          "after_end": true
+        }
+      },
+      "full_restoration_matches_original": true,
+      "begin_count": 1,
+      "end_count": 1,
+      "end_acknowledged": true,
+      "writer_limit_seconds": 87.0,
+      "writer_elapsed_seconds": 34.483001367072575,
+      "backend_lease_limit_seconds": 90,
+      "end_elapsed_started": 34.39528540801257,
+      "end_elapsed_finished": 34.39538269396871,
+      "watch_seconds": 24.0,
+      "watch_device_events": 0,
+      "watch_after_end": true,
+      "watch_nonexclusive": true,
+      "watch_timing": {
+        "elapsed_started": 34.48303909704555,
+        "elapsed_finished": 58.48534335102886,
+        "after_end": true
+      },
+      "observation": {
+        "nonexclusive": true,
+        "limit": 40.0,
+        "elapsed_started": 34.48301658499986,
+        "begin_attempt_count": 0,
+        "elapsed_finished": 62.70589030103292,
+        "elapsed_after_persist": 62.80667652003467
+      },
+      "counts": {
+        "passed": true,
+        "target": "/input/3/autoset",
+        "channel": 3,
+        "partner_finding": "followed",
+        "full_device_paths": 2232,
+        "full_fresh_windows": 5,
+        "watch_windows": 1,
+        "host_write_count": 3,
+        "raw_device_events": 11360,
+        "raw_derived_events": 100,
+        "raw_meter_events": 36,
+        "minimum_distinct_meter_deliveries": 2,
+        "whole_own_baseline_restored": true,
+        "end_acknowledged": true,
+        "writer_elapsed": 34.483001367072575,
+        "begin_elapsed": 0.00014314497821033,
+        "observer_nonexclusive": true,
+        "observer_elapsed": 28.32365993503481,
+        "meter_total_seconds": 1.284381484030746,
+        "receipt_time_is_device_time": false,
+        "limitation": "One warm linked AutoSet flag; no induced overload, acoustic protection, cold or mono proof"
+      },
+      "writes": [
+        {
+          "path": "/input/3/autoset",
+          "tags": "i",
+          "args": [
+            1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 14.169293383019976,
+          "submission_check_elapsed": 15.667112397961318,
+          "socket_send_reserve": 0.5
+        },
+        {
+          "path": "/input/3/autoset",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore-autoset",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 24.276682551018894
+        },
+        {
+          "path": "/input/4/autoset",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore-autoset",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 24.276683891075663
+        }
+      ],
+      "meters": {
+        "new_connection": true,
+        "reader_closed": true,
+        "passed": true,
+        "receipt_time_is_device_time": false,
+        "total_seconds": 1.284381484030746,
+        "origin": "METERS",
+        "finished_elapsed": 15.5073307499988,
+        "levels": {
+          "/input/1/level": {
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -112.99955749511719,
+              -104.66987609863281,
+              -112.98352813720703,
+              0
+            ],
+            "sequences": [
+              17531339,
+              17531351,
+              17531364,
+              17531376,
+              17531389,
+              17531401,
+              17531414,
+              17531426,
+              17531437
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.451074743061326
+          },
+          "/input/2/level": {
+            "tags": "ffffi",
+            "args": [
+              -104.15373229980469,
+              -113.2304458618164,
+              -104.32239532470703,
+              -113.25491333007812,
+              0
+            ],
+            "sequences": [
+              17531339,
+              17531351,
+              17531364,
+              17531376,
+              17531389,
+              17531401,
+              17531414,
+              17531426,
+              17531437
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.451074743061326
+          },
+          "/input/3/level": {
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -112.72462463378906,
+              -103.3563003540039,
+              -112.71209716796875,
+              0
+            ],
+            "sequences": [
+              17531339,
+              17531351,
+              17531364,
+              17531376,
+              17531389,
+              17531401,
+              17531414,
+              17531426,
+              17531437
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.451074743061326
+          },
+          "/input/4/level": {
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequences": [
+              17531339,
+              17531351,
+              17531364,
+              17531376,
+              17531389,
+              17531401,
+              17531414,
+              17531426,
+              17531437
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.451074743061326
+          }
+        },
+        "events": [
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -103.66654205322266,
+              -112.92691802978516,
+              -103.66654205322266,
+              -112.93704986572266,
+              0
+            ],
+            "sequence": 17531339,
+            "receipt_elapsed": 14.704741448978893
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.18383026123047,
+              -104.66987609863281,
+              -113.17160034179688,
+              0
+            ],
+            "sequence": 17531339,
+            "receipt_elapsed": 14.704741448978893
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -112.80634307861328,
+              -104.49440002441406,
+              -112.81983947753906,
+              0
+            ],
+            "sequence": 17531339,
+            "receipt_elapsed": 14.704741448978893
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531339,
+            "receipt_elapsed": 14.704741448978893
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -103.98828125,
+              -112.96029663085938,
+              -103.98828125,
+              -112.95891571044922,
+              0
+            ],
+            "sequence": 17531351,
+            "receipt_elapsed": 14.751160211046226
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -113.2753677368164,
+              -103.3563003540039,
+              -113.26497650146484,
+              0
+            ],
+            "sequence": 17531351,
+            "receipt_elapsed": 14.751160211046226
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.15373229980469,
+              -112.70220184326172,
+              -104.15373229980469,
+              -112.7203369140625,
+              0
+            ],
+            "sequence": 17531351,
+            "receipt_elapsed": 14.751160211046226
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531351,
+            "receipt_elapsed": 14.751160211046226
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -112.97936248779297,
+              -104.66987609863281,
+              -112.96907806396484,
+              0
+            ],
+            "sequence": 17531364,
+            "receipt_elapsed": 14.851168632041663
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -113.33704376220703,
+              -105.0318374633789,
+              -113.335693359375,
+              0
+            ],
+            "sequence": 17531364,
+            "receipt_elapsed": 14.851168632041663
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -112.76699829101562,
+              -104.15373229980469,
+              -112.74014282226562,
+              0
+            ],
+            "sequence": 17531364,
+            "receipt_elapsed": 14.851168632041663
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531364,
+            "receipt_elapsed": 14.851168632041663
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -112.92800903320312,
+              -105.0318374633789,
+              -112.93681335449219,
+              0
+            ],
+            "sequence": 17531376,
+            "receipt_elapsed": 14.951178160961717
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -113.2686538696289,
+              -104.8489761352539,
+              -113.28331756591797,
+              0
+            ],
+            "sequence": 17531376,
+            "receipt_elapsed": 14.951178160961717
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.05675506591797,
+              -112.73343658447266,
+              -103.05675506591797,
+              -112.71074676513672,
+              0
+            ],
+            "sequence": 17531376,
+            "receipt_elapsed": 14.951178160961717
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531376,
+            "receipt_elapsed": 14.951178160961717
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -103.98828125,
+              -112.9351577758789,
+              -104.15373229980469,
+              -112.96588134765625,
+              0
+            ],
+            "sequence": 17531389,
+            "receipt_elapsed": 15.053947175038047
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -113.22441101074219,
+              -104.32239532470703,
+              -113.16925048828125,
+              0
+            ],
+            "sequence": 17531389,
+            "receipt_elapsed": 15.053947175038047
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -102.62596130371094,
+              -112.71790313720703,
+              -102.62596130371094,
+              -112.72774505615234,
+              0
+            ],
+            "sequence": 17531389,
+            "receipt_elapsed": 15.053947175038047
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531389,
+            "receipt_elapsed": 15.053947175038047
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -112.78948974609375,
+              -103.98828125,
+              -112.801513671875,
+              0
+            ],
+            "sequence": 17531401,
+            "receipt_elapsed": 15.151182553963736
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -113.22755432128906,
+              -105.21864318847656,
+              -113.19261932373047,
+              0
+            ],
+            "sequence": 17531401,
+            "receipt_elapsed": 15.151182553963736
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -112.69735717773438,
+              -104.15373229980469,
+              -112.69636535644531,
+              0
+            ],
+            "sequence": 17531401,
+            "receipt_elapsed": 15.151182553963736
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531401,
+            "receipt_elapsed": 15.151182553963736
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -112.93383026123047,
+              -105.21864318847656,
+              -112.9368667602539,
+              0
+            ],
+            "sequence": 17531414,
+            "receipt_elapsed": 15.251183117972687
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -113.27885437011719,
+              -105.21864318847656,
+              -113.29724884033203,
+              0
+            ],
+            "sequence": 17531414,
+            "receipt_elapsed": 15.251183117972687
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -102.76720428466797,
+              -112.6484603881836,
+              -104.66987609863281,
+              -112.7125015258789,
+              0
+            ],
+            "sequence": 17531414,
+            "receipt_elapsed": 15.251183117972687
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531414,
+            "receipt_elapsed": 15.251183117972687
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -112.9103012084961,
+              -104.8489761352539,
+              -112.90733337402344,
+              0
+            ],
+            "sequence": 17531426,
+            "receipt_elapsed": 15.351900978013873
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.29246520996094,
+              -104.66987609863281,
+              -113.27510833740234,
+              0
+            ],
+            "sequence": 17531426,
+            "receipt_elapsed": 15.351900978013873
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.05675506591797,
+              -112.59542083740234,
+              -102.76720428466797,
+              -112.60370635986328,
+              0
+            ],
+            "sequence": 17531426,
+            "receipt_elapsed": 15.351900978013873
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531426,
+            "receipt_elapsed": 15.351900978013873
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -112.99955749511719,
+              -104.66987609863281,
+              -112.98352813720703,
+              0
+            ],
+            "sequence": 17531437,
+            "receipt_elapsed": 15.451074743061326
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.15373229980469,
+              -113.2304458618164,
+              -104.32239532470703,
+              -113.25491333007812,
+              0
+            ],
+            "sequence": 17531437,
+            "receipt_elapsed": 15.451074743061326
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -112.72462463378906,
+              -103.3563003540039,
+              -112.71209716796875,
+              0
+            ],
+            "sequence": 17531437,
+            "receipt_elapsed": 15.451074743061326
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 17531437,
+            "receipt_elapsed": 15.451074743061326
+          }
+        ]
+      }
+    },
+    {
+      "id": "linked-input-4",
+      "kind": "linked-flag",
+      "taken": "2026-10-05T11:07:53.864206+00:00",
+      "channel": 4,
+      "target": "/input/4/autoset",
+      "pair": [
+        "/input/3/autoset",
+        "/input/4/autoset"
+      ],
+      "requested_autoset": 1,
+      "partner_finding": "followed",
+      "evidence_id": "build/0.9.0-m2/input-autoset-fourth-tool-20261005/input4/probe.json",
+      "raw_evidence_sha256": "e3a72d3930f1c2b18ca99b763139bc2777524f201b0f5271a4c1530cfc638916",
+      "wrapper_sha256": "80f1c1e2de5c56eb47d2f530c6ed9de975ad3baacb2da301f31f8642f9836ad0",
+      "probe_source_sha256": "2512fb2a384f9d4407c20ba20b1a39eea0d6b57452f7cb87ab819dd8365d15fc",
+      "review_source_sha256": "982eae1f2edac84169e8aad837e201786381eb2ee06c22c0cc1604459587ce4d",
+      "hardware_review_sha256": "3189e7448529f7a538dd0b4cf8bb5f6afda5b1db83cfb5e4447ac8bea20d64e1",
+      "hardware_review_passed": true,
+      "acceptance_review_sha256": "3545293d3f5c5c26a0f78c6388fdef224c4fb10821e32ec1ca6f7265ced0e664",
+      "same_control_connection": true,
+      "baseline_refreshes": 2,
+      "states": {
+        "baseline_first": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18346702
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18346702
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18346702
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18346717
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18346702
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18346715
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18346745
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18346702
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18346745
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18346747
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18346702
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18346747
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18346702
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18346716
+          }
+        },
+        "baseline": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18348022
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18348020
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18348022
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18348022
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18348020
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18348022
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18348030
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18348020
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18348030
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18348030
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18348020
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18348030
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18348022
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18348022
+          }
+        },
+        "probe": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18349302
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18349300
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18349302
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18349302
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18349300
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18349302
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18349310
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18349300
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18349310
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18349311
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18349300
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18349311
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18349302
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18349302
+          }
+        },
+        "restoration": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18350592
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18350590
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18350592
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18350592
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18350590
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18350592
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18350601
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18350590
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18350601
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18350602
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18350590
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18350602
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18350592
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18350592
+          }
+        },
+        "final": {
+          "/input/1/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18354163
+          },
+          "/input/1/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18354116
+          },
+          "/input/1/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18354161
+          },
+          "/input/2/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18354199
+          },
+          "/input/2/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18354116
+          },
+          "/input/2/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18354197
+          },
+          "/input/3/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18354222
+          },
+          "/input/3/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18354118
+          },
+          "/input/3/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18354222
+          },
+          "/input/4/autoset": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18354222
+          },
+          "/input/4/stereo": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              1
+            ],
+            "sequence": 18354118
+          },
+          "/input/4/gain": {
+            "origin": "DEVICE",
+            "tags": "f",
+            "args": [
+              0.0
+            ],
+            "sequence": 18354222
+          },
+          "/input/1/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18354162
+          },
+          "/input/2/48v": {
+            "origin": "DEVICE",
+            "tags": "i",
+            "args": [
+              0
+            ],
+            "sequence": 18354198
+          }
+        }
+      },
+      "complete_device_paths": {
+        "baseline_first": 2232,
+        "baseline": 2232,
+        "probe": 2232,
+        "restoration": 2232,
+        "final": 2232
+      },
+      "full_state_sha256": {
+        "baseline_first": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "baseline": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "probe": "75384561661e7428e7771064a96de53e60a9115947bf545c44a7e089bf8ae40e",
+        "restoration": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf",
+        "final": "952a6cf86c42414c230bd8d8b7d2d79c50b8f9ead52ab524c428f1d0cdb617bf"
+      },
+      "receipt_boundaries": {
+        "baseline_first": 18346696,
+        "baseline": 18348016,
+        "probe": 18349296,
+        "restoration": 18350587,
+        "final": 18354108
+      },
+      "capture_timing": {
+        "baseline_first": {
+          "elapsed_started": 0.004007652052678168,
+          "elapsed_finished": 4.00574571499601,
+          "refresh_ack_elapsed": 0.004455007030628622,
+          "after_end": false
+        },
+        "baseline": {
+          "elapsed_started": 4.03777113603428,
+          "elapsed_finished": 14.106454170076177,
+          "refresh_ack_elapsed": 10.105174593045376,
+          "after_end": false
+        },
+        "probe": {
+          "elapsed_started": 15.35692274197936,
+          "elapsed_finished": 24.206907356041484,
+          "refresh_ack_elapsed": 20.205333833000623,
+          "after_end": false
+        },
+        "restoration": {
+          "elapsed_started": 24.425177872064523,
+          "elapsed_finished": 34.30745265306905,
+          "refresh_ack_elapsed": 30.30583916301839,
+          "after_end": false
+        },
+        "final": {
+          "elapsed_started": 58.650349445058964,
+          "elapsed_finished": 62.65239546308294,
+          "refresh_ack_elapsed": 58.650874829036184,
+          "after_end": true
+        }
+      },
+      "full_restoration_matches_original": true,
+      "begin_count": 1,
+      "end_count": 1,
+      "end_acknowledged": true,
+      "writer_limit_seconds": 87.0,
+      "writer_elapsed_seconds": 34.55575991200749,
+      "backend_lease_limit_seconds": 90,
+      "end_elapsed_started": 34.4496568730101,
+      "end_elapsed_finished": 34.44970215798821,
+      "watch_seconds": 24.0,
+      "watch_device_events": 0,
+      "watch_after_end": true,
+      "watch_nonexclusive": true,
+      "watch_timing": {
+        "elapsed_started": 34.55579353298526,
+        "elapsed_finished": 58.559175937087275,
+        "after_end": true
+      },
+      "observation": {
+        "nonexclusive": true,
+        "limit": 40.0,
+        "elapsed_started": 34.55577448604163,
+        "begin_attempt_count": 0,
+        "elapsed_finished": 62.76236530498136,
+        "elapsed_after_persist": 62.86436019197572
+      },
+      "counts": {
+        "passed": true,
+        "target": "/input/4/autoset",
+        "channel": 4,
+        "partner_finding": "followed",
+        "full_device_paths": 2232,
+        "full_fresh_windows": 5,
+        "watch_windows": 1,
+        "host_write_count": 3,
+        "raw_device_events": 11360,
+        "raw_derived_events": 100,
+        "raw_meter_events": 36,
+        "minimum_distinct_meter_deliveries": 2,
+        "whole_own_baseline_restored": true,
+        "end_acknowledged": true,
+        "writer_elapsed": 34.55575991200749,
+        "begin_elapsed": 0.00012720096856355667,
+        "observer_nonexclusive": true,
+        "observer_elapsed": 28.308585705934092,
+        "meter_total_seconds": 1.0424185890005901,
+        "receipt_time_is_device_time": false,
+        "limitation": "One warm linked AutoSet flag; no induced overload, acoustic protection, cold or mono proof"
+      },
+      "writes": [
+        {
+          "path": "/input/4/autoset",
+          "tags": "i",
+          "args": [
+            1
+          ],
+          "phase": "probe",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 14.159734932007268,
+          "submission_check_elapsed": 15.2977422720287,
+          "socket_send_reserve": 0.5
+        },
+        {
+          "path": "/input/3/autoset",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore-autoset",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 24.28539043699857
+        },
+        {
+          "path": "/input/4/autoset",
+          "tags": "i",
+          "args": [
+            0
+          ],
+          "phase": "restore-autoset",
+          "submitted": true,
+          "acknowledged": true,
+          "elapsed": 24.285391382989474
+        }
+      ],
+      "meters": {
+        "new_connection": true,
+        "reader_closed": true,
+        "passed": true,
+        "receipt_time_is_device_time": false,
+        "total_seconds": 1.0424185890005901,
+        "origin": "METERS",
+        "finished_elapsed": 15.249737328034826,
+        "levels": {
+          "/input/1/level": {
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.05118560791016,
+              -104.66987609863281,
+              -113.0390853881836,
+              0
+            ],
+            "sequences": [
+              18348595,
+              18348607,
+              18348620,
+              18348632,
+              18348645,
+              18348657,
+              18348668,
+              18348680,
+              18348691
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.209187354077585
+          },
+          "/input/2/level": {
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.20097351074219,
+              -104.66987609863281,
+              -113.14570617675781,
+              0
+            ],
+            "sequences": [
+              18348595,
+              18348607,
+              18348620,
+              18348632,
+              18348645,
+              18348657,
+              18348668,
+              18348680,
+              18348691
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.209187354077585
+          },
+          "/input/3/level": {
+            "tags": "ffffi",
+            "args": [
+              -103.82592010498047,
+              -112.6961898803711,
+              -103.51004028320312,
+              -112.72837829589844,
+              0
+            ],
+            "sequences": [
+              18348595,
+              18348607,
+              18348620,
+              18348632,
+              18348645,
+              18348657,
+              18348668,
+              18348680,
+              18348691
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.209187354077585
+          },
+          "/input/4/level": {
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequences": [
+              18348595,
+              18348607,
+              18348620,
+              18348632,
+              18348645,
+              18348657,
+              18348668,
+              18348680,
+              18348691
+            ],
+            "sequence_count": 9,
+            "last_receipt_elapsed": 15.209187354077585
+          }
+        },
+        "events": [
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -113.0872573852539,
+              -104.49440002441406,
+              -113.05819702148438,
+              0
+            ],
+            "sequence": 18348595,
+            "receipt_elapsed": 14.44874909997452
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -113.29117584228516,
+              -105.0318374633789,
+              -113.29673767089844,
+              0
+            ],
+            "sequence": 18348595,
+            "receipt_elapsed": 14.44874909997452
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -112.78752136230469,
+              -103.3563003540039,
+              -112.8243179321289,
+              0
+            ],
+            "sequence": 18348595,
+            "receipt_elapsed": 14.44874909997452
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348595,
+            "receipt_elapsed": 14.44874909997452
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.06464385986328,
+              -105.4095458984375,
+              -113.0948715209961,
+              0
+            ],
+            "sequence": 18348607,
+            "receipt_elapsed": 14.509585362044163
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.98828125,
+              -113.32049560546875,
+              -103.98828125,
+              -113.34943389892578,
+              0
+            ],
+            "sequence": 18348607,
+            "receipt_elapsed": 14.509585362044163
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.15373229980469,
+              -112.75057220458984,
+              -104.15373229980469,
+              -112.70440673828125,
+              0
+            ],
+            "sequence": 18348607,
+            "receipt_elapsed": 14.509585362044163
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348607,
+            "receipt_elapsed": 14.509585362044163
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.49440002441406,
+              -112.95006561279297,
+              -104.49440002441406,
+              -112.93368530273438,
+              0
+            ],
+            "sequence": 18348620,
+            "receipt_elapsed": 14.609134608064778
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -113.35726165771484,
+              -105.21864318847656,
+              -113.34578704833984,
+              0
+            ],
+            "sequence": 18348620,
+            "receipt_elapsed": 14.609134608064778
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -101.69681549072266,
+              -112.5678939819336,
+              -101.69681549072266,
+              -112.66045379638672,
+              0
+            ],
+            "sequence": 18348620,
+            "receipt_elapsed": 14.609134608064778
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348620,
+            "receipt_elapsed": 14.609134608064778
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -112.94165802001953,
+              -105.21864318847656,
+              -112.93614959716797,
+              0
+            ],
+            "sequence": 18348632,
+            "receipt_elapsed": 14.709152480005287
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.80442810058594,
+              -113.36965942382812,
+              -105.80442810058594,
+              -113.38140869140625,
+              0
+            ],
+            "sequence": 18348632,
+            "receipt_elapsed": 14.709152480005287
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.82592010498047,
+              -112.5899887084961,
+              -103.82592010498047,
+              -112.56058502197266,
+              0
+            ],
+            "sequence": 18348632,
+            "receipt_elapsed": 14.709152480005287
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348632,
+            "receipt_elapsed": 14.709152480005287
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -112.99614715576172,
+              -104.8489761352539,
+              -113.01483154296875,
+              0
+            ],
+            "sequence": 18348645,
+            "receipt_elapsed": 14.809160845004953
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -113.30911254882812,
+              -104.8489761352539,
+              -113.31201171875,
+              0
+            ],
+            "sequence": 18348645,
+            "receipt_elapsed": 14.809160845004953
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.15373229980469,
+              -112.67127990722656,
+              -104.15373229980469,
+              -112.63526153564453,
+              0
+            ],
+            "sequence": 18348645,
+            "receipt_elapsed": 14.809160845004953
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348645,
+            "receipt_elapsed": 14.809160845004953
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -103.3563003540039,
+              -112.89229583740234,
+              -103.3563003540039,
+              -112.90780639648438,
+              0
+            ],
+            "sequence": 18348657,
+            "receipt_elapsed": 14.909190573031083
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -103.98828125,
+              -112.95125579833984,
+              -104.8489761352539,
+              -112.99273681640625,
+              0
+            ],
+            "sequence": 18348657,
+            "receipt_elapsed": 14.909190573031083
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -104.32239532470703,
+              -112.73570251464844,
+              -104.32239532470703,
+              -112.72887420654297,
+              0
+            ],
+            "sequence": 18348657,
+            "receipt_elapsed": 14.909190573031083
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348657,
+            "receipt_elapsed": 14.909190573031083
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -113.0383071899414,
+              -105.21864318847656,
+              -113.00894927978516,
+              0
+            ],
+            "sequence": 18348668,
+            "receipt_elapsed": 15.009182651061565
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -105.0318374633789,
+              -113.14799499511719,
+              -103.98828125,
+              -113.1293716430664,
+              0
+            ],
+            "sequence": 18348668,
+            "receipt_elapsed": 15.009182651061565
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.66654205322266,
+              -112.73502349853516,
+              -103.66654205322266,
+              -112.71695709228516,
+              0
+            ],
+            "sequence": 18348668,
+            "receipt_elapsed": 15.009182651061565
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348668,
+            "receipt_elapsed": 15.009182651061565
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -105.21864318847656,
+              -112.96893310546875,
+              -105.21864318847656,
+              -113.0137710571289,
+              0
+            ],
+            "sequence": 18348680,
+            "receipt_elapsed": 15.109204976004548
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.8489761352539,
+              -113.15995788574219,
+              -104.8489761352539,
+              -113.16995239257812,
+              0
+            ],
+            "sequence": 18348680,
+            "receipt_elapsed": 15.109204976004548
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.51004028320312,
+              -112.71934509277344,
+              -103.66654205322266,
+              -112.764404296875,
+              0
+            ],
+            "sequence": 18348680,
+            "receipt_elapsed": 15.109204976004548
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348680,
+            "receipt_elapsed": 15.109204976004548
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/1/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.05118560791016,
+              -104.66987609863281,
+              -113.0390853881836,
+              0
+            ],
+            "sequence": 18348691,
+            "receipt_elapsed": 15.209187354077585
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/2/level",
+            "tags": "ffffi",
+            "args": [
+              -104.66987609863281,
+              -113.20097351074219,
+              -104.66987609863281,
+              -113.14570617675781,
+              0
+            ],
+            "sequence": 18348691,
+            "receipt_elapsed": 15.209187354077585
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/3/level",
+            "tags": "ffffi",
+            "args": [
+              -103.82592010498047,
+              -112.6961898803711,
+              -103.51004028320312,
+              -112.72837829589844,
+              0
+            ],
+            "sequence": 18348691,
+            "receipt_elapsed": 15.209187354077585
+          },
+          {
+            "origin": "METERS",
+            "path": "/input/4/level",
+            "tags": "ffffi",
+            "args": [
+              "-inf",
+              -147.642578125,
+              "-inf",
+              -147.642578125,
+              0
+            ],
+            "sequence": 18348691,
+            "receipt_elapsed": 15.209187354077585
+          }
+        ]
+      }
+    }
+  ],
+  "not_qualified": [
+    "induced overload/gain lowering",
+    "acoustic protection",
+    "cold completeness",
+    "mono AutoSet independence"
+  ],
+  "excluded_attempts": [
+    {
+      "evidence_id": "build/0.9.0-m2/input-autoset-rest-tool-20261005/input4/probe.json",
+      "raw_evidence_sha256": "f90d65b0aceae3fb97d8ef070cf44971ab14fcb212d2104866fd41605e395a59",
+      "accepted": false,
+      "host_write_count": 0,
+      "missing_device_reports": [
+        "/mix/11/input/17"
+      ],
+      "reason": "Incomplete first fresh baseline; no WRITE; cause unresolved. The later accepted input4 case does not promote this failed batch."
+    }
+  ]
+}

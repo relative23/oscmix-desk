@@ -12,7 +12,7 @@ from two_boxes import A
 
 from oscmix_desk import cli, desktop, hostservice, status
 from oscmix_desk.desktop import DesktopStatus
-from oscmix_desk.model import CommandLine, Config
+from oscmix_desk.model import CommandLine, Config, Overrides
 
 
 @pytest.fixture
@@ -27,6 +27,44 @@ def world(tmp_path, monkeypatch, endpoint):
     path = tmp_path / 'routing.conf'
     path.write_text('[device]\nserial=24216011\n[route:main]\nplayback=1/2\noutput=5/6\n')
     return path, proc
+
+
+@pytest.mark.parametrize('operation', ['collect', 'print'])
+@pytest.mark.parametrize('style', ['preferred', 'legacy', 'positional'])
+def test_status_preserves_override_names_and_positional_json(world, capsys, operation, style):
+    path, _proc = world
+    override = Overrides('Fireface 802', 9000)
+    positional = [override] if style == 'positional' else []
+    kwargs = {} if positional else {'overrides' if style == 'preferred' else 'said': override}
+    if operation == 'collect':
+        report = status.collect_status(path, *positional, **kwargs)
+    else:
+        if positional:
+            positional.append(True)
+        else:
+            kwargs['as_json'] = True
+        assert status.print_status(path, *positional, **kwargs) == 0
+        report = json.loads(capsys.readouterr().out)
+    assert report['schema_version'] == 2
+    assert report['read_only'] is True
+    assert report['verification'] == 'not-performed'
+    section = report['sections']['configuration']
+    assert section['state'] == 'loaded'
+    assert section['device_name'] == 'Fireface 802'
+    assert section['send_port'] == 9000
+    assert path.read_text().startswith('[device]\nserial=24216011\n')
+
+
+@pytest.mark.parametrize('operation', ['collect_status', 'print_status'])
+def test_status_refuses_two_override_inputs_before_observation(monkeypatch, operation):
+    def forbidden(*args, **kwargs):
+        pytest.fail('ambiguous override arguments must fail before any observation')
+
+    monkeypatch.setattr(status, '_configuration', forbidden)
+    override = Overrides('Fireface 802')
+    action = getattr(status, operation)
+    with pytest.raises(TypeError, match='not both'):
+        action(None, overrides=override, said=CommandLine('Fireface UCX II'))
 
 
 def test_json_describes_the_observation_without_claiming_verified(world, capsys):
@@ -92,6 +130,15 @@ def test_stale_active_profile_is_not_reported_as_the_effective_one(world):
     assert section['effective_profile'] is None
     assert 'main configuration selected' in section['detail']
     assert marker.read_text() == 'missing\n'
+
+
+def test_strict_status_reports_an_unusable_selection_as_invalid(world, capsys):
+    path, _proc = world
+    path.with_name('active-profile').write_text('missing\n')
+    assert cli.main(['--config', str(path), '--strict', '--status', '--json']) == 2
+    report = json.loads(capsys.readouterr().out)
+    assert report['configuration_valid'] is False
+    assert 'active profile' in report['sections']['configuration']['detail']
 
 
 def test_active_profile_and_selected_file_are_reported_without_changing_them(world):

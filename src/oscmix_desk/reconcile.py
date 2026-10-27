@@ -1,67 +1,28 @@
-"""Desired state, observed state, and the plan between them.
+"""Desired state, observed state, and ordered write plans.
 
-What this project *is*, is a reconciler: desired state from the config,
-observed state from the device dump, the difference applied. Before
-0.4.0 the code was four partly overlapping paths over the same data --
-``apply_routing``, ``send_mix``, ``blind_reapply_mix`` and
-``verify_and_repair`` -- each with its own idea of what to write and
-when.
+This module is pure: no transport, clock or device access. Apply, repair,
+preview, diff and config export use the same register declarations.
+Verification class and policy decide which values are compared or restored.
 
-Stated as ``desired(config)``, ``observed(reports)`` and
-``plan(desired, observed)``, apply and verify are one path, and two
-features fell out of it instead of becoming paths five and six:
-``--dump-config`` is ``observed()`` rendered as config (``dump``), and
-``--diff`` is ``plan()`` printed instead of sent.
-
-This module is deliberately **pure**. It opens no socket, reads no
-clock and decides nothing about timing; it answers what should be
-written, in what order, and why. That is what makes it testable against
-the recordings rather than against a device.
-
-The register model is what makes it pay for itself: a plan is a set of
-registers, and whether an entry is compared, skipped or rewritten
-unconditionally is a property of its row in that table
-(``registers.verify_class``) rather than a branch in the routing code.
-
-**Everything that writes routing goes through here.** ``apply_routing``
-and the dry run have since 0.4.0, ``--diff`` and ``--dump-config`` read
-it, and since 0.6.2 the verifier's mix re-apply (``send_mix``) does too
--- the last path that still built its own datagrams. What it replaced
-was a route-by-route walk (``routing_plan``, now the oracle in
-``tests/oracle.py``), and
-the one difference on the wire is pinned by ``tests/test_reconcile.py``
-rather than argued: ``plan()`` against an empty observation is that
-walk's datagram sequence, ordering included, *minus repeats*. A register
-two routes share -- ``/output/5/stereo`` for two routes feeding the same
-pair, ``/playback/1/stereo`` for three routes fed from the same source --
-goes out once instead of two or three times. A state holds each register
-once.
-
-Every dropped repeat must carry the value already in the plan, and a
-second test holds that: two routes sharing an output pair must agree on
-its link state (``_check_link_agreement`` rejects configs where they do
-not). Mono routes require unlinked source and output pairs too; otherwise
-the backend folds their addresses onto a neighbouring channel.
-
-This module used to carry the note that nothing in the runtime wrote
-through it yet. It was true for one release and then not, and it stayed
-for three more. A claim about what the
-rest of the code does belongs next to a test that would fail when it
-stops being true, or it belongs nowhere.
+Each plan contains a register once. Shared routes must agree on its value;
+link requirements precede matrix addressing, including explicit unlinking
+for mono routes. Tests compare complete message sequences with the oracle.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Callable, Collection, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
+from .autogain import dependency_paths, flag_value, retained_gains, validate_autogain
 from .constants import LEVEL_MIN, UNLINKED_GAIN_OFFSET
 from .devices import device_for_name
 from .model import (
     Config,
     Route,
     SettingValue,
+    validate_route_pan,
 )
 from .numeric import equal_float, finite, integer, number_value, report_value
 from .osc import (
@@ -69,7 +30,9 @@ from .osc import (
     Message,
     Value,
 )
+from .playback import declared_mutes, mute_path, retained_pairs, validate_playback_mute
 from .registers import (
+    BOOL,
     ENUM,
     NUMBER,
     PIN,
@@ -78,6 +41,7 @@ from .registers import (
     Device,
     Policy,
     Register,
+    option_channels,
     option_register,
     register_at,
     register_policy,
@@ -115,6 +79,7 @@ def mix_messages(route: Route) -> List[Message]:
     the single pair register with pan 0 (= plain stereo pass-through at
     ``level`` dB).
     """
+    pan = route.checked_pan
     messages: List[Message] = []
     kind, source = route.source
     if len(route.output) == 2:
@@ -122,7 +87,7 @@ def mix_messages(route: Route) -> List[Message]:
         pb_left = source[0]
         if route.stereo:
             messages.append(("/mix/%d/%s/%d" % (left, kind, pb_left), "fi",
-                             (route.level, 0)))
+                             (route.level, pan)))
         else:
             # Unlinked outputs: feed each side the matching half of the
             # (linked) source pair via the pair balance. oscmix halves
@@ -169,13 +134,20 @@ class Phase(IntEnum):
     a reference level landing before the routing exists would be audible
     for the width of it.
 
-    An enum since 0.7.0: a phase was an ``int``,
-    and nothing stopped a fourth value or a swapped argument.
+    AutoSet-off precedes these phases and must be freshly confirmed before
+    dependent gains. AutoSet-on follows gains. Preview and transport use the
+    same phase ordering, independent of channel declaration order.
+
+    An enum since 0.7.0 prevents arbitrary values or swapped arguments.
     """
 
+    PLAYBACK_MUTE_ON = -2
+    AUTOSET_OFF = -1
     LINK = 0
     MIX = 1
     CHANNEL = 2
+    AUTOSET_ON = 3
+    PLAYBACK_MUTE_OFF = 4
 
 
 PHASE_LINK, PHASE_MIX, PHASE_CHANNEL = Phase.LINK, Phase.MIX, Phase.CHANNEL
@@ -203,6 +175,7 @@ class WriteReason(str, Enum):
     MISMATCHED = "mismatched"        # observed a different value
     REWRITE = "re-established"       # unverifiable, link-dependent: always
     UNCONDITIONAL = "unconditional"  # nothing was observed (a blind apply)
+    PREREQUISITE = "prerequisite"    # visible temporary protection before release
 
 
 MISSING, MISMATCHED = WriteReason.MISSING, WriteReason.MISMATCHED
@@ -241,6 +214,8 @@ class Plan:
     writes: Tuple[Write, ...]
     confirmed: Tuple[str, ...]
     unverifiable: Tuple[str, ...]
+    # Includes omitted indirect PIN paths, without claiming confirmation.
+    retained: Tuple[str, ...] = ()
 
     def links(self) -> Tuple[Write, ...]:
         return tuple(w for w in self.writes if w.phase == PHASE_LINK)
@@ -249,7 +224,8 @@ class Plan:
         return tuple(w for w in self.writes if w.phase == PHASE_MIX)
 
     def channel(self) -> Tuple[Write, ...]:
-        return tuple(w for w in self.writes if w.phase == PHASE_CHANNEL)
+        return tuple(w for w in self.writes
+                     if w.phase not in (PHASE_LINK, PHASE_MIX))
 
     def messages(self) -> Tuple[Tuple[str, str, Args], ...]:
         """Every write in send order: all links, the barrier, then all mix."""
@@ -270,25 +246,42 @@ def desired(config: Config) -> Tuple[Entry, ...]:
     the register is the first one that claimed it, so a duplicate does
     not reorder the plan.
     """
+    validate_route_pan(config.routes)
+    validate_autogain(config)
+    validate_playback_mute(config)
+    device = device_for_name(config.device_name)
+    if device is not None:
+        for route in config.routes:
+            if route.checked_pan:
+                for family, channels in (route.source, ("output", route.output)):
+                    if any(ch not in device.channels_for(family) for ch in channels):
+                        raise ValueError("route %r pan: %s channels do not exist on %s"
+                                         % (route.name, family, device.name))
     entries: Dict[str, Entry] = {}
     for phase, produce in ((PHASE_LINK, link_messages), (PHASE_MIX, mix_messages)):
         for route in config.routes:
             for path, tags, args in produce(route):
                 entries[path] = Entry(path, tags, tuple(args), phase)
     ordered = sorted(entries.values(), key=_send_order(config))
-    return tuple(ordered) + channel_entries(config) + global_entries(config)
+    combined = tuple(ordered) + channel_entries(config) + global_entries(config)
+    return tuple(sorted(combined, key=lambda entry: entry.phase))
 
 
-def remembered_paths(config: Config) -> Tuple[str, ...]:
-    """Write ownership is a declaration, independent of missing/differing reports."""
+def remembered_paths(config: Config,
+                     observed: Optional[Mapping[str, Tuple[str, Args]]] = None,
+                     *, linked: Sequence[str] = ()) -> Tuple[str, ...]:
+    """Declared REMEMBER and gains owned by AutoSet, including undeclared partners."""
     device = device_for_name(config.device_name)
-    return tuple(sorted({entry.path for entry in desired(config)
-                         if policy_for(entry.path, device, config.policies) != PIN}))
+    kept = {entry.path for entry in desired(config)
+            if policy_for(entry.path, device, config.policies) != PIN}
+    kept.update(retained_gains(config, observed or {}, linked=linked))
+    return tuple(sorted(kept))
 
 
 def application_plan(config: Config, intent: ApplyIntent,
                      leave_alone: Sequence[str] = (),
-                     confirmed: Sequence[str] = ()) -> Plan:
+                     confirmed: Sequence[str] = (), *,
+                     observed: Optional[Mapping[str, Tuple[str, Args]]] = None) -> Plan:
     """Select writes without turning preserved state into confirmed state.
 
     Later operations preserve every REMEMBER path, even when it matched or
@@ -298,14 +291,99 @@ def application_plan(config: Config, intent: ApplyIntent,
     skip = set(leave_alone)
     entries = desired(config)
     if intent.preserves_remember:
-        skip.update(remembered_paths(config))
         skip.update(entry.path for entry in entries
                     if entry.phase == PHASE_LINK and entry.path in confirmed)
-    return plan([entry for entry in entries if entry.path not in skip])
+        linked = [entry.path for entry in entries
+                  if entry.phase == PHASE_LINK and entry.path not in skip
+                  and entry.args == (1,)]
+        skip.update(remembered_paths(config, observed, linked=linked))
+    skip.update(protected_entries(config, skip, confirmed))
+    selected = plan([entry for entry in entries if entry.path not in skip])
+    return _playback_prerequisites(config, selected, skip, confirmed)
+
+
+def protected_entries(config: Config, retained: Collection[str],
+                      confirmed: Sequence[str] = ()) -> Tuple[str, ...]:
+    """Indirect paths an unobservable retained playback mute cannot authorize.
+
+    Retention includes both mute flags, the pair link and its matrix writes.
+    An output link can affect these unknown columns too. A freshly matching
+    output link is already omitted by repair; an unconfirmed link and every
+    route depending on it stay retained, including any PIN disagreement.
+    No retained path is promoted to a confirmed one by this projection.
+    """
+    pairs = retained_pairs(retained)
+    if not pairs:
+        return ()
+    protected = {mute_path(ch) for left in pairs for ch in (left, left + 1)}
+    protected.update("/playback/%d/stereo" % ch
+                     for left in pairs for ch in (left, left + 1))
+    for route in config.routes:
+        links = {path for path, _tags, _args in link_messages(route)}
+        protected.update(path for path in links
+                         if path.startswith("/output/") and path not in confirmed)
+    for route in config.routes:
+        touched = any(channel in (left, left + 1)
+                      for left in pairs for channel in route.playback)
+        links = {path for path, _tags, _args in link_messages(route)}
+        if touched or links.intersection(protected):
+            protected.update(path for path, _tags, _args in mix_messages(route))
+    return tuple(sorted(protected))
+
+
+def _playback_prerequisites(config: Config, selected: Plan,
+                            retained: Collection[str], confirmed: Sequence[str]) -> Plan:
+    """A complete selected OFF releases only after visible ON/link/mix phases."""
+    off = [write for write in selected.writes
+           if write.phase == Phase.PLAYBACK_MUTE_OFF]
+    paths = {write.path for write in selected.writes}
+    prerequisites = []
+    mutes = declared_mutes(config)
+    for write in off:
+        channel = int(write.path.split("/")[2])
+        left = channel - (channel - 1) % 2
+        required = {mute_path(left), mute_path(left + 1)}
+        links: Set[str] = set()
+        for route in config.routes:
+            if set(route.playback).intersection((left, left + 1)):
+                required.update(path for path, _tags, _args in mix_messages(route)
+                                if path.startswith("/mix/"))
+                links.update(path for path, _tags, _args in link_messages(route))
+        if (mutes.get(left) != 0 or mutes.get(left + 1) != 0 or not required <= paths
+                or not links <= paths | set(confirmed)):
+            raise ValueError(
+                "playback %d/%d unmute cannot bypass retained or omitted matrix writes"
+                % (left, left + 1))
+        prerequisites.append(Write(write.path, "i", (1,), Phase.PLAYBACK_MUTE_ON,
+                                   WriteReason.PREREQUISITE))
+    writes = tuple(sorted(prerequisites + list(selected.writes), key=lambda write: write.phase))
+    return Plan(writes, selected.confirmed, selected.unverifiable,
+                tuple(sorted(set(retained))))
+
+
+def matrix_repair_plan(config: Config, confirmed: Sequence[str] = (), *,
+                       observed: Optional[Mapping[str, Tuple[str, Args]]] = None) -> Plan:
+    """Matrix repair cannot discard selected mute safety prerequisites.
+
+    A legacy matrix-only operation keeps its existing MIX scope. An owned
+    mute selects the same mute/link/mix phases as application planning,
+    preserving visible ON and complete matrix replacement before any OFF.
+    Unrelated PIN channel/global settings do not enter a matrix repair.
+    """
+    wanted = application_plan(config, ApplyIntent.REPAIR, confirmed=confirmed,
+                              observed=observed)
+    phases = {PHASE_MIX}
+    mute_phases = {Phase.PLAYBACK_MUTE_ON, Phase.PLAYBACK_MUTE_OFF}
+    if any(write.phase in mute_phases for write in wanted.writes):
+        phases.update(mute_phases)
+        phases.add(PHASE_LINK)
+    return Plan(tuple(write for write in wanted.writes if write.phase in phases),
+                wanted.confirmed, wanted.unverifiable, wanted.retained)
 
 
 def retention_problem(config: Config, selected: Sequence[Write], retained: Sequence[str],
-                      confirmed: Sequence[str]) -> Optional[str]:
+                      confirmed: Sequence[str], *,
+                      observed: Optional[Mapping[str, Tuple[str, Args]]] = None) -> Optional[str]:
     """Refuse indirect changes to retained settings and unknown retained links.
 
     Linking may copy a partner's settings. A scalar write may also propagate
@@ -314,6 +392,10 @@ def retention_problem(config: Config, selected: Sequence[Write], retained: Seque
     """
     keep, known = set(retained), set(confirmed)
     writes = {write.path for write in selected}
+    blocked = writes.intersection(protected_entries(config, retained, confirmed))
+    if blocked:
+        return ("writes could change unobservable retained playback mute or its matrix: %s"
+                % ", ".join(sorted(blocked)))
     for route in config.routes:
         matrix = {p for p, _t, _a in mix_messages(route) if p.startswith("/mix/")}
         if not writes.intersection(matrix):
@@ -322,6 +404,7 @@ def retention_problem(config: Config, selected: Sequence[Write], retained: Seque
         if missing:
             return "retained link state is not confirmed for %s" % ", ".join(sorted(missing))
     declarations = {entry.path: entry.args for entry in desired(config)}
+    refreshed = set(dependency_paths(config)) if observed is not None else set()
     for write in selected:
         parts = write.path.strip("/").split("/", 2)
         if len(parts) != 3 or parts[0] not in ("input", "output"):
@@ -338,7 +421,11 @@ def retention_problem(config: Config, selected: Sequence[Write], retained: Seque
         else:
             partner = "/%s/%d/%s" % (family, left + (number == left), option)
             link = pair[0] + "stereo"
-            if partner in keep and not (link in known and declarations.get(link) == (0,)):
+            mono = (flag_value((observed or {}).get(link)) == 0
+                    if link in refreshed or link in (observed or {}) else
+                    link in known and declarations.get(link) == (0,))
+            joining = any(w.path == link and w.args == (1,) for w in selected)
+            if partner in keep and not (mono and not joining):
                 return "write %s could change retained stereo partner %s" % (write.path, partner)
     return None
 
@@ -375,6 +462,9 @@ def channel_entries(config: Config) -> Tuple[Entry, ...]:
         register = option_register(device, setting.family, setting.option,
                                    setting.channel)
         if register is None:
+            if option_channels(device, setting.family, setting.option):
+                raise ValueError("channel %s does not have %s on %s" % (
+                    setting.channel, setting.option, device.name))
             continue
         path = "/%s/%d/%s" % (setting.family, setting.channel, setting.option)
         out.append(_encode(path, register, setting.value))
@@ -442,10 +532,18 @@ def _encode(path: str, register: "Register",
                      PHASE_CHANNEL)
     if register.domain == NUMBER:
         number_value(value, register)
+    elif register.domain == BOOL:
+        report_value(value, register)
     if register.tags.startswith("f"):
         return Entry(path, "f", (float(value),),
                      PHASE_CHANNEL)
-    return Entry(path, "i", (integer(value),), PHASE_CHANNEL)
+    number = integer(value)
+    if path.startswith("/playback/") and path.endswith("/mute"):
+        phase = Phase.PLAYBACK_MUTE_ON if number else Phase.PLAYBACK_MUTE_OFF
+    else:
+        phase = (Phase.AUTOSET_ON if number else Phase.AUTOSET_OFF) if path.endswith("/autoset") \
+            else PHASE_CHANNEL
+    return Entry(path, "i", (number,), phase)
 
 
 def _send_order(config: Config) -> Callable[[Entry], int]:
@@ -556,10 +654,13 @@ def matches(tags: str, want: Args, got: Args,
                 if not equal_float(wanted, reported, register, tolerance):
                     return False
             elif tag == "i":
+                if register is not None and register.domain == NUMBER:
+                    number_value(wanted, register)
                 if register is not None and register.domain is not None:
                     report_value(reported, register)
                 if register is not None and register.mix_level:
-                    if not -100 <= integer(reported) <= 100:
+                    if (type(wanted) is not int or type(reported) is not int
+                            or not -100 <= reported <= 100):
                         return False
                     # calclevel reports pan=0 for a silent stereo source.
                     # Once the level is digital zero, its balance cannot

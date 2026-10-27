@@ -82,11 +82,21 @@ MonkeyPatch.setattr = _setattr_that_something_reads
 
 
 def pytest_configure(config):
-    """Keep ``tmp_path`` short when ``TMPDIR`` is long.
+    """Configure correctness properties and short Unix socket paths.
 
     Many tests bind Unix sockets under ``tmp_path``, and a socket path is
     limited to 107 bytes. An explicit ``--basetemp`` is left alone.
     """
+    try:
+        from hypothesis import settings
+    except ImportError:
+        pass  # The contract tests report the missing dependency themselves.
+    else:
+        # Host load made a parsing example fail at 267 ms during the
+        # 0.8.1 gates; its rerun took 1.1 ms. These are correctness
+        # properties, not latency measurements.
+        settings.register_profile('oscmix-contracts', deadline=None)
+        settings.load_profile('oscmix-contracts')
     if config.option.basetemp is not None:
         return
     if len(os.fsencode(tempfile.gettempdir())) <= 20:
@@ -363,7 +373,7 @@ def read_peer(tmp_path_factory, monkeypatch):
     from control_peer import ScriptedControl
     from support import osc_bundle
 
-    from oscmix_desk import reads
+    from oscmix_desk import desk as desk_mod
     from oscmix_desk.backend import Control
     from oscmix_desk.osc import encode_osc
 
@@ -373,13 +383,14 @@ def read_peer(tmp_path_factory, monkeypatch):
         reports = [osc_bundle([encode_osc(p, t, *a) for p, t, a in registers])]
         peer = ScriptedControl(root / "c", reports=reports if registers else [], **faults)
 
-        def connect(config, config_path=None, *, reader=False):
+        def connect(config, config_path=None, *, reader=False, expected_pid=None,
+                    should_stop=None):
             assert reader is True
             return Control(peer.path, os.getpid(), reader=True)
 
         try:
             with monkeypatch.context() as patch:
-                patch.setattr(reads, "connect_backend", connect)
+                patch.setattr(desk_mod, "connect_backend", connect)
                 yield peer
         finally:
             peer.close()

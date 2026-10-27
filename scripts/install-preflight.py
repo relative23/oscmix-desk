@@ -57,6 +57,7 @@ def main():
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--manual', action='store_true')
     parser.add_argument('--enable', action='store_true')
+    parser.add_argument('--disable', action='store_true')
     args = parser.parse_args()
     failures = []
 
@@ -96,13 +97,15 @@ def main():
             check(False, 'cannot establish host service maintenance state: ' + str(exc))
     distro, hint = package_hint()
     print('INFO    distribution: ' + distro)
-    tools = ['flock', 'install', 'mktemp', 'sed', 'cmp']
-    if not args.no_build:
+    tools = ['flock', 'install', 'mktemp', 'sed', 'cmp', 'grep', 'cat']
+    if args.disable or args.manual:
+        tools.append('awk')
+    if not args.no_build and not args.disable:
         check(writable_parent(root / 'build'), 'writable backend build directory')
         tools += ['git', 'make', 'cc', 'pkg-config', 'tar']
     for tool in tools:
         check(shutil.which(tool) is not None, 'command: ' + tool)
-    if not args.no_build:
+    if not args.no_build and not args.disable:
         alsa = command(['pkg-config', '--exists', 'alsa'])
         check(alsa is not None and alsa.returncode == 0,
               'ALSA development files (pkg-config alsa)')
@@ -121,7 +124,7 @@ def main():
                 check(compatible is not None and compatible.returncode == 0,
                       'existing GTK needs the same backend series; install GTK development '
                       'files to upgrade the pair')
-    else:
+    elif not args.disable:
         binaries = []
         for tool in ('oscmix', 'alsaseqio', 'oscmix-gtk'):
             search = (home / '.local/bin', Path('/usr/local/bin'), Path('/usr/bin'))
@@ -144,8 +147,16 @@ def main():
     data = Path(os.environ.get('XDG_DATA_HOME', ''))
     if not data.is_absolute():
         data = home / '.local/share'
-    for destination in (home / '.local/bin', home / '.local/lib/oscmix-desk', config, data):
+    destinations = ((home / '.local/lib/oscmix-desk', config / 'systemd/user',
+                     config / 'oscmix') if args.disable else
+                    (home / '.local/bin', home / '.local/lib/oscmix-desk', config, data))
+    for destination in destinations:
         check(writable_parent(destination), 'writable destination: ' + str(destination))
+    if args.disable:
+        unit = config / 'systemd/user/oscmix.service'
+        check(unit.is_file() and not unit.is_symlink(),
+              '--disable needs an installed source service unit: ' + str(unit))
+        print('INFO    --disable keeps the installed payload; no build or backend check needed')
     print('INFO    configuration: ' + str(config / 'oscmix/routing.conf'))
     installed = home / '.local/lib/oscmix-desk/oscmix_desk/constants.py'
     if installed.is_file():
@@ -155,8 +166,9 @@ def main():
               + ' at ' + str(installed.parent))
     manager = command(['systemctl', '--user', 'show-environment'])
     managed = manager is not None and manager.returncode == 0
-    if args.enable:
-        check(managed, '--enable needs a systemd user manager')
+    if args.enable or args.disable:
+        action = '--disable' if args.disable else '--enable'
+        check(managed, action + ' needs a systemd user manager')
         if managed:
             values = dict(line.split('=', 1) for line in manager.stdout.splitlines()
                           if '=' in line)
@@ -164,7 +176,7 @@ def main():
             if not manager_config.is_absolute():
                 manager_config = Path(values.get('HOME', '/')) / '.config'
             check(values.get('HOME') == str(home) and manager_config == config,
-                  '--enable needs the systemd user manager for this HOME and XDG_CONFIG_HOME')
+                  action + ' needs the systemd user manager for this HOME and XDG_CONFIG_HOME')
     print('INFO    session mode: ' + ('systemd available' if managed and not args.manual
                                       else 'manual foreground'))
     if not managed or args.manual:

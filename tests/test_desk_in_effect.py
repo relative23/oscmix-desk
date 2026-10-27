@@ -118,8 +118,8 @@ def test_restore_main_can_be_asked_not_to_check(tmp_path, recording_backend):
     assert outcome.reason == outcome_mod.NOT_CHECKED
     assert outcome.read_back is False
     assert outcome.persisted is True, "the marker was removed either way"
-    assert outcome.unverified == sorted(
-        profiles.expected_registers(profiles.load_config(path)))
+    assert outcome.unverified == tuple(sorted(
+        profiles.expected_registers(profiles.load_config(path))))
     assert not (tmp_path / "active-profile").exists()
 
 def test_a_switch_that_cannot_remember_says_so_in_the_outcome(

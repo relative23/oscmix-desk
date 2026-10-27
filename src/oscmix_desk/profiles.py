@@ -1,59 +1,42 @@
-"""Switching the whole desk to a named config, with a stated outcome.
+"""Validate a complete desk, apply it through Desk, then commit its selection.
 
-A profile is a complete ``routing.conf`` in ``profiles/`` beside the
-main one. Not a new section type: a profile *is* a config, parsed by the
-same code, subject to the same compatibility rule, and
-``--dump-config > profiles/tracking.conf`` composes for free.
-
-The design constraint is the desk, not the file format. Switching
-happens while someone is listening, and there is no rollback for a
-mixer: once ``/output/1/volume`` is on the wire, the monitors are loud.
-So the order is fixed and the whole module is arranged around it --
-**parse and validate everything, then write, then check.** A config that
-cannot be understood costs an error message and not one datagram.
-
-That is why this states an outcome rather than raising (``outcome``):
-applied and verified, applied and unverified, refused, or written in
-part. A partial write names the submitted and unsent registers and
-leaves the active marker unchanged. It cannot promise a
-hardware rollback.
-
-The order of a switch is this module's, and only this module's: which
-interface and backend it may write to, the lock taken (``locking``), the
-write, the profile remembered (``marker``), the read-back.
+The marker changes only after all writes and an acknowledged lease end, while
+still holding the device lock. Partial writes retain the previous marker and
+report sent and pending paths; a hardware rollback cannot be promised.
 """
 
 from __future__ import annotations
 
+import contextlib
+import errno
+import io
 import os
 from dataclasses import replace
 from pathlib import Path
 from typing import Optional, Sequence, Tuple
 
-from .backend import Control, connect_backend
+from .arguments import build_arg_parser
+from .backend import Control
 from .config import load_config
-from .constants import VERIFY_TIMEOUT
+from .constants import SERVICE_UNIT
+from .desk import Desk, _operation
 from .devices import device_for_name
-from .discovery import (
-    Device,
-    resolve_device,
-    usb_device_present,
-)
 from .errors import (
     ConfigError,
-    DeviceAmbiguous,
+    DeviceLockUnavailable,
     WriteFailed,
 )
-from .locking import _switch_lock
+from .hostservice import maintenance_problem
 from .log import log
 from .marker import (
     active_profile,
     forget_active_profile,
     remember_active_profile,
 )
-from .model import CommandLine, Config, Machine
+from .model import Config, Machine, Overrides, _resolve_overrides
 from .notices import log_desk_notices
 from .outcome import (
+    APPLIED_MISMATCHED,
     APPLIED_UNVERIFIED,
     APPLIED_VERIFIED,
     NOT_CHECKED,
@@ -61,41 +44,30 @@ from .outcome import (
     WRITTEN_IN_PART,
     Outcome,
 )
-from .paths import discover_config_path, list_profiles, profile_path, regular_file
+from .paths import discover_config_path, list_profiles, profile_path, profiles_dir, regular_file
+from .process import RELOAD_DONE, RELOAD_NOT_RUNNING, reload_service, unit_process
 from .reconcile import ApplyIntent
-from .routing import apply_routing
-from .verify import expected_registers, register_ever_reported, verify_routing
+from .verify import expected_registers, register_ever_reported
 
 
 def load_profile(name: str, config_path: Optional[Path] = None,
-                 said: Optional[CommandLine] = None) -> Config:
-    """Parse a profile, or raise ``ConfigError``.
+                 overrides: Optional[Overrides] = None, *,
+                 said: Optional[Overrides] = None, strict: bool = False) -> Config:
+    """Parse and validate a profile for the main config's device.
 
-    Separate from :func:`switch_profile` so the refusal path can be
-    tested, and used, without a device anywhere near it -- that is what
-    makes ``--dry-run`` on a profile honest.
-
-    **Transport settings come from the main config, not the profile.**
-    A profile describes the desk: what is routed where, and at what
-    level. The OSC ports and the device name describe the *machine*, and
-    a profile that had to restate them would be wrong the moment it was
-    copied between two machines -- or, worse, silently right. That is
-    not hypothetical: a profile with no ``[osc]`` section fell back to
-    the compiled-in default 7222 during development and wrote to a live
-    Fireface from a unit test, because the default happened to match.
-
-    **A profile that names another machine is refused** (since 0.7.0;
-    0.6.11 warned). Until then it won, and one persisted profile
-    meant three targets: its own backend for the switch, the running
-    session's for the reload the switch sent, its own again after a
-    restart -- with two device locks over one marker. Restating
-    ``routing.conf``'s own values is not that: ``--dump-config >
-    profiles/x.conf``, the documented way to make a profile, writes
-    ``[device]`` and ``[osc]`` into every one.
+    Missing machine settings are inherited from the main config. A
+    different device name, USB ID or serial is refused before any write.
+    Legacy [osc] ports remain validated data and select no backend.
+    This path needs no connection, so previews use the same validation.
+    ``strict=True`` rejects ignored sections in both the main config and
+    the selected profile before an operation can write anything.
+    ``overrides`` applies to both files; ``said`` is a compatible keyword
+    alias, and two non-None inputs are refused before file discovery.
     """
     # None is "the config discovery finds", for the profile's file and for
     # the machine settings alike: until 0.8.1 the file was discovered and
     # the machine settings were the defaults.
+    overrides = _resolve_overrides(overrides, said)
     config_path = config_path or discover_config_path()
     path = profile_path(name, config_path)
     if not regular_file(path):
@@ -109,28 +81,28 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     # every machine setting with the value it finds as the fallback, so a
     # profile that states one still wins.
     if config_path is None or not regular_file(Path(config_path)):
-        return load_config(path, said=said)
-    main = load_config(config_path, said=said)
+        return load_config(path, overrides=overrides, strict=strict)
+    main = load_config(config_path, overrides=overrides, strict=strict)
     # Onto what routing.conf itself says, not onto what the command line
     # made of it: the comparison below is between the two files, and the
     # command line is put over both alike.
     onto = replace(Config(), **(main.loaded or Machine(
         main.device_name, main.usb_id, main.serial, main.osc_port,
         main.osc_recv_port))._asdict())
-    profile = load_config(path, onto, said)
+    profile = load_config(path, onto, overrides, strict=strict)
     theirs, ours = profile.loaded, main.loaded
-    if theirs is not None and ours is not None and theirs != ours:
+    moved = "" if theirs is None or ours is None else theirs.differs_from(ours)
+    if moved:
         raise ConfigError(
             "profile %r names another backend or interface than %s -- %s. A "
-            "profile is the desk, not the machine: take [osc] "
-            "and [device] out of %s"
-            % (name, config_path, theirs.differs_from(ours), path))
+            "profile is the desk, not the machine: take [device] out of %s"
+            % (name, config_path, moved, path))
     return profile
 
 
-#: Everything in a config that describes the *machine* rather than the
-#: desk, as (section, option, Config attribute). A profile inherits each
-#: of these unless it states it itself.
+#: Device identity and retained legacy ports, as (section, option, Config
+#: attribute). A profile inherits each unless it states it itself; only
+#: the three device fields determine compatibility.
 #:
 #: A table rather than a list of ifs, because the failure mode is
 #: forgetting one: `usb-id` was left out of the first version and would
@@ -149,17 +121,11 @@ MACHINE_SETTINGS = (
 
 
 def keep_machine_settings(desk: Config, running: Config) -> Config:
-    """``desk``, with the machine-level settings of the process that runs.
+    """Keep this process's device identity, legacy values and overrides.
 
-    The backend is bound and talking to one interface; a desk re-read
-    under it -- by the start once it holds the lock, by a SIGHUP -- changes
-    the routing and nothing in ``MACHINE_SETTINGS``. The session spelled
-    the five assignments out twice until 0.6.11, which is the way one
-    gets forgotten: the table is what a test holds against ``Config``.
-
-    ``load_profile`` is the third caller, with the main config as
-    ``running`` and an empty ``Config`` as the desk: what a profile is
-    read onto.
+    A desk re-read under the lock cannot retarget the running backend.
+    The field table is checked against Config so an inherited field
+    cannot silently be dropped.
     """
     kept = {attr: getattr(running, attr)
             for _section, _option, attr in MACHINE_SETTINGS}
@@ -168,42 +134,14 @@ def keep_machine_settings(desk: Config, running: Config) -> Config:
     return replace(desk, overrides=running.overrides, **kept)
 
 
-class _Refused(Exception):
-    """Why a writer will not write, carried to the outcome."""
-
-
-def _proc_root() -> Path:
-    return Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc"))
-
-
-def _target(config: Config, reach: bool) -> Device:
-    """Resolve the lock identity before waiting; the connection checks it again."""
-    try:
-        device = resolve_device(config.usb_id, config.device_name,
-                                config.serial, _proc_root())
-    except DeviceAmbiguous as exc:
-        raise _Refused(str(exc)) from exc
-    if reach:
-        sysfs = Path(os.environ.get("OSCMIX_SYSFS_USB", "/sys/bus/usb/devices"))
-        if not usb_device_present(config.usb_id, sysfs):
-            raise _Refused("%s is not connected" % config.usb_id)
-        if device.client is None or not device.serial:
-            raise _Refused("the selected interface and its serial are not visible to ALSA")
-    return device
-
-
 def _refused_for_the_device(name: str, reason: str) -> "Outcome":
     log.error("profile %r refused, nothing written: %s", name, reason)
     return Outcome(state=REFUSED, name=name, reason=reason)
 
 
-def _refused_for_the_lock(name: str, reason: str) -> Outcome:
-    log.error("profile %r refused, nothing written: %s", name, reason)
-    return Outcome(state=REFUSED, name=name, reason=reason)
-
-
 def effective_config(config_path: Optional[Path],
-                     said: Optional[CommandLine] = None
+                     overrides: Optional[Overrides] = None, *,
+                     said: Optional[Overrides] = None, strict: bool = False
                      ) -> Tuple[Config, Optional[str]]:
     """The desk a start applies, and the profile it came from.
 
@@ -212,21 +150,30 @@ def effective_config(config_path: Optional[Path],
     start, SIGHUP, --dry-run, --diff -- asks here, so they cannot
     disagree about it.
 
-    Raises ConfigError only for `routing.conf` itself: a main config
+    In the default mode, raises ConfigError only for `routing.conf`: a main config
     that does not parse is exit 2 as it always was. A remembered profile
     that does not load is a warning and a fallback, because a refused
     start over a file nobody edited is the failure config compatibility
     exists to prevent; the marker stays, so the warning stays until somebody
     decides.
+
+    Strict resolution rejects ignored sections and an unusable remembered
+    profile instead of choosing another desk. Explicit selection/restore
+    validates its target independently, so it can repair a broken selection.
+    ``overrides`` selects the validation device for both files; ``said``
+    is its compatible keyword alias. Supplying both is a TypeError.
     """
+    overrides = _resolve_overrides(overrides, said)
     config_path = config_path or discover_config_path()
-    main = load_config(config_path, said=said)
+    main = load_config(config_path, overrides=overrides, strict=strict)
     name = active_profile(config_path)
     if name is None:
         return main, None
     try:
-        profile = load_profile(name, config_path, said)
+        profile = load_profile(name, config_path, overrides, strict=strict)
     except ConfigError as exc:
+        if strict:
+            raise ConfigError("active profile %r is not usable (%s)" % (name, exc)) from None
         log.warning("active profile %r is not usable (%s); applying %s "
                     "instead -- fix the file, or `--no-profile`",
                     name, exc, config_path)
@@ -239,102 +186,105 @@ def effective_config(config_path: Optional[Path],
 
 def switch_profile(name: str, config_path: Optional[Path] = None,
                    backend: Optional[Control] = None,
-                   verify: bool = True) -> Outcome:
+                   verify: bool = True, *, strict: bool = False) -> Outcome:
     """Parse a profile fully, then apply it as one coordinated operation.
 
     ``config_path`` None is the config discovery finds, as for the CLI.
+    Installation maintenance fences refuse before opening the device. A
+    committed or partial write is handed to the matching running service;
+    Outcome.reload_failed reports a refused reload without hiding the writes.
+    ``strict=True`` refuses ignored sections before locking or connecting.
     """
     config_path = config_path or discover_config_path()
     try:
-        config = load_profile(name, config_path)
+        config = load_profile(name, config_path, strict=strict)
     except ConfigError as exc:
         return _refused_for_the_device(name, str(exc))
-    return _activate(config, config_path, name, backend, verify)
+    return _hand_over_to_the_unit(
+        _activate(config, config_path, name, backend, verify), config_path)
 
 
 def restore_main(config_path: Optional[Path] = None,
                  backend: Optional[Control] = None,
-                 verify: bool = True) -> Outcome:
+                 verify: bool = True, *, strict: bool = False) -> Outcome:
     """Apply the main desk; clear the marker only after the operation finishes.
 
     ``config_path`` None is the config discovery finds. Without any, there
     is no main desk to return to: until 0.8.1 the defaults were applied,
     0 of 0 registers verified and the restore reported as a success.
+    Maintenance fences and service hand-over follow switch_profile's rules.
+    ``strict=True`` refuses ignored sections in the main config.
     """
     config_path = config_path or discover_config_path()
-    if config_path is None:
-        return _refused_for_the_device(
-            "routing.conf", "no config file found, so there is no main desk to restore")
     try:
-        config = load_config(config_path)
+        config = _restore_config(config_path, strict=strict)
     except ConfigError as exc:
-        return _refused_for_the_device(Path(config_path).name, str(exc))
-    return _activate(config, config_path, None, backend, verify)
+        return _refused_for_the_device(Path(config_path or "routing.conf").name, str(exc))
+    return _hand_over_to_the_unit(
+        _activate(config, config_path, None, backend, verify), config_path)
+
+
+def _restore_config(config_path: Optional[Path], *, strict: bool = False) -> Config:
+    """Load the resolved main config for both restore and read-only preview."""
+    if config_path is None:
+        raise ConfigError("no config file found, so there is no main desk to restore")
+    return load_config(config_path, strict=strict)
 
 
 def _activate(config: Config, config_path: Optional[Path], name: Optional[str],
               backend: Optional[Control], verify: bool) -> Outcome:
     label = name if name is not None else Path(config_path or "routing.conf").name
+    problem = maintenance_problem()
+    if problem:
+        return _refused_for_the_device(
+            label, problem + "; complete installation recovery before activation")
     log_desk_notices(config)
+    applied = False
+    gave_out = None
     try:
-        target = _target(config, reach=backend is None)
-    except _Refused as refusal:
-        return _refused_for_the_device(label, str(refusal))
-    config = replace(config, serial=target.serial)
-    with _switch_lock(config_path, target.key) as not_held:
-        if not_held is not None:
-            return _refused_for_the_lock(label, not_held)
-        device = backend
-        applied = False
-        try:
-            if device is None:
-                device = connect_backend(config, config_path)
-            device.begin()
-            gave_out = _written(label, config, device)
+        with _operation(config, config_path, backend=backend) as desk:
+            gave_out = _written(label, desk)
             if gave_out is not None:
                 return gave_out
             applied = True
             if verify:
-                outcome = _check(label, config, device)
+                outcome = _check(label, desk)
             else:
                 outcome = Outcome(state=APPLIED_UNVERIFIED, name=label,
                                   reason=NOT_CHECKED,
-                                  unverified=sorted(expected_registers(config)),
+                                  unverified=tuple(sorted(expected_registers(config))),
                                   read_back=False)
             # A dead/lost lease invalidates observations and cannot publish a
             # successful marker, even when all individual writes were sent.
-            device.finish()
-        except OSError as exc:
-            if not applied:
-                return _refused_for_the_device(label, str(exc))
-            return Outcome(state=APPLIED_UNVERIFIED, name=label,
-                           reason="backend operation did not finish: %s" % exc,
-                           unverified=sorted(expected_registers(config)),
-                           persisted=False, read_back=False)
-        finally:
-            if device is not None:
-                device.close()
-        marked = (remember_active_profile(name, config_path) if name is not None
-                  else forget_active_profile(config_path))
-        return replace(outcome, persisted=marked.in_effect, durable=marked.durable)
+            desk._finish()
+            desk._disconnect()
+            marked = (remember_active_profile(name, config_path) if name is not None
+                      else forget_active_profile(config_path))
+            return replace(outcome, persisted=marked.in_effect, durable=marked.durable)
+    except (ConfigError, DeviceLockUnavailable, OSError) as exc:
+        if gave_out is not None:
+            log.warning("profile %r cleanup failed: %s", label, exc)
+            return gave_out
+        if not applied:
+            reason = str(exc)
+            if isinstance(exc, OSError) and exc.errno == errno.ENODEV and exc.strerror:
+                reason = exc.strerror
+            return _refused_for_the_device(label, reason)
+        return Outcome(state=APPLIED_UNVERIFIED, name=label,
+                       reason="backend operation did not finish: %s" % exc,
+                       unverified=tuple(sorted(expected_registers(config))),
+                       persisted=False, read_back=False)
 
 
-def _written(name: str, config: Config, device: Control
-             ) -> Optional[Outcome]:
-    """Write the desk. None when all of it went out; else how far it came.
+def _written(name: str, desk: Desk) -> Optional[Outcome]:
+    """Classify sent and pending paths after an explicit application.
 
-    A switch promises an outcome and never an exception, and
-    until 0.7.0 a socket error part of the way broke that promise as a
-    traceback, with some of the profile on the device and nothing said
-    about which part. Nothing gone out is a
-    refusal like any other: the desk is untouched. Some of it gone out is
-    its own state, with both lists, and the marker is left alone -- the
-    desk in effect remains the previous one. Reload repairs only PIN;
-    restoring its REMEMBER starting values requires explicit selection
-    or a new session.
+    Partial writes retain the previous marker. Reload repairs PIN only;
+    restoring REMEMBER starting values requires explicit selection or a new
+    session. No classification promises a hardware rollback.
     """
     try:
-        apply_routing(config, device, intent=ApplyIntent.EXPLICIT)
+        desk.apply(ApplyIntent.EXPLICIT)
     except WriteFailed as exc:
         cause = "cannot complete backend writes (%s)" % (exc.strerror or exc)
         if not exc.written:
@@ -344,29 +294,23 @@ def _written(name: str, config: Config, device: Control
                   len(exc.written), len(exc.written) + len(exc.unwritten),
                   cause)
         return Outcome(state=WRITTEN_IN_PART, name=name, reason=cause,
-                       written=list(exc.written),
-                       unwritten=list(exc.unwritten), persisted=False,
+                       unverified=exc.written + exc.unwritten,
+                       written=exc.written,
+                       unwritten=exc.unwritten, persisted=False,
                        read_back=False)
     return None
 
 
-def _check(name: str, config: Config, device: Control) -> Outcome:
-    """Read the state back and classify the switch.
+def _check(name: str, desk: Desk) -> Outcome:
+    """Classify strict read-back, keeping blind paths explicitly unverified.
 
-    Delegates the whole read-back to ``verify.verify_routing`` against
-    the caller's backend. It deliberately does not reimplement the loop:
-    the first version of this function read a single datagram and gave
-    up, so a register that was demonstrably correct at the device came
-    back unconfirmed -- measured on a UCX II, where ``/output/1/volume``
-    went 0.0 -> -6.0 and the switch reported it unverified anyway.
-
-    Safe in the direction it failed, and useless: APPLIED_VERIFIED was
-    unreachable on real hardware.
+    A failed read leaves every expectation unconfirmed. The operation must
+    still acknowledge END before any selection can be committed.
     """
-    model = device_for_name(config.device_name)
-    registers = expected_registers(config)
+    model = device_for_name(desk.config.device_name)
+    registers = expected_registers(desk.config)
     try:
-        result = verify_routing(registers, device, VERIFY_TIMEOUT, device_model=model)
+        result = desk.verify()
     except OSError as exc:
         # All apply phases completed, but this read-back failed. The outer
         # operation still requires a successful lease end before changing
@@ -374,23 +318,30 @@ def _check(name: str, config: Config, device: Control) -> Outcome:
         log.error("profile %r applied; it cannot be verified: %s", name, exc)
         return Outcome(state=APPLIED_UNVERIFIED, name=name,
                        reason=exc.strerror or str(exc),
-                       unverified=sorted(registers), read_back=False)
+                       unverified=tuple(sorted(registers)), read_back=False)
     unverified = sorted(result.mismatched + result.unobserved)
     if not unverified:
-        return Outcome(state=APPLIED_VERIFIED, name=name)
+        return Outcome(state=APPLIED_VERIFIED, name=name, read_back=True)
     # Registers this backend never reports are not evidence of a problem,
     # but they are still not confirmation -- so they stay in the list
     # rather than being quietly dropped from it, and are named as the
     # separate thing they are.
-    blind = sorted(p for p in unverified
+    blind = sorted(p for p in result.unobserved
                    if not register_ever_reported(p, model))
-    reason = ("%d unconfirmed, %d of them never reported by this backend"
+    state = APPLIED_MISMATCHED if result.mismatched else APPLIED_UNVERIFIED
+    reason = ("%d mismatched, %d not observed, %d never reported by this backend"
+              % (len(result.mismatched), len(result.unobserved), len(blind))
+              if result.mismatched else
+              "%d unconfirmed, %d of them never reported by this backend"
               % (len(unverified), len(blind)))
-    return Outcome(state=APPLIED_UNVERIFIED, name=name, reason=reason,
-                   unverified=unverified, unverifiable=blind)
+    return Outcome(state=state, name=name, reason=reason,
+                   unverified=tuple(unverified), unverifiable=tuple(blind), read_back=True,
+                   mismatched=tuple(result.mismatched), unobserved=tuple(result.unobserved),
+                   invalid=tuple(result.invalid))
 
 
-def describe_profiles(config_path: Optional[Path] = None) -> Sequence[str]:
+def describe_profiles(config_path: Optional[Path] = None, *,
+                      strict: bool = False) -> Sequence[str]:
     """Profile names with a one-line summary each, for ``--list-profiles``.
 
     The active one is marked, because "which desk am I on" is the
@@ -402,10 +353,121 @@ def describe_profiles(config_path: Optional[Path] = None) -> Sequence[str]:
     for name in list_profiles(config_path):
         mark = "  (active)" if name == active else ""
         try:
-            config = load_profile(name, config_path)
+            config = load_profile(name, config_path, strict=strict)
         except ConfigError as exc:
             lines.append("%-16s  BROKEN: %s%s" % (name, exc, mark))
             continue
         lines.append("%-16s  %d route(s), %d channel setting(s)%s"
                      % (name, len(config.routes), len(config.channels), mark))
     return lines
+
+
+def _check_configurations(config_path: Optional[Path]) -> Sequence[Path]:
+    """Strictly validate the main desk, every profile and the stored selection.
+
+    No device access or marker change. Directory enumeration errors and broken
+    .conf entries must refuse the check rather than shrink its apparent scope.
+    """
+    if config_path is None:
+        raise ConfigError("no config file found, so there is no main desk to check")
+    try:
+        _restore_config(config_path, strict=True)
+    except ConfigError as exc:
+        raise ConfigError("%s: %s" % (config_path, exc)) from None
+    directory = profiles_dir(config_path)
+    if directory is None:
+        raise ConfigError("no config directory, so no profiles to check")
+    try:
+        paths = sorted(path for path in directory.iterdir() if path.suffix == ".conf")
+    except FileNotFoundError:
+        paths = []
+    except OSError as exc:
+        raise ConfigError("cannot list profiles in %s: %s" % (directory, exc)) from None
+    for path in paths:
+        try:
+            load_profile(path.stem, config_path, strict=True)
+        except ConfigError as exc:
+            raise ConfigError("%s: %s" % (path, exc)) from None
+    # A marker naming a removed profile is not in the directory listing.
+    effective_config(config_path, strict=True)
+    return (config_path, *paths)
+
+
+def _hand_over_to_the_unit(outcome: Outcome, config_path: Optional[Path]) -> Outcome:
+    """Hand a persisted or partial selection to the matching running service.
+
+    Its verifier must follow the new selection. Reloading another config
+    could overwrite this one; the unit's own arguments and environment
+    determine its config. A failed reload preserves the operation's facts.
+    """
+    if outcome.state == REFUSED:
+        return outcome
+    if outcome.state != WRITTEN_IN_PART and not outcome.persisted:
+        log.warning("%s not reloaded: the marker was not written, and its "
+                    "reconcile would undo what was just applied", SERVICE_UNIT)
+        return outcome
+    told, unit_desk = _unit_desk()
+    if config_path is not None and unit_desk is not None \
+            and not _same_file(config_path, unit_desk):
+        log.info("%s not reloaded: it runs %s, and this switch was for %s",
+                 SERVICE_UNIT, unit_desk, config_path)
+        return outcome
+    reloaded = reload_service()
+    if reloaded == RELOAD_DONE:
+        # The unit decides what it does with the desk: it has the facts.
+        # One that names another backend is not applied there, and its
+        # journal says so (reload._kept_for_this_process).
+        log.info("%s reloaded; its own reconcile follows the new desk, or "
+                 "says in its journal why it does not", SERVICE_UNIT)
+        if config_path is not None and not told:
+            # Reloaded all the same: nearly every switch is for the unit's
+            # own desk, and leaving the unit untold lets its verifier
+            # re-apply the old one (0.6.3). But it is a guess, so say so.
+            log.warning("could not tell which desk %s runs (its /proc entry "
+                        "or its command line could not be read): if this "
+                        "switch was for another desk, the unit has "
+                        "re-applied its own over it", SERVICE_UNIT)
+        return outcome
+    if reloaded == RELOAD_NOT_RUNNING:
+        log.info("%s is not running; nothing to reload", SERVICE_UNIT)
+        return outcome
+    log.error("%s is running but refused the reload, so it may still be "
+              "acting on the previous desk; send it again with "
+              "systemctl --user reload %s", SERVICE_UNIT, SERVICE_UNIT)
+    return replace(outcome, reload_failed=True)
+
+
+def _unit_desk() -> Tuple[bool, Optional[Path]]:
+    """(whether it could be told, the config the running unit resolves).
+
+    ``(True, None)`` is an answer -- the unit resolves no config, so it has
+    no desk to re-apply -- and ``(False, None)`` is not: read once, because
+    a second look after the reload may see another unit state.
+
+    Worked out the way the unit did (reload._config_path): --config on
+    its command line first, then its environment. Its own parser reads
+    the command line, so an abbreviated or ``--config=`` form counts as
+    it did there. A relative path is the unit's, taken against the
+    unit's working directory, not this shell's.
+    """
+    unit = unit_process(Path(os.environ.get("OSCMIX_PROC_ROOT", "/proc")))
+    if unit is None:
+        return False, None
+    # A line this parser cannot read is "cannot be told", and its usage
+    # text belongs to the unit, not on this switch's stderr.
+    try:
+        with contextlib.redirect_stderr(io.StringIO()):
+            args, _ = build_arg_parser().parse_known_args(list(unit.argv[1:]))
+    except SystemExit:
+        return False, None
+    named = args.config or discover_config_path(unit.environ)
+    return True, None if named is None else unit.cwd / named
+
+
+def _same_file(one: Path, other: Optional[Path]) -> bool:
+    if other is None:
+        return False
+    try:
+        return one.resolve() == other.resolve()
+    except OSError:
+        return False

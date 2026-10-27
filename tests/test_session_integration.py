@@ -315,6 +315,10 @@ def test_a_config_with_no_routes_is_applied_at_start(tmp_path, session_mod):
     )
     config = tmp_path / "routing.conf"
     config.write_text(CHANNEL_ONLY_CONF.format(port=port, recv_port=recv_port))
+    env['STUB_INITIAL_REGISTERS'] = json.dumps({
+        '/input/3/autoset': ['i', [0]], '/input/4/autoset': ['i', [0]],
+        '/input/3/stereo': ['i', [0]],
+    })
 
     journal = tmp_path / "stderr.log"
     with open(journal, "w") as stderr_file:
@@ -327,13 +331,14 @@ def test_a_config_with_no_routes_is_applied_at_start(tmp_path, session_mod):
         datagram_log = stub_dir / "datagrams.hex"
         assert wait_for(
             lambda: datagram_log.exists()
-            and len(datagram_log.read_text().splitlines()) >= 4
+            and len(datagram_log.read_text().splitlines()) >= 5
         ), "channel state never reached the backend"
         received = [bytes.fromhex(line)
                     for line in datagram_log.read_text().splitlines()]
-        # No links and no mix: the three settings, in file order, then
-        # the verification's state request.
-        assert received[:4] == [
+        # Fresh AutoSet dependencies first; no links or mix. Then the three
+        # settings and the verification's own state request.
+        assert received[:5] == [
+            osc.encode_osc("/refresh"),
             osc.encode_osc("/input/3/gain", "f", 12.0),
             osc.encode_osc("/input/3/hi-z", "i", 1),
             osc.encode_osc("/clock/source", "i", 0),

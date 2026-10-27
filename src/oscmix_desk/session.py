@@ -1,7 +1,7 @@
 """The session lifecycle: discover, launch, apply, signal, supervise.
 
-This is the only module that composes the others; everything it calls
-is testable on its own.
+Startup retains one Desk operation through apply and background repair.
+Supervision handles signals only after that ownership has been established.
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
-from .backend import Control, connect_backend
 from .constants import (
     CHILD_STOP_GRACE,
     EXIT_CONFIG,
@@ -26,6 +25,7 @@ from .constants import (
     VERIFIER_STOP_GRACE,
     VERIFY_SETTLE,
 )
+from .desk import Desk, _operation
 from .devices import device_for_name
 from .discovery import Device as Interface
 from .discovery import (
@@ -38,21 +38,20 @@ from .discovery import (
     wait_for_device,
 )
 from .errors import (
+    BackendControlError,
+    ConfigError,
     DeviceAmbiguous,
     DeviceLockUnavailable,
-    ReceivePortError,
     WriteFailed,
 )
-from .locking import DeviceLock, control_path, device_lock
+from .locking import control_path
 from .log import log
 from .model import Config
 from .notices import log_desk_notices
 from .notify import sd_notify
 from .process import _cleanup_stale_backend, control_socket_owner, supervise
-from .reconcile import desired, plan
+from .reconcile import ApplyIntent, application_plan, desired
 from .reload import _config_path, _desk_under_the_lock, _reconcile
-from .routing import apply_routing, wait_unless_stopped
-from .verify import verify_and_repair
 
 
 def _print_dry_run(client: Optional[int], config: Config) -> None:
@@ -76,7 +75,7 @@ def _print_dry_run(client: Optional[int], config: Config) -> None:
              "the active hardware stream is checked before writes")
     print("would run: alsaseqio -x %s:1 oscmix -c <device control socket>"
           % ("<client>" if client is None else client))
-    for path, types, values in plan(desired(config)).messages():
+    for path, types, values in application_plan(config, ApplyIntent.INITIAL).messages():
         print("would send: %s ,%s %s"
               % (path, types, " ".join(map(str, values))))
 
@@ -166,66 +165,41 @@ def _stop_child(child: "subprocess.Popen[bytes]") -> None:
 
 def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
                       stop_requested: Dict[str, bool],
-                      config_path: Optional[Path] = None
+                      config_path: Optional[Path] = None, *, strict: bool = False
                       ) -> Optional[threading.Thread]:
-    """Apply the routing, then verify it in the background.
-
-    One background dump does both jobs: it syncs oscmix's link state
-    (which triggers the mix re-apply) and verifies the routing, without
-    holding up the readiness signal.
-
-    Returns the verifier thread so ``run_session`` can wait for it to
-    stop before exiting. It used to read ``stop_requested`` and
-    ``child.poll()`` exactly once, here, before starting -- and then run
-    for two verification windows plus a blind delay, writing routing at
-    three points, with nobody looking again.
-    """
-    # One transaction, from the first write to the verifier's last: a
-    # switch that landed between them would be overwritten by the retry
-    # that follows it, which is what 0.6.3 measured.
-    lock = device_lock(config_path, lock_key(config.usb_id, config.serial),
-                       should_stop=lambda: _interrupted(child, stop_requested) is not None)
-    # The lock may have taken a while. A stop that arrived during the
-    # wait means this process is going away, and writing the whole
-    # routing on the way out is the opposite of what was asked (0.6.6).
-    interrupted = _interrupted(child, stop_requested)
-    if interrupted is not None:
-        log.info("%s while waiting for the device lock; nothing applied", interrupted)
-        if isinstance(lock, DeviceLock):
-            lock.release()
-        return None
-    if not isinstance(lock, DeviceLock):
-        # Until 0.6.7 this wrote anyway, on the grounds that a desk with
-        # no routing is worse than a re-apply. It also made "every writer
-        # holds one lock" conditional on nothing going wrong, which is
-        # the opposite of what a guarantee is. systemd restarts the unit;
-        # a write nobody serialised cannot be taken back.
-        log.error("the device lock is not available (%s); not applying routing", lock)
-        raise DeviceLockUnavailable(lock)
-
-    device = None
+    """Transfer one checked operation from initial apply to its verifier."""
+    operation = _operation(
+        config, config_path, expected_pid=child.pid,
+        reread=lambda running: _desk_under_the_lock(config_path, running, strict=strict),
+        should_stop=lambda: _interrupted(child, stop_requested) is not None)
     try:
-        config = _desk_under_the_lock(config_path, config)
-        empty = not desired(config)
-        device = connect_backend(config, config_path, expected_pid=child.pid, reader=empty,
-                                 should_stop=lambda: stop_requested["stop"]
-                                 or child.poll() is not None)
-        if empty:
+        operation._open()
+        if not desired(operation.config):
             # Even an empty desk must identify the launched backend before
             # signalling readiness; it needs no write lease or verifier.
             log.info("nothing declared in the config; leaving mixer state untouched")
-            device.close()
-            lock.release()
+            operation._close()
             return None
         sd_notify("STATUS=applying routing")
-        device.begin()
-        apply_routing(config, device,
-                      should_stop=lambda: stop_requested["stop"] or child.poll() is not None)
-        return _verify_in_background(child, config, stop_requested, lock, device)
+        if not operation.apply(ApplyIntent.INITIAL):
+            operation._close(finish=False)
+            return None
+        return _verify_in_background(child, stop_requested, operation)
+    except DeviceLockUnavailable as exc:
+        if _interrupted(child, stop_requested) is not None:
+            log.info("%s while waiting for the device lock; nothing applied",
+                     _interrupted(child, stop_requested))
+            return None
+        log.error("the device lock is not available (%s); not applying routing", exc)
+        raise
+    except BackendControlError:
+        operation._close(finish=False)
+        if _interrupted(child, stop_requested) is not None:
+            log.info("%s; routing not completed", _interrupted(child, stop_requested))
+            return None
+        raise
     except BaseException:
-        if device is not None:
-            device.close()
-        lock.release()
+        operation._close(finish=False)
         raise
 
 
@@ -243,14 +217,10 @@ def _interrupted(child: "subprocess.Popen[bytes]",
     return None
 
 
-def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
+def _verify_in_background(child: "subprocess.Popen[bytes]",
                           stop_requested: Dict[str, bool],
-                          lock: DeviceLock, backend: Control) -> threading.Thread:
-    """Read the routing back on a thread, and free the lock when done.
-
-    The lock spans the apply and this, because the verifier re-applies:
-    a switch that landed in between would be overwritten by the retry.
-    """
+                          operation: Desk) -> threading.Thread:
+    """Retain startup ownership until observation, repair and END finish."""
     def should_stop() -> bool:
         # A dead backend counts as a stop: its port is gone, so every
         # write from here would go nowhere and the log would claim a
@@ -263,14 +233,15 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
         # unit is doing; the lock is what keeps another writer out.
         verified = False
         try:
-            if wait_unless_stopped(VERIFY_SETTLE, should_stop, backend):
-                return
-            sd_notify("STATUS=verifying routing")
-            complete = verify_and_repair(config, backend, should_stop)
-            verified = True
-            if should_stop():
-                return
-            backend.finish()
+            with operation:
+                if operation._wait(VERIFY_SETTLE):
+                    return
+                sd_notify("STATUS=verifying routing")
+                complete = operation.repair()
+                verified = True
+                if should_stop():
+                    return
+                operation._finish()
             sd_notify("STATUS=running; verifier %s at %s"
                       % ("finished" if complete else "incomplete", time.strftime("%H:%M:%S")))
         except OSError as exc:
@@ -283,10 +254,6 @@ def _verify_in_background(child: "subprocess.Popen[bytes]", config: Config,
             _log_verifier_failure(exc, verified)
             sd_notify("STATUS=running; verifier failed at %s"
                       % time.strftime("%H:%M:%S"))
-        finally:
-            backend.close()
-            lock.release()
-
     thread = threading.Thread(target=deferred_verify, name="verify",
                               daemon=True)
     thread.start()
@@ -307,7 +274,7 @@ def _log_verifier_failure(exc: OSError, verified: bool) -> None:
                   "did not end cleanly (%s)", exc)
     elif isinstance(exc, WriteFailed) and exc.refused:
         log.error("verifier did not repair the routing: %s", exc)
-    elif isinstance(exc, ReceivePortError):
+    elif isinstance(exc, BackendControlError):
         # Failed feedback is distinct from silence.
         log.error("routing cannot be verified: %s", exc)
     else:
@@ -436,7 +403,8 @@ def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
 
 
 def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
-                   stop_requested: Dict[str, bool], config_path: Optional[Path]
+                   stop_requested: Dict[str, bool], config_path: Optional[Path], *,
+                   strict: bool = False
                    ) -> Tuple[Optional[threading.Thread], Optional[int]]:
     """Apply the desk and signal READY, or stop the backend and say why.
 
@@ -448,8 +416,12 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
     retries after RestartSec; a socket the backend
     cannot be reached through was a traceback until 0.6.10.
     """
+    failure = EXIT_FAILURE
     try:
-        verifier = _apply_and_verify(child, config, stop_requested, config_path)
+        verifier = _apply_and_verify(child, config, stop_requested, config_path, strict=strict)
+    except ConfigError as exc:
+        log.error("cannot apply the re-read desk (%s); failing the start", exc)
+        failure = EXIT_CONFIG
     except DeviceLockUnavailable:
         log.error("failing the start so systemd tries again")
     except OSError as exc:
@@ -463,14 +435,16 @@ def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
             log.warning("%s during the start; routing not completed (%s)", interrupted, exc)
             return None, None
     else:
-        sd_notify("READY=1")
+        if _interrupted(child, stop_requested) is None:
+            sd_notify("READY=1")
         return verifier, None
     _stop_child(child)
-    return None, EXIT_FAILURE
+    return None, failure
 
 
 def run_session(args: argparse.Namespace, config: Config) -> int:
     """Discover the device, run the backend, and supervise it."""
+    config_path = _config_path(args)
     # The desk a start looks for an interface with, or a dry run shows --
     # after --device. Before the search: a dry run ends there, and a start
     # that finds no interface is no reason to say less.
@@ -500,10 +474,10 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
         return EXIT_OK
 
     try:
-        endpoint = control_path(_config_path(args), interface.key)
+        endpoint = control_path(config_path, interface.key)
         if _cleanup_stale_backend(endpoint, interface, proc_root) is not None:
             return EXIT_CONFIG
-        child = _start_backend(client, config, _config_path(args))
+        child = _start_backend(client, config, config_path)
     except OSError as exc:
         log.error("cannot start the coordinated backend: %s", exc)
         return EXIT_FAILURE
@@ -526,7 +500,7 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     verifier = None
     if child.poll() is None:
         verifier, failed = _apply_or_fail(child, config, stop_requested,
-                                          _config_path(args))
+                                          config_path, strict=getattr(args, "strict", False))
         if failed is not None:
             return failed
 

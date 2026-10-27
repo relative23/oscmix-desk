@@ -52,7 +52,7 @@ routing.conf ──config──▶ Config
          │                                     ▲             │
          ▼                                     │             ▼
  routing.apply_routing()              backend observations   --diff
- links → barrier → matrix → settings
+ AutoSet-off → confirmation → links → barrier → matrix → settings → AutoSet-on
          │
          ▼
  verification → permitted PIN repair
@@ -75,17 +75,20 @@ acyclic graph.
 | Module | What it owns |
 |---|---|
 | `constants` | every exit code and the session's timing constants, each with the measurement that produced it; the ODK1 client's queue limits and keepalive interval live in `backend`, the backend's clocks in `protocol` |
-| `errors` | configuration, ambiguous-device and lock refusals; `ReceivePortError` for failed coordinated observations (retained API name), and `WriteFailed` with submitted/pending paths |
+| `arguments` | the session's command-line grammar, shared by the CLI and inspection of the running service's selected config |
+| `errors` | configuration, ambiguous-device and lock refusals; `BackendControlError` for failed coordinated backend operations (`ReceivePortError` remains an alias), and `WriteFailed` with submitted/pending paths |
 | `log` | journal-shaped logging, no configuration |
 | `osc` | encode and decode OSC messages; no I/O |
 | `protocol` | the ODK1 wire values (request, event, status, role and source numbers, header layout), mirrored from `control.h` in patch 0003 and checked against it by a test |
 | `registers` | what a register row and a device are -- path, tags, bounds, verification class, policy -- and the questions the parser, the reconciler and the verifier ask of a device's table |
 | `numeric` | finite values, OSC representation and the pinned backend’s scalar encodings; parameter-specific comparisons and lossless decimal formatting |
 | `devices` | the tables themselves: the UCX II's rows and channel map, the 802's channel map, and which of them a config names |
-| `model` | a desk as data: routes, channel and global settings, and the five settings that say where it goes |
+| `model` | a desk as data with validated level/balance claims on linked route aliases: routes, channel and global settings, device identity, `Overrides` (`CommandLine` remains an alias) and two retained legacy OSC ports; only device name, USB ID and serial select the machine |
+| `playback` | pure validation of unreadable playback-mute ownership: both adjacent flags must agree; unmute explicitly owns both complete matrix columns, including zero cells; no I/O or inferred DEVICE original |
+| `autogain` | pure AutoSet/gain ownership by input and stereo pair, typed dependency values and shared declaration validation; no transport or gain-policy change for other inputs |
 | `paths` | where a desk is looked for: the config, `profiles/` beside it, and what a profile name is |
-| `sections` | the sections the register table declares -- channels, families, globals -- refusing what it declares unsettable and warning about what it does not model at all |
-| `config` | parse `routing.conf` into a `Config`: `[device]`, `[osc]`, routes and pins here, the rest through `sections`; total, so every input is a `Config` or a `ConfigError` |
+| `sections` | the sections the register table declares -- channels, families, globals -- refusing unsettable values; strict mode rejects unknown or unsupported sections, compatibility mode warns and ignores them |
+| `config` | parse `routing.conf` into a `Config`: `[device]`, `[osc]`, routes and pins here, the rest through `sections`; unreadable or invalid files raise `ConfigError` |
 | `notices` | what there is to say about a desk before it is written or shown |
 | `discovery` | find the device and resolve serial, sequencer client and lock key from one answer; USB presence and executable selection |
 | `notify` | `sd_notify`, so `Type=notify` means "the routing is applied" |
@@ -99,20 +102,21 @@ acyclic graph.
 | `desktop` | inspect the matching upstream GTK executable through its display-free protocol-version command |
 | `status` | versioned read-only runtime report for source and native installations; no OSC requests or service activation |
 | `preview` | compare two partial desk declarations for omitted matrix paths and changed link requirements |
-| `routing` | send a plan in two phases, with the link barrier between them |
+| `routing` | send explicit mute-on, link, mix, calibration, channel and mute-off phases, with fresh prerequisite barriers before links/mix/unmute; coordinated writes do not imply an atomic or acoustically qualified transition |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
 | `process` | the supervise loop (reload requests, `SIGTERM` then `SIGKILL` on stop); the unit's process and `systemctl` calls; associating the listening control inode with its executable and exclusive ALSA bridge, and ending an orphaned backend |
 | `pipewire` | generate named virtual sinks from the same config |
 | `locking` | the desk file lock and shared device endpoint path: location, permissions and bounded acquisition; backend leases additionally coordinate GTK |
-| `marker` | which profile is in effect, remembered beside the config: read, written through a rename, removed |
-| `outcome` | what a switch did, as a value: applied and verified, applied and unverified, refused, or written in part with both lists |
-| `profiles` | switch to `profiles/<name>.conf` under that lock: validate, write, check, finish the backend operation, then persist the selection; report exact outcomes and preserve the previous marker on incomplete operations |
+| `marker` | which profile is in effect for each config file, persisted atomically beside it; `routing.conf` retains the legacy marker name |
+| `outcome` | the five `OutcomeState` results of a switch, with immutable paths, separate mismatched/missing/invalid feedback and validated persistence and service reload facts |
+| `profiles` | honour maintenance fences, then switch to `profiles/<name>.conf` under that lock: validate, write, check, finish the backend operation and persist the selection; hand over to the matching service, report exact outcomes and preserve the previous marker on incomplete operations |
+| `desk` | one coordinated operation: pin the interface, own the device lock and checked connection, take one write lease for apply/verify/repair, acknowledge its end and release resources on every path; readers use the same connection lifetime without a writer lock or lease |
 | `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` -- kept for the machine the session runs on, or refused as a desk for somewhere else |
 | `session` | the service lifecycle: wait for the device, start and stop the backend, apply, signal ready, verify, shut down |
 | `launcher` | desktop entry point; checks GTK prerequisites and exact backend/desk identity before launch |
 | `reads` | the three actions that read the device and write nothing: `--snapshot`, `--diff`, `--dump-config` |
-| `cli` | argument parsing, one action per invocation, and the exit-code mapping -- a switch's outcome and the unit's reload included |
-| `__init__` | the supported surface -- read a config, apply and verify it, switch profiles, the errors and outcomes, the two entry points -- and the only module that re-exports; every other module is implementation |
+| `cli` | one action per invocation and the exit-code mapping, including a switch's device, persistence and service reload facts |
+| `__init__` | the supported surface -- read a config, open a Desk operation, switch profiles, the errors and outcomes, and launch the mixer -- including `Policy` and the optional profile-backend type `Control`; the only module that re-exports |
 
 ## One profile switch, end to end
 
@@ -123,33 +127,59 @@ reload run the same middle part (steps 3 to 8) with their own intent.
    (`paths.discover_config_path`) and refuses during an unfinished package
    update (`hostservice.maintenance_problem`).
 2. `profiles.switch_profile` parses and validates the whole profile onto the
-   main config's machine settings (`config`, `sections`, `devices`). A
-   refusal here has written nothing and takes no lock.
-3. `discovery.resolve_device` names the interface: its serial, sequencer
-   client and lock key.
-4. `locking.device_lock` takes the file lock every writer of that interface
-   takes, or returns why not.
-5. `backend.connect_backend` identifies the running backend through
+   main config's machine settings (`config`, `sections`, `devices`) and
+   checks the maintenance fence for Python callers too. A refusal here has
+   written nothing and takes no lock. With `strict=True`, unknown or
+   unsupported sections in the main config and target are refusals.
+3. `desk.Desk` resolves the interface (`discovery.resolve_device`): its serial,
+   sequencer client and lock key. A session retains its already pinned identity.
+4. The operation takes `locking.device_lock`, the file lock every writer of
+   that interface takes. Start and SIGHUP re-read their selected desk inside it,
+   retaining the validation mode selected by the session's startup arguments.
+5. The operation calls `backend.connect_backend`, identifying the backend through
    `diagnostics.backend_status` (`process`, `discovery`), connects, checks the
    kernel peer credentials and says HELLO as the desk (`protocol`).
-   `Control.begin` takes the operation lease.
-6. `routing.apply_routing` asks `reconcile.application_plan` what to write
+   Entering connects; the first apply, verify or repair takes the lease
+   (`Control.begin`). All methods share it.
+6. `Desk.apply` delegates to `routing.apply_routing`, which asks
+   `reconcile.application_plan` what to write
    for the intent (`reconcile.ApplyIntent`: explicit, repair or reconcile,
    which decides PIN and REMEMBER), refuses a plan that would lose a value it
    must keep (`retention_problem`) or a changed playback mode
    (`streams.PlaybackGuard`), then sends links, waits at the link barrier
    for device reports (`await_link_echo`), and sends the mix and channel
    state.
-7. `verify.verify_routing` requests a refresh and compares the device-origin
+7. `Desk.verify` delegates to `verify.verify_routing`, which requests a refresh
+   and compares the device-origin
    reports (`observation`, `numeric`) with the expected registers, giving a
    `VerifyResult`.
-8. `Control.finish` ends the lease; only an acknowledged end lets
-   `marker.remember_active_profile` record the switch.
-9. The `outcome.Outcome` becomes the exit code in `cli`.
+8. The operation acknowledges `Control.finish` and closes the connection;
+   only then does `marker.remember_active_profile` record the switch, still
+   holding the file lock. Every exit releases the connection and lock.
+   A failed write disconnects without replaying or committing a marker.
+9. `profiles` asks `process.reload_service` to hand the selection to the
+   running service after releasing the lock, if it runs the matching config.
+   A partial write retains the previous selection and requests its PIN
+   reconciliation; an uncommitted complete write requests no reload.
+   `Outcome.reload_failed` retains any reload failure beside the write facts.
+   The result becomes the exit code in `cli`, which sends no second reload.
 
 At start, `session` runs steps 3 to 6 before `READY=1` and step 7 in a
 background thread with a repair (`verify.verify_and_repair`); a SIGHUP runs
 them in `reload` with the reconcile intent, which keeps remembered values.
+An unusable desk found by a strict startup re-read refuses with exit 2 before
+any writes or readiness. On SIGHUP it skips the reconcile and keeps the
+session running. Default compatibility still permits startup fallback.
+Read commands use the same operation as a subscriber with no writer lock or
+write lease, so they can observe while another operation holds ownership.
+
+`--check` stops at parsing: it strictly validates the main file, every
+profile and the stored selection without a device lock, connection, marker
+change or service reload. It returns 0 after the complete check, or 2 for the
+first failure, including an unreadable profile directory. Explicit profile
+selection/restore validates its target directly so it can recover a broken
+active selection; its preview uses the same target validation and a
+compatibility reference for the previous declared desk.
 
 ## The register model is data
 
@@ -243,7 +273,7 @@ not establish backend support for another interface.
 | 0 | device absent, clean shutdown, or clean backend exit | none |
 | 1 | runtime failure; from the command line also a switch whose write gave out part of the way | restart after 3 s (max 5 per 2 min) |
 | 2 | a configuration the unit cannot run: a routing.conf error, two interfaces and no `[device] serial`, or a conflicting device owner; from the command line also a usage error or a refused switch | **no** restart (`RestartPreventExitStatus=2`) |
-| 3 | `--diff` only: the device and the config disagree | never seen; the service runs no flag |
+| 3 | `--diff`: the device and config disagree; profile selection: writes completed but read-back reported differing or invalid values | never seen; the service runs no flag |
 | 4 | a switch reached the device but could not be recorded | never seen; flags only |
 | 5 | the unit is running and refused the reload | never seen; flags only |
 | 130 | interrupted (Ctrl-C) before the backend ran | never seen; systemd stops with SIGTERM |
@@ -308,9 +338,10 @@ monitoring check report healthy silence while the backend is down.
 
 - **Named PipeWire sinks are generated, not hardcoded.**
   `oscmix-session --pipewire-sinks` derives one loopback sink per stereo
-  route from routing.conf and auto-detects the Fireface sink node via
-  `pw-dump`, so the desktop integration follows the same single source of
-  truth as the hardware mixer.
+  output pair from playback routes, named after the first route targeting
+  that pair. Input-only monitoring routes do not create desktop playback
+  sinks. It auto-detects the Fireface sink node via `pw-dump`, so the
+  desktop integration follows the declared desk.
 
 ## Installed files
 

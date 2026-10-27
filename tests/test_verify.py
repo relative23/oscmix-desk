@@ -78,7 +78,7 @@ def run_verify(session_mod, registers, state, timeout=3.0, **kwargs):
         server = ScriptedControl(Path(directory) / "control.sock", reports=state)
         client = Control(server.path, os.getpid(), reader=True)
         try:
-            return session_mod.verify_routing(registers, client, timeout=timeout, **kwargs)
+            return verify.verify_routing(registers, client, timeout=timeout, **kwargs)
         finally:
             client.close()
             server.close()
@@ -213,7 +213,7 @@ def test_verify_propagates_a_lost_refresh_acknowledgement(session_mod, tmp_path)
     client = Control(server.path, os.getpid(), reader=True)
     try:
         with pytest.raises(ReceivePortError, match="disconnected"):
-            session_mod.verify_routing({"/output/5/volume": ("f", (0.,))}, client, timeout=.1)
+            verify.verify_routing({"/output/5/volume": ("f", (0.,))}, client, timeout=.1)
         assert server.writes == []
     finally:
         client.close()

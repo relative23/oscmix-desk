@@ -220,3 +220,57 @@ A probe compiles the actual prepared bridge with the ALSA calls before the
 first port substituted and records the requested pool size. The former
 code does not request one. No hardware is opened by the test.
 
+
+## 0011 -- reconstruct stereo pan at silence and both endpoints
+
+The previous reconstruction divided by a silent stereo leg at +100 pan and
+could derive an invalid volume/width. Use the stronger leg for reconstruction,
+define silence explicitly, and use exact zeros at the mono endpoints. A mono
+output observation does not replace the input's stereo width.
+
+## 0012 -- re-establish playback mute from complete columns
+
+Playback mute has no physical register reporter. ON/OFF writes all cells in
+the affected cached playback column(s), including zeros and repeated requests.
+Validate mappings, bounds and finite coefficients before submission and change
+flags only after the synchronous MIDI write. Encode each register word
+separately in the RME seven-bit format. Setter errors propagate as INVALID.
+The MIDI writer applies one absolute two-second deadline across partial writes,
+EINTR and EAGAIN. A transport error may still leave hardware partially written.
+
+## 0013 -- publish mix coefficients and metadata together
+
+A single mix command prepares at most eight register words: coefficients and
+the physical input DB/PAN metadata. Submit them in one bounded MIDI frame
+while retaining word order, values and successful cache behavior. The desired
+cache is never DEVICE readback; one host frame does not prove an atomic audio
+transition.
+
+`tests/backend_mixer.py` compiles full prepared translation units with only
+sinks or system calls replaced. It checks actual mixer callbacks, both pan
+aliases and all feedback orders, complete playback columns, invalid mappings,
+partial submission and absolute write deadlines. The normal CI backend job
+runs these beside the process-level and GTK integration tests.
+
+## 0014 -- observe canonical stereo silence from fresh dB floors
+
+A complete fresh stereo mix is still reconstructed from the fresh dB and pan
+metadata of both input partners and the observed links. One narrow derivation
+is added for two actively linked stereo pairs: when both partners' last fresh dB
+values are at or below -650, all four link flags are fresh since the last
+command or REFRESH, and all four physical coefficients are finite and exactly
+zero, the level calculation reports canonical silence (volume `-inf`, width 100)
+whatever the two pan registers hold.
+
+A new `mix_observed` bit (value 4) witnesses the latest fresh dB floor. The dB
+bit (1) and the pan bit (2) stay separate, pan never creates the floor witness,
+and a new non-silent dB value clears it. The existing command, REFRESH and
+link-change resets clear all bits. A cached zero, a missing partner dB, mono or
+mixed forms, stale links, non-finite coefficients and pan-only reports get no
+extra publication. The native cache invariant (finite, between 0 and 2) is
+checked before the arithmetic, and a refusal invalidates that compound's
+observations without repairing any coefficient.
+
+The canonical report keeps the DEVICE origin of the register path that produced
+it and proves no actual pan register value. The decoder may still attempt
+physical MIDI output, so no claim of zero physical writes is made.

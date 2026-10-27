@@ -13,6 +13,8 @@ import pytest
 from support import osc_bundle
 
 from oscmix_desk import osc
+from oscmix_desk import routing as routing_api
+from oscmix_desk import verify as verify_api
 from oscmix_desk.errors import ReceivePortError, WriteFailed
 
 
@@ -39,11 +41,11 @@ def run_under(session_mod, wire_peer, *, drop=0., duplicate=False, reorder=False
     with wire_peer(reports=[osc_bundle(messages)]) as (device, peer):
         if drop == 1.0:
             with pytest.raises(WriteFailed, match="retained partner") as failure:
-                session_mod.verify_and_repair(config, device)
+                verify_api.verify_and_repair(config, device)
             assert failure.value.written == ()
             assert "/output/5/stereo" in failure.value.unwritten
         else:
-            session_mod.verify_and_repair(config, device)
+            verify_api.verify_and_repair(config, device)
     return peer
 
 
@@ -72,7 +74,7 @@ def test_applying_routing_survives_a_device_that_never_answers(
     config = session_mod.Config(routes=[make_route(session_mod)])
     started = time.monotonic()
     with wire_peer() as (device, peer):
-        session_mod.apply_routing(config, device)
+        routing_api.apply_routing(config, device)
         assert "/mix/5/playback/1" in peer.order
     assert time.monotonic() - started < 3., "the barrier did not time out"
 
@@ -82,7 +84,7 @@ def test_a_closed_connection_refuses_all_writes(session_mod, wire_peer):
     with wire_peer() as (device, peer):
         device.close()
         with pytest.raises(WriteFailed) as failure:
-            session_mod.apply_routing(config, device)
+            routing_api.apply_routing(config, device)
         assert failure.value.written == ()
         assert set(failure.value.unwritten) == {
             p for p, _, _ in oracle.route_messages(config.routes[0])}
@@ -96,7 +98,7 @@ def test_verification_survives_a_flood_of_unrelated_registers(
     noise = [osc.encode_osc("/input/%d/gain" % channel, "f", 12.) for channel in range(1, 200)]
     started = time.monotonic()
     with wire_peer(reports=[osc_bundle(noise + full_dump(session_mod, route))]) as (device, peer):
-        session_mod.verify_and_repair(session_mod.Config(routes=[route]), device)
+        verify_api.verify_and_repair(session_mod.Config(routes=[route]), device)
         assert "/mix/5/playback/1" in peer.order
     assert time.monotonic() - started < 3.
 
@@ -105,7 +107,7 @@ def test_backend_loss_after_links_records_partial_apply_and_no_later_phase(sessi
     config = session_mod.Config(routes=[make_route(session_mod)])
     with wire_peer(disconnect_after="/output/5/stereo") as (device, peer):
         with pytest.raises(WriteFailed, match="disconnected") as failure:
-            session_mod.apply_routing(config, device)
+            routing_api.apply_routing(config, device)
         assert peer.order == ["/playback/1/stereo", "/output/5/stereo"]
         assert failure.value.written == tuple(peer.order)
         assert failure.value.unwritten == ("/mix/5/playback/1", "/output/5/volume",
@@ -120,7 +122,7 @@ def test_a_device_vanishing_mid_dump_invalidates_the_read_and_prevents_repair(
     started = time.monotonic()
     with wire_peer(reports=partial, close_after_dump=True) as (device, peer):
         with pytest.raises(ReceivePortError, match="disconnected"):
-            session_mod.verify_and_repair(session_mod.Config(routes=[route]), device)
+            verify_api.verify_and_repair(session_mod.Config(routes=[route]), device)
         assert peer.order == ["/refresh"]
         assert peer.writes == []
     assert time.monotonic() - started < 2.
@@ -140,7 +142,7 @@ def test_backend_loss_between_verification_and_retry_has_no_blind_fallback(
     monkeypatch.setattr(verify_mod, "verify_routing", verify_then_disconnect)
     with wire_peer() as (device, peer):
         with pytest.raises(WriteFailed) as failure:
-            session_mod.verify_and_repair(session_mod.Config(routes=[route]), device)
+            verify_api.verify_and_repair(session_mod.Config(routes=[route]), device)
         assert failure.value.written == ()
         assert peer.order == ["/refresh"]
         assert peer.writes == []
@@ -149,7 +151,7 @@ def test_backend_loss_between_verification_and_retry_has_no_blind_fallback(
 @pytest.mark.parametrize("cycle", range(12))
 def test_applying_the_routing_is_repeatable(session_mod, wire_peer, cycle):
     with wire_peer(echo=True) as (device, peer):
-        session_mod.apply_routing(session_mod.Config(routes=[make_route(session_mod)]), device)
+        routing_api.apply_routing(session_mod.Config(routes=[make_route(session_mod)]), device)
         assert "/mix/5/playback/1" in peer.order
         assert peer.order.index("/output/5/stereo") < peer.order.index("/mix/5/playback/1")
 
