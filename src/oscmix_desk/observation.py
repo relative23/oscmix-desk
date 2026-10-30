@@ -30,11 +30,14 @@ class Observation:
 
     def __init__(self, expected: Mapping[str, Tuple[str, Args]],
                  device: Optional[Device] = None,
-                 dependency_paths: Sequence[str] = ()) -> None:
+                 dependency_paths: Sequence[str] = (),
+                 noted: Sequence[str] = ()) -> None:
         self.expected = {path: (tags, tuple(args))
                          for path, (tags, args) in expected.items()}
         self.device = device
         self.dependency_paths = frozenset(dependency_paths)
+        #: Kept in ``latest`` as reported, neither expected nor waited for.
+        self.noted = frozenset(noted)
         self.latest: Dict[str, Tuple[str, Args]] = {}
         self.confirmed: Set[str] = set()
         self.mismatched: Set[str] = set()
@@ -42,7 +45,7 @@ class Observation:
 
     def absorb(self, report: Message) -> None:
         path, tags, args = report
-        if path in self.expected or path in self.dependency_paths:
+        if path in self.expected or path in self.dependency_paths or path in self.noted:
             # Retain malformed last reports too: an older valid value must
             # never survive its contradiction as write permission.
             self.latest[path] = (tags, tuple(args))

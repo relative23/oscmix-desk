@@ -19,6 +19,7 @@ from .autogain import dependency_paths
 from .backend import Control
 from .constants import VERIFY_SETTLE, VERIFY_TIMEOUT
 from .devices import device_for_name
+from .limits import LOAD_PATHS, overload
 from .log import log
 from .model import Config
 from .observation import Observation
@@ -284,7 +285,7 @@ def verify_routing(registers: Registers, backend: Control,
     Missing or invalid dependency feedback keeps the window open until its
     timeout, cancellation, or a later valid report.
     """
-    observed = Observation(registers, device_model, dependency_paths)
+    observed = Observation(registers, device_model, dependency_paths, noted=LOAD_PATHS)
     # The early exit turns on what the backend reports *ever*, not on
     # what it reports promptly: closing the window on the prompt set
     # meant channel state was structurally unconfirmable, because the
@@ -321,6 +322,9 @@ def _report(result: VerifyResult, config: Config, device: Optional[Device],
         log.info("device value kept for %s (REMEMBER or AutoSet gain ownership)",
                  ", ".join(kept))
     problems = _unconfirmed(result, device, config.policies, retained=retained)
+    heavy = overload(result.latest) if attempt == 1 else None
+    if heavy:
+        log.warning("%s", heavy)
     retained_unknown = [path for path in result.unobserved
                         if path in retained]
     retained_invalid = [path for path in result.invalid

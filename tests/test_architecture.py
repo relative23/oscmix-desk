@@ -84,7 +84,9 @@ ALLOWED_IMPORTS = {
     "routing": {"autogain", "backend", "constants", "errors", "limits", "log", "model",
                 "observation", "osc", "reconcile", "streams"},
     "streams": {"constants", "log", "model"},
-    "verify": {"autogain", "backend", "constants", "devices", "log", "model",
+    # `limits` since 0.9.0: a read-back warns when the device reports more
+    # DSP load than it runs.
+    "verify": {"autogain", "backend", "constants", "devices", "limits", "log", "model",
                "observation", "osc", "reconcile", "registers", "routing"},
     "desk": {"autogain", "backend", "constants", "devices", "discovery", "errors", "journal",
              "locking", "log", "model", "osc", "paths", "reconcile", "routing", "verify"},

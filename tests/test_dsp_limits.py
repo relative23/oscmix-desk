@@ -238,3 +238,27 @@ def test_a_supplied_observation_is_used_without_another_read():
                               observed={**_observed(crossfeed=[1, 3, 5, 7]), **_links()})
     assert backend.dumps == 0
     assert backend.sent == []
+
+
+@pytest.mark.parametrize(("load", "rate", "warned"), [
+    (50, 48000, False), (99, 48000, False), (110, 96000, True), (84, 192000, False),
+])
+def test_an_overloaded_device_is_named_by_its_load(load, rate, warned):
+    # Measured on a UCX II: Room EQ on 16 channels and Crossfeed on 2 pairs are 50 at
+    # 48 kHz, 110 at 96 kHz and 84 at 192 kHz, every flag still reading on.
+    from oscmix_desk.limits import overload
+    note = overload({"/hardware/dspload": ("i", (load,))})
+    assert bool(note) is warned, rate
+    if warned:
+        assert "DSP load of 110%" in note
+    assert overload({}) is None
+    assert overload({"/hardware/dspload": ("i", ("x",))}) is None
+
+
+def test_a_read_back_keeps_the_load_beside_the_declared_registers():
+    from oscmix_desk.observation import Observation
+    seen = Observation({"/output/1/volume": ("f", (-10.0,))}, noted=("/hardware/dspload",))
+    seen.absorb(("/hardware/dspload", "i", (120,)))
+    seen.absorb(("/hardware/dspvers", "i", (36,)))
+    assert seen.latest == {"/hardware/dspload": ("i", (120,))}
+    assert seen.unobserved == {"/output/1/volume"}, "noted paths are never expected"

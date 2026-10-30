@@ -46,6 +46,9 @@ LIMITS: Mapping[str, DspLimits] = {
 ROOMEQ = "/output/%d/roomeq"
 CROSSFEED = "/output/%d/crossfeed"
 LINK = "/output/%d/stereo"
+DSPLOAD = "/hardware/dspload"
+#: What a read-back keeps besides the declared registers, for `overload`.
+LOAD_PATHS = (DSPLOAD,)
 
 
 def _limits(config: Config) -> Optional[Tuple[DspLimits, Tuple[int, ...]]]:
@@ -87,6 +90,26 @@ def _declared(config: Config) -> Tuple[Dict[int, int], Dict[int, int]]:
         elif setting.family == "output" and setting.option == "crossfeed":
             crossfeed[setting.channel] = integer(setting.value)
     return roomeq, crossfeed
+
+
+def overload(latest: Mapping[str, Tuple[str, Args]]) -> Optional[str]:
+    """A warning when the device reports more DSP work than it does, else None.
+
+    `/hardware/dspload` is the device's load in percent: Room EQ costs 3 per channel and
+    Crossfeed 1 per pair, so the 48 kHz maximum is 50. The device never switches an effect's
+    flag off for it -- measured: the same effects read back as on at 96 kHz with a load of 110
+    and at 192 kHz with 84 -- so past 100 it reports effects that do not run, and no read-back
+    of the flags can tell.
+    """
+    try:
+        load = integer(latest[DSPLOAD][1][0])
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+    if load < 100:
+        return None
+    return ("the device reports a DSP load of %d%%: some of the Room EQ, Crossfeed and other "
+            "effects it reports on do not run; fewer effects, or a lower sample rate, fit"
+            % load)
 
 
 def _declared_links(config: Config) -> Set[int]:

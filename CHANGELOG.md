@@ -53,6 +53,10 @@
 
 ### Changed
 
+- The read-back after an apply or reconcile warns when the device reports
+  a DSP load of 100 % or more: at 96 kHz, Room EQ on 16 channels reads
+  back as on at a load of 110, so some reported effects do not run and no
+  flag shows it.
 - Desk paces its writes 10 ms apart. The backend acknowledges a write once
   the MIDI message is queued, and an unpaced burst loses writes on the
   wire: measured on a UCX II, a 400-write base left 3 of 4 changed cells
