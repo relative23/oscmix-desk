@@ -7,8 +7,9 @@ oscmix-session --status
 oscmix-session --status --json
 ```
 
-Status reads configuration, procfs, installed files and service-manager
-metadata, and asks the GTK executable for its display-free protocol version.
+Status reads configuration, procfs, installed files, the desk's records beside
+the device lock and service-manager metadata, and asks the GTK executable for
+its display-free protocol version.
 It sends no OSC request, binds no socket, opens no audio stream,
 starts no service and writes no files. It works while the interface is
 disconnected or the upstream GUI is open. Installer preflight
@@ -37,6 +38,8 @@ unknown/unavailable observations have an explicit state and a detail.
 | `backend.running_file` | Kernel executable reference/hash for an identified backend; comparison with the resolved file, or an explicit read failure |
 | `playback` | `observed`, `idle`, `unobserved`, `unsupported`, `unknown` or `not-applicable`, with available mode fields |
 | `backend.endpoint` | Selected per-device Unix control socket path; status does not connect or reserve it |
+| `playback_matrix` | The tracked playback matrix (0.9.0 development): `known`, `re-established`, `unknown` or `not-applicable`, with `summary`, `evidence`, `detail` and `note`; never a verification result |
+| `connect_check` | The last connect check: `matched`, `mismatched`, `incomplete` or `not-checked`, with `at`, `compared`, the `mismatched` cells, `unreported`, `invalid` and whether it is `current` for the running backend |
 | `desktop` | Resolved GTK binary, supported control protocol and prerequisite/mismatch problem, or `null` when none |
 
 Schema 2 removes schema 1's `receive_port` section: desk and GTK no longer
@@ -63,6 +66,33 @@ an error line instead of a report. Conflicting CLI actions are usage errors.
 In the text output, `none` for `stored_profile`, `effective_profile` or
 `configured_serial` means there is none; `unknown` elsewhere means it could
 not be determined. The JSON uses `null` for both.
+
+## The playback matrix and the connect check
+
+The UCX II cannot report its playback matrix: USB captures, a hardware test,
+static analysis of its firmware and TotalMix FX's behaviour agree on that
+(2026-09-28 to 2026-11-04). The desk tracks it from what it wrote, and
+`playback_matrix.summary` is one of:
+
+| Summary | Evidence | What it rests on | What it does not prove |
+| --- | --- | --- | --- |
+| `known (CC Mix preset <name>)` | static | Since the interface appeared, the device reported CC Mode on and a CC Mix preset (`6ch + phones`, `8ch`, `20ch`), and no desk wrote playback since. In those modes the firmware routes playback by a fixed table of its own. | It is a reading of the firmware, not a read-back or a measurement. A playback write by a client without a journal, such as the GTK mixer, or by another host is not excluded. |
+| `re-established by the desk` | write record | Since the interface appeared, the desk wrote every playback register it declares, the latest recorded write of each holds the declared value, and the device reported CC Mix `TotalMix App`. | Never that the hardware holds the values. Writes by the GTK mixer, other OSC clients, the front panel or another host are not visible; undeclared playback cells are not covered. |
+| `unknown` | none | Anything else; `detail` says why: no running backend, the interface re-appeared since the writes or nothing was applied yet, another desk writer's latest write differs, the CC mode was not reported, or playback was written in a preset mode, where its effect is not established. | -- |
+
+"Since the interface appeared" means since the running backend process
+started, read from procfs: the backend exits when its interface goes away. The
+writes come from every user's write journal beside the device lock
+(`<interface>.written.<uid>.json`); the CC Mode and CC Mix reports any writing
+desk operation saw are kept beside it in `<interface>.seen.<uid>.json`.
+
+`connect_check` is the comparison a start makes before its first write, for
+the input routes it declares: the device's reported input mix against the
+declared values, within TotalMix FX's tolerances (0.07 dB, pan 0.007 of full
+scale). Each `mismatched` entry names the route, the path, the device value and
+the declared value (`level_db` is `-inf` for a silent cell). The start then
+applied the desk as it always does; the check never refuses or asks. `current`
+is false for a check recorded before the running backend started.
 
 ## Opening the existing GTK mixer
 

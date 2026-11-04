@@ -19,6 +19,7 @@ from .errors import ConfigError
 from .marker import active_profile
 from .model import Config, Overrides, _resolve_overrides
 from .paths import profile_path
+from .playstate import interface_sections
 from .profiles import effective_config
 from .streams import playback_problem, read_playback
 
@@ -140,8 +141,9 @@ def collect_status(path: Optional[Path], overrides: Optional[Overrides] = None, 
                 backend.pid, proc_root, sections["installation"])
         selected = replace(config, serial=backend.device.serial) if backend.device else config
         sections["playback"] = _playback(selected, proc_root)
+        sections.update(interface_sections(selected, path, backend, proc_root))
     else:
-        for name in ("backend", "playback"):
+        for name in ("backend", "playback", "playback_matrix", "connect_check"):
             sections[name] = {"state": "unknown", "detail": "fix the invalid configuration first"}
     sections["desktop"] = asdict(inspect_desktop())
     return {"schema_version": 2, "desk_version": __version__, "read_only": True,
@@ -167,10 +169,20 @@ def _text_lines(value: object, indent: str = "") -> List[str]:
                 lines.extend(_text_lines(item, indent + "  "))
             elif item is None:
                 lines.append(label + (" none" if key in ABSENT_WHEN_NULL else " unknown"))
+            elif isinstance(item, list):
+                lines.append(label + ("" if item else " none"))
+                lines.extend(indent + "  - " + _inline(element) for element in item)
             else:
                 lines.append(label + " " + str(item))
         return lines
     return [indent + str(value)]
+
+
+def _inline(value: object) -> str:
+    """A list element on one line: a mismatch of the connect check, or a path."""
+    if isinstance(value, dict):
+        return ", ".join("%s %s" % (key, _inline(item)) for key, item in value.items())
+    return str(value)
 
 
 def print_status(path: Optional[Path], overrides: Optional[Overrides] = None,

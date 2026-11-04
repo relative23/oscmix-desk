@@ -40,6 +40,7 @@ SCHEMA = 1
 MAX_ENTRIES = 20000
 MAX_BYTES = 8 * 1024 * 1024
 FILE_MODE = 0o660
+STAMP = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 #: path -> (OSC type tags, arguments)
 Written = Dict[str, Tuple[str, Args]]
@@ -48,25 +49,42 @@ Journal = Dict[str, Tuple[str, Args, str]]
 
 
 def journal_path(config_path: Optional[Path], key: str,
-                 uid: Optional[int] = None) -> Optional[Path]:
-    """This user's journal beside the interface's lock; None outside a runtime lock directory."""
+                 uid: Optional[int] = None, kind: str = "written") -> Optional[Path]:
+    """This user's journal beside the interface's lock; None outside a runtime lock directory.
+
+    ``kind`` names the file: ``written`` for the journal, ``seen`` for the record beside it.
+    """
     lock = device_lock_path(config_path, key)
     if lock is None or not key or lock.name == SWITCH_LOCK:
         return None
-    return lock.with_name("%s.written.%d.json" % (key, os.getuid() if uid is None else uid))
+    return lock.with_name("%s.%s.%d.json" % (key, kind, os.getuid() if uid is None else uid))
 
 
-def journal_paths(config_path: Optional[Path], key: str) -> Tuple[Path, ...]:
+def journal_paths(config_path: Optional[Path], key: str,
+                  kind: str = "written") -> Tuple[Path, ...]:
     """Every user's journal of this interface."""
-    own = journal_path(config_path, key)
+    own = journal_path(config_path, key, kind=kind)
     if own is None:
         return ()
     try:
         names = os.listdir(own.parent)
     except OSError:
         return ()
-    pattern = re.compile(r"%s\.written\.\d+\.json" % re.escape(key))
+    pattern = re.compile(r"%s\.%s\.\d+\.json" % (re.escape(key), re.escape(kind)))
     return tuple(own.parent / name for name in sorted(names) if pattern.fullmatch(name))
+
+
+def stamp(seconds: float) -> str:
+    """A time as the journal stores it: UTC, microseconds, so users' files merge by it."""
+    return datetime.fromtimestamp(seconds, timezone.utc).strftime(STAMP)
+
+
+def stamp_seconds(text: str) -> Optional[float]:
+    """The time a stored stamp names, or None for one in another format."""
+    try:
+        return datetime.strptime(text, STAMP).replace(tzinfo=timezone.utc).timestamp()
+    except ValueError:
+        return None
 
 
 def read_journals(config_path: Optional[Path], key: str) -> Journal:
@@ -156,8 +174,7 @@ def record_written(path: Optional[Path], written: Mapping[str, Tuple[str, Args]]
     if path is None or not written:
         return False
     # Microseconds: readers merge users' journals by this stamp, and a second is too coarse.
-    at = datetime.fromtimestamp(time.time() if now is None else now,
-                                timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    at = stamp(time.time() if now is None else now)
     journal = read_journal(path)
     journal.update({name: (tags, args, at) for name, (tags, args) in written.items()})
     if len(journal) > MAX_ENTRIES:

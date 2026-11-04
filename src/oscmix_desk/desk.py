@@ -10,13 +10,15 @@ from __future__ import annotations
 
 import errno
 import os
+import time
 from dataclasses import replace
 from pathlib import Path
 from types import TracebackType
-from typing import Callable, Optional, Type
+from typing import Callable, Dict, Optional, Tuple, Type
 
 from .autogain import dependency_paths
 from .backend import Control, connect_backend
+from .connectcheck import ConnectCheck, check_at_connect
 from .constants import VERIFY_TIMEOUT
 from .devices import device_for_name
 from .discovery import Device as Interface
@@ -26,10 +28,11 @@ from .journal import Written, journal_path, record_written
 from .locking import DeviceLock, device_lock
 from .log import log
 from .model import Config
-from .osc import Args
+from .osc import Args, Message
 from .paths import discover_config_path
 from .reconcile import ApplyIntent, desired
 from .routing import apply_routing, never_stop, wait_unless_stopped
+from .seen import NOTED, record_seen
 from .verify import (
     VerifyResult,
     expected_registers,
@@ -62,6 +65,10 @@ class Desk:
         self._lease = self._finished = self._failed = self._aborted = False
         self._journal: Optional[Path] = None
         self._written: Written = {}
+        # What the record beside the journal keeps: CC reports and the start's connect check.
+        self._seen: Optional[Path] = None
+        self._reported: Dict[str, Tuple[str, Args, float]] = {}
+        self._connected: Optional[ConnectCheck] = None
 
     @property
     def config(self) -> Config:
@@ -130,6 +137,7 @@ class Desk:
             raise DeviceLockUnavailable(lock)
         self._lock = lock
         self._journal = journal_path(self.config_path, target.key)
+        self._seen = journal_path(self.config_path, target.key, kind="seen")
         self._check_stop()
         if self._reread is not None:
             fresh = self._reread(self.config)
@@ -164,16 +172,26 @@ class Desk:
                 raise
             self._lease = True
             backend.on_written = self._wrote
+            backend.on_reported = self._saw
         return backend
 
     def _wrote(self, path: str, tags: str, args: Args) -> None:
         """One acknowledged write, kept for the journal until it is next stored."""
         self._written[path] = (tags, args)
 
+    def _saw(self, report: Message) -> None:
+        """A device report the record keeps (CC Mode, CC Mix), with when it was seen."""
+        path, tags, args = report
+        if path in NOTED:
+            self._reported[path] = (tags, tuple(args), time.time())
+
     def _record(self) -> None:
         """Store the acknowledged writes so far; the held lock keeps other writers out."""
         written, self._written = self._written, {}
         record_written(self._journal, written)
+        reported, self._reported = self._reported, {}
+        connected, self._connected = self._connected, None
+        record_seen(self._seen, reported, None if connected is None else connected.record())
 
     def apply(self, intent: ApplyIntent = ApplyIntent.EXPLICIT, *,
               reason: str = "desk") -> bool:
@@ -190,7 +208,7 @@ class Desk:
             if intent == ApplyIntent.RECONCILE:
                 complete = reconcile_now(self.config, reason, backend, self._should_stop)
             else:
-                apply_routing(self.config, backend, intent=intent, should_stop=self._should_stop)
+                self._apply(backend, intent)
                 complete = True
         except OSError:
             self._failed = self._aborted = True
@@ -202,6 +220,17 @@ class Desk:
             self._failed = self._aborted = True
             return False
         return complete
+
+    def _apply(self, backend: Control, intent: ApplyIntent) -> None:
+        """A start compares the device's input mix first (``connectcheck``), then applies."""
+        observed = None
+        if intent == ApplyIntent.INITIAL:
+            self._connected, observed = check_at_connect(self.config, backend, self._should_stop)
+        if observed is None:
+            apply_routing(self.config, backend, intent=intent, should_stop=self._should_stop)
+        else:
+            apply_routing(self.config, backend, intent=intent, observed=observed,
+                          should_stop=self._should_stop)
 
     def verify(self) -> VerifyResult:
         """Read back every declared value, including REMEMBER expectations."""
@@ -260,7 +289,7 @@ class Desk:
         """Close once; profiles retain the file lock through marker commit."""
         backend, self._backend = self._backend, None
         if backend is not None:
-            backend.on_written = None
+            backend.on_written = backend.on_reported = None
             backend.close()
 
 

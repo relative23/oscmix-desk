@@ -153,6 +153,18 @@ Common findings in the journal:
   reason is the lock's own: another writer still holding it after 30 s, or
   a lock file or directory this process cannot use (see the lock refusals
   below). Until 0.8.1 every case read as another writer holding it.
+- `connect check: the device's input mix differs from the desk in N of M
+  route cell(s) ...; the desk overwrites them now`, followed by one `connect
+  check: route '<name>' /mix/<out>/input/<in>: device <value>, desk <value>`
+  per cell -- before its first write, a start with input routes compared the
+  device's input mix with the desk, within TotalMix FX's tolerances (0.07 dB,
+  pan 0.007 of full scale). A warning, not a failure: the device held another
+  monitoring mix than the desk declares -- the desk changed since the last
+  start, or the mix was changed while the desk was not running (the front
+  panel, TotalMix FX on another host, the GTK mixer) -- and the start applied
+  the desk anyway.
+  `--status` shows the last check under `connect_check`. `could not be read`
+  means the comparison was skipped; the start went on without it.
 - `stop requested during the start; routing not completed (...)` or `the
   backend exited during the start; ...` -- a warning, not a failed start:
   the stop, or the backend's own exit (an unplug, most often), is reported
@@ -179,8 +191,11 @@ The foreground apply writes links, waits at the link barrier, then writes
 the matrix. The verifier's completed observation window can permit a PIN
 repair or mix reapply. It never writes from the middle of a delivery, and
 malformed deliveries, contradictions or transport failures cannot authorize
-blind continuation. Input-matrix feedback and the still-unreadable playback
+blind continuation. Input-matrix feedback and the unreadable playback
 matrix have different meanings; see [the protocol guide](OSC-PROTOCOL.md).
+The device cannot report its playback matrix at all; `--status` says whether
+it is known from a CC Mix preset, re-established by the desk, or unknown
+([runtime status](STATUS.md#the-playback-matrix-and-the-connect-check)).
 
 GTK has its own subscription and may remain open. Its controls are read-only
 during a desk lease and while refreshing after it. It never replays an edit

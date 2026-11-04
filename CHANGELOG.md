@@ -50,6 +50,30 @@
   names, or `:main` for routing.conf -- with each register's value on
   both sides and any policy change, without connecting to the device.
   It exits 3 when they differ, like `--diff`.
+- `--status` reports the playback matrix of the interface
+  (`playback_matrix`), which the device never reports: `known (CC Mix
+  preset <name>)` when, since the interface appeared, the device reported
+  CC Mode on and a CC Mix preset and nothing wrote playback -- static
+  evidence about the firmware, not a read-back; `re-established by the
+  desk` when, since then, the desk wrote every playback register it
+  declares with the declared value and the device reported CC Mix
+  "TotalMix App" -- a record of acknowledged writes, never a hardware
+  confirmation; or `unknown`, with the reason. "Since the interface
+  appeared" is since the running backend started. Playback writes by the
+  GTK mixer, other clients without a journal or the front panel are not
+  visible.
+- A start with input routes compares the device's input mix with the desk
+  before its first write, as TotalMix FX does when it connects: within
+  0.07 dB for a level and 0.007 of full scale for a pan. A difference is a
+  warning naming the route, the device value and the declared value, and
+  `--status` shows the last check (`connect_check`); the start then
+  applies the desk as before, with no prompt and no refusal. The check
+  costs one refresh before the first write, the same one the apply uses
+  when it needs a fresh AutoSet observation.
+- Desk keeps the CC Mode and CC Mix reports it saw and the last connect
+  check beside the write journal
+  (`/run/oscmix-desk/<interface>.seen.<uid>.json`), under the journal's
+  rules.
 
 ### Changed
 
@@ -165,6 +189,15 @@
   a backup. Upgrades adopt old activation once and then preserve an explicit
   opt-out, including after a failed disable. Source uninstall removes this
   permission, and native migration refuses a remaining opt-in.
+
+### Documentation
+
+- The UCX II cannot report its playback matrix: USB captures (2026-09-28
+  to 2026-11-02), a hardware test (2026-10-30), static analysis of its
+  firmware (2026-10-27 to 2026-11-04) and TotalMix FX on macOS (static,
+  2026-11-03) and on an iPad (hardware, 2026-11-04) agree. The status,
+  feature and troubleshooting pages say so instead of treating read-back
+  as still to come.
 
 ## 0.8.1 -- 2026-10-02
 

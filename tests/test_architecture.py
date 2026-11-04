@@ -88,10 +88,16 @@ ALLOWED_IMPORTS = {
     # DSP load than it runs.
     "verify": {"autogain", "backend", "constants", "devices", "limits", "log", "model",
                "observation", "osc", "reconcile", "registers", "routing"},
-    "desk": {"autogain", "backend", "constants", "devices", "discovery", "errors", "journal",
-             "locking", "log", "model", "osc", "paths", "reconcile", "routing", "verify"},
-    # What desk last wrote per interface, beside the lock; below desk and reads.
+    "desk": {"autogain", "backend", "connectcheck", "constants", "devices", "discovery",
+             "errors", "journal", "locking", "log", "model", "osc", "paths", "reconcile",
+             "routing", "seen", "verify"},
+    # Beside the lock, below desk: what desk wrote, what it saw, its check at connect (0037).
     "journal": {"locking", "log", "osc"},
+    "seen": {"journal", "log", "osc"},
+    "connectcheck": {"autogain", "backend", "constants", "log", "model", "observation", "osc",
+                     "reconcile", "seen"},
+    "playstate": {"constants", "devices", "diagnostics", "discovery", "journal", "model", "osc",
+                  "reconcile", "registers", "seen"},
     "observation": {"autogain", "numeric", "osc", "reconcile", "registers"},
     "pipewire": {"errors", "model"},
     "process": {"constants", "discovery", "hostservice", "log"},
@@ -104,9 +110,8 @@ ALLOWED_IMPORTS = {
     # another firmware than the one its register table was recorded on.
     # `watch` since 0.9.0: `[desk] enforce = watch` keeps a reader beside
     # the start's operation and asks supervise() for a reconcile.
-    "session": {"constants", "desk", "devices", "discovery", "errors", "locking",
-                "log", "model", "notices", "notify", "process", "reconcile",
-                "reload", "watch"},
+    "session": {"constants", "desk", "devices", "discovery", "errors", "locking", "log",
+                "model", "notices", "notify", "process", "reconcile", "reload", "watch"},
     # Below session, which starts it; beside verify, whose observation it
     # judges by. It only reads: a reconcile is session's and reload's.
     "watch": {"backend", "constants", "devices", "errors", "log", "model",
@@ -126,8 +131,7 @@ ALLOWED_IMPORTS = {
     # so its own verifier cannot revert it; process already sits below
     # session and imports nothing above discovery.
     "cli": {"arguments", "constants", "errors", "hostservice", "log", "model", "notices",
-            "outcome", "paths", "pipewire", "preview", "profiles", "reads",
-            "session", "status"},
+            "outcome", "paths", "pipewire", "preview", "profiles", "reads", "session", "status"},
     # The three actions that read the device, split out of cli in 0.7.0.
     # `discovery` since 0.6.2: the snapshot header names the device's
     # serial and firmware, which are the leaf's to answer. `process` for
@@ -146,9 +150,9 @@ ALLOWED_IMPORTS = {
     # the question the start's stale cleanup already asks through
     # process.socket_owner. process imports nothing above
     # discovery, so no cycle.
-    "profiles": {"arguments", "backend", "config", "constants", "desk", "devices",
-                 "errors", "hostservice", "log", "marker", "model", "notices",
-                 "outcome", "paths", "process", "reconcile", "verify"},
+    "profiles": {"arguments", "backend", "config", "constants", "desk", "devices", "errors",
+                 "hostservice", "log", "marker", "model", "notices", "outcome", "paths",
+                 "process", "reconcile", "verify"},
     # The three things a switch is made of besides its order, split out of
     # profiles in 0.7.0. Each is a near-leaf: the lock knows its wait and
     # the journal, the marker knows what a profile name is, and an outcome
@@ -162,7 +166,7 @@ ALLOWED_IMPORTS = {
                     "paths", "process"},
     "desktop": {"diagnostics", "discovery"},
     "status": {"constants", "desktop", "diagnostics", "discovery", "errors", "hostservice",
-               "marker", "model", "paths", "profiles", "streams"},
+               "marker", "model", "paths", "playstate", "profiles", "streams"},
     "preview": {"model", "reconcile"},
     # What config.py was until 0.7.0, by what each part is. `model` is the
     # desk as data and what nearly everything reads -- the reconciler, the
@@ -190,8 +194,7 @@ ALLOWED_IMPORTS = {
     # able to name, and errors is a leaf.
     # Shared read-only identity below every command; connection/lease ownership
     # above it. Diagnostics never imports this transport or a write command.
-    "backend": {"constants", "diagnostics", "discovery", "errors", "model", "osc",
-                "protocol"},
+    "backend": {"constants", "diagnostics", "discovery", "errors", "model", "osc", "protocol"},
     # Pure: config + the message shapes + the register table. No
     # socket, no clock -- which is what lets it be tested against
     # recordings instead of hardware.
@@ -208,8 +211,8 @@ ALLOWED_IMPORTS = {
     # is what it re-exports, and the leaves it used to pull in for the
     # sake of their internals are reached through their own modules.
     "__init__": {"backend", "config", "constants", "desk", "errors", "launcher", "marker",
-                 "model", "outcome", "paths", "pipewire", "profiles",
-                 "reconcile", "registers", "verify"},
+                 "model", "outcome", "paths", "pipewire", "profiles", "reconcile", "registers",
+                 "verify"},
 
 }
 
@@ -428,10 +431,8 @@ def _defined_at(name, module="devices"):
 
 
 @pytest.mark.parametrize("name", ["_seq", "_EQ_BANDS", "_ROOMEQ_BANDS", "_HIGH_SHELF",
-                                  "_band_registers", "_roomeq_registers",
-                                  "_DYNAMICS_OPTIONS", "_AUTOLEVEL_OPTIONS",
-                                  "_LOWCUT_OPTIONS",
-                                  "_sub_registers",
+                                  "_band_registers", "_roomeq_registers", "_DYNAMICS_OPTIONS",
+                                  "_AUTOLEVEL_OPTIONS", "_LOWCUT_OPTIONS", "_sub_registers",
                                   "UCX2", "FF802", "DEVICES"])
 def test_the_register_table_is_inside_the_mutation_exemption(name):
     """The data is checked by the recordings, not by mutmut."""
@@ -439,11 +440,10 @@ def test_the_register_table_is_inside_the_mutation_exemption(name):
     assert first < _defined_at(name) < last
 
 
-@pytest.mark.parametrize("name", ["device_for_name", "settable_options",
-                                  "settable_nested", "nested_families",
-                                  "register_at", "cold_plug_complete",
-                                  "declared_paths", "register_policy",
-                                  "verify_class", "settable_globals"])
+@pytest.mark.parametrize("name", ["device_for_name", "settable_options", "settable_nested",
+                                  "nested_families", "register_at", "cold_plug_complete",
+                                  "declared_paths", "register_policy", "verify_class",
+                                  "settable_globals"])
 def test_everything_that_queries_the_table_stays_under_mutation(name):
     """The half of the exemption that keeps it honest.
 

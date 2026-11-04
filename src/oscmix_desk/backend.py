@@ -165,6 +165,8 @@ class Control:
         self.device_name = ""
         #: Called with each write the backend acknowledged; the journal's source.
         self.on_written: Optional[Callable[[str, str, Args], None]] = None
+        #: Called with each decoded device report before it is yielded; the record's source.
+        self.on_reported: Optional[Callable[[Message], None]] = None
         #: Whether some connection holds the operation lease, as the last LEASE
         #: event said; the backend sends one right after HELLO and on each change.
         self.lease_held = False
@@ -410,6 +412,9 @@ class Control:
             messages = decode_delivery(delivery.payload)
         except ValueError:
             self._protocol_error("invalid OSC delivery; observations invalid")
+        if self.on_reported is not None:
+            for message in messages:
+                self.on_reported(message)
         yield from messages
 
     def request_dump(self, timeout: float = 12.0) -> None:

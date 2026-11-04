@@ -180,6 +180,17 @@ They remain validated config data, while device name, USB ID and serial
 determine compatibility with the selected interface. The checked backend
 connection still determines which process may receive writes.
 
+A start with input routes now reads the device once before its first write:
+one refresh compares the input mix with the desk (the connect check) and is
+then the AutoSet observation the apply used to request itself, so starts
+that already needed one read no more often. A difference is a warning; the
+start applies as before. `--status` gains `playback_matrix` and
+`connect_check`, read from the journal and a new record beside it,
+`<interface>.seen.<uid>.json`, in the same runtime directory. Schema 2 is
+unchanged: consumers that ignore unknown sections are unaffected. The device
+cannot report its playback matrix; the new status says what the desk can
+state about it instead of a verification.
+
 ## Upgrading to 0.8.1
 
 0.8.1 uses the same backend patch series as 0.8.0, so the backend, ALSA

@@ -86,6 +86,7 @@ acyclic graph.
 | `model` | a desk as data with validated level/balance claims on linked route aliases: routes, channel and global settings, device identity, `Overrides` (`CommandLine` remains an alias) and two retained legacy OSC ports; only device name, USB ID and serial select the machine |
 | `playback` | pure validation of unreadable playback-mute ownership: both adjacent flags must agree; unmute explicitly owns both complete matrix columns, including zero cells; no I/O or inferred DEVICE original |
 | `journal` | what desk last wrote per register of one interface, beside its device lock (`/run/oscmix-desk/<key>.written.<uid>.json`, one per user in the sticky directory; readers merge the latest write per register): every write the backend acknowledged, stored after each apply and at the end, atomically, under the lock; read with suspicion, never the reason an operation fails, never proof the hardware holds the value |
+| `seen` | what desk read that the journal cannot say, beside it (`<key>.seen.<uid>.json`, same rules): the last CC Mode and CC Mix reports a writing operation saw, and the last connect check |
 | `base` | `[desk] base`: the matrix beneath the routes (`clear-inputs`, `clear-submixes`, `straight-playback`, `daw`; `keep` by default). Silent cells for every register no route writes, one per channel where no route declares the pair's link (the backend folds an even channel onto a linked pair), compared only where the device reports them; straight playback as routes of the base, linking only pairs the desk sets alike and never an input. Planning marks both so they are written on an explicit apply and REMEMBERed afterwards |
 | `mirrors` | `mirror =` in an output section: every route of the source output declared again for the mirror, without its output volume, when the config loads (manual 27.3); refuses mismatched widths, chains, shared targets and mirror targets with routes of their own |
 | `limits` | the manual's cross-channel DSP limits (Room EQ on at most 16 outputs, Crossfeed on at most 4 stereo outputs on the UCX II): a config's own declarations at load, and an apply's writes over every other output's observed state before the first write; a plan that switches nothing on is never counted |
@@ -104,10 +105,12 @@ acyclic graph.
 | `diagnostics` | read-only socket, exact backend/bridge/device identity and service inspection, shared by commands, status and launcher; never opens the control protocol |
 | `hostservice` | root-owned OpenRC/runit registration, exact native-supervisor child identity, persistent maintenance fences and pidfd-scoped reload; no device transport or alternate supervision loop |
 | `desktop` | inspect the matching upstream GTK executable through its display-free protocol-version command |
-| `status` | versioned read-only runtime report for source and native installations; no OSC requests or service activation |
+| `playstate` | the playback matrix the device never reports, as status states it: `known (CC Mix preset <name>)` (static evidence), `re-established by the desk` (a write record since the running backend started) or `unknown`, from the journals, the `seen` records and the backend's start time in procfs; never a hardware confirmation |
+| `status` | versioned read-only runtime report for source and native installations, including the playback matrix state and the last connect check; no OSC requests or service activation |
 | `preview` | compare two partial desk declarations for omitted matrix paths and changed link requirements |
 | `routing` | send explicit mute-on, link, mix, calibration, channel and mute-off phases, with fresh prerequisite barriers before links/mix/unmute; coordinated writes do not imply an atomic or acoustically qualified transition |
 | `verify` | read the device back and say confirmed, mismatched or unverifiable |
+| `connectcheck` | the connect check: before a start's first write, one refresh compares the device's input mix for the declared input routes with the desk, within TotalMix FX's tolerances (0.07 dB, pan 0.007 of full scale); a difference is logged and recorded, never a refusal or a prompt; the same refresh supplies the AutoSet observation the apply would otherwise read itself |
 | `process` | the supervise loop (reload requests, `SIGTERM` then `SIGKILL` on stop); the unit's process and `systemctl` calls; associating the listening control inode with its executable and exclusive ALSA bridge, and ending an orphaned backend |
 | `pipewire` | generate named virtual sinks from the same config |
 | `locking` | the desk file lock and shared device endpoint path: location, permissions and bounded acquisition; backend leases additionally coordinate GTK |
@@ -173,6 +176,10 @@ reload run the same middle part (steps 3 to 8) with their own intent.
 At start, `session` runs steps 3 to 6 before `READY=1` and step 7 in a
 background thread with a repair (`verify.verify_and_repair`); a SIGHUP runs
 them in `reload` with the reconcile intent, which keeps remembered values.
+The start's step 6 first runs the connect check (`connectcheck`): with input
+routes declared, one refresh compares the device's input mix with the desk
+and records the result beside the journal (`seen`); the apply then proceeds
+unchanged.
 An unusable desk found by a strict startup re-read refuses with exit 2 before
 any writes or readiness. On SIGHUP it skips the reconcile and keeps the
 session running. Default compatibility still permits startup fallback.
