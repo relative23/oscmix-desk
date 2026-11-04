@@ -30,8 +30,9 @@ cells, and a mirror target gets its source's base routes, as with any route.
 
 Everything a base writes is written on an explicit start or switch and then REMEMBERed
 (``Route.base``, ``reconcile.Entry.base``), so a later change in TotalMix stays until the next
-switch. Total Reset, which also resets every channel effect, needs measured default values and
-is not offered yet.
+switch. TotalMix's Total Reset, which also resets every channel effect, is not offered: in
+class-compliant mode the device runs its CC firmware, which has no TotalMix and offers no Clear
+Mix setup to take the defaults from, and desk does not guess them.
 """
 
 from __future__ import annotations
