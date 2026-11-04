@@ -266,11 +266,12 @@ level = 0.0
 #     input.gain = remember    # gain ridden by hand
 #
 # Pinning does NOT mean the value snaps back the moment you change it in
-# the mixer. Of everything a config sets, this device announces only
-# channel links when they change -- measured. Everything else is silent
-# until a full state dump is requested. Pinning means this session
-# insists, through the read-back after start; '[desk] enforce = watch'
-# (below) also acts on what is announced or dumped while it runs.
+# the mixer. A write from software is not echoed, and only link changes
+# and changes made at the unit's front panel are announced -- measured.
+# Everything else is silent until a full state dump is requested.
+# Pinning means this session insists, through the read-back after
+# start; '[desk] enforce = watch' (below) also acts on what is announced
+# or dumped while it runs.
 
 # Output calibration is separate from the listening fader. It defaults to PIN:
 # [output:1]
@@ -291,9 +292,9 @@ level = 0.0
 #
 # enforce = watch (routing.conf only; profiles inherit it) reconciles a
 # pinned value as soon as a report contradicts it, two seconds after the
-# reports rest: a link change, which the device announces itself, or any
-# value in a state dump another client asks for (the GTK mixer does when it
-# connects). Default: apply (start, switch, reload).
+# reports rest: a change at the front panel or a link change, which the
+# device announces itself, or any value in a state dump another client
+# asks for (the GTK mixer does when it connects). Default: apply (start, switch, reload).
 # [desk]
 # enforce = watch
 #

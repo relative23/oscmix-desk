@@ -170,8 +170,8 @@ cannot be read back from the device; `--status` says whether it is known
 from a CC Mix preset, re-established by the desk, or unknown.
 `[desk] enforce = watch` in routing.conf goes one step further and
 reconciles as soon as a report that contradicts a pinned value arrives -- a
-link change, which the device announces itself, or any value in a state dump
-another client asks for.
+change at the front panel or a link change, which the device announces
+itself, or any value in a state dump another client asks for.
 
 ## Profiles
 

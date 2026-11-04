@@ -521,8 +521,9 @@ TotalMix or in the mixer GUI returns to its old value about two seconds
 later, while the service runs.
 
 That is `[desk] enforce = watch` in `routing.conf`. The session then watches
-the reports that reach it -- link changes, which the device announces
-itself, and every value of a state dump another client asks for, such as
+the reports that reach it -- front-panel and link changes, which the
+device announces itself, and every value of a state dump another client
+asks for, such as
 the GTK mixer when it connects -- and reconciles when one contradicts a
 value the desk pins; the journal says `watch: the device changed <path>, which the desk
 pins; reconciling`. Only pinned values come back: remembered ones (output

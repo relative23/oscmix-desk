@@ -6,9 +6,9 @@ desk pins. By default the change stays until the next start, switch or reload. W
 the same selective reconcile a reload runs:
 
 - Event-driven: it waits for device reports and never reads on a timer. So it sees what
-  reaches subscribers: link changes, which the device announces itself (measured), and every
-  value of a state dump another client asks for, such as the GTK mixer when it connects.
-  Whether the device announces other front-panel changes is still to be measured.
+  reaches subscribers: what the device announces itself -- link changes, and changes made at
+  its front panel (measured: the volume encoder and the reverb page) -- and every value of a
+  state dump another client asks for, such as the GTK mixer when it connects.
 - It judges only what that reconcile would write and the device reports (PIN and VERIFIABLE).
   REMEMBER paths, a desk's base and gains AutoSet owns are never a reason.
 - Reports that arrive while any operation holds the backend lease are that operation's own

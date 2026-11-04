@@ -12,9 +12,11 @@
   hardware state.
 - `[desk] enforce = watch` in routing.conf keeps a reader connection open
   while the service runs: a report that contradicts a value the desk pins
-  -- a link change, which the device announces itself, or a value in a
-  state dump another client asks for -- leads, once the reports rest for
-  two seconds, to the same selective reconcile a reload runs. Reports during desk's own operations, remembered values, a
+  -- a change at the unit's front panel or a link change, which the
+  device announces itself, or a value in a state dump another client asks
+  for -- leads, once the reports rest for two seconds, to the same
+  selective reconcile a reload runs. Reports during desk's own
+  operations, remembered values, a
   base and gains AutoSet owns never do. A register the device sets back
   three times within a minute is left to it until the desk changes or a
   reload. `apply`, the default, never watches; profiles inherit the setting
