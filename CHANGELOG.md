@@ -4,6 +4,12 @@
 
 ### Added
 
+- `[desk] peak-safe = true` in routing.conf makes an explicit switch or
+  restore quiet: every output the switch changes goes to -65 dB first, the
+  links, matrix and channel state follow, and each output gets back the
+  volume the desk declares, else the one it reported -- on a failed switch
+  too. Starts, repairs and reloads are not quieted; profiles inherit the
+  setting.
 - Desk keeps a write journal per interface and user beside its lock
   (`/run/oscmix-desk/<interface>.written.<uid>.json`): every write the
   backend acknowledged, stored after each apply and when the operation ends,

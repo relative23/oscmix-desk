@@ -120,6 +120,9 @@ acyclic graph.
 | `desk` | one coordinated operation: pin the interface, own the device lock and checked connection, take one write lease for apply/verify/repair, acknowledge its end and release resources on every path; readers use the same connection lifetime without a writer lock or lease |
 | `reload` | a desk read again by a running session -- under the lock at the start, and on `SIGHUP` or a watch request -- kept for the machine the session runs on, or refused as a desk for somewhere else |
 | `session` | the service lifecycle: wait for the device, start and stop the backend, apply, signal ready, verify, watch, shut down |
+| `deskconf` | the `[desk]` section: `base` for the desk, `enforce` and `peak-safe` for how the session keeps any desk (routing.conf's alone, inherited by every profile) |
+| `prechecks` | what an apply reads and refuses before it writes: AutoSet gain ownership, the input links mix writes depend on, the DSP limits, and the output volumes a peak-safe switch gives back |
+| `peaksafe` | `[desk] peak-safe`: an explicit apply sets every output it changes to the explicit zero first and gives each its declared, else reported, volume back last, on every path out |
 | `watch` | `[desk] enforce = watch`: one reader connection, opened before the start's apply, that judges device reports arriving outside every lease against the desk in effect -- only what a reconcile would write and the device reports -- and asks supervise for that reconcile; it never writes, and leaves a register the device keeps setting back to the device |
 | `launcher` | desktop entry point; checks GTK prerequisites and exact backend/desk identity before launch |
 | `reads` | the three actions that read the device and write nothing: `--snapshot`, `--diff`, `--dump-config` |

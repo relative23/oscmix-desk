@@ -131,7 +131,7 @@ def test_every_machine_level_field_on_config_is_inherited(tmp_path):
     # `enforce` is how the session keeps any desk: routing.conf's alone, set
     # on every profile by `load_profile`, and read again on each reload --
     # so not kept from the start like the machine (tests/test_watch.py).
-    session = {"enforce"}
+    session = {"enforce", "peak_safe"}
     machine = {f.name for f in dataclasses.fields(Config)} - desk - record - session
     covered = {attr for _section, _option, attr in profiles.MACHINE_SETTINGS}
     assert machine == covered, (

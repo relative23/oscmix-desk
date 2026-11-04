@@ -256,6 +256,9 @@ class Config:
     #: `[desk] enforce`: ``apply``, or ``watch`` to reconcile when the device
     #: contradicts a pinned value (watch.py). routing.conf's; profiles inherit it.
     enforce: str = "apply"
+    #: `[desk] peak-safe`: an explicit switch quiets the outputs it changes (peaksafe.py).
+    #: routing.conf's, like ``enforce``.
+    peak_safe: bool = False
 
     def __post_init__(self) -> None:
         # A frozen dataclass alone leaves a dict writable. Copy first:

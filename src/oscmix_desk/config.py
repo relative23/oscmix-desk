@@ -22,6 +22,7 @@ from .constants import (
     LEVEL_MAX,
     LEVEL_MIN,
 )
+from .deskconf import parse_desk
 from .devices import device_for_name
 from .errors import ConfigError
 from .limits import validate_dsp_limits
@@ -98,7 +99,7 @@ def _parse_db(raw: str, section: str, option: str) -> float:
 
 _KNOWN_OPTIONS = {
     "device": {"name", "usb-id", "serial"},
-    "desk": {"base", "enforce"},
+    "desk": {"base", "enforce", "peak-safe"},
     "osc": {"port", "recv-port"},
     "route": {"playback", "input", "output", "level", "volume", "stereo", "pan"},
 }
@@ -263,8 +264,10 @@ class _Draft:
     policies: Dict[Tuple[str, str], Policy] = field(default_factory=dict)
     #: `[desk] base`: what the matrix is beneath the routes.
     base: str = "keep"
-    #: `[desk] enforce`: how the running session keeps the desk (`ENFORCE`).
+    #: `[desk] enforce`: how the running session keeps the desk (`deskconf.ENFORCE`).
     enforce: str = "apply"
+    #: `[desk] peak-safe`: an explicit switch quiets the outputs it changes.
+    peak_safe: bool = False
     #: `mirror =` declarations, expanded into routes once every section is read.
     mirrors: List[Mirror] = field(default_factory=list)
 
@@ -281,7 +284,7 @@ class _Draft:
                       run.osc_recv_port, tuple(self.routes),
                       tuple(self.channels), tuple(self.globals),
                       dict(self.policies), file, self.overrides, base=self.base,
-                      enforce=self.enforce)
+                      enforce=self.enforce, peak_safe=self.peak_safe)
 
 
 def load_config(path: Optional[Path], base: Optional[Config] = None,
@@ -302,7 +305,7 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
     device cannot apply. The default warns and ignores them for config
     compatibility. Both modes validate all supported options and values.
 
-    ``profile=True`` reads a profile, which may not set `[desk] enforce`:
+    ``profile=True`` reads a profile, which may not set `[desk] enforce` or `peak-safe`:
     routing.conf alone decides how the running session keeps a desk.
     """
     overrides = _resolve_overrides(overrides, said)
@@ -351,27 +354,12 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
     return result
 
 
-#: `[desk] enforce`: ``apply`` keeps the desk on start, switch and reload; ``watch`` also
-#: reconciles when the device contradicts a pinned value (watch.py).
-ENFORCE = ("apply", "watch")
-
-
 def _parse_desk(parser: "configparser.ConfigParser", section: str, config: _Draft, *,
                 profile: bool) -> None:
-    """`[desk]`: the base beneath the routes, and how the session keeps the desk."""
+    """`[desk]`: see deskconf."""
     _check_options(section, "desk", parser.options(section))
-    config.base = parser.get(section, "base", fallback=config.base).strip()
-    if not parser.has_option(section, "enforce"):
-        return
-    if profile:
-        raise ConfigError("[desk] enforce: how the running session keeps the desk is set in "
-                          "routing.conf, and every profile inherits it; take it out of the "
-                          "profile")
-    enforce = parser.get(section, "enforce").strip()
-    if enforce not in ENFORCE:
-        raise ConfigError("[desk] enforce: expected one of %s, got %r"
-                          % (", ".join(ENFORCE), enforce))
-    config.enforce = enforce
+    for attribute, value in parse_desk(parser, section, profile=profile).items():
+        setattr(config, attribute, value)
 
 
 def _parse_collected(parser: "configparser.ConfigParser", config: _Draft,

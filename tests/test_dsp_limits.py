@@ -12,7 +12,7 @@ import itertools
 import pytest
 from backend_doubles import RecordingBackend
 
-from oscmix_desk import routing
+from oscmix_desk import prechecks, routing
 from oscmix_desk.backend import OSCMIX
 from oscmix_desk.config import load_config
 from oscmix_desk.errors import ConfigError, WriteFailed
@@ -162,7 +162,7 @@ def bounded_clock(monkeypatch):
     ticks = itertools.count(0, .001)
     monkeypatch.setattr(routing.time, "monotonic", lambda: next(ticks))
     monkeypatch.setattr(routing.time, "sleep", lambda _: None)
-    monkeypatch.setattr(routing, "VERIFY_TIMEOUT", .03)
+    monkeypatch.setattr(prechecks, "VERIFY_TIMEOUT", .03)
     monkeypatch.setattr(routing, "LINK_ECHO_TIMEOUT", .03)
 
 
@@ -217,7 +217,7 @@ class CountingWindow(WindowBackend):
 
 @pytest.mark.usefixtures("bounded_clock")
 def test_crossfeed_levels_end_the_observation_at_once(monkeypatch):
-    monkeypatch.setattr(routing, "VERIFY_TIMEOUT", 10.0)
+    monkeypatch.setattr(prechecks, "VERIFY_TIMEOUT", 10.0)
     backend = CountingWindow({**_observed(crossfeed=[1, 3, 5]), **_links()})
     routing.apply_routing(_config(crossfeed=[9]), backend)
     assert backend.windows == 1, "a level of 3 is a report, not a malformed flag"

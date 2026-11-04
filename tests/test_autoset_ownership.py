@@ -10,7 +10,7 @@ from backend_doubles import RecordingBackend
 
 from oscmix_desk import config as config_mod
 from oscmix_desk import desk as desk_mod
-from oscmix_desk import profiles, routing, verify
+from oscmix_desk import prechecks, profiles, routing, verify
 from oscmix_desk.backend import OSCMIX
 from oscmix_desk.devices import UCX2
 from oscmix_desk.errors import ConfigError, ReceivePortError, WriteFailed
@@ -65,7 +65,7 @@ def bounded_clock(monkeypatch):
     ticks = itertools.count(0, .001)
     monkeypatch.setattr(routing.time, "monotonic", lambda: next(ticks))
     monkeypatch.setattr(routing.time, "sleep", lambda _: None)
-    monkeypatch.setattr(routing, "VERIFY_TIMEOUT", .03)
+    monkeypatch.setattr(prechecks, "VERIFY_TIMEOUT", .03)
     monkeypatch.setattr(routing, "LINK_ECHO_TIMEOUT", .03)
     monkeypatch.setattr(verify, "VERIFY_TIMEOUT", .03)
     monkeypatch.setattr(verify, "VERIFY_SETTLE", 0.)

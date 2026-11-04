@@ -105,7 +105,7 @@ def _profile_at(path: Path, name: str, config_path: Optional[Path],
             "profile is the desk, not the machine: take [device] out of %s"
             % (name, config_path, moved, path))
     # How the session keeps the desk is routing.conf's, whichever desk it keeps.
-    return replace(profile, enforce=main.enforce)
+    return replace(profile, enforce=main.enforce, peak_safe=main.peak_safe)
 
 
 #: Device identity and retained legacy ports, as (section, option, Config

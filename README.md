@@ -27,7 +27,7 @@ The latest release is **0.8.1**.
 | `--status [--json]` | read-only diagnosis of installation, device, backend and mixer |
 | profiles | named alternatives, switched in one operation with a stated outcome; `--capture NAME` saves the current desk as one, `--diff-profile A B` compares two without the device |
 | `[pin]` | per-option choice whether the config or the mixer wins after the first write |
-| `[desk]` | `base` makes a desk the whole matrix (TotalMix "Reset Mix", DAW mode); `enforce = watch` reconciles when a report contradicts a pinned value |
+| `[desk]` | `base` makes a desk the whole matrix (TotalMix "Reset Mix", DAW mode); `enforce = watch` reconciles when a report contradicts a pinned value; `peak-safe = true` quiets a switch |
 | `--pipewire-sinks` | named outputs ("Monitors", "Headphones") in the desktop's sound settings |
 | service integration | systemd user service, udev hotplug and resume; OpenRC, runit, NixOS and Fedora Silverblue |
 | mixer | the upstream GTK mixer can stay open; desk operations and mixer edits do not interleave |

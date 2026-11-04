@@ -8,6 +8,7 @@ from backend_doubles import RecordingBackend
 
 from oscmix_desk import config as config_mod
 from oscmix_desk import desk, dump, profiles, reconcile, routing, session, streams, verify
+from oscmix_desk import prechecks as prechecks_mod
 from oscmix_desk.devices import FF802, UCX2
 from oscmix_desk.errors import ConfigError, WriteFailed
 from oscmix_desk.model import ChannelSetting, Config, Route
@@ -405,9 +406,7 @@ def phase_dependencies():
 def phase_guards(monkeypatch):
     calls = []
     monkeypatch.setattr(routing.PlaybackGuard, "check", lambda self: calls.append("guard"))
-    monkeypatch.setattr(
-        routing, "_read_gain_dependencies", lambda *args, **kwargs: phase_dependencies()
-    )
+    monkeypatch.setattr(prechecks_mod, "read_dependencies", lambda *_a, **_k: phase_dependencies())
     monkeypatch.setattr(
         routing, "_cross_the_barrier", lambda *args, **kwargs: calls.append("barrier")
     )

@@ -33,7 +33,6 @@ LONGER = {
     "tests/playback_mute_evidence.py": 824,
     "tests/playback_mute_pcm_evidence.py": 685,
     "tests/playback_route_pan_evidence.py": 786,
-    "tests/test_architecture.py": 588,
     "tests/test_autoset_ownership.py": 536,
     "tests/test_control_client.py": 850,
     "tests/test_device_identity.py": 570,

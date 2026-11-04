@@ -158,7 +158,7 @@ def test_the_known_surface_is_stated_rather_than_discovered(session_mod):
 
     assert {
         "device": {"name", "usb-id", "serial"},
-        "desk": {"base", "enforce"},
+        "desk": {"base", "enforce", "peak-safe"},
         "osc": {"port", "recv-port"},
         "route": {"playback", "input", "output", "level", "volume", "stereo", "pan"},
     } == config_mod._KNOWN_OPTIONS

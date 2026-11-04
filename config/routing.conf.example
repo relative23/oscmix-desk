@@ -298,6 +298,12 @@ level = 0.0
 # [desk]
 # enforce = watch
 #
+# peak-safe = true (routing.conf only) quiets a switch: the outputs it
+# changes drop to -65 dB while links and matrix change, then get their
+# declared, else previous, volume back.
+# [desk]
+# peak-safe = true
+#
 # A mirror sends what another output sends (TotalMix "Mirror of Output"):
 # every route declared for 1/2 is declared again for 3/4, without its
 # output volume, and each apply keeps the two submixes equal. The mirror's
