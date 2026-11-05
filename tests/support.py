@@ -239,3 +239,26 @@ def started_with(config, device=None, osc_port=None, serial=None):
     if serial is not None:
         config = replace(config, serial=serial)
     return replace(config, overrides=said)
+
+
+def idle_clock(device, current, step=0.001):
+    """A ``time`` stand-in that advances ``step`` per ``monotonic()`` call while ``device.queue``
+    is empty, unless the test already gave ``current`` a clock of its own.
+
+    For tests that give code a real-time window of a few milliseconds to read a fake device:
+    under load (a mutation run's tracing, a busy host) the window can close before the device's
+    queue is read. Time that stands still while the queue holds data makes the window a number
+    of idle reads instead, whatever the host is doing.
+    """
+    from types import BuiltinFunctionType, SimpleNamespace
+
+    if not isinstance(current.monotonic, BuiltinFunctionType):
+        return current
+    now = [0.0]
+
+    def monotonic():
+        if not device.queue:
+            now[0] += step
+        return now[0]
+
+    return SimpleNamespace(monotonic=monotonic)

@@ -12,7 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 from control_peer import END, WRITE, ScriptedControl
-from support import repo_file, short_directory
+from support import idle_clock, repo_file, short_directory
 
 from oscmix_desk.backend import Control, Delivery
 from oscmix_desk.errors import WriteFailed
@@ -113,7 +113,7 @@ class DeviceModel:
 
 
 def run(probe, device, *, pair='input:13', member=0, checkpoint=lambda: None, value=None):
-    result = probe.plan(pair, member, value=value)
+    result, probe.time = probe.plan(pair, member, value=value), idle_clock(device, probe.time)
     probe.measure(device, pair, member, result, inventory_for(device.before),
                   lambda: None, checkpoint, seconds=.01, watch_seconds=.001)
     return result
