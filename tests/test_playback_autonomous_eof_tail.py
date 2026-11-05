@@ -28,7 +28,7 @@ def example(kinds=("meter", "statusserial")):
             data, sub = bytes.fromhex("f000200d1002f7"), 2
         else:
             word = 0x3F000006
-            word |= 0 if word.bit_count() % 2 else 0x80000000
+            word |= 0 if bin(word).count("1") % 2 else 0x80000000
             data = bytes.fromhex("f000200d1000") + bytes(
                 (word >> shift) & 127 for shift in (0, 7, 14, 21, 28)
             ) + b"\xf7"

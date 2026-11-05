@@ -388,7 +388,7 @@ def validate_autonomous_eof_tail(tail, completed_status_final):
                  and event["reg"] == 0x3F00 and event["kind"] == "register"
                  and event["parity"] is True and 0 <= event["val"] < 16
                  and event["decoded_value"] == event["val"]
-                 and 0 <= event["word"] < 2**32 and event["word"].bit_count() % 2 == 1
+                 and 0 <= event["word"] < 2**32 and bin(event["word"]).count("1") % 2 == 1
                  and (event["word"] >> 16 & 0x7FFF) == 0x3F00
                  and event["word"] & 0xFFFF == event["val"]
                  and type(completed_status_final) is int and 0 <= completed_status_final < 16
@@ -565,7 +565,7 @@ def validate_case(case):
     need(case["independently_on_addressed_channel"] == left, "ON scope overstated")
     expected = (("probe", left, 1), ("restore-target", left, 0), ("restore-partner", right, 0))
     need(len(case["writes"]) == 3, "exactly three sealed writes required")
-    for write, (phase, channel, value) in zip(case["writes"], expected, strict=True):
+    for write, (phase, channel, value) in zip(case["writes"], expected):
         need(
             write
             == dict(
