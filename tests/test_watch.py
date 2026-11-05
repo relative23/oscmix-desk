@@ -257,11 +257,12 @@ def test_one_reconcile_serves_every_pending_request(monkeypatch, pending, reason
             self.forgiven = True
 
     watcher = Watcher()
-    session_mod._serve_reload(None, None, {"stop": False}, None, pending, watcher)
+    requested = dict(pending)  # the parameter itself must survive a second run (mutmut forks)
+    session_mod._serve_reload(None, None, {"stop": False}, None, requested, watcher)
     assert calls == ([reason] if reason else [])
     assert watcher.forgiven is forgiven
-    assert "watch" not in pending
-    assert "sighup" not in pending
+    assert "watch" not in requested
+    assert "sighup" not in requested
 
 
 def test_only_a_watching_desk_opens_a_reader(desk, monkeypatch, caplog):
