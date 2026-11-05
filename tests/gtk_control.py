@@ -399,11 +399,17 @@ def main():
     args.output.mkdir(exist_ok=False, parents=True)
     # Enable the private accessibility bus explicitly; the user's desktop
     # preference must not decide whether this qualification observes a window.
+    # at-spi2-core 2.62 (Arch, October 2026) dropped ScreenReaderEnabled and
+    # answers InvalidArgs for it; IsEnabled stays required everywhere.
     for prop in ('IsEnabled', 'ScreenReaderEnabled'):
-        subprocess.run(['gdbus', 'call', '--session', '--dest', 'org.a11y.Bus',
-                        '--object-path', '/org/a11y/bus', '--method',
-                        'org.freedesktop.DBus.Properties.Set', 'org.a11y.Status',
-                        prop, '<true>'], check=True, capture_output=True)
+        done = subprocess.run(['gdbus', 'call', '--session', '--dest', 'org.a11y.Bus',
+                               '--object-path', '/org/a11y/bus', '--method',
+                               'org.freedesktop.DBus.Properties.Set', 'org.a11y.Status',
+                               prop, '<true>'], capture_output=True, text=True)
+        if done.returncode and not (prop == 'ScreenReaderEnabled'
+                                    and 'org.freedesktop.DBus.Error.InvalidArgs' in done.stderr):
+            raise subprocess.CalledProcessError(done.returncode, done.args, done.stdout,
+                                                done.stderr)
     result = {} if args.cli_only else exercise(args)
     result.update(exercise_cli(args))
     result.update(ok=True, backend=str(args.backend.resolve()), gtk=str(args.gtk.resolve()),
