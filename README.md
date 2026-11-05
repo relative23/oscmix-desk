@@ -36,9 +36,7 @@ The latest release is **0.9.0**.
 
 - Linux with ALSA; a Fireface UCX II in class-compliant mode
 - Python 3.9 or newer (standard library only)
-  CI covers 3.9 through 3.14 and Python 3.15 RC2 for early compatibility.
-  Release 0.9.0 waits until final stable Python 3.15 is available and
-  passes qualification.
+  CI covers 3.9 through 3.15.
 - To build the backend: `git`, `make`, a C compiler, `pkg-config`, the ALSA
   headers and, for the mixer GUI, GTK 3
 
@@ -109,8 +107,8 @@ The config is the first of: `--config FILE`, `$OSCMIX_CONFIG`,
 options: `--device NAME` and `--timeout SECONDS` for the interface search,
 `--dry-run` to print what would be sent, `--pipewire-target NODE` for
 `--pipewire-sinks` when auto-detection picks the wrong node, and `--verbose`
-for debug logging. `--osc-port` is still accepted from old unit files and
-selects nothing.
+for debug logging. `--version` prints the runtime version. `--osc-port` is
+still accepted from old unit files and selects nothing.
 
 In the 0.9.0 development tree, `--strict` refuses unknown or unsupported
 sections and an unusable active profile instead of ignoring them or choosing

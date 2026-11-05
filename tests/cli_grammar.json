@@ -1,0 +1,295 @@
+{
+ "prog": "oscmix-session",
+ "description": "Supervise the oscmix backend for an RME Fireface interface.",
+ "options": [
+  {
+   "options": [
+    "--config"
+   ],
+   "dest": "config",
+   "action": "_StoreAction",
+   "metavar": "FILE",
+   "type": "Path",
+   "default": "None",
+   "nargs": null,
+   "choices": null,
+   "help": "routing config (default: $OSCMIX_CONFIG, then $XDG_CONFIG_HOME/oscmix/routing.conf or ~/.config/oscmix/routing.conf, then /etc/oscmix/routing.conf)"
+  },
+  {
+   "options": [
+    "--device"
+   ],
+   "dest": "device",
+   "action": "_StoreAction",
+   "metavar": "NAME",
+   "type": null,
+   "default": "None",
+   "nargs": null,
+   "choices": null,
+   "help": "ALSA client name to wait for (overrides config)"
+  },
+  {
+   "options": [
+    "--timeout"
+   ],
+   "dest": "timeout",
+   "action": "_StoreAction",
+   "metavar": "SECONDS",
+   "type": "float",
+   "default": "30.0",
+   "nargs": null,
+   "choices": null,
+   "help": "how long to wait for the device"
+  },
+  {
+   "options": [
+    "--osc-port"
+   ],
+   "dest": "osc_port",
+   "action": "_StoreAction",
+   "metavar": "PORT",
+   "type": "int",
+   "default": "None",
+   "nargs": null,
+   "choices": null,
+   "help": "legacy port value (overrides config; control uses a local Unix socket)"
+  },
+  {
+   "options": [
+    "--dry-run"
+   ],
+   "dest": "dry_run",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "show what would be started and sent, then exit"
+  },
+  {
+   "options": [
+    "--strict"
+   ],
+   "dest": "strict",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "reject ignored config sections and an unusable active profile instead of falling back"
+  },
+  {
+   "options": [
+    "--check"
+   ],
+   "dest": "check",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "strictly validate the main config and every profile offline, then exit"
+  },
+  {
+   "options": [
+    "--status"
+   ],
+   "dest": "status",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "inspect installation, device and control endpoint without connecting or writing"
+  },
+  {
+   "options": [
+    "--json"
+   ],
+   "dest": "json",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "versioned JSON output for --status"
+  },
+  {
+   "options": [
+    "--snapshot"
+   ],
+   "dest": "snapshot",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "print every register the device reports, for comparing two moments; unlike --dump-config this is not a config and holds nothing back"
+  },
+  {
+   "options": [
+    "--diff"
+   ],
+   "dest": "diff",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "compare the running device against the config and print what an apply would write, without writing it"
+  },
+  {
+   "options": [
+    "--dump-config"
+   ],
+   "dest": "dump_config",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "ask the running device for its state and print a routing.conf that reproduces what it reports"
+  },
+  {
+   "options": [
+    "--capture"
+   ],
+   "dest": "capture",
+   "action": "_StoreAction",
+   "metavar": "NAME",
+   "type": null,
+   "default": "None",
+   "nargs": null,
+   "choices": null,
+   "help": "save the device's reported state, plus the playback routes desk last wrote, as the new profile NAME"
+  },
+  {
+   "options": [
+    "--include-written"
+   ],
+   "dest": "include_written",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "with --dump-config: add the playback routes and mute flags desk itself last wrote, which the device does not report, marked unconfirmed"
+  },
+  {
+   "options": [
+    "--pipewire-sinks"
+   ],
+   "dest": "pipewire_sinks",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "print a PipeWire config with one named sink per stereo output pair, then exit"
+  },
+  {
+   "options": [
+    "--pipewire-target"
+   ],
+   "dest": "pipewire_target",
+   "action": "_StoreAction",
+   "metavar": "NODE",
+   "type": null,
+   "default": "None",
+   "nargs": null,
+   "choices": null,
+   "help": "Fireface sink node.name for --pipewire-sinks (default: auto-detect via pw-dump)"
+  },
+  {
+   "options": [
+    "--profile"
+   ],
+   "dest": "profile",
+   "action": "_StoreAction",
+   "metavar": "NAME",
+   "type": null,
+   "default": "None",
+   "nargs": null,
+   "choices": null,
+   "help": "switch the desk to profiles/NAME.conf and report the outcome, then exit"
+  },
+  {
+   "options": [
+    "--diff-profile"
+   ],
+   "dest": "diff_profile",
+   "action": "_StoreAction",
+   "metavar": [
+    "A",
+    "B"
+   ],
+   "type": null,
+   "default": "None",
+   "nargs": 2,
+   "choices": null,
+   "help": "compare what two desks set -- profile names, or :main for routing.conf -- without the device"
+  },
+  {
+   "options": [
+    "--list-profiles"
+   ],
+   "dest": "list_profiles",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "list the profiles found beside the config; the active one is marked"
+  },
+  {
+   "options": [
+    "--no-profile"
+   ],
+   "dest": "no_profile",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "apply routing.conf again and forget the active profile, then exit"
+  },
+  {
+   "options": [
+    "--verbose"
+   ],
+   "dest": "verbose",
+   "action": "_StoreTrueAction",
+   "metavar": null,
+   "type": null,
+   "default": "False",
+   "nargs": 0,
+   "choices": null,
+   "help": "debug logging"
+  },
+  {
+   "options": [
+    "--version"
+   ],
+   "dest": "version",
+   "action": "_VersionAction",
+   "metavar": null,
+   "type": null,
+   "default": "'==SUPPRESS=='",
+   "nargs": 0,
+   "choices": null,
+   "help": "show program's version number and exit"
+  }
+ ]
+}

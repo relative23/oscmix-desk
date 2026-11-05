@@ -90,10 +90,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.9 is the floor the code is written against (no PEP 604 unions);
-        # 3.15 RC is an early compatibility check. Measure the final stable
-        # release and replace this RC before publishing 0.9.0.
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15.0-rc.2"]
+        # 3.9 is the floor the code is written against (no PEP 604 unions).
+        # 3.15 joined as the final release (3.15.0, measured on 2026-11-05).
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
