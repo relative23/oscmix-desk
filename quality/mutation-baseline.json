@@ -6,16 +6,16 @@
     "the measured score rounded down to the hundredth, never lowered.",
     "The register declaration table in devices.py is not mutated."
   ],
-  "min_score": 0.85,
+  "min_score": 0.88,
   "tolerance": 0.01,
   "measured": {
-    "recorded": "2026-10-02",
-    "total": 11313,
-    "killed": 9675,
-    "survived": 1621,
-    "timeout": 17,
+    "recorded": "2026-11-05",
+    "total": 17150,
+    "killed": 15138,
+    "survived": 1989,
+    "timeout": 23,
     "not_covered": 0,
-    "score": 0.8564978753541076,
-    "commit": "43cf8be275c02bd1bf999864638814ded7e8d9d9"
+    "score": 0.883867577509196,
+    "commit": "532b60a79c83a501e4488720c7e74c73b9eddff3"
   }
 }
