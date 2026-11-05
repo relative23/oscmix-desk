@@ -266,6 +266,6 @@ def test_calibration_register_declares_only_measured_numeric_contract():
 
 def test_calibration_extends_the_existing_settable_surface():
     assert set(settable_options(UCX2, "output")) == {
-        "crossfeed", "fx", "mute", "pan", "phase", "reflevel", "volumecal", "volume"}
+        "crossfeed", "fx", "loopback", "mute", "pan", "phase", "reflevel", "volumecal", "volume"}
     assert set(settable_options(UCX2, "input")) == {
         "autoset", "fx", "gain", "hi-z", "msproc", "mute", "phase", "reflevel"}

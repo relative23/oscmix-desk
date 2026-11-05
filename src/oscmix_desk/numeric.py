@@ -9,10 +9,29 @@ from __future__ import annotations
 
 import math
 import struct
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 from .constants import LEVEL_MIN
 from .registers import BOOL, ENUM, NUMBER, Register
+
+#: Physical units measured for values the backend declares in its own units: template ->
+#: (unit, physical value per backend unit). Room EQ delay, through output loopback on a UCX II
+#: (2026-11-05, tests/data/output-loopback-probes-ucx2.json): 10.005 ms per OSC unit with a
+#: 0.008 ms residual, so one backend step (0.001) is 0.01 ms -- the step RME documents.
+PHYSICAL: Dict[str, Tuple[str, float]] = {"/output/{ch}/roomeq/delay": ("ms", 10.0)}
+
+
+def physical(register: Optional[Register]) -> Optional[Tuple[str, float]]:
+    """The measured physical unit of a register's backend value, if one was measured."""
+    return None if register is None else PHYSICAL.get(register.template)
+
+
+def from_physical(text: str, register: Register) -> Optional[float]:
+    """The backend value of ``text`` written in the register's measured unit, else None."""
+    measured = physical(register)
+    if measured is None or not text.strip().endswith(measured[0]):
+        return None
+    return float(text.strip()[:-len(measured[0])]) / measured[1]
 
 
 def finite(value: object) -> float:
@@ -155,6 +174,10 @@ def render_number(value: object, register: Optional[Register]) -> str:
         number_value(value, register, reported=True)
         if register.tags.startswith("i"):
             return str(integer(number))
+        measured = physical(register)
+        if register.scale is not None and measured is not None:
+            places = max(0, -math.floor(math.log10(register.scale * measured[1])))
+            return "%s %s" % (format(number * measured[1], ".%df" % places), measured[0])
         if register.scale is not None:
             places = max(0, -math.floor(math.log10(register.scale)))
             return format(number, ".%df" % places)

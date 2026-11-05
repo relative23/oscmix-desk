@@ -1,0 +1,960 @@
+{
+ "schema": 1,
+ "kind": "output-loopback-probes-ucx2",
+ "plan": {
+  "outputs": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20
+  ],
+  "source": 1,
+  "alternate": 3,
+  "gain": 60.0,
+  "delay_output": 3,
+  "delays": [
+   0.0,
+   0.001,
+   0.01,
+   0.05,
+   0.425
+  ]
+ },
+ "cases": [
+  {
+   "output": 1,
+   "source": 3,
+   "mix_input": 3,
+   "before": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.57,
+    "target_dbfs": -72.49,
+    "lag_samples": 29,
+    "lag_ms": 0.6056,
+    "peak": 0.0477,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.43,
+    "target_dbfs": -91.43,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9987,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.42,
+    "target_dbfs": -70.77,
+    "lag_samples": 1467,
+    "lag_ms": 30.5638,
+    "peak": -0.0461,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 2,
+   "source": 4,
+   "mix_input": 3,
+   "before": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.66,
+    "target_dbfs": -75.04,
+    "lag_samples": -1844,
+    "lag_ms": -38.4154,
+    "peak": -0.0405,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.54,
+    "target_dbfs": -91.54,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9989,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.35,
+    "target_dbfs": -75.09,
+    "lag_samples": 256,
+    "lag_ms": 5.3333,
+    "peak": -0.0445,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 3,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -62.95,
+    "target_dbfs": -91.35,
+    "lag_samples": -251,
+    "lag_ms": -5.2253,
+    "peak": 0.0529,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -68.4,
+    "target_dbfs": -68.4,
+    "lag_samples": 8,
+    "lag_ms": 0.1666,
+    "peak": 0.9992,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -63.65,
+    "target_dbfs": -91.55,
+    "lag_samples": 308,
+    "lag_ms": 6.4082,
+    "peak": 0.0445,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 4,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -75.04,
+    "target_dbfs": -91.54,
+    "lag_samples": -336,
+    "lag_ms": -7.0012,
+    "peak": -0.0367,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -75.03,
+    "target_dbfs": -75.04,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9986,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -75.09,
+    "target_dbfs": -91.47,
+    "lag_samples": 2205,
+    "lag_ms": 45.9387,
+    "peak": -0.0399,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 5,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 5,
+    "samples": 8192,
+    "source_dbfs": -73.59,
+    "target_dbfs": -115.53,
+    "lag_samples": 678,
+    "lag_ms": 14.1207,
+    "peak": 0.0574,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 5,
+    "samples": 8192,
+    "source_dbfs": -70.45,
+    "target_dbfs": -70.45,
+    "lag_samples": 8,
+    "lag_ms": 0.1666,
+    "peak": 0.9998,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 5,
+    "samples": 8192,
+    "source_dbfs": -71.54,
+    "target_dbfs": -115.52,
+    "lag_samples": 52,
+    "lag_ms": 1.0778,
+    "peak": -0.0641,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 6,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 6,
+    "samples": 8192,
+    "source_dbfs": -75.04,
+    "target_dbfs": -115.22,
+    "lag_samples": 1360,
+    "lag_ms": 28.3358,
+    "peak": 0.0378,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 6,
+    "samples": 8192,
+    "source_dbfs": -75.08,
+    "target_dbfs": -75.08,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9993,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 6,
+    "samples": 8192,
+    "source_dbfs": -75.06,
+    "target_dbfs": -115.14,
+    "lag_samples": 943,
+    "lag_ms": 19.6458,
+    "peak": 0.0461,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 7,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 7,
+    "samples": 8192,
+    "source_dbfs": -74.22,
+    "target_dbfs": -115.0,
+    "lag_samples": 49,
+    "lag_ms": 1.0195,
+    "peak": -0.0584,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 7,
+    "samples": 8192,
+    "source_dbfs": -73.54,
+    "target_dbfs": -73.54,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9996,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 7,
+    "samples": 8192,
+    "source_dbfs": -73.99,
+    "target_dbfs": -115.6,
+    "lag_samples": 314,
+    "lag_ms": 6.5414,
+    "peak": -0.0449,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 8,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 8,
+    "samples": 8192,
+    "source_dbfs": -75.07,
+    "target_dbfs": -115.51,
+    "lag_samples": -1043,
+    "lag_ms": -21.7337,
+    "peak": 0.0398,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 8,
+    "samples": 8192,
+    "source_dbfs": -74.99,
+    "target_dbfs": -74.98,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9986,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 8,
+    "samples": 8192,
+    "source_dbfs": -75.09,
+    "target_dbfs": -115.42,
+    "lag_samples": -520,
+    "lag_ms": -10.8298,
+    "peak": -0.0441,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 9,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 9,
+    "samples": 8192,
+    "source_dbfs": -58.58,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 9,
+    "samples": 8192,
+    "source_dbfs": -53.0,
+    "target_dbfs": -52.99,
+    "lag_samples": 8,
+    "lag_ms": 0.1665,
+    "peak": 0.9989,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 9,
+    "samples": 8192,
+    "source_dbfs": -61.08,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 10,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 10,
+    "samples": 8192,
+    "source_dbfs": -75.0,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 10,
+    "samples": 8192,
+    "source_dbfs": -75.19,
+    "target_dbfs": -75.19,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9993,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 10,
+    "samples": 8192,
+    "source_dbfs": -75.1,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 11,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 11,
+    "samples": 8192,
+    "source_dbfs": -66.8,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 11,
+    "samples": 8192,
+    "source_dbfs": -66.14,
+    "target_dbfs": -66.14,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9991,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 11,
+    "samples": 8192,
+    "source_dbfs": -66.14,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 12,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 12,
+    "samples": 8192,
+    "source_dbfs": -75.1,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 12,
+    "samples": 8192,
+    "source_dbfs": -74.98,
+    "target_dbfs": -74.98,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9992,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 12,
+    "samples": 8192,
+    "source_dbfs": -75.09,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 13,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 13,
+    "samples": 8192,
+    "source_dbfs": -63.73,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 13,
+    "samples": 8192,
+    "source_dbfs": -63.52,
+    "target_dbfs": -63.52,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9998,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 13,
+    "samples": 8192,
+    "source_dbfs": -61.28,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 14,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 14,
+    "samples": 8192,
+    "source_dbfs": -75.04,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 14,
+    "samples": 8192,
+    "source_dbfs": -75.12,
+    "target_dbfs": -75.11,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9993,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 14,
+    "samples": 8192,
+    "source_dbfs": -75.05,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 15,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 15,
+    "samples": 8192,
+    "source_dbfs": -60.02,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 15,
+    "samples": 8192,
+    "source_dbfs": -61.77,
+    "target_dbfs": -61.76,
+    "lag_samples": 8,
+    "lag_ms": 0.1666,
+    "peak": 0.9992,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 15,
+    "samples": 8192,
+    "source_dbfs": -52.98,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 16,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 16,
+    "samples": 8192,
+    "source_dbfs": -74.97,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 16,
+    "samples": 8192,
+    "source_dbfs": -74.96,
+    "target_dbfs": -74.96,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9988,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 16,
+    "samples": 8192,
+    "source_dbfs": -75.02,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 17,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 17,
+    "samples": 8192,
+    "source_dbfs": -73.4,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 17,
+    "samples": 8192,
+    "source_dbfs": -73.61,
+    "target_dbfs": -73.61,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9995,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 17,
+    "samples": 8192,
+    "source_dbfs": -74.84,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 18,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 18,
+    "samples": 8192,
+    "source_dbfs": -75.08,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 18,
+    "samples": 8192,
+    "source_dbfs": -75.13,
+    "target_dbfs": -75.13,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9995,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 18,
+    "samples": 8192,
+    "source_dbfs": -74.97,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 19,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 19,
+    "samples": 8192,
+    "source_dbfs": -70.18,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 19,
+    "samples": 8192,
+    "source_dbfs": -61.71,
+    "target_dbfs": -61.71,
+    "lag_samples": 8,
+    "lag_ms": 0.1663,
+    "peak": 0.9988,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 19,
+    "samples": 8192,
+    "source_dbfs": -70.32,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  },
+  {
+   "output": 20,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 20,
+    "samples": 8192,
+    "source_dbfs": -75.01,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 2,
+    "target": 20,
+    "samples": 8192,
+    "source_dbfs": -75.09,
+    "target_dbfs": -75.09,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9985,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 2,
+    "target": 20,
+    "samples": 8192,
+    "source_dbfs": -75.01,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  }
+ ],
+ "sources": {
+  "1": {
+   "gain_db": 60.0,
+   "dbfs": -71.89
+  },
+  "2": {
+   "gain_db": 60.0,
+   "dbfs": -74.43
+  },
+  "3": {
+   "gain_db": 24.0,
+   "dbfs": -91.52
+  },
+  "4": {
+   "gain_db": 24.0,
+   "dbfs": -91.47
+  }
+ },
+ "started": "2026-11-05T08:16:36.271941+00:00",
+ "hardware_used": true,
+ "running_backend": {
+  "pid": 2577156,
+  "epoch": "245dad1e4b857969d1d8c329bbcb4457",
+  "device": "Fireface UCX II (24216011) Port",
+  "sha256": "0008b85f3eb82106c2b2d6ec40a0e3caa297e8783b7269ecfea67d0a01d77af9",
+  "upstream": "89ed835ecf8118a21d1d451be7d71944fa5ec384",
+  "series_sha256": "75f8a9673b57891291c9511c2999b8f6a761b41bfd50632fa61efc3998daba3b",
+  "protocol": "ODK1",
+  "matches_local_build": true
+ },
+ "first_dump": {
+  "paths": 2231,
+  "sha256": "84e7b54c15078935389d57093120169eccd4e86b0b67d12fffb26de6693f5e27"
+ },
+ "serial": "24216011",
+ "firmware": {
+  "usb_revision": "3.01",
+  "dsp_version": 36
+ },
+ "delay": {
+  "output": 3,
+  "source": 1,
+  "points": [
+   {
+    "osc": 0.0,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -66.77,
+    "target_dbfs": -66.77,
+    "lag_samples": 8,
+    "lag_ms": 0.1666,
+    "peak": 0.9996,
+    "verdict": "carried"
+   },
+   {
+    "osc": 0.001,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -69.3,
+    "target_dbfs": -69.3,
+    "lag_samples": 8,
+    "lag_ms": 0.1667,
+    "peak": 0.9998,
+    "verdict": "carried"
+   },
+   {
+    "osc": 0.01,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -67.42,
+    "target_dbfs": -67.41,
+    "lag_samples": 13,
+    "lag_ms": 0.2708,
+    "peak": 0.9988,
+    "verdict": "carried"
+   },
+   {
+    "osc": 0.05,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -70.03,
+    "target_dbfs": -70.02,
+    "lag_samples": 32,
+    "lag_ms": 0.6667,
+    "peak": 0.9987,
+    "verdict": "carried"
+   },
+   {
+    "osc": 0.425,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -68.08,
+    "target_dbfs": -67.83,
+    "lag_samples": 212,
+    "lag_ms": 4.4167,
+    "peak": 0.9629,
+    "verdict": "carried"
+   }
+  ],
+  "ms_per_osc_unit": 10.005,
+  "path_latency_ms": 0.1651,
+  "residual_ms": 0.0084,
+  "carried": true
+ },
+ "final_dump": {
+  "paths": 2231,
+  "sha256": "84e7b54c15078935389d57093120169eccd4e86b0b67d12fffb26de6693f5e27",
+  "missing": [],
+  "changed": [],
+  "new": []
+ },
+ "restored": true,
+ "finished": "2026-11-05T08:19:18.739523+00:00",
+ "passed": true
+}

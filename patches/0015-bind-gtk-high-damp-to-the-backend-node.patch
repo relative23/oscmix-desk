@@ -1,0 +1,12 @@
+diff --git a/gtk/main.c b/gtk/main.c
+--- a/gtk/main.c
++++ b/gtk/main.c
+@@ -543,7 +543,7 @@ oscmix_window_init(OSCMixWindow *self)
+ 	mixer_bind(self->osc, "/reverb/release", G_TYPE_INT, self->reverb_release, "value");
+ 	mixer_bind(self->osc, "/reverb/highcut", G_TYPE_INT, self->reverb_highcut, "value");
+ 	mixer_bind(self->osc, "/reverb/time", G_TYPE_FLOAT, self->reverb_time, "value");
+-	mixer_bind(self->osc, "/reverb/damp", G_TYPE_INT, self->reverb_damp, "value");
++	mixer_bind(self->osc, "/reverb/highdamp", G_TYPE_INT, self->reverb_damp, "value");
+ 	mixer_bind(self->osc, "/reverb/smooth", G_TYPE_INT, self->reverb_smooth, "value");
+ 	mixer_bind(self->osc, "/reverb/volume", G_TYPE_FLOAT, self->reverb_volume, "value");
+ 	mixer_bind(self->osc, "/reverb/width", G_TYPE_INT, self->reverb_width, "value");

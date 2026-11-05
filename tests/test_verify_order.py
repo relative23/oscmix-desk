@@ -78,9 +78,10 @@ def test_latest_remember_difference_is_kept_but_not_called_equal(monkeypatch):
 
 
 def test_an_unexpected_report_is_still_observed_until_its_contradiction_recovers(monkeypatch):
-    # Synthetic observations test the rule for any decoded report. They do
-    # not establish that the pinned backend actually reports output loopback.
-    link, extra = '/output/5/stereo', '/output/5/loopback'
+    # Synthetic observations test the rule for any decoded report, here on a
+    # path the model does not know. Output loopback, which used to stand in,
+    # has a config domain now and is never confirmed (tests/test_loopback.py).
+    link, extra = '/output/5/stereo', '/output/5/unmodelled'
     registers = {link: ('i', (1,)), extra: ('i', (1,))}
     result, seen = observe(monkeypatch, registers, [
         [(link, 'i', (1,)), (extra, 'i', (0,))],

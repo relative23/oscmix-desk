@@ -4,6 +4,15 @@
 
 ### Added
 
+- `[output:N] loopback = on|off`: capture channel N carries output N instead
+  of input N. The device never reports the flag, so the read-back names it
+  unverifiable; it is remembered by default and written when declared.
+  Measured on a UCX II on all 20 outputs with `scripts/probe-loopback.py`,
+  which needs no cable and gives back every register it touches.
+- Room EQ delay in milliseconds: `[roomeq:output:N] delay = 2.5 ms`, from 0
+  to 4.25 ms, measured through loopback (one backend unit is 10 ms, one step
+  0.01 ms). Exports write milliseconds; a number without a unit still means
+  the backend's OSC units.
 - `[desk] peak-safe = true` in routing.conf makes an explicit switch or
   restore quiet: every output the switch changes goes to -65 dB first, the
   links, matrix and channel state follow, and each output gets back the
@@ -85,6 +94,18 @@
 
 ### Changed
 
+- The backend pin moves to upstream `89ed835`, which sends the output's own
+  index in the loopback word instead of `0xffffffff` for every output
+  (upstream #38, #39). Two patches join the series: 0015 binds the GTK
+  mixer's High Damp slider to `/reverb/highdamp`, the node the backend
+  declares (it was bound to `/reverb/damp`, which nothing answers), and
+  0016 lets the lease owner's WRITE renew the five-second idle time as a
+  KEEPALIVE does, so MIDI backpressure on a long write no longer ends the
+  lease of a desk that is waiting for its acknowledgement. The refresh dump
+  was recorded again at the new pin; the playback-mute evidence of
+  2026-10-08 is carried to it by a source proof, since none of the changed
+  lines is on the path that writes playback mute
+  (`tests/data/playback-mute-carry-forward-ucx2.json`).
 - The read-back after an apply or reconcile warns when the device reports
   a DSP load of 100 % or more: at 96 kHz, Room EQ on 16 channels reads
   back as on at a load of 110, so some reported effects do not run and no
@@ -200,6 +221,8 @@
 
 ### Documentation
 
+- The upstream fix for `/output/N/loopback` is recorded with its
+  measurement on a UCX II in `tests/data/loopback-output-index-ucx2.json`.
 - The UCX II cannot report its playback matrix: USB captures (2026-09-28
   to 2026-11-02), a hardware test (2026-10-30), static analysis of its
   firmware (2026-10-27 to 2026-11-04) and TotalMix FX on macOS (static,

@@ -191,6 +191,14 @@ unchanged: consumers that ignore unknown sections are unaffected. The device
 cannot report its playback matrix; the new status says what the desk can
 state about it instead of a verification.
 
+Room EQ delay can now be written in milliseconds, `delay = 2.5 ms`, the unit
+measured through output loopback (one OSC unit is 10 ms). A number without a
+unit keeps its meaning, so existing configs set what they set before; exports
+and captures now write milliseconds, which 0.8.1 and older cannot read. The
+backend allows 0 to 4.25 ms. `loopback = on|off` is a new, write-only output
+option. The backend now comes from upstream `89ed835` plus patches 0003-0016;
+the installer builds it, as before.
+
 ## Upgrading to 0.8.1
 
 0.8.1 uses the same backend patch series as 0.8.0, so the backend, ALSA

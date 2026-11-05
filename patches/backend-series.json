@@ -47,9 +47,17 @@
     {
       "file": "0014-observe-canonical-stereo-silence-from-fresh-db-floors.patch",
       "sha256": "4d844ec2a95ca22d1bf155b315f827a2e57eaab5715038ef99aa197490758c1e"
+    },
+    {
+      "file": "0015-bind-gtk-high-damp-to-the-backend-node.patch",
+      "sha256": "dbd0101cf9438a7aa17eb3bf9c9e184a96c7d63de29e1633b9e4f3acc353b19a"
+    },
+    {
+      "file": "0016-let-an-owner-write-renew-the-lease-idle-time.patch",
+      "sha256": "ecf5f40b045863530c05243a2c6b7e851bd8535f5504f1cc6106bb06ee56b5db"
     }
   ],
   "protocol": "ODK1",
   "schema": 1,
-  "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395"
+  "upstream": "89ed835ecf8118a21d1d451be7d71944fa5ec384"
 }

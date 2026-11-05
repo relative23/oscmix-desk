@@ -465,11 +465,11 @@ def test_the_artifact_covers_every_settable_register(
     covered.update(case["target"] for case in msproc_artifact["cases"])
     covered.update(case["target"] for case in autoset_artifact["cases"])
     covered.update(case["target"] for case in volumecal_artifact["cases"])
+    from loopback_evidence import loopback_paths
     from playback_mute_evidence import covered_paths
-
-    # Each pair records ON/OFF on odd and a submitted OFF on even. This covers
-    # twenty direct addresses, with exactly ten independent ON measurements.
+    # Mute: ON/OFF on odd, a submitted OFF on even, twenty direct addresses.
     covered.update(covered_paths(playback_artifact))
+    covered.update(loopback_paths())  # each flag shown through its own capture channel
     declared = {path for path, _r in sweep.settable()}
     assert covered == declared, {
         "missing_hardware_evidence": sorted(declared - covered),

@@ -29,9 +29,10 @@ CLIENTS = 16
 
 #: A connection that has not said HELLO by then is closed.
 HELLO_TIMEOUT = 3.0
-#: The lease ends this long after BEGIN or the last KEEPALIVE. A WRITE
-#: does not extend it, and the check runs before queued requests are
-#: read, so a WRITE the MIDI side holds up for this long ends the lease.
+#: The lease ends this long after BEGIN, the last KEEPALIVE or the end of
+#: the owner's last WRITE (patch 0016), so a WRITE the MIDI side holds up
+#: no longer ends it. The check still runs before queued requests are
+#: read: MIDI work ahead of a request counts against the idle time.
 LEASE_IDLE = 5.0
 #: The lease ends this long after BEGIN, however alive its owner is.
 LEASE_TOTAL = 90.0

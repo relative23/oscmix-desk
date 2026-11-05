@@ -308,11 +308,12 @@ def test_never_reported_agrees_with_the_recorded_dump(session_mod):
     dump = json.loads(repo_file("tests", "data", "refresh-dump.json"
                                 ).read_text())
     device = device_for_name("Fireface UCX II")
-    links = {path for path in dump["registers"]
+    # Schema 2 keeps the backend's own view of the playback links apart, as derived.
+    links = {path for path in dump["derived"]
              if path.startswith("/playback/") and path.endswith("/stereo")}
     assert len(links) == 20
-    denied = [path for path in dump["registers"]
-              if path not in links and not register_ever_reported(path, device)]
+    assert not links & set(dump["registers"])
+    denied = [path for path in dump["registers"] if not register_ever_reported(path, device)]
     assert denied == [], (
         "the device reported these, but the rule says it never does: %s"
         % denied[:10])

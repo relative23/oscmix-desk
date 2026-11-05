@@ -32,7 +32,7 @@ gaps alone do not prove loss.
 | 1 | HELLO | Role: 1 desk, 2 GTK, 3 reader. Payload: 32-bit origin mask (1, 2, 4 or their union). Required first. |
 | 2 | BEGIN | Acquire an operation lease or return busy (1). Only the desk role may hold one; GTK and readers get 6. No payload. |
 | 3 | END | Release this connection's lease, using its current generation. |
-| 4 | KEEPALIVE | Renew the five-second inactivity limit. The 90-second total limit remains fixed. |
+| 4 | KEEPALIVE | Renew the five-second inactivity limit. The 90-second total limit remains fixed. The lease owner's WRITE renews it too (patch 0016). |
 | 5 | WRITE | One literal OSC message, using the lease generation or GTK's last observed free generation. Refused with 2: bundles, address patterns (`*?[]{}`) or non-printable characters, addresses starting with `/refresh` or `/register`, type tags other than `i`, `f` and `s`, and non-finite floats. |
 | 6 | REFRESH | Request a new hardware refresh receive window. No payload. |
 
@@ -65,10 +65,11 @@ The desk retries a busy BEGIN for up to 30 seconds and a busy REFRESH for up
 to 12, waits two seconds for each acknowledgement, and sends a KEEPALIVE
 every second while it holds a lease.
 
-A WRITE does not renew the lease, and the backend checks the five-second idle
-limit before it handles the next request. A WRITE whose MIDI output is held up
-for about five seconds therefore ends the lease even when a KEEPALIVE is
-already queued behind it. The backend itself exits when one MIDI write is
+The lease owner's WRITE renews the five-second idle limit once its command has
+run, so a WRITE the MIDI side holds up no longer ends the lease (patch 0016); a
+refused WRITE renews nothing. The backend still checks the idle limit before it
+handles the next request, so MIDI work ahead of that request, such as the meter
+timer's, counts against it. The backend itself exits when one MIDI write is
 not finished within two seconds. A desk that gets no
 acknowledgement within two seconds closes the connection. Each of these ends
 the operation, and the write in flight counts as possibly sent.
@@ -114,7 +115,7 @@ python3 scripts/prepare-backend.py --upstream /path/to/upstream-checkout \
     --destination /path/to/new-build
 make -C /path/to/new-build 'CC=cc -std=c11' oscmix alsaseqio gtk
 OSCMIX_CONTROL_BINARY=/path/to/new-build/oscmix \
-    python3 -m pytest tests/backend_control.py tests/backend_mixer.py
+    python3 -m pytest tests/backend_control.py tests/backend_mixer.py tests/backend_writes.py
 ```
 
 `tests/gtk_control.py` runs the actual GTK executable against the same

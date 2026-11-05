@@ -174,10 +174,11 @@ def test_the_measured_dump_disagrees_with_the_prose_and_says_so(
     It is also why the discrepancy went unseen: the verify loop exits as
     soon as the *prompt* set matches, so /playback/* never got looked at.
     """
-    registers = dump["registers"]
-    playback = {path: seen for path, (_tags, seen) in registers.items()
+    # Schema 2 records them where they come from: the backend's view, labelled derived.
+    playback = {path: seen for path, (_tags, seen) in dump["derived"].items()
                 if path.startswith("/playback/") and path.endswith("/stereo")}
     assert playback, "no /playback/*/stereo in the dump at all"
+    assert not set(playback) & set(dump["registers"])
     assert max(playback.values()) < 1.0, (
         "the prose may be right after all: /playback/*/stereo arrived at "
         "%.1fs" % max(playback.values()))

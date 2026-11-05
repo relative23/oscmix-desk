@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "kind": "upstream loopback fix 89ed835: the one changed line measured offline and on the device, for the coming pin bump (ADR 0008); not a complete routing qualification",
+  "taken": "2026-11-04T18:30:00+01:00",
+  "backend": {
+    "upstream": "89ed835ecf8118a21d1d451be7d71944fa5ec384",
+    "previous_pin": "f2fdd5ec78338848754aad32cc07f3440de63395",
+    "change": {
+      "file": "oscmix.c",
+      "function": "setoutputloopback",
+      "diff": "-\tputle32(buf, val << 7 | ctx->param.in);\n+\tputle32(buf, val << 7 | ctx->param.out);",
+      "files_changed": 1,
+      "insertions": 1,
+      "deletions": 1
+    },
+    "upstream_issue": 38,
+    "upstream_pull_request": 39,
+    "merged": "2026-11-04T19:25:07Z",
+    "measured_commit": "af3457e612c4415605514ac9b3de1811225a8b7f",
+    "measured_tree": "a24cabc2be949c88157f2e97cec79d4b51847e98",
+    "pinned_tree": "a24cabc2be949c88157f2e97cec79d4b51847e98",
+    "series_applies": true,
+    "series_sha256_when_taken": "bf79336043f92c32420737325e1a5ca2bb055ac49e9227bd1c241184b286fe9d",
+    "series_sha256_at_previous_pin": "ed304b2afb25adceb20b3cdc83e4d1d4ef640d7a655ed04c2605fcde805dae2c"
+  },
+  "offline": {
+    "tool": "oscmix-loopback-harness.py: runs the backend on pipes (MIDI fds 6/7), sends OSC over UDP, decodes the sub ID 3 words it writes; nothing reaches a device",
+    "before_binary": "desk series (patches 0003..0014) on f2fdd5e, built with the project's make line",
+    "after_binary": "desk series (patches 0003..0014) on 89ed835",
+    "cases": [
+      {
+        "output": 1,
+        "on": 1,
+        "before": "0xffffffff",
+        "after": "0x00000080"
+      },
+      {
+        "output": 1,
+        "on": 0,
+        "before": "0xffffffff",
+        "after": "0x00000000"
+      },
+      {
+        "output": 2,
+        "on": 1,
+        "before": "0xffffffff",
+        "after": "0x00000081"
+      },
+      {
+        "output": 5,
+        "on": 1,
+        "before": "0xffffffff",
+        "after": "0x00000084"
+      },
+      {
+        "output": 6,
+        "on": 0,
+        "before": "0xffffffff",
+        "after": "0x00000005"
+      },
+      {
+        "output": 20,
+        "on": 1,
+        "before": "0xffffffff",
+        "after": "0x00000093"
+      }
+    ],
+    "backend_tests": "tests/backend_control.py tests/backend_mixer.py tests/test_backend_series.py against the series build at 89ed835: 79 passed (the coordinated-backend qualification of CI; the GTK desktop part was not run)"
+  },
+  "device": {
+    "name": "Fireface UCX II",
+    "serial": "24216011",
+    "usb_id": "2a39:3fd9",
+    "mode": "class compliant",
+    "control_port": "hw:2,0,1",
+    "firmware": "USB 3.01 / DSP 36 as read on 2026-09-25 (docs/evidence/0.8.0/backend-capabilities.json); not read again on 2026-11-04"
+  },
+  "hardware": {
+    "binary": "upstream oscmix af3457e (tree identical to 89ed835) with the alsarawio transport on the control port, without the desk's patch series",
+    "stimulus": "1 kHz sine at -40 dBFS on PCM playback 1/2 (PipeWire sink volume 0.40, about -64 dB at the device meters)",
+    "capture": "all 20 capture channels, signed 16-bit raw at 48 kHz via pw-record; Goertzel at 1 kHz over the middle 40 % of each recording",
+    "observations": [
+      {
+        "case": "baseline, no loopback",
+        "loopback_channels_dbfs": "none above the noise floor on any channel",
+        "recording": "rec-baseline.raw"
+      },
+      {
+        "case": "/output/1/loopback 1",
+        "loopback_channels_dbfs": {
+          "1": -77.6
+        },
+        "other_channels": "none",
+        "recording": "rec-p2-out1-1.raw"
+      },
+      {
+        "case": "/output/1/loopback 0",
+        "loopback_channels_dbfs": {},
+        "other_channels": "none",
+        "recording": "rec-p2-out1-0.raw"
+      },
+      {
+        "case": "/output/2/loopback 1",
+        "loopback_channels_dbfs": {
+          "2": -80.7
+        },
+        "other_channels": "none (channel 1 silent)",
+        "recording": "rec-p2-out2-1.raw"
+      },
+      {
+        "case": "/output/2/loopback 0",
+        "loopback_channels_dbfs": {},
+        "other_channels": "none",
+        "recording": "rec-p2-out2-0.raw"
+      }
+    ],
+    "conclusion": "the sub ID 3 word is on << 7 | output index (0-based): output N loops back to capture channel N, and 0 removes it again",
+    "recordings": {
+      "tone.raw": "b80db97c386902e013e7d9be7103fc5e89a0b7dadb7b7bf1b9a71aaf6b9e861e",
+      "rec-baseline.raw": "8735591c94e51a5fd30af842663aa813c6559aa5f5e566170923109ec5bdfda2",
+      "rec-p2-out1-1.raw": "edeade35a4e8a7894ad0f908e07a6de0ca3207a7be883be37283e1830aa97575",
+      "rec-p2-out1-0.raw": "f40f722d97e775088a6f0baf3268e739ce62365f8db1d9af68894bb049e80295",
+      "rec-p2-out2-1.raw": "2404bd23cffa1e5a5ef36573ce48dfb205d4867ce4eade3be73a50d3f9b63cc9",
+      "rec-p2-out2-0.raw": "3bc5700b0e510fc91441e800ca5e36bf5b71c661c8402a3043c04dc7599a7206"
+    },
+    "recordings_kept": "private evidence directory build/playback-readback/loopback-20261104/ (not committed: about 8 MB each)"
+  },
+  "restoration": "the last loopback command on outputs 1 and 2 was 0; the backend service was stopped by the user for the run and started again at 18:34:05, and the declared routes were verified and applied again; no register-level comparison of the whole device state was taken",
+  "limits": [
+    "levels are not calibrated: the finding is which capture channel carries the tone, not the loopback gain",
+    "outputs 1 and 2 were measured on the device; the words for outputs 5, 6 and 20 were checked offline only",
+    "the device was driven by upstream oscmix without the desk's patch series; the series build at the new pin was checked offline and by the backend tests, not on the device in this measurement",
+    "loopback has no config domain in oscmix-desk and the installed service keeps its old build until it is reinstalled from this source",
+    "the pin is still f2fdd5e: moving it also needs a fresh refresh dump and playback-mute evidence at the new pin, which tie themselves to the exact backend source (ADR 0008)"
+  ]
+}

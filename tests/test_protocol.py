@@ -91,6 +91,17 @@ def test_the_backend_clocks_match():
                              text, re.MULTILINE), entry["file"]
 
 
+def test_an_owner_write_renews_the_idle_time_in_the_shipped_series():
+    # protocol.LEASE_IDLE promises it; backend_writes.py measures it on the built backend.
+    series = json.loads(repo_file("patches", "backend-series.json").read_text())
+    renewal = "+\t\t\tif (has_lease(index, token))\n+\t\t\t\tidle_until = now() + LEASE_IDLE;\n"
+    renewals = [entry["file"] for entry in series["patches"]
+                if renewal in repo_file("patches", entry["file"]).read_text()]
+    assert renewals == ["0016-let-an-owner-write-renew-the-lease-idle-time.patch"]
+    patch = repo_file("patches", renewals[0]).read_text()
+    assert patch.index("int result = control_command(data, len);") < patch.index(renewal)
+
+
 def test_the_client_keeps_its_lease_with_room_to_spare():
     # Between two KEEPALIVEs the client waits at most one heartbeat and one
     # acknowledgement; the backend's idle check has to stay well clear.

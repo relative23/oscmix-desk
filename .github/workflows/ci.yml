@@ -291,7 +291,8 @@ jobs:
             --destination build/coordinated
           make -C build/coordinated 'CC=cc -std=c11' oscmix alsaseqio gtk
           OSCMIX_CONTROL_BINARY="$PWD/build/coordinated/oscmix" \
-            python -m pytest -q tests/backend_control.py tests/backend_mixer.py tests/test_backend_series.py
+            python -m pytest -q tests/backend_control.py tests/backend_mixer.py tests/backend_writes.py \
+              tests/test_backend_series.py
           runtime=$(mktemp -d /tmp/oscmix-gtk-runtime.XXXXXX)
           env -i PATH=/usr/bin:/bin LANG=C.UTF-8 \
             OSCMIX_QUALIFY_DESKTOP=1 GIO_USE_VFS=local GDK_BACKEND=x11 \

@@ -150,8 +150,8 @@ def _roomeq_registers() -> Tuple["Register", ...]:
     where it had always read 0.0 before. So the family now carries the
     same domains as the channel EQ (checked against both upstream
     trees), plus `delay` with upstream's own bounds: `.min=0 .max=425
-    .scale=0.001`, i.e. 0 to 0.425 in backend units. That does not
-    establish a physical duration: RME documents 42 ms, not 425 ms.
+    .scale=0.001`, i.e. 0 to 0.425 in backend units: measured through
+    loopback, 10 ms per unit (numeric.PHYSICAL), so 4.25 ms of RME's 42.
     See docs/NUMERIC-CONTRACT.md. `settable_nested`
     answers for it, and `[roomeq:output:N]` sections load.
     """
@@ -532,10 +532,10 @@ UCX2 = Device(
         *_sub_registers("input", "lowcut", _LOWCUT_OPTIONS),
         *_sub_registers("output", "lowcut", _LOWCUT_OPTIONS),
 
-        # --- accepted, never reported ----------------------------------
+        # --- accepted, never reported (loopback: tests/test_loopback.py) -
         Register("/input/{ch}/name", "s", WRITE_ONLY, "input"),
         Register("/output/{ch}/name", "s", WRITE_ONLY, "output"),
-        Register("/output/{ch}/loopback", "i", WRITE_ONLY, "output"),
+        Register("/output/{ch}/loopback", "i", WRITE_ONLY, "output", BOOL),
     ),
     supported=True,
     # Measured across a real USB replug: the output stereo flags arrive

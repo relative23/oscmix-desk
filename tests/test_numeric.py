@@ -98,9 +98,10 @@ def test_the_pinned_c_conversion_has_these_wire_values(path, requested, raw, rep
 
 
 @pytest.mark.parametrize(("path", "value", "text"), [
-    ("/output/1/roomeq/delay", .001, "0.001"),
-    ("/output/1/roomeq/delay", .123, "0.123"),
-    ("/output/1/roomeq/delay", .425, "0.425"),
+    # In the unit measured through loopback (numeric.PHYSICAL): 10 ms per OSC unit.
+    ("/output/1/roomeq/delay", .001, "0.01 ms"),
+    ("/output/1/roomeq/delay", .123, "1.23 ms"),
+    ("/output/1/roomeq/delay", .425, "4.25 ms"),
     ("/echo/width", .37, "0.37"),
     ("/echo/delay", .123, "0.123"),
     ("/input/1/gain", 12.3, "12.3"),

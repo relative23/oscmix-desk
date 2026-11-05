@@ -127,7 +127,7 @@ def channels_in(dump, prefix, leaf):
     ("output-reflevel", "output", "reflevel"),
 ])
 def test_every_channel_range_matches_the_recording(warm, capability, prefix, leaf):
-    recorded = channels_in(warm["registers"], prefix, leaf)
+    recorded = channels_in({**warm["registers"], **warm["derived"]}, prefix, leaf)
     assert devices.UCX2.channels_for(capability) == recorded, (
         "the model says /%s/N/%s exists on %s, the device reported %s"
         % (prefix, leaf, devices.UCX2.channels_for(capability), recorded))
@@ -136,7 +136,7 @@ def test_every_channel_range_matches_the_recording(warm, capability, prefix, lea
 def test_the_meters_run_further_than_the_control_registers(warm):
     # The reason a single "channel count" per device would already be
     # wrong: meters go to 22, everything that can be *set* stops at 20.
-    meters = channels_in(warm["registers"], "output", "level")
+    meters = channels_in(warm["meters"], "output", "level")  # schema 2: meters apart
     assert devices.UCX2.channels_for("meter") == meters
     assert max(meters) > max(devices.UCX2.channels_for("output"))
 

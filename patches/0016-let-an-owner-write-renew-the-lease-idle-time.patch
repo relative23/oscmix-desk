@@ -1,0 +1,14 @@
+diff --git a/control.c b/control.c
+--- a/control.c
++++ b/control.c
+@@ -385,6 +385,10 @@ dispatch(int index, const unsigned char *packet, size_t len)
+ 			reply(index, kind, request, CONTROL_INVALID);
+ 		} else {
+ 			int result = control_command(data, len);
++			/* A WRITE proves its owner alive as a KEEPALIVE does, timed
++			 * after the command: MIDI may hold one up for seconds. */
++			if (has_lease(index, token))
++				idle_until = now() + LEASE_IDLE;
+ 			reply(index, kind, request, result < 0 ? CONTROL_INVALID : CONTROL_OK);
+ 		}
+ 		break;

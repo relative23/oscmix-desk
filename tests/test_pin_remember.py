@@ -106,6 +106,9 @@ def test_every_settable_option_has_a_deliberate_policy():
         # somebody turns it. The default, decided rather than
         # inherited -- which is what this test is for.
         "crossfeed": REMEMBER,
+        # A recording choice (capture N carries output N), like mute: written when declared,
+        # left alone afterwards. The device never reports it, so nothing could pin it anyway.
+        "loopback": REMEMBER,
     }
     for family in ("input", "output", "playback"):
         for option, register in settable_options(UCX2, family).items():

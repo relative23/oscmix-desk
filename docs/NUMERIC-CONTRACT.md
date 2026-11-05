@@ -5,7 +5,7 @@ numeric contract. An OSC `f` identifies a representation, not a unit or
 an error tolerance. Unknown parameters use Float32 equality.
 
 At the pinned oscmix revision
-[`f2fdd5ec78338848754aad32cc07f3440de63395`](https://github.com/michaelforney/oscmix/blob/f2fdd5ec78338848754aad32cc07f3440de63395/oscmix.c),
+[`89ed835ecf8118a21d1d451be7d71944fa5ec384`](https://github.com/michaelforney/oscmix/blob/89ed835ecf8118a21d1d451be7d71944fa5ec384/oscmix.c),
 `setfixed` divides the OSC Float32 value by the node's Float32 scale and
 uses C `lroundf` (ties away from zero). `newfixed` reports the signed raw
 value multiplied by that scale. Input gain instead truncates `value * 10`
@@ -17,7 +17,7 @@ modelled explicitly, including intermediate Float32 rounding.
 | --- | --- | --- |
 | Output volume, EQ gain/Q, dynamics floats, input gain | 0.1 | Expected backend report; gain uses truncation |
 | Echo/reverb width, reverb room scale | 0.01 | Expected backend report |
-| Echo delay, Room EQ delay | 0.001 | Expected backend report; see duration limit below |
+| Echo delay, Room EQ delay | 0.001 (Room EQ: 0.01 ms, measured) | Expected backend report; see the measured unit below |
 | Integer settings, bools, enums | Integral wire values | Exact; invalid bool/enum reports are rejected |
 | Input-mix level | Logarithmic gain | Existing measured 0.5 dB tolerance; pan remains an exact integer |
 
@@ -41,20 +41,28 @@ delivery through a particular connector. Those need signal measurements.
 
 The [UCX II manual, version 1.6, February 2026](https://rme-audio.de/downloads/fface_ucx2_e.pdf),
 page 62, specifies Room EQ delay up to 42 ms, with 0.01 ms increments.
-The pinned backend instead declares raw limits 0–425 and OSC scale 0.001.
-Those declarations do **not** establish seconds at the physical output.
-Existing config numbers retain their backend meaning and range 0–0.425;
-they are labelled **OSC units**. Do not convert a desired physical delay
-using the old seconds label. An independently measured mapping is still
-required before physical units or a wider range can be offered.
+The pinned backend declares raw limits 0–425 and OSC scale 0.001, so the
+backend value runs from 0 to 0.425.
 
-The pinned backend's output-loopback setter is also unsuitable for that
-measurement. Its output-address parser assigns `param.out`, but the setter
-uses the untouched `param.in`. An isolated run of the actual C backend
-produced the same MIDI message for enable/disable on outputs 1, 5, 6 and 20.
-Those messages were not sent to the device. Loopback has no config domain
-in oscmix-desk. An external return cable or a corrected backend is needed
-before loopback can measure delay.
+Measured on a UCX II through output loopback (2026-11-05,
+[evidence](../tests/data/output-loopback-probes-ucx2.json)): one OSC unit is
+10.005 ms of delay at the output, with a 0.008 ms residual over five settings
+from 0 to 0.425. One backend step (0.001) is therefore 0.01 ms, the step RME
+documents, and the backend's upper limit, 425 steps, is **4.25 ms** -- a tenth
+of the 42 ms the device offers. A config states the delay in milliseconds,
+`delay = 2.5 ms`, from 0 to 4.25 ms; exports write it that way. A number
+without a unit keeps its old meaning, OSC units, so an existing config sets
+what it set before. The output path itself adds 8 samples (0.17 ms at
+48 kHz) whatever the delay.
+
+Since `89ed835` the backend's output-loopback setter sends `on << 7 | output
+index` (0-based); the setter before it sent `0xffffffff` for every output and
+both states ([#38](https://github.com/michaelforney/oscmix/issues/38),
+[#39](https://github.com/michaelforney/oscmix/pull/39),
+[evidence](../tests/data/loopback-output-index-ucx2.json)). The delay was
+measured with `scripts/probe-loopback.py`, which needs no cable: an input
+pair's own noise reaches the output through a readable mix cell, and with
+loopback on, the output's capture channel carries it at the output's delay.
 
 The same manual says Room EQ's enable button controls EQ; nonzero delay
 and volume calibration remain active independently. Its UCX II chapter

@@ -39,6 +39,7 @@ from .registers import (
     PIN,
     REESTABLISHED,
     VERIFIABLE,
+    WRITE_ONLY,
     Device,
     Policy,
     Register,
@@ -614,11 +615,10 @@ def plan(entries: Sequence[Entry],
             writes.append(Write(entry.path, entry.tags, entry.args,
                                 entry.phase, UNCONDITIONAL))
             continue
-        if klass == REESTABLISHED or (not entry.compared
-                                      and entry.path not in observations):
-            # Unverifiable *and* dependent on link state: rewritten from
-            # a known-good state rather than compared. Comparing it would
-            # mean trusting a value the dump never carries.
+        if klass in (REESTABLISHED, WRITE_ONLY) or (not entry.compared
+                                                    and entry.path not in observations):
+            # Never reported, so rewritten from the declared state rather than compared:
+            # a "report" of it could only be an echo the dump never carries.
             writes.append(Write(entry.path, entry.tags, entry.args,
                                 entry.phase, REWRITE))
             unverifiable.append(entry.path)

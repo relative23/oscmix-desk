@@ -24,7 +24,15 @@ code came from.
 
 [isc]: https://github.com/michaelforney/oscmix/blob/master/LICENSE
 
-The base pin is `f2fdd5ec78338848754aad32cc07f3440de63395`.
+The base pin is `89ed835ecf8118a21d1d451be7d71944fa5ec384` ("oscmix: Use output index for
+loopback", [#38][i38], [#39][pr39], merged 2026-11-04). It differs from the previous pin
+`f2fdd5ec78338848754aad32cc07f3440de63395` in one line of `setoutputloopback`, which no patch of
+this series touches: patches 0003-0014 apply to it unchanged, and the changed line is measured
+([evidence](../tests/data/loopback-output-index-ucx2.json)). The refresh dump was recorded
+again at the new pin. The playback-mute evidence of 2026-10-08 was carried to this series
+instead: the prepared sources differ in `setoutputloopback`, the WRITE branch of `control.c`
+(0016), one GTK binding (0015) and the build identity, none on the path that writes playback
+mute, and `tests/evidence_carry_forward.py` refuses any further change to the series.
 The earlier pin `55802a6ab865e551540ee9ad5081b8ae3276f8ca` is the base of
 the historical patches below. Patch 0001 is not in the applied series;
 the output-link barrier is retained. **Patch 0002 was merged upstream as
@@ -38,6 +46,8 @@ with the fix it asked for.
 **Status:** offered as [michaelforney/oscmix#31][pr31] on 2026-08-17.
 
 [pr31]: https://github.com/michaelforney/oscmix/pull/31
+[i38]: https://github.com/michaelforney/oscmix/issues/38
+[pr39]: https://github.com/michaelforney/oscmix/pull/39
 
 ### What it changes
 
@@ -274,3 +284,29 @@ observations without repairing any coefficient.
 The canonical report keeps the DEVICE origin of the register path that produced
 it and proves no actual pan register value. The decoder may still attempt
 physical MIDI output, so no claim of zero physical writes is made.
+
+## 0015 -- bind GTK's High Damp control to the backend's node
+
+GTK bound its High Damp slider to `/reverb/damp`, a path the backend does not declare; the
+backend's node is `/reverb/highdamp` (register 0x300A, in Hz). The slider therefore neither showed
+nor set the value. The patch changes that one binding. The slider's range, 2000 to 20000 Hz,
+already matches what the device reports (18000 Hz in the write sweep). `tests/backend_writes.py`
+checks that every reverb path GTK binds is a node the backend declares.
+
+**Status:** an upstream GTK fix; not offered upstream yet.
+
+## 0016 -- let the lease owner's WRITE renew the idle time
+
+Only BEGIN and KEEPALIVE renewed the lease's five-second idle time. A WRITE can block in the MIDI
+writer for up to two seconds per call (0012), and the desk sends its next KEEPALIVE only after
+the WRITE is acknowledged, so a healthy owner could lose its lease to MIDI backpressure. After the
+command, a WRITE from the lease owner now sets the idle deadline as a KEEPALIVE does. The
+90-second hard limit is unchanged, and a refused WRITE (another client, a stale token) renews
+nothing. The idle check still runs before queued requests are read, so MIDI work ahead of a
+request (the meter timer) still counts against the idle time; the desk's one-second heartbeat
+stays. A WRITE whose acknowledgement takes longer than the desk's two-second wait still ends the
+connection: that takes a MIDI bridge stalled for about two seconds, which the backend itself
+treats as fatal within one call. `tests/backend_writes.py` covers both cases; against the
+previous build the renewal case fails.
+
+**Status:** part of the coordinated backend (patch 0003's `control.c`); nothing to offer upstream.

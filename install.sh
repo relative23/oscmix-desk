@@ -22,7 +22,7 @@ OSCMIX_REPO="${OSCMIX_REPO:-https://github.com/michaelforney/oscmix}"
 # talks to the hardware. Measurements name this upstream revision AND
 # the versioned patch series; a changed series needs its own qualification.
 # The manifest must pin the same commit; unqualified ref overrides are refused.
-OSCMIX_REF="${OSCMIX_REF:-f2fdd5ec78338848754aad32cc07f3440de63395}"
+OSCMIX_REF="${OSCMIX_REF:-89ed835ecf8118a21d1d451be7d71944fa5ec384}"
 USB_VENDOR="2a39"
 USB_PRODUCT="3fd9"
 

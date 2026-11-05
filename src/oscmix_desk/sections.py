@@ -21,7 +21,7 @@ from .model import (
     GlobalSetting,
     SettingValue,
 )
-from .numeric import number_value
+from .numeric import from_physical, number_value, physical
 from .registers import (
     BOOL,
     ENABLE_OPTION,
@@ -346,12 +346,20 @@ def _parse_number(raw: str, section: str, option: str,
     """
     unit = getattr(register, "unit", "") or ""
     suffix = (" in %s" % unit) if unit else ""
+    measured = physical(register)
+    if measured is not None:
+        suffix += " or %s" % measured[0]
     try:
-        value = float(raw)
+        converted = from_physical(raw, register)
+        value = float(raw) if converted is None else converted
     except ValueError:
         raise ConfigError("[%s] %s: %r is not a number%s"
                           % (section, option, raw, suffix)) from None
     try:
         return number_value(value, register)
     except ValueError as exc:
+        if converted is not None and measured is not None:
+            raise ConfigError("[%s] %s: %s is outside %g..%g %s" % (
+                section, option, raw.strip(), (register.lo or 0) * measured[1],
+                (register.hi or 0) * measured[1], measured[0])) from None
         raise ConfigError("[%s] %s: %s" % (section, option, exc)) from None
