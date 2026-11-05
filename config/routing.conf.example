@@ -311,6 +311,18 @@ level = 0.0
 # [output:3]
 # mirror = 1/2
 #
+# Loopback (TotalMix "Loopback"): capture channel N records what output N
+# plays, after Room EQ and before its fader, instead of input N. The device
+# never reports it, so it is written and remembered, never verified.
+# [output:20]
+# loopback = on
+#
+# Room EQ delay is given in milliseconds, 0 to 4.25 ms (the backend's limit;
+# the device's own is 42 ms). A plain number still means the backend's units
+# of 10 ms. Room EQ runs on at most 16 output channels.
+# [roomeq:output:1]
+# delay = 2.5 ms
+#
 # Playback mute has no device readback. Declare both members of each pair:
 # [playback:1]
 # mute = true

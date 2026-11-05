@@ -1,14 +1,14 @@
 # The oscmix OSC interface
 
 [oscmix](https://github.com/michaelforney/oscmix) implements the OSC paths
-described here. In 0.8.0, desk and its matching GTK companion carry those
+described here. Since 0.8.0, desk and its matching GTK companion carry those
 payloads over the [ODK1 control connection](BACKEND-CONTROL.md), with shared
 observations, device identity checks and coordinated write ownership.
 The coordinated backend opens no UDP command or reply port.
 
 Unmodified upstream and its separate standalone mode use UDP commands at
 `127.0.0.1:7222` and one reply destination at `127.0.0.1:8222`. That mode is
-uncoordinated and rejected by the 0.8.0 desk/launcher. Changing legacy `[osc]`
+uncoordinated and rejected by desk and its launcher. Changing legacy `[osc]`
 port values does not create a second transport or select the ODK1 endpoint.
 
 ## The mix matrix
@@ -63,8 +63,9 @@ Two properties make this awkward to wait out, both measured on a UCX II:
   values only from a `/refresh` dump, which streams over MIDI. This said
   "~15-20 s" from an unrecorded observation; the recorded one
   (`tests/data/refresh-dump.json`, pinned revision, backend restarted on
-  an already-enumerated UCX II) is **1.9 s for the 2252 registers a dump
-  reports** (2322 with the 70 meters that stream on their own).
+  an already-enumerated UCX II) is **1.9 s for a dump of 2236 device
+  registers** (2322 paths with the 20 playback link values the backend
+  derives and the 66 meters).
   The cold device after a replug -- the condition that was still
   unmeasured when this paragraph was written -- has since been recorded
   too (`tests/data/cold-plug-timeline.json`): the link registers come
@@ -92,6 +93,7 @@ is not read back.
 | `/output/<n>/volume` | `,f` dB | hardware output volume |
 | `/output/<n>/stereo` | `,i` 0/1 | stereo-link with the next channel |
 | `/output/<n>/pan` | `,i` | pan −100…100 |
+| `/output/<n>/loopback` | `,i` 0/1 | capture channel n carries output n; never reported |
 | `/input/<n>/gain` | `,f` | input gain |
 | `/mix/<out>/input/<in>` | `,fi` | hardware input → output routing |
 | `/refresh` | none | request the backend's device refresh; reports can be partial and include derived values |

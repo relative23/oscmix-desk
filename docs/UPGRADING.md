@@ -1,9 +1,32 @@
 # Upgrade and recovery
 
-## Developing 0.9.0
+## Upgrading to 0.9.0
 
-The following changes are implemented in the development tree; 0.9.0 is
-not released yet.
+Configs, profiles and the `routing.conf` profile marker carry over. Check
+these before upgrading:
+
+- A config or profile that turns Room EQ on for more than 16 output channels,
+  or Crossfeed on for more than 4 stereo outputs, no longer loads, so a start
+  with it fails until it is fixed: past those limits the device reports the
+  effects on without running them. After upgrading, `oscmix-session --check`
+  reports the first file that does.
+- Writes are paced 10 ms apart, so a large apply takes longer: a `[desk] base`
+  of 400 writes takes about 4 s.
+- The source service needs the per-user opt-in that native packages use; an
+  existing active or enabled service is adopted once (see below).
+- A custom config (`--config FILE`) gets its own profile marker (see below).
+- The backend moves to upstream `89ed835` with patches 0003-0016, and the GTK
+  companion is built from the same series; the installer builds both, and
+  native packages of core and GTK are upgraded together.
+
+Rolling back to 0.8.1: install it with its own installer, which builds its
+backend again. 0.8.1 refuses a config that uses an option it does not know
+(`loopback`, `fx`, output or route `pan`, `msproc`, `autoset`, `volumecal`,
+`mirror`, a Room EQ `delay` in ms) and ignores `[desk]` and `[playback:N]`
+sections with a warning. Keep 0.8.1 copies of configs and profiles, or remove
+those declarations first, and select the intended profile with 0.8.1 as
+described below for the per-config markers. The write journal and the status
+records in `/run/oscmix-desk` are not read by 0.8.1 and end with the boot.
 
 UCX II inputs 1–4 support `autoset = true` or `false`. AutoSet flags default
 to REMEMBER. Later repair/reconcile preserves affected gains when AutoSet

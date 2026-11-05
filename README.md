@@ -20,7 +20,7 @@ The latest release is **0.9.0**.
 
 | | |
 |---|---|
-| `routing.conf` | routes, faders, per-channel state, EQ, room EQ, dynamics, low cut, auto level, crossfeed, reverb, echo, control room, clock |
+| `routing.conf` | routes with level and pan, faders, per-channel state, FX send and return, EQ, room EQ, dynamics, low cut, auto level, crossfeed, reverb, echo, control room, clock, output mirrors and loopback |
 | `--diff` | what an apply would change, without changing it |
 | `--dump-config` | the reported device state exported as config; `--include-written` adds the playback routes desk last wrote, marked unconfirmed |
 | `--snapshot` | every register the device reports |
@@ -110,14 +110,14 @@ options: `--device NAME` and `--timeout SECONDS` for the interface search,
 for debug logging. `--version` prints the runtime version. `--osc-port` is
 still accepted from old unit files and selects nothing.
 
-In the 0.9.0 development tree, `--strict` refuses unknown or unsupported
-sections and an unusable active profile instead of ignoring them or choosing
-another desk. `oscmix-session --check` strictly validates the main config,
-all profiles and the stored selection offline, with no device access.
-See [the development upgrade notes](docs/UPGRADING.md#developing-090).
+`--strict` refuses unknown or unsupported sections and an unusable active
+profile instead of ignoring them or choosing another desk.
+`oscmix-session --check` strictly validates the main config, all profiles
+and the stored selection offline, with no device access. See
+[the upgrade notes](docs/UPGRADING.md#upgrading-to-090).
 
-The 0.9.0 development tree also accepts `fx = -30.0` in `[input:N]`
-(FX send) and `[output:N]` (FX return). The range is -65..0 dB; the
+`fx = -30.0` sets the FX send in `[input:N]` and the FX return in
+`[output:N]`. The range is -65..0 dB; the
 backend rounds to 0.1 dB. Omitted FX is left alone. Declared values are
 written on initial application or explicit profile selection, then
 remembered unless `[pin] input.fx = pin` or `output.fx = pin` overrides it.
@@ -146,13 +146,21 @@ written after gains. An already active, omitted AutoSet is never disabled
 implicitly. Measurements cover warm linked flags and restoration, without
 testing overload-driven gain reduction or acoustic protection.
 
+`[output:N] loopback = on` makes capture channel N carry output N instead of
+input N, taken after Room EQ and before the output fader; the device never
+reports it, so it stays unverified. Room EQ delay is set in milliseconds,
+`[roomeq:output:N] delay = 2.5 ms`, from 0 to 4.25 ms (the backend's limit).
+Room EQ runs on at most 16 output channels and Crossfeed on at most 4 stereo
+outputs: a config that declares more is refused when it loads.
+
 ### Who wins: pin and remember
 
 Every setting is either **pinned** -- the config wins and is re-sent if the
 device disagrees -- or **remembered** -- written at the start of a session,
-after which the mixer wins. Routing, channel links, `reflevel`, `gain` and
-`hi-z` are pinned; `volume`, `mute` and `phase` are remembered. Override
-per option:
+after which the mixer wins. Routing, channel links, `reflevel`, `gain`,
+`hi-z` and `volumecal` are pinned; `volume`, `mute`, `phase`, `fx`, output
+`pan`, `msproc`, `autoset` and `loopback` are remembered. Override per
+option:
 
 ```ini
 [pin]

@@ -144,7 +144,7 @@ Common findings in the journal:
   but no longer select a machine or prevent a profile switch or reload.
   A desk for another device needs its own main config selected with
   `--config`. Profile selections are per config filename; see the
-  [0.9.0 marker migration](UPGRADING.md#developing-090).
+  [0.9.0 marker migration](UPGRADING.md#upgrading-to-090).
 - `unconfirmed after retry: ...` -- PIN values remain mismatched or lack
   expected feedback. Inspect the per-register result and backend/device
   identity. A GUI label or working audio does not confirm every register.
@@ -177,6 +177,23 @@ Common findings in the journal:
 - `verifier read the routing back, but its backend operation did not end
   cleanly (...)` -- the result above it stands; only the end of the lease
   was not acknowledged.
+- `the config declares Room EQ on N output channels (...); the device runs it
+  on at most 16`, or `Crossfeed on N stereo outputs (...); ... at most 4` -- a
+  configuration error, exit 2: past those limits the device reports the effect
+  on but does not run it. Turn it off on enough outputs; Room EQ on either
+  channel of a linked pair counts both. A profile switch that would leave too
+  many on is refused with `this apply would leave ...` and writes nothing. A
+  start, repair or reload instead logs `...; not switching on <paths> now, so
+  the rest of the desk applies` and leaves those switch-ons to the device.
+- `the device reports a DSP load of N%: some of the Room EQ, Crossfeed and
+  other effects it reports on do not run` -- a read-back warning. At double and
+  quad speed the same effects cost more (Room EQ on 16 channels reads 110 at
+  96 kHz), and the device keeps their flags on. Turn effects off or lower the
+  sample rate.
+- `peak-safe: outputs <list> stay at -65 dB until the next apply (...)` -- a
+  `[desk] peak-safe` switch failed and the volumes could not be given back
+  either, usually because the backend connection was lost. Those outputs stay
+  quiet: fix the cause and switch again, or set the faders in the mixer.
 
 - `no link change reported within ...` -- the window was silent. This is
   expected for an unchanged link but does not prove its value.

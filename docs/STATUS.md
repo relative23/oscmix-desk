@@ -38,7 +38,7 @@ unknown/unavailable observations have an explicit state and a detail.
 | `backend.running_file` | Kernel executable reference/hash for an identified backend; comparison with the resolved file, or an explicit read failure |
 | `playback` | `observed`, `idle`, `unobserved`, `unsupported`, `unknown` or `not-applicable`, with available mode fields |
 | `backend.endpoint` | Selected per-device Unix control socket path; status does not connect or reserve it |
-| `playback_matrix` | The tracked playback matrix (0.9.0 development): `known`, `re-established`, `unknown` or `not-applicable`, with `summary`, `evidence`, `detail` and `note`; never a verification result |
+| `playback_matrix` | The tracked playback matrix: `known`, `re-established`, `unknown` or `not-applicable`, with `summary`, `evidence`, `detail` and `note`; never a verification result |
 | `connect_check` | The last connect check: `matched`, `mismatched`, `incomplete` or `not-checked`, with `at`, `compared`, the `mismatched` cells, `unreported`, `invalid` and whether it is `current` for the running backend |
 | `desktop` | Resolved GTK binary, supported control protocol and prerequisite/mismatch problem, or `null` when none |
 

@@ -2,6 +2,9 @@
 
 ## 0.9.0 -- unreleased
 
+0.9.0 is the last release for Python 3.9 to 3.11; the next one requires
+Python 3.12 or newer. Every packaged distribution already ships 3.12 or later.
+
 ### Added
 
 - `[output:N] loopback = on|off`: capture channel N carries output N instead
@@ -229,6 +232,12 @@
   2026-11-03) and on an iPad (hardware, 2026-11-04) agree. The status,
   feature and troubleshooting pages say so instead of treating read-back
   as still to come.
+- The upgrade notes say what an existing desk needs before 0.9.0 and what
+  a rollback to 0.8.1 needs: 0.8.1 refuses a config with an option it does
+  not know. Troubleshooting explains the Room EQ and Crossfeed refusals, the
+  DSP load warning and a peak-safe switch that could not give the volumes
+  back. The register page records the loopback word, and the example config
+  shows `loopback` and Room EQ delay in milliseconds.
 
 ## 0.8.1 -- 2026-10-02
 

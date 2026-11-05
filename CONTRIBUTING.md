@@ -61,7 +61,9 @@ its result with the release.
    `software-qualification.json`, `lifecycle.json`, `hardware-evidence.json`,
    `write-sweep-ucx2.json`) before pushing the tag. The release workflow
    checks them against the tagged sources, builds and attests the artifacts
-   and attaches everything to the draft.
+   and attaches everything to the draft. Further hardware records, such as
+   `loopback-route-evidence.json`, are attached beside them and named in the
+   release notes.
 5. Publish the signed package repositories with the publication workflow,
    verify the published downloads and repositories, then publish the draft.
 

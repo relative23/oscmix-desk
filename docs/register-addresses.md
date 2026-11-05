@@ -59,7 +59,7 @@ produced upstream issues #33 and #34.
 Upstream #33's resolution split the family's arithmetic: the device
 *reports* Room EQ from the `0x35D0` block and *takes writes* at
 `0x3400` -- the same per-band offsets, `0x1D0` lower. Traced on the
-pipe on 2026-08-28, at the pin this repository now builds:
+pipe on 2026-08-28, at the pin of that time:
 
 | path | write address | |
 |---|---|---|
@@ -68,7 +68,20 @@ pipe on 2026-08-28, at the pin this repository now builds:
 
 Nothing else in `ctltoreg` moved between `55802a6` and `f2fdd5e`; the
 gain-range fix (#35) and the phase-guard fix (this project's #36) change
-flags and bounds, not addresses.
+flags and bounds, not addresses. The current pin, `89ed835`, changes only
+`setoutputloopback` in `oscmix.c`; `device_ffucxii.c` and so every address
+above are unchanged.
+
+## Output loopback: a word, not a register
+
+`/output/N/loopback` does not go through `setreg`. The backend sends one
+SysEx word with sub ID 3, `on << 7 | (N - 1)`: `0x84` turns loopback on for
+output 5, `0x05` turns it off for output 6. Before `89ed835` the word was
+`0xffffffff` for every output and either state (upstream #38). Decoded from
+the backend's MIDI output and confirmed on a UCX II through the capture
+channels on 2026-11-04
+([evidence](../tests/data/loopback-output-index-ucx2.json)). The device never
+reports the flag.
 
 ## The reading that was wrong first, and why it is worth keeping
 
@@ -93,10 +106,9 @@ which noise never is.
 
 ## How many addresses are enough
 
-The answer is that
-**2028 addresses are not 2028 facts**: they are the three rules above
-over a table of 82 control offsets. Verifying two thousand registers was
-never the task.
+The answer is that **two thousand addresses are not two thousand facts**:
+they are the three rules above over a table of 82 control offsets.
+Verifying two thousand registers was never the task.
 
 - **The rules are the part that could be misunderstood, and all three
   are confirmed** by the eleven addresses above: nine exercise the

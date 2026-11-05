@@ -1,13 +1,12 @@
-# Upstream patches and the coordinated 0.8.0 development series
+# Upstream patches and the coordinated backend series
 
-`backend-series.json` is the reproducible 0.8.0 candidate: full base commit,
-protocol and SHA-256 for each patch applied by `scripts/prepare-backend.py`.
-Patch 0003 extends the existing backend, ALSA bridge and GTK mixer together.
-It is carried locally; no upstream acceptance is claimed. Its software
-contract is [documented here](../docs/BACKEND-CONTROL.md). The development
-installer now builds and verifies this exact series. Final hardware,
-packaging and release qualification remain pending; the installed/published
-0.7.3 release is a separate build.
+`backend-series.json` is the reproducible backend of this release: full base
+commit, protocol and SHA-256 for each patch applied by
+`scripts/prepare-backend.py`. The installer and the package builds prepare and
+verify this exact series. Patch 0003 extends the existing backend, ALSA bridge
+and GTK mixer together; 0004-0016 refine it. The series is carried locally; no
+upstream acceptance is claimed. Its software contract is
+[documented here](../docs/BACKEND-CONTROL.md).
 
 Changes to [michaelforney/oscmix][oscmix] that this project would like to
 see, kept here so the reasoning survives whether or not they are
@@ -72,7 +71,7 @@ That was the original **every even output silent** defect. The historical
 workaround used three constants --
 `LINK_ECHO_TIMEOUT`, `LINK_SETTLE` and `LINK_SYNC_BLIND_DELAY` -- along
 with the two-phase apply and the barrier between the phases.
-The 0.8.0 path retains the output-link barrier and bounded verification;
+The series retains the output-link barrier and bounded verification;
 the old GUI-held-receiver blind delay no longer applies.
 
 ### The measurement
