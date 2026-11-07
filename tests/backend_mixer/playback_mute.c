@@ -39,14 +39,15 @@ static uint32_t decode_word(const unsigned char *p)
     assert(ones%2==1);
     return v;
 }
-/* Independent mathematical reference to the existing compressed scalar domain. */
+/* Independent reference to the device's coefficient word (TotalMix FX on
+ * Windows, 2026-11-06): bits 0-14 a 15-bit two's complement, bit 15 a x8
+ * range flag. 0x4000 would read as -0.5, so 0.5 itself takes the x8 form. */
 static unsigned encoded_coefficient(float value)
 {
     assert(isfinite(value) && value>=0 && value<=2);
     double scaled=(double)value*32768.0;
     unsigned fixed=(unsigned)floor(scaled+0.5);
-    int compressed=fixed<=16384 ? (int)fixed : (int)(fixed/8)-32768;
-    return (unsigned)compressed&65535u;
+    return fixed<16384 ? fixed : 0x8000u|fixed/8;
 }
 static unsigned expected_reg(int input, int output)
 {

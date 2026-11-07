@@ -1,0 +1,40 @@
+diff --git a/oscmix.c b/oscmix.c
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -1143,7 +1143,7 @@ newmix(struct context *ctx, int val)
+ {
+ 	struct output *out;
+ 	struct input *in;
+-	bool ispan, complete;
++	bool ispan, complete, confirmed;
+ 	struct level level;
+ 
+ 	if (ctx->param.out >= device->outputslen || ctx->param.in >= device->inputslen)
+@@ -1166,6 +1166,17 @@ newmix(struct context *ctx, int val)
+ 		out->mix_observed[in - inputs] |= val <= -650 ? 5 : 1;
+ 	}
+ 	calclevel(out, in, 0, &level);
++	/* A report that says what the cache would publish (setmix writes these
++	 * words from it) confirms this backend's own state: writing it back
++	 * would round the cell to the report's 0.1 dB and cost a coefficient
++	 * word per cell on every refresh, 800 on the UCX II. Any other report,
++	 * such as another client's write, is still taken and written. A DB
++	 * report at or below the -65 dB floor confirms only silence: a cell
++	 * whose channel is just above or below -65 dB publishes such a word,
++	 * and those reports have always made it exactly zero. */
++	confirmed = (val & 0x7fff) == ((ispan ? panvalue(level.pan)
++	    : dbvalue(level.vol > 0 ? 20.f * log10f(level.vol) : -INFINITY)) & 0x7fff)
++	    && (ispan || val > -650 || level.vol == 0);
+ 	if (ispan) {
+ 		if (val < -100)
+ 			val = -100;
+@@ -1177,7 +1188,8 @@ newmix(struct context *ctx, int val)
+ 		if (level.vol > 2)
+ 			level.vol = 2;
+ 	}
+-	setlevel(out, in, 0, &level);
++	if (!confirmed)
++		setlevel(out, in, 0, &level);
+ 	if (in->stereo) {
+ 		if ((in - inputs) & 1)
+ 			--in;

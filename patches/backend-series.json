@@ -55,6 +55,18 @@
     {
       "file": "0016-let-an-owner-write-renew-the-lease-idle-time.patch",
       "sha256": "ecf5f40b045863530c05243a2c6b7e851bd8535f5504f1cc6106bb06ee56b5db"
+    },
+    {
+      "file": "0017-encode-half-scale-mix-coefficients-in-the-x8-form.patch",
+      "sha256": "533cff9e422bac41e7ff0fab6bde505c42e6668976939ad38e43adfaaca5d0ce"
+    },
+    {
+      "file": "0018-apply-phase-to-the-mix-coefficients.patch",
+      "sha256": "b2c4e6953b51d2af0486e17294bbc1a1b008e202c1c353bd931de5e1df57a568"
+    },
+    {
+      "file": "0019-do-not-write-back-confirming-mix-reports.patch",
+      "sha256": "3d690980ecc54f4478c1f52b604d6072272214782554b40f4606dd2ffd12261c"
     }
   ],
   "protocol": "ODK1",

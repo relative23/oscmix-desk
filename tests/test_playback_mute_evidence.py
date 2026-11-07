@@ -4,7 +4,6 @@ import copy
 import json
 
 import pytest
-from evidence_carry_forward import carried_manifest
 from playback_mute_evidence import check_manifest, check_model, covered_paths, validate
 from support import repo_file
 
@@ -16,10 +15,14 @@ EVIDENCE = json.loads(repo_file("tests", "data", "playback-mute-probes-ucx2.json
 
 def test_retained_projection_preserves_its_exact_scope_and_backend_sources():
     validate(EVIDENCE)
-    # Taken at the series before the 89ed835 pin; carried forward by a source proof
-    # (tests/evidence_carry_forward.py), the user's choice of 2026-11-05.
+    # Taken 2026-10-08 at the series before the 89ed835 pin and carried to it by a source proof
+    # for 0.9.0. Patches 0017-0019 change the mute path itself, so 0.10.0 recorded playback mute
+    # again (tests/playback_mute_wire_evidence.py); this projection stays the record of its own
+    # series and no longer covers the shipped one.
+    assert EVIDENCE["backend"]["series_sha256"].startswith("ed304b2a")
     shipped = repo_file("patches", "backend-series.json").read_bytes()
-    check_manifest(EVIDENCE, carried_manifest(EVIDENCE, shipped))
+    with pytest.raises(ValueError, match="series differs"):
+        check_manifest(EVIDENCE, shipped)
     assert EVIDENCE["representative_pcm_effect"] is None
     assert EVIDENCE["independent_on_measurements"] == len(EVIDENCE["cases"])
     assert len(EVIDENCE["directly_addressed_paths"]) == 2 * len(EVIDENCE["cases"])

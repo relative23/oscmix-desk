@@ -32,6 +32,7 @@ def mixer_source():
     ("midi_deadline", "actual_writemidi_deadline_cases=20"),
     ("mix_geometry", "actual_geometry_cases=15491"),
     ("readback_freshness", "actual_observation_lifecycle_cases=100"),
+    ("mix_phase", "actual_phase_sign_cases=12"),
 ])
 def test_actual_mixer_regressions(mixer_source, tmp_path, probe, contract):
     fixture = Path(__file__).parent / "backend_mixer" / (probe + ".c")

@@ -1,0 +1,1792 @@
+{
+ "schema": 1,
+ "kind": "phase-probes-ucx2",
+ "plan": {
+  "outputs": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20
+  ],
+  "input_outputs": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "source": 1,
+  "alternate": 3,
+  "gain": 60.0
+ },
+ "cases": [
+  {
+   "kind": "output",
+   "switch": "/output/1/phase",
+   "output": 1,
+   "source": 3,
+   "mix_input": 3,
+   "before": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.52,
+    "target_dbfs": -68.34,
+    "lag_samples": -1158,
+    "lag_ms": -24.1212,
+    "peak": 0.0947,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.6,
+    "target_dbfs": -91.6,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.39,
+    "target_dbfs": -91.39,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9994,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.48,
+    "target_dbfs": -91.48,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9993,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/2/phase",
+   "output": 2,
+   "source": 4,
+   "mix_input": 3,
+   "before": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.39,
+    "target_dbfs": -75.17,
+    "lag_samples": 383,
+    "lag_ms": 7.9801,
+    "peak": 0.0416,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.54,
+    "target_dbfs": -91.55,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.6,
+    "target_dbfs": -91.6,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9994,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.68,
+    "target_dbfs": -91.68,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9991,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/3/phase",
+   "output": 3,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -57.0,
+    "target_dbfs": -91.2,
+    "lag_samples": -2228,
+    "lag_ms": -46.4127,
+    "peak": -0.0432,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -54.13,
+    "target_dbfs": -54.09,
+    "lag_samples": 5,
+    "lag_ms": 0.1031,
+    "peak": 0.9952,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -56.68,
+    "target_dbfs": -56.68,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9998,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -51.72,
+    "target_dbfs": -51.72,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/4/phase",
+   "output": 4,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -75.05,
+    "target_dbfs": -91.4,
+    "lag_samples": 738,
+    "lag_ms": 15.3728,
+    "peak": 0.0428,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -74.88,
+    "target_dbfs": -74.89,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -74.94,
+    "target_dbfs": -74.94,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -75.07,
+    "target_dbfs": -75.07,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9995,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/5/phase",
+   "output": 5,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 5,
+    "samples": 8192,
+    "source_dbfs": -48.53,
+    "target_dbfs": -115.49,
+    "lag_samples": -870,
+    "lag_ms": -18.1247,
+    "peak": -0.0341,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 5,
+    "samples": 8192,
+    "source_dbfs": -44.94,
+    "target_dbfs": -44.95,
+    "lag_samples": 5,
+    "lag_ms": 0.1038,
+    "peak": 0.9997,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 5,
+    "samples": 8192,
+    "source_dbfs": -58.54,
+    "target_dbfs": -58.54,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 1.0,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 5,
+    "samples": 8192,
+    "source_dbfs": -54.14,
+    "target_dbfs": -54.14,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9998,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/6/phase",
+   "output": 6,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 6,
+    "samples": 8192,
+    "source_dbfs": -75.02,
+    "target_dbfs": -115.27,
+    "lag_samples": -579,
+    "lag_ms": -12.071,
+    "peak": 0.0456,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 6,
+    "samples": 8192,
+    "source_dbfs": -74.91,
+    "target_dbfs": -74.91,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9997,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 6,
+    "samples": 8192,
+    "source_dbfs": -75.07,
+    "target_dbfs": -75.07,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9994,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 6,
+    "samples": 8192,
+    "source_dbfs": -75.0,
+    "target_dbfs": -74.99,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9995,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/7/phase",
+   "output": 7,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 7,
+    "samples": 8192,
+    "source_dbfs": -50.74,
+    "target_dbfs": -115.47,
+    "lag_samples": -1182,
+    "lag_ms": -24.6292,
+    "peak": 0.0473,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 7,
+    "samples": 8192,
+    "source_dbfs": -46.82,
+    "target_dbfs": -46.82,
+    "lag_samples": 5,
+    "lag_ms": 0.104,
+    "peak": 0.9998,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 7,
+    "samples": 8192,
+    "source_dbfs": -51.89,
+    "target_dbfs": -51.88,
+    "lag_samples": 5,
+    "lag_ms": 0.104,
+    "peak": 0.9997,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 7,
+    "samples": 8192,
+    "source_dbfs": -52.16,
+    "target_dbfs": -52.14,
+    "lag_samples": 5,
+    "lag_ms": 0.1037,
+    "peak": 0.9981,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/8/phase",
+   "output": 8,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 8,
+    "samples": 8192,
+    "source_dbfs": -74.89,
+    "target_dbfs": -115.59,
+    "lag_samples": -26,
+    "lag_ms": -0.5454,
+    "peak": -0.041,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 8,
+    "samples": 8192,
+    "source_dbfs": -75.1,
+    "target_dbfs": -75.1,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 8,
+    "samples": 8192,
+    "source_dbfs": -75.11,
+    "target_dbfs": -75.11,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 8,
+    "samples": 8192,
+    "source_dbfs": -75.01,
+    "target_dbfs": -75.0,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9989,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/9/phase",
+   "output": 9,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 9,
+    "samples": 8192,
+    "source_dbfs": -46.86,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 9,
+    "samples": 8192,
+    "source_dbfs": -43.09,
+    "target_dbfs": -43.11,
+    "lag_samples": 5,
+    "lag_ms": 0.1032,
+    "peak": 0.9982,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 9,
+    "samples": 8192,
+    "source_dbfs": -74.22,
+    "target_dbfs": -74.22,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 1.0,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 9,
+    "samples": 8192,
+    "source_dbfs": -46.55,
+    "target_dbfs": -46.55,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 1.0,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/10/phase",
+   "output": 10,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 10,
+    "samples": 8192,
+    "source_dbfs": -75.11,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 10,
+    "samples": 8192,
+    "source_dbfs": -75.12,
+    "target_dbfs": -75.12,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9994,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 10,
+    "samples": 8192,
+    "source_dbfs": -75.02,
+    "target_dbfs": -75.02,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9995,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 10,
+    "samples": 8192,
+    "source_dbfs": -74.96,
+    "target_dbfs": -74.95,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9997,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/11/phase",
+   "output": 11,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 11,
+    "samples": 8192,
+    "source_dbfs": -49.02,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 11,
+    "samples": 8192,
+    "source_dbfs": -57.12,
+    "target_dbfs": -57.12,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9992,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 11,
+    "samples": 8192,
+    "source_dbfs": -42.44,
+    "target_dbfs": -42.44,
+    "lag_samples": 5,
+    "lag_ms": 0.1039,
+    "peak": 0.9997,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 11,
+    "samples": 8192,
+    "source_dbfs": -50.72,
+    "target_dbfs": -50.72,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/12/phase",
+   "output": 12,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 12,
+    "samples": 8192,
+    "source_dbfs": -75.0,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 12,
+    "samples": 8192,
+    "source_dbfs": -75.13,
+    "target_dbfs": -75.13,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9992,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 12,
+    "samples": 8192,
+    "source_dbfs": -75.04,
+    "target_dbfs": -75.04,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9997,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 12,
+    "samples": 8192,
+    "source_dbfs": -75.07,
+    "target_dbfs": -75.07,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9992,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/13/phase",
+   "output": 13,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 13,
+    "samples": 8192,
+    "source_dbfs": -51.34,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 13,
+    "samples": 8192,
+    "source_dbfs": -48.03,
+    "target_dbfs": -48.03,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 13,
+    "samples": 8192,
+    "source_dbfs": -46.14,
+    "target_dbfs": -46.11,
+    "lag_samples": 5,
+    "lag_ms": 0.0994,
+    "peak": 0.9971,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 13,
+    "samples": 8192,
+    "source_dbfs": -45.83,
+    "target_dbfs": -45.82,
+    "lag_samples": 5,
+    "lag_ms": 0.1021,
+    "peak": 0.9982,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/14/phase",
+   "output": 14,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 14,
+    "samples": 8192,
+    "source_dbfs": -75.05,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 14,
+    "samples": 8192,
+    "source_dbfs": -74.97,
+    "target_dbfs": -74.97,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9993,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 14,
+    "samples": 8192,
+    "source_dbfs": -75.0,
+    "target_dbfs": -74.99,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9992,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 14,
+    "samples": 8192,
+    "source_dbfs": -74.37,
+    "target_dbfs": -74.37,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/15/phase",
+   "output": 15,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 15,
+    "samples": 8192,
+    "source_dbfs": -57.04,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 15,
+    "samples": 8192,
+    "source_dbfs": -48.84,
+    "target_dbfs": -48.83,
+    "lag_samples": 5,
+    "lag_ms": 0.104,
+    "peak": 0.9982,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 15,
+    "samples": 8192,
+    "source_dbfs": -76.16,
+    "target_dbfs": -76.16,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9997,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 15,
+    "samples": 8192,
+    "source_dbfs": -44.99,
+    "target_dbfs": -44.99,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/16/phase",
+   "output": 16,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 16,
+    "samples": 8192,
+    "source_dbfs": -74.96,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 16,
+    "samples": 8192,
+    "source_dbfs": -75.21,
+    "target_dbfs": -75.21,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9995,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 16,
+    "samples": 8192,
+    "source_dbfs": -75.05,
+    "target_dbfs": -75.05,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 16,
+    "samples": 8192,
+    "source_dbfs": -74.94,
+    "target_dbfs": -74.94,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/17/phase",
+   "output": 17,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 17,
+    "samples": 8192,
+    "source_dbfs": -48.33,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 17,
+    "samples": 8192,
+    "source_dbfs": -47.92,
+    "target_dbfs": -47.92,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9999,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 17,
+    "samples": 8192,
+    "source_dbfs": -56.89,
+    "target_dbfs": -56.89,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 17,
+    "samples": 8192,
+    "source_dbfs": -64.74,
+    "target_dbfs": -64.74,
+    "lag_samples": 5,
+    "lag_ms": 0.104,
+    "peak": 0.9994,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/18/phase",
+   "output": 18,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 18,
+    "samples": 8192,
+    "source_dbfs": -75.12,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 18,
+    "samples": 8192,
+    "source_dbfs": -75.01,
+    "target_dbfs": -75.0,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 18,
+    "samples": 8192,
+    "source_dbfs": -75.06,
+    "target_dbfs": -75.06,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9991,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 18,
+    "samples": 8192,
+    "source_dbfs": -75.04,
+    "target_dbfs": -75.04,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9993,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/19/phase",
+   "output": 19,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 19,
+    "samples": 8192,
+    "source_dbfs": -47.34,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 19,
+    "samples": 8192,
+    "source_dbfs": -61.97,
+    "target_dbfs": -61.97,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9997,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 19,
+    "samples": 8192,
+    "source_dbfs": -50.4,
+    "target_dbfs": -50.39,
+    "lag_samples": 5,
+    "lag_ms": 0.1036,
+    "peak": 0.9989,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 19,
+    "samples": 8192,
+    "source_dbfs": -47.6,
+    "target_dbfs": -47.6,
+    "lag_samples": 5,
+    "lag_ms": 0.1039,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "output",
+   "switch": "/output/20/phase",
+   "output": 20,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 20,
+    "samples": 8192,
+    "source_dbfs": -75.04,
+    "target_dbfs": null,
+    "lag_samples": 0,
+    "lag_ms": 0.0,
+    "peak": 0.0,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 20,
+    "samples": 8192,
+    "source_dbfs": -74.95,
+    "target_dbfs": -74.95,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 20,
+    "samples": 8192,
+    "source_dbfs": -74.97,
+    "target_dbfs": -74.97,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9995,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 20,
+    "samples": 8192,
+    "source_dbfs": -75.03,
+    "target_dbfs": -75.03,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "input",
+   "switch": "/input/3/phase",
+   "output": 1,
+   "source": 3,
+   "mix_input": 3,
+   "before": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.57,
+    "target_dbfs": -74.69,
+    "lag_samples": -1125,
+    "lag_ms": -23.439,
+    "peak": -0.0502,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.33,
+    "target_dbfs": -91.33,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9993,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.53,
+    "target_dbfs": -91.53,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 3,
+    "target": 1,
+    "samples": 8192,
+    "source_dbfs": -91.4,
+    "target_dbfs": -91.4,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9995,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "input",
+   "switch": "/input/4/phase",
+   "output": 2,
+   "source": 4,
+   "mix_input": 3,
+   "before": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.62,
+    "target_dbfs": -75.01,
+    "lag_samples": -2142,
+    "lag_ms": -44.6255,
+    "peak": 0.037,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.56,
+    "target_dbfs": -91.56,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9993,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.46,
+    "target_dbfs": -91.46,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9994,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 4,
+    "target": 2,
+    "samples": 8192,
+    "source_dbfs": -91.46,
+    "target_dbfs": -91.46,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9992,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "input",
+   "switch": "/input/1/phase",
+   "output": 3,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -50.47,
+    "target_dbfs": -91.61,
+    "lag_samples": -663,
+    "lag_ms": -13.8182,
+    "peak": -0.0377,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -49.91,
+    "target_dbfs": -49.91,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9998,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -46.45,
+    "target_dbfs": -46.45,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 0.9998,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -47.99,
+    "target_dbfs": -47.99,
+    "lag_samples": 5,
+    "lag_ms": 0.1033,
+    "peak": 0.9989,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  },
+  {
+   "kind": "input",
+   "switch": "/input/2/phase",
+   "output": 4,
+   "source": 2,
+   "mix_input": 1,
+   "before": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -75.13,
+    "target_dbfs": -91.47,
+    "lag_samples": -619,
+    "lag_ms": -12.894,
+    "peak": -0.0371,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "phase_off": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -74.91,
+    "target_dbfs": -74.92,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9988,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_on": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -75.01,
+    "target_dbfs": -75.01,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9995,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "phase_off_again": {
+    "source": 2,
+    "target": 4,
+    "samples": 8192,
+    "source_dbfs": -74.93,
+    "target_dbfs": -74.93,
+    "lag_samples": 5,
+    "lag_ms": 0.1042,
+    "peak": 0.9996,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "verdict": "unchanged",
+   "reversible": true,
+   "passed": true
+  }
+ ],
+ "sources": {
+  "1": {
+   "gain_db": 60.0,
+   "dbfs": -54.81
+  },
+  "2": {
+   "gain_db": 60.0,
+   "dbfs": -75.08
+  },
+  "3": {
+   "gain_db": 24.0,
+   "dbfs": -91.37
+  },
+  "4": {
+   "gain_db": 24.0,
+   "dbfs": -91.65
+  }
+ },
+ "started": "2026-11-07T15:53:12.497006+00:00",
+ "hardware_used": true,
+ "running_backend": {
+  "pid": 1327518,
+  "epoch": "7fe813a83834a87a5b49f7302e5491fc",
+  "device": "Fireface UCX II (24216011) Port",
+  "sha256": "0008b85f3eb82106c2b2d6ec40a0e3caa297e8783b7269ecfea67d0a01d77af9",
+  "upstream": "89ed835ecf8118a21d1d451be7d71944fa5ec384",
+  "series_sha256": "75f8a9673b57891291c9511c2999b8f6a761b41bfd50632fa61efc3998daba3b",
+  "protocol": "ODK1",
+  "matches_local_build": true
+ },
+ "first_dump": {
+  "paths": 2231,
+  "sha256": "f43743bfcece88f0755204efde8b45cfdae08fffc70bb23e52c9498d1e17001a"
+ },
+ "serial": "24216011",
+ "firmware": {
+  "usb_revision": "3.01",
+  "dsp_version": 36
+ },
+ "final_dump": {
+  "paths": 2231,
+  "sha256": "f43743bfcece88f0755204efde8b45cfdae08fffc70bb23e52c9498d1e17001a",
+  "missing": [],
+  "changed": [],
+  "new": []
+ },
+ "restored": true,
+ "finished": "2026-11-07T15:57:00.014206+00:00",
+ "passed": true
+}

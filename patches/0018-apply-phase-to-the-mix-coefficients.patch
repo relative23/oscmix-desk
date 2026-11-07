@@ -1,0 +1,205 @@
+diff --git a/oscmix.c b/oscmix.c
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -52,12 +52,14 @@ struct input {
+ 	bool stereo;
+ 	bool stereo_observed;
+ 	bool mute;
++	bool phase;
+ 	int width;
+ };
+ 
+ struct output {
+ 	bool stereo;
+ 	bool stereo_observed;
++	bool phase;
+ 	float *mix;
+ 	unsigned char *mix_observed;
+ };
+@@ -320,16 +322,33 @@ newbool(struct context *ctx, int val)
+  * range flag in bit 15: TotalMix FX writes 0x9000 for 1 and 0x8800 for 0.5.
+  * 0x4000 itself would read as -0.5, so 0.5 takes the x8 form as well. */
+ static unsigned
+-mixlevelvalue(float level)
++mixlevelvalue(float level, bool negative)
+ {
+ 	long val;
++	unsigned range = 0;
+ 
+ 	val = lroundf(level * 0x8000);
+ 	assert(val >= 0);
+ 	assert(val <= 0x10000);
+-	if (val >= 0x4000)
+-		return 0x8000 | val >> 3;
+-	return val;
++	if (val >= 0x4000) {
++		val >>= 3;
++		range = 0x8000;
++	}
++	return range | ((negative ? -val : val) & 0x7fff);
++}
++
++/* The UCX II has no phase of its own: its phase registers change nothing in
++ * the signal (measured through output loopback on all 20 outputs and inputs
++ * 1-4, 2026-11-07), and TotalMix FX turns the coefficients around itself.
++ * So does this backend: a cell is negative when exactly one of its input and
++ * output has phase on. Playback channels have no phase. */
++static bool
++mixnegative(const struct input *in, const struct output *out)
++{
++	bool phase;
++
++	phase = in < inputs + device->inputslen && in->phase;
++	return phase != out->phase;
+ }
+ 
+ static void
+@@ -343,7 +362,7 @@ setmixlevel(const struct input *in, const struct output *out, float level)
+ 	reg = device->ctltoreg(MIX_LEVEL, &p);
+ 	if (reg == -1)
+ 		return;
+-	setreg(reg, mixlevelvalue(level));
++	setreg(reg, mixlevelvalue(level, mixnegative(in, out)));
+ }
+ 
+ static int
+@@ -363,7 +382,7 @@ planmixlevel(struct mixwrites *writes, const struct input *in,
+ 	for (i = 0; i < writes->count; ++i)
+ 		if (writes->regs[i] == reg)
+ 			return -1;
+-	return mixwrite(writes, reg, mixlevelvalue(level));
++	return mixwrite(writes, reg, mixlevelvalue(level, mixnegative(in, out)));
+ }
+ 
+ static void
+@@ -424,7 +443,7 @@ muteplayback(struct input *in, bool mute)
+ 	int regs[2 * PLAYBACK_MUTE_MAX_OUTPUTS];
+ 	struct param p;
+ 	float level, levels[2 * PLAYBACK_MUTE_MAX_OUTPUTS];
+-	bool linked;
++	bool linked, negatives[2 * PLAYBACK_MUTE_MAX_OUTPUTS];
+ 	int channel, width, out, i, j, reg, words;
+ 
+ 	if (!device->ctltoreg || device->inputslen < 1 ||
+@@ -463,12 +482,13 @@ muteplayback(struct input *in, bool mute)
+ 				if (regs[j] == reg)
+ 					goto invalid;
+ 			regs[words] = reg;
++			negatives[words] = mixnegative(&inputs[p.in], &outputs[out]);
+ 			levels[words++] = level;
+ 		}
+ 	}
+ 	for (i = 0; i < words; ++i)
+ 		putle32(buf + 4 * i, regword(regs[i],
+-		    mixlevelvalue(mute ? 0 : levels[i])));
++		    mixlevelvalue(mute ? 0 : levels[i], negatives[i])));
+ 	writesysex(0, buf, 4 * words, sysexbuf);
+ 	in[0].mute = mute;
+ 	if (linked)
+@@ -531,6 +551,88 @@ newinputmute(struct context *ctx, int val)
+ 	newbool(ctx, val);
+ }
+ 
++/* Write the cells of one input or one output again with their sign. Only
++ * cached non-zero cells of unmuted inputs, as muteinput does: a zero is the
++ * same either way, a muted input's cells are written on unmute, and a cell
++ * this backend never learned is not overwritten. */
++static void
++rewritephase(const struct input *in, const struct output *out)
++{
++	const struct input *i;
++	const struct output *o;
++	float level;
++
++	for (o = outputs; o != outputs + device->outputslen; ++o) {
++		if (out && o != out)
++			continue;
++		for (i = inputs; i != inputs + device->inputslen + device->outputslen; ++i) {
++			if (in && i != in)
++				continue;
++			level = o->mix[i - inputs];
++			if (!i->mute && isfinite(level) && level > 0 && level <= 2)
++				setmixlevel(i, o, level);
++		}
++	}
++}
++
++static void
++phasechanged(struct input *in, struct output *out, bool val)
++{
++	bool *phase;
++
++	phase = in ? &in->phase : &out->phase;
++	if (*phase == val)
++		return;
++	*phase = val;
++	rewritephase(in, out);
++}
++
++static void
++setinputphase(struct context *ctx, struct oscmsg *msg)
++{
++	bool val;
++
++	if (!ctx->exact)
++		return;
++	val = oscgetint(msg);
++	if (oscend(msg) != 0)
++		return;
++	assert((unsigned)ctx->param.in < device->inputslen);
++	setval(ctx, val);
++	phasechanged(&inputs[ctx->param.in], NULL, val);
++}
++
++static void
++newinputphase(struct context *ctx, int val)
++{
++	assert((unsigned)ctx->param.in < device->inputslen);
++	phasechanged(&inputs[ctx->param.in], NULL, val != 0);
++	newbool(ctx, val);
++}
++
++static void
++setoutputphase(struct context *ctx, struct oscmsg *msg)
++{
++	bool val;
++
++	if (!ctx->exact)
++		return;
++	val = oscgetint(msg);
++	if (oscend(msg) != 0)
++		return;
++	assert((unsigned)ctx->param.out < device->outputslen);
++	setval(ctx, val);
++	phasechanged(NULL, &outputs[ctx->param.out], val);
++}
++
++static void
++newoutputphase(struct context *ctx, int val)
++{
++	assert((unsigned)ctx->param.out < device->outputslen);
++	phasechanged(NULL, &outputs[ctx->param.out], val != 0);
++	newbool(ctx, val);
++}
++
+ static void
+ setinputstereo(struct context *ctx, struct oscmsg *msg)
+ {
+@@ -1502,7 +1604,7 @@ static const struct node roottree[] = {
+ 		{"name", NAME, .set=setname},
+ 		{"playchan", INPUT_PLAYCHAN, .set=setint, .new=newint, .min=1, .max=60},
+ 		{"msproc", INPUT_MSPROC, .set=setbool, .new=newbool},
+-		{"phase", INPUT_PHASE, .set=setbool, .new=newbool},
++		{"phase", INPUT_PHASE, .set=setinputphase, .new=newinputphase},
+ 		{"gain", INPUT_GAIN, .set=setinputgain, .new=newinputgain},
+ 		{"reflevel", INPUT_REFLEVEL, .set=setint, .new=newinputreflevel},
+ 		{"48v", INPUT_48V, .set=setbool, .new=newbool},
+@@ -1523,7 +1625,7 @@ static const struct node roottree[] = {
+ 		{"record", OUTPUT_RECORD, .set=setbool, .new=newbool},
+ 		{"name", NAME, .set=setname},
+ 		{"playchan", OUTPUT_PLAYCHAN, .set=setint, .new=newint},
+-		{"phase", OUTPUT_PHASE, .set=setbool, .new=newbool},
++		{"phase", OUTPUT_PHASE, .set=setoutputphase, .new=newoutputphase},
+ 		{"reflevel", OUTPUT_REFLEVEL, .set=setenum, .new=newenum, .enumnames=(const char *const[]){
+ 			"+4dBu", "+13dBu", "+19dBu",
+ 		}, .enumlen=3}, // TODO: phones

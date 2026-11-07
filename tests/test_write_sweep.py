@@ -438,7 +438,7 @@ def volumecal_artifact():
 def playback_artifact():
     import json
 
-    return json.loads(repo_file("tests", "data", "playback-mute-probes-ucx2.json").read_text())
+    return json.loads(repo_file("tests", "data", "playback-mute-wire-ucx2.json").read_text())
 
 
 def test_the_artifact_covers_every_settable_register(
@@ -465,7 +465,7 @@ def test_the_artifact_covers_every_settable_register(
     covered.update(case["target"] for case in autoset_artifact["cases"])
     covered.update(case["target"] for case in volumecal_artifact["cases"])
     from loopback_evidence import loopback_paths
-    from playback_mute_evidence import covered_paths
+    from playback_mute_wire_evidence import covered_paths
     # Mute: ON/OFF on odd, a submitted OFF on even, twenty direct addresses.
     covered.update(covered_paths(playback_artifact))
     covered.update(loopback_paths())  # each flag shown through its own capture channel

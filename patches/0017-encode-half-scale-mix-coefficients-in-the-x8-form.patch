@@ -1,0 +1,26 @@
+diff --git a/oscmix.c b/oscmix.c
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -316,7 +316,10 @@ newbool(struct context *ctx, int val)
+ 		oscsend(ctx->addr, ",i", val != 0);
+ }
+ 
+-static long
++/* A coefficient word is a 15-bit two's complement in bits 0-14 with a x8
++ * range flag in bit 15: TotalMix FX writes 0x9000 for 1 and 0x8800 for 0.5.
++ * 0x4000 itself would read as -0.5, so 0.5 takes the x8 form as well. */
++static unsigned
+ mixlevelvalue(float level)
+ {
+ 	long val;
+@@ -324,8 +327,8 @@ mixlevelvalue(float level)
+ 	val = lroundf(level * 0x8000);
+ 	assert(val >= 0);
+ 	assert(val <= 0x10000);
+-	if (val > 0x4000)
+-		val = (val >> 3) - 0x8000;
++	if (val >= 0x4000)
++		return 0x8000 | val >> 3;
+ 	return val;
+ }
+ 

@@ -25,12 +25,32 @@
 
 ### Fixed
 
+- Phase inverts the signal on the UCX II. The device has no phase of its own: its phase
+  registers changed nothing, measured through output loopback on all 20 outputs and inputs
+  1-4. The backend now also negates the mix coefficients the channel takes part in, as
+  TotalMix FX does (patch 0018); measured again, every one inverts.
+- A mix cell at exactly 0.5 (-6.0206 dB, or a stereo input on an unlinked output at 0 dB)
+  no longer turns the signal around: the backend wrote it as 0x4000, which the device reads
+  as -0.5 (patch 0017, measured before and after).
+- A refresh no longer writes every reported input cell back: 800 coefficient words per
+  refresh before, 8 after, and cells keep their exact level instead of the report's 0.1 dB
+  (patch 0019).
 - Repository staging and the publication checks read the RPM payload digest
   under RPM 6 as well (Fedora 44/45, Ubuntu 26.04), where the tag is named
   `PAYLOADSHA256`; RPM 4 calls it `PAYLOADDIGEST`.
 - The source installer's preflight reads `OSCMIX_PACKAGE_GUARD` like
   `uninstall.sh`, so the test suite runs on a machine with the native
   package installed. The upgrade tests start from 0.9.0 as well.
+
+### Evidence
+
+- Playback mute was recorded again with the shipped backend series
+  (`scripts/probe-playback-mute.py`): a usbmon capture of every pair's ON and OFF, and a
+  tone through loopback that was gone while muted. It replaces the 2026-10-08 projection and
+  its carry-forward, which ended with the series it covered.
+- Phase, a cell at 0.5 and the refresh echo were measured before and after the patches
+  (`scripts/probe-phase.py`, `scripts/probe-refresh-echo.py`); output loopback was measured
+  again on all 20 outputs, with Room EQ delay up to 42 ms.
 
 ### Documentation
 

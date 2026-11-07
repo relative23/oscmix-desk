@@ -4,7 +4,7 @@
 commit, protocol and SHA-256 for each patch applied by
 `scripts/prepare-backend.py`. The installer and the package builds prepare and
 verify this exact series. Patch 0003 extends the existing backend, ALSA bridge
-and GTK mixer together; 0004-0016 refine it. The series is carried locally; no
+and GTK mixer together; 0004-0019 refine it. The series is carried locally; no
 upstream acceptance is claimed. Its software contract is
 [documented here](../docs/BACKEND-CONTROL.md).
 
@@ -28,10 +28,11 @@ loopback", [#38][i38], [#39][pr39], merged 2026-11-04). It differs from the prev
 `f2fdd5ec78338848754aad32cc07f3440de63395` in one line of `setoutputloopback`, which no patch of
 this series touches: patches 0003-0014 apply to it unchanged, and the changed line is measured
 ([evidence](../tests/data/loopback-output-index-ucx2.json)). The refresh dump was recorded
-again at the new pin. The playback-mute evidence of 2026-10-08 was carried to this series
-instead: the prepared sources differ in `setoutputloopback`, the WRITE branch of `control.c`
-(0016), one GTK binding (0015) and the build identity, none on the path that writes playback
-mute, and `tests/evidence_carry_forward.py` refuses any further change to the series.
+again at the new pin. Patches 0017-0019 (0.10.0) change the path that writes playback mute,
+so playback mute was recorded again with this series
+([evidence](../tests/data/playback-mute-wire-ucx2.json)), as were phase, output loopback and
+the refresh echo, each before and after the patches
+([evidence](../tests/test_backend_measurements.py)).
 The earlier pin `55802a6ab865e551540ee9ad5081b8ae3276f8ca` is the base of
 the historical patches below. Patch 0001 is not in the applied series;
 the output-link barrier is retained. **Patch 0002 was merged upstream as
@@ -309,3 +310,44 @@ treats as fatal within one call. `tests/backend_writes.py` covers both cases; ag
 previous build the renewal case fails.
 
 **Status:** part of the coordinated backend (patch 0003's `control.c`); nothing to offer upstream.
+
+## 0017 -- write a coefficient of exactly 0.5 in the x8 form
+
+A coefficient word holds a 15-bit two's complement in bits 0-14 and a x8 range flag in bit 15
+(TotalMix FX on Windows writes 0x9000 for 1, 0x8800 for 0.5 and 0xF000 for -1). `mixlevelvalue`
+compressed only values above 0.5, so 0.5 itself went out as 0x4000, which that format reads as
+-0.5. Measured through output loopback on 2026-11-07: a cell at -6.0206 dB (coefficient 0.5)
+turned the signal around, -6.1 and -6.0 dB did not; with the patch none does. A stereo input
+on an unlinked output reaches 0.5 at 0 dB. `tests/backend_mixer/playback_mute.c` encodes the
+device format independently.
+
+**Status:** an upstream fix; not offered yet.
+
+## 0018 -- apply phase to the mix coefficients
+
+The UCX II's phase registers (`0x0007` on an input, `0x0508` on an output) change nothing in
+the signal: through output loopback the polarity stayed the same on all 20 outputs and inputs
+1-4 with the switch on (2026-11-07). TotalMix FX sets the register and negates every non-zero
+cell of the channel's row or column, because the device lacks a phase capability. The patch
+does the same: a cell is negative when exactly one of its input and output has phase on; a
+phase change from a client or a device report writes the channel's cached non-zero cells again
+with their sign, leaving muted inputs to their unmute and never writing a cell the backend has
+not learned. Playback channels have no phase. Measured the same way with the patch: every
+output and input 1-4 inverted, and back with the switch off. `tests/backend_mixer/mix_phase.c`
+covers the encoding, both switches, both on, mute and device reports.
+
+**Status:** an upstream change; not offered yet.
+
+## 0019 -- do not write back mix reports that confirm the cache
+
+`newmix()` wrote every reported input cell back as a coefficient, so each refresh sent 800
+words and rounded every cell to the report's 0.1 dB (a cell written at -3.05 dB came back at
+-3.1 dB). A report whose word is the one the cache would publish now confirms the cache and
+writes nothing; any other report, such as another client's change, is taken and written as
+before. A DB report at or below the -65 dB floor confirms only silence, as before it made such
+a cell exactly zero. Measured with a usbmon capture: 800 words per refresh before, 8 after;
+the 8 are silent cells the device reports with a pan, which a zero coefficient cannot hold.
+`tests/backend_mixer/mix_geometry.c` checks both: foreign reports adopted in any order,
+confirming ones leaving the cache bit-exact.
+
+**Status:** an upstream change; not offered yet.

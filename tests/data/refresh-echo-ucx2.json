@@ -1,0 +1,108 @@
+{
+ "schema": 1,
+ "kind": "refresh-echo-ucx2",
+ "refreshes": [
+  {
+   "start": 1794071431.5476377,
+   "end": 1794071439.0688877,
+   "input_coefficient_words": 8,
+   "off_grid_words": []
+  },
+  {
+   "start": 1794071439.069097,
+   "end": 1794071449.1080308,
+   "input_coefficient_words": 8,
+   "off_grid_words": []
+  },
+  {
+   "start": 1794071449.1082745,
+   "end": 1794071459.152752,
+   "input_coefficient_words": 8,
+   "off_grid_words": []
+  },
+  {
+   "start": 1794071459.1529744,
+   "end": 1794071469.1942368,
+   "input_coefficient_words": 8,
+   "off_grid_words": []
+  },
+  {
+   "start": 1794071469.194495,
+   "end": 1794071479.233823,
+   "input_coefficient_words": 8,
+   "off_grid_words": []
+  }
+ ],
+ "sources": {},
+ "started": "2026-11-07T17:10:21.126224+00:00",
+ "hardware_used": true,
+ "running_backend": {
+  "pid": 1769658,
+  "epoch": "bfba7081f91bb605536cfd3c670c4ea7",
+  "device": "Fireface UCX II (24216011) Port",
+  "sha256": "f9ff4dbcda0e9baa7e08eb2a3f3d1d917a38077b5c6ef9e03a02a4e568c96a34",
+  "upstream": "89ed835ecf8118a21d1d451be7d71944fa5ec384",
+  "series_sha256": "48a73594cd4980e537e8d7f5a1d8bceeb612ae497122ede4b97a8d18e2094381",
+  "protocol": "ODK1",
+  "matches_local_build": true
+ },
+ "first_dump": {
+  "paths": 2231,
+  "sha256": "6dc9db5a8e7110ad0a6fa57fc5d8e9c16b2367459703b116558ac97576812664"
+ },
+ "serial": "24216011",
+ "firmware": {
+  "usb_revision": "3.01",
+  "dsp_version": 36
+ },
+ "off_grid": {
+  "cell": "/mix/3/input/1",
+  "level_db": -3.05,
+  "registers": [
+   16512,
+   16513,
+   16576,
+   16577
+  ],
+  "write": {
+   "start": 1794071431.1470742,
+   "end": 1794071431.5476348
+  },
+  "written_words": [
+   [
+    16512,
+    35651
+   ],
+   [
+    16513,
+    0
+   ],
+   [
+    16576,
+    0
+   ],
+   [
+    16577,
+    35651
+   ]
+  ]
+ },
+ "executed": true,
+ "final_dump": {
+  "paths": 2231,
+  "sha256": "6dc9db5a8e7110ad0a6fa57fc5d8e9c16b2367459703b116558ac97576812664",
+  "missing": [],
+  "changed": [],
+  "new": []
+ },
+ "restored": true,
+ "finished": "2026-11-07T17:11:31.268287+00:00",
+ "capture": {
+  "sha256": "d7da6430f353f5ff409966d09e4757edbc25a8b63aa8126baedbe5deba0dc6b3",
+  "bytes": 281486324,
+  "messages": 1858,
+  "bus": 5,
+  "device": 9
+ },
+ "assessed": "2026-11-07T17:12:13.140910+00:00"
+}

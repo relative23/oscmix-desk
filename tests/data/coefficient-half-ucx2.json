@@ -1,0 +1,164 @@
+{
+ "schema": 1,
+ "kind": "phase-probes-ucx2",
+ "plan": {
+  "outputs": [],
+  "input_outputs": [],
+  "source": 1,
+  "alternate": 3,
+  "gain": 60.0,
+  "levels": [
+   -6.1,
+   -6.0206,
+   -6.0
+  ],
+  "level_output": 3
+ },
+ "cases": [
+  {
+   "kind": "level",
+   "output": 3,
+   "source": 1,
+   "mix_input": 1,
+   "points": [
+    {
+     "level_db": -6.1,
+     "source": 1,
+     "target": 3,
+     "samples": 8192,
+     "source_dbfs": -45.96,
+     "target_dbfs": -52.05,
+     "lag_samples": 5,
+     "lag_ms": 0.101,
+     "peak": 0.9989,
+     "verdict": "carried",
+     "device_rate": [
+      48000,
+      48000
+     ]
+    },
+    {
+     "level_db": -6.0206,
+     "source": 1,
+     "target": 3,
+     "samples": 8192,
+     "source_dbfs": -44.53,
+     "target_dbfs": -50.54,
+     "lag_samples": 5,
+     "lag_ms": 0.1039,
+     "peak": 0.9989,
+     "verdict": "carried",
+     "device_rate": [
+      48000,
+      48000
+     ]
+    },
+    {
+     "level_db": -6.0,
+     "source": 1,
+     "target": 3,
+     "samples": 8192,
+     "source_dbfs": -40.28,
+     "target_dbfs": -46.3,
+     "lag_samples": 5,
+     "lag_ms": 0.1038,
+     "peak": 0.9981,
+     "verdict": "carried",
+     "device_rate": [
+      48000,
+      48000
+     ]
+    }
+   ],
+   "input_linked": true,
+   "output_linked": true,
+   "before": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -44.69,
+    "target_dbfs": -91.55,
+    "lag_samples": -83,
+    "lag_ms": -1.7312,
+    "peak": -0.0421,
+    "verdict": "not-carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "given_back": 0,
+   "unity": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -40.34,
+    "target_dbfs": -40.34,
+    "lag_samples": 5,
+    "lag_ms": 0.104,
+    "peak": 0.9998,
+    "verdict": "carried",
+    "device_rate": [
+     48000,
+     48000
+    ]
+   },
+   "unity_gain_db": 0.0,
+   "signs": [
+    "+",
+    "+",
+    "+"
+   ],
+   "passed": true
+  }
+ ],
+ "sources": {
+  "1": {
+   "gain_db": 60.0,
+   "dbfs": -40.72
+  },
+  "2": {
+   "gain_db": 60.0,
+   "dbfs": -74.91
+  },
+  "3": {
+   "gain_db": 24.0,
+   "dbfs": -91.51
+  },
+  "4": {
+   "gain_db": 24.0,
+   "dbfs": -91.63
+  }
+ },
+ "started": "2026-11-07T17:03:49.433696+00:00",
+ "hardware_used": true,
+ "running_backend": {
+  "pid": 1734761,
+  "epoch": "bdac485ae1e955fd63e1aee4408315da",
+  "device": "Fireface UCX II (24216011) Port",
+  "sha256": "f9ff4dbcda0e9baa7e08eb2a3f3d1d917a38077b5c6ef9e03a02a4e568c96a34",
+  "upstream": "89ed835ecf8118a21d1d451be7d71944fa5ec384",
+  "series_sha256": "48a73594cd4980e537e8d7f5a1d8bceeb612ae497122ede4b97a8d18e2094381",
+  "protocol": "ODK1",
+  "matches_local_build": true
+ },
+ "first_dump": {
+  "paths": 2231,
+  "sha256": "6dc9db5a8e7110ad0a6fa57fc5d8e9c16b2367459703b116558ac97576812664"
+ },
+ "serial": "24216011",
+ "firmware": {
+  "usb_revision": "3.01",
+  "dsp_version": 36
+ },
+ "final_dump": {
+  "paths": 2231,
+  "sha256": "6dc9db5a8e7110ad0a6fa57fc5d8e9c16b2367459703b116558ac97576812664",
+  "missing": [],
+  "changed": [],
+  "new": []
+ },
+ "restored": true,
+ "finished": "2026-11-07T17:04:20.591490+00:00",
+ "passed": true
+}

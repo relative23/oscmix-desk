@@ -91,10 +91,16 @@ A cached playback stereo flag is never hardware confirmation
 merely because it arrived over this connection.
 
 A refresh reply precedes its window-start event and resulting reports.
-A refresh is not write-free on the wire: for every input mix cell the device
-reports, the backend writes the coefficient it derives from the report
-(`newmix()` -> `setlevel()`, as upstream oscmix does). On a UCX II that is 800
-words per refresh (usbmon capture, 2026-11-04).
+A refresh is not write-free on the wire. Upstream oscmix writes every input mix
+cell the device reports back as the coefficient it derives from the report
+(`newmix()` -> `setlevel()`): 800 words per refresh on a UCX II, each cell
+rounded to the report's 0.1 dB. Since 0.10.0 (patch 0019) a report that says
+what the backend's own cache would publish confirms the cache and is not
+written back; any other report still is. Measured 2026-11-07 (usbmon): 800
+words per refresh before, 8 after, and a cell written at -3.05 dB kept its
+value instead of returning at -3.1 dB. The 8 are silent cells the device
+reports with a pan: a zero coefficient holds no pan, so their zero is written
+again.
 Only one ten-second window runs at a time. A desk retries busy requests within
 its operation deadline before accepting a fresh window. GTK refresh requests
 while busy coalesce into one pending request, dropped on disconnect. Window
