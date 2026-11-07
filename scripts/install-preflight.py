@@ -69,7 +69,7 @@ def main():
     root = Path(__file__).resolve().parents[1]
     home = Path(os.environ.get('HOME', ''))
     check(home.is_absolute(), 'absolute HOME: ' + str(home))
-    check(sys.version_info >= (3, 9), 'Python >= 3.9: ' + sys.version.split()[0])
+    check(sys.version_info >= (3, 12), 'Python >= 3.12: ' + sys.version.split()[0])
     source = (root / 'src/oscmix_desk/constants.py').read_text()
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]+)', source, re.MULTILINE)
     print('INFO    candidate: ' + (version[1] if version else 'unknown') + ' at ' + str(root))

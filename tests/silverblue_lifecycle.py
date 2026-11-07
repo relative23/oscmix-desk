@@ -128,7 +128,7 @@ def package_pair(directory):
     records = [json.loads(path.with_suffix('.rpm.json').read_text()) for path in rpms]
     assert {record['component'] for record in records} == {'core', 'gtk'}
     assert len({record['package_version'] for record in records}) == 1
-    for path, record in zip(rpms, records):
+    for path, record in zip(rpms, records, strict=True):
         assert hashlib.sha256(path.read_bytes()).hexdigest() == record['sha256']
     return dict(files=[str(path) for path in rpms], records=records)
 

@@ -90,9 +90,7 @@ def test_runtime_imports_only_the_standard_library(path):
     # The one dependency claim the README makes. It is what allows the
     # package to run before any package manager is involved.
     absolute, _ = imports_of(path)
-    stdlib = set(getattr(sys, "stdlib_module_names", ()))
-    if not stdlib:                               # pragma: no cover (py<3.10)
-        pytest.skip("sys.stdlib_module_names needs Python 3.10+")
+    stdlib = set(sys.stdlib_module_names)
     foreign = {name for name in absolute
                if name not in stdlib and not name.startswith("_")}
     assert foreign == set(), "%s imports non-stdlib: %s" % (path.name,

@@ -376,7 +376,7 @@ def original_words(message):
         need(all(value < 128 for value in part) and part[4] < 16,
              "canonical original five-byte word required")
         word = sum(value << (7 * index) for index, value in enumerate(part))
-        need(bin(word).count("1") % 2 == 1, "original register parity differs")
+        need(word.bit_count() % 2 == 1, "original register parity differs")
         words.append(word)
     return words
 
@@ -452,7 +452,7 @@ def solicited_words(name):
             first = next(word for word in words if word >> 16 & 0x7FFF == source
                          and bool(word & 0x8000) is pan)
             word = target << 16 | first & 0xFFFF
-            words.append(word | (0 if bin(word).count("1") % 2 else 0x80000000))
+            words.append(word | (0 if word.bit_count() % 2 else 0x80000000))
     return words
 
 
@@ -738,7 +738,7 @@ def validate_case(case, name, vector):
         ("restore", "/mix/1/input/13", [restore, 0]),
     )
     need(len(writes) == 3, "three owned writes required")
-    for write, (phase, path, args) in zip(writes, expected_writes):
+    for write, (phase, path, args) in zip(writes, expected_writes, strict=True):
         need(
             write
             == dict(
@@ -806,7 +806,7 @@ def validate_case(case, name, vector):
         len(wire["bulks"]) == 3 and wire["final_coefficient_codes"] == [0] * 4,
         "three completed bulks and four final-zero transfers required",
     )
-    for entry, (phase, _path, _args) in zip(wire["bulks"], expected_writes):
+    for entry, (phase, _path, _args) in zip(wire["bulks"], expected_writes, strict=True):
         need(type(entry["frame_bytes"]) is int, "strict bulk byte count required")
         need(
             entry["phase"] == phase
@@ -824,7 +824,7 @@ def validate_case(case, name, vector):
         numbers = [int(word, 16) for word in words]
         need(
             tuple(word >> 16 & 0x7FFF for word in numbers) == REGS
-            and all(bin(word).count("1") % 2 == 1 for word in numbers),
+            and all(word.bit_count() % 2 == 1 for word in numbers),
             "wire register order/parity required",
         )
         need("complete_raw_db_pan_echo" not in entry,
@@ -944,7 +944,7 @@ def validate_fixture(value):
     input_eof_scope(baseline, baseline["pcap_sha256"], baseline["statusserial"], baseline=True,
                     receipt_sha=value["acceptance_sha256"]["bench_receipt"])
     need(len(value["cases"]) == 5, "exact five vectors required")
-    for item, name, vector in zip(value["cases"], CASES, VECTORS):
+    for item, name, vector in zip(value["cases"], CASES, VECTORS, strict=True):
         validate_case(item, name, vector)
         input_eof_scope(item["usb"], item["evidence_sha256"]["pcap"],
                         item["usb"]["statusserial"], baseline=False,

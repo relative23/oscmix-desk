@@ -8,7 +8,7 @@ This module validates declarations only and performs no I/O.
 
 from __future__ import annotations
 
-from typing import Collection, Dict, FrozenSet, Mapping, Optional, Sequence, Set, Tuple
+from collections.abc import Collection, Mapping, Sequence
 
 from .devices import device_for_name
 from .errors import ConfigError
@@ -25,7 +25,7 @@ def pair_left(channel: int) -> int:
     return channel - (channel - 1) % 2
 
 
-def declared_mutes(config: Config) -> Dict[int, int]:
+def declared_mutes(config: Config) -> dict[int, int]:
     """Validated final values; callers must validate the complete config first."""
     return {
         setting.channel: integer(setting.value)
@@ -34,9 +34,9 @@ def declared_mutes(config: Config) -> Dict[int, int]:
     }
 
 
-def retained_pairs(retained: Collection[str]) -> FrozenSet[int]:
+def retained_pairs(retained: Collection[str]) -> frozenset[int]:
     """An unreadable retained flag protects its adjacent partner as well."""
-    found: Set[int] = set()
+    found: set[int] = set()
     for path in retained:
         parts = path.strip("/").split("/")
         if len(parts) == 3 and parts[0] == "playback" and parts[2] == "mute":
@@ -49,7 +49,7 @@ def retained_pairs(retained: Collection[str]) -> FrozenSet[int]:
     return frozenset(found)
 
 
-def route_cells(config: Config, left: int) -> FrozenSet[Tuple[int, int]]:
+def route_cells(config: Config, left: int) -> frozenset[tuple[int, int]]:
     """Explicit matrix cells addressed by routes using either own source.
 
     Not a base's routes: those are REMEMBERed, so a repair or a reload would release the
@@ -64,9 +64,9 @@ def route_cells(config: Config, left: int) -> FrozenSet[Tuple[int, int]]:
     )
 
 
-def _validated_mutes(config: Config, device: Optional[Device]) -> Dict[int, int]:
+def _validated_mutes(config: Config, device: Device | None) -> dict[int, int]:
     """Validate each declaration before checking ownership across its pair."""
-    mutes: Dict[int, int] = {}
+    mutes: dict[int, int] = {}
     for setting in config.channels:
         if setting.family not in ("input", "output", "playback"):
             raise ConfigError("unknown channel family %r" % setting.family)
@@ -122,7 +122,7 @@ def _validate_playback_route(route: Route, device: Device) -> None:
 
 def _validate_route_links(routes: Sequence[Route], device: Device) -> None:
     """Own playback columns cannot depend on contradictory pair-link declarations."""
-    links: Dict[Tuple[str, int], int] = {}
+    links: dict[tuple[str, int], int] = {}
     for route in routes:
         if route.playback:
             _validate_playback_route(route, device)

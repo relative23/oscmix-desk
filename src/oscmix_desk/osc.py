@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import struct
-from typing import Iterator, List, Tuple, Union
+from collections.abc import Iterator
 
 #: What an argument is on this wire: oscmix speaks ``,i``, ``,f`` and
 #: ``,s``, and nothing else is encoded or decoded here. Named once, so
 #: that a register value is not an ``object`` every reader has to cast
 #: past the type checker (0.7.0; it was, and 13 ``type: ignore`` said so).
-Value = Union[int, float, str]
-Args = Tuple[Value, ...]
+Value = int | float | str
+Args = tuple[Value, ...]
 #: One register write or report: path, type tags, arguments.
-Message = Tuple[str, str, Args]
+Message = tuple[str, str, Args]
 
 
 def _osc_string(value: str) -> bytes:
@@ -31,7 +31,7 @@ def encode_osc(path: str, types: str = "", *args: Value) -> bytes:
             "type tag %r expects %d arguments, got %d" % (types, len(types), len(args))
         )
     data = _osc_string(path) + _osc_string("," + types)
-    for tag, value in zip(types, args):
+    for tag, value in zip(types, args, strict=False):
         if tag == "f":
             data += struct.pack(">f", float(value))
         elif tag == "i":
@@ -43,7 +43,7 @@ def encode_osc(path: str, types: str = "", *args: Value) -> bytes:
     return data
 
 
-def _decode_string(data: bytes, offset: int) -> Tuple[str, int]:
+def _decode_string(data: bytes, offset: int) -> tuple[str, int]:
     end = data.index(b"\x00", offset)
     value = data[offset:end].decode("ascii")
     end += 1
@@ -62,7 +62,7 @@ def decode_osc(data: bytes) -> Message:
         raise ValueError("truncated OSC message") from None
     if not tags.startswith(","):
         raise ValueError("missing OSC type tag string")
-    args: List[Value] = []
+    args: list[Value] = []
     try:
         for tag in tags[1:]:
             value: Value
@@ -119,6 +119,6 @@ def iter_osc_messages(datagram: bytes) -> Iterator[bytes]:
         pending.extend(reversed(elements))
 
 
-def decode_delivery(data: bytes) -> Tuple[Message, ...]:
+def decode_delivery(data: bytes) -> tuple[Message, ...]:
     """Decode every message before exposing any part of one OSC delivery."""
     return tuple(decode_osc(raw) for raw in iter_osc_messages(data))

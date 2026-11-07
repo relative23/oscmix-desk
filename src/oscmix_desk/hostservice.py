@@ -16,7 +16,6 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
 
 REGISTRATION = Path("/etc/oscmix-desk/service.json")
 STATE = Path("/var/lib/oscmix-desk")
@@ -50,7 +49,7 @@ def _root_file(path: Path) -> str:
     return path.read_text()
 
 
-def registered() -> Optional[HostService]:
+def registered() -> HostService | None:
     try:
         data = json.loads(_root_file(REGISTRATION))
     except FileNotFoundError:
@@ -89,7 +88,7 @@ def _matches(pid: int, service: HostService, proc_root: Path) -> bool:
         return False
 
 
-def main_pid(service: HostService, proc_root: Path) -> Optional[int]:
+def main_pid(service: HostService, proc_root: Path) -> int | None:
     """Resolve the native manager's child, then verify its user and exact command."""
     if service.uid != os.getuid():
         return None
@@ -182,7 +181,7 @@ def reload(service: HostService, proc_root: Path) -> str:
     return "reloaded"
 
 
-def report(service: HostService, proc_root: Path) -> Dict[str, str]:
+def report(service: HostService, proc_root: Path) -> dict[str, str]:
     if service.uid != os.getuid():
         return {"state": "unavailable", "manager": service.manager,
                 "detail": "the registered host desk belongs to another user"}
@@ -200,7 +199,7 @@ def report(service: HostService, proc_root: Path) -> Dict[str, str]:
                            "process inspection; no hardware verification")}
 
 
-def maintenance_problem() -> Optional[str]:
+def maintenance_problem() -> str | None:
     """Persistent fences block activation through both services and manual clients."""
     for _, name in MAINTENANCE_FILES:
         try:

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import configparser
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
 
 from .autogain import validate_autogain
 from .base import base_routes, check_base
@@ -57,7 +57,7 @@ from .sections import (
 )
 
 
-def _parse_channels(raw: str, section: str, option: str) -> Tuple[int, ...]:
+def _parse_channels(raw: str, section: str, option: str) -> tuple[int, ...]:
     """Parse ``1/2`` (stereo pair) or ``3`` (mono) into a channel tuple."""
     parts = [p.strip() for p in raw.split("/")]
     if len(parts) not in (1, 2) or not all(parts):
@@ -118,7 +118,7 @@ _KNOWN_OPTIONS = {
 #: versions already have.
 
 
-def _parse_pin(parser: "configparser.ConfigParser", section: str,
+def _parse_pin(parser: configparser.ConfigParser, section: str,
                config: _Draft) -> None:
     """Read ``[pin]``: per-option overrides of the register table default.
 
@@ -258,10 +258,10 @@ class _Draft:
     #: stay what the *file* says; everything that is checked against a
     #: device is checked against ``used``, the one the desk goes to.
     overrides: Overrides = field(default_factory=Overrides)
-    routes: List[Route] = field(default_factory=list)
-    channels: List[ChannelSetting] = field(default_factory=list)
-    globals: List[GlobalSetting] = field(default_factory=list)
-    policies: Dict[Tuple[str, str], Policy] = field(default_factory=dict)
+    routes: list[Route] = field(default_factory=list)
+    channels: list[ChannelSetting] = field(default_factory=list)
+    globals: list[GlobalSetting] = field(default_factory=list)
+    policies: dict[tuple[str, str], Policy] = field(default_factory=dict)
     #: `[desk] base`: what the matrix is beneath the routes.
     base: str = "keep"
     #: `[desk] enforce`: how the running session keeps the desk (`deskconf.ENFORCE`).
@@ -269,7 +269,7 @@ class _Draft:
     #: `[desk] peak-safe`: an explicit switch quiets the outputs it changes.
     peak_safe: bool = False
     #: `mirror =` declarations, expanded into routes once every section is read.
-    mirrors: List[Mirror] = field(default_factory=list)
+    mirrors: list[Mirror] = field(default_factory=list)
 
     @property
     def used(self) -> str:
@@ -287,9 +287,9 @@ class _Draft:
                       enforce=self.enforce, peak_safe=self.peak_safe)
 
 
-def load_config(path: Optional[Path], base: Optional[Config] = None,
-                overrides: Optional[Overrides] = None, *,
-                said: Optional[Overrides] = None, strict: bool = False,
+def load_config(path: Path | None, base: Config | None = None,
+                overrides: Overrides | None = None, *,
+                said: Overrides | None = None, strict: bool = False,
                 profile: bool = False) -> Config:
     """Load routing.conf. ``path=None`` returns built-in defaults.
 
@@ -331,9 +331,9 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
         # instead of the line that names the file.
         raise ConfigError("cannot read %s: %s" % (path, exc)) from None
 
-    pending: List[str] = []
-    pending_globals: List[str] = []
-    pending_nested: List[str] = []
+    pending: list[str] = []
+    pending_globals: list[str] = []
+    pending_nested: list[str] = []
     _dispatch(parser, config, pending, pending_globals, pending_nested, strict=strict,
               profile=profile)
     device = device_for_name(config.used)
@@ -354,7 +354,7 @@ def load_config(path: Optional[Path], base: Optional[Config] = None,
     return result
 
 
-def _parse_desk(parser: "configparser.ConfigParser", section: str, config: _Draft, *,
+def _parse_desk(parser: configparser.ConfigParser, section: str, config: _Draft, *,
                 profile: bool) -> None:
     """`[desk]`: see deskconf."""
     _check_options(section, "desk", parser.options(section))
@@ -362,9 +362,9 @@ def _parse_desk(parser: "configparser.ConfigParser", section: str, config: _Draf
         setattr(config, attribute, value)
 
 
-def _parse_collected(parser: "configparser.ConfigParser", config: _Draft,
-                     device: Optional[Device], pending: List[str], pending_globals: List[str],
-                     pending_nested: List[str], *, strict: bool) -> None:
+def _parse_collected(parser: configparser.ConfigParser, config: _Draft,
+                     device: Device | None, pending: list[str], pending_globals: list[str],
+                     pending_nested: list[str], *, strict: bool) -> None:
     """The sections that needed the device: global, nested and channel sections."""
     for section in pending_globals:
         config.globals.extend(_parse_global_section(parser, section, device))
@@ -381,7 +381,7 @@ def _parse_collected(parser: "configparser.ConfigParser", config: _Draft,
                                                int(section.split(":", 1)[1]), device))
 
 
-def _desk_wide(config: _Draft, device: Optional[Device]) -> None:
+def _desk_wide(config: _Draft, device: Device | None) -> None:
     """What spans the whole desk once every section is read: the base's routes, then mirrors.
 
     In that order, so a mirror copies the base's routes of its source like any other. The
@@ -394,9 +394,9 @@ def _desk_wide(config: _Draft, device: Optional[Device]) -> None:
     config.routes = expand_mirrors(config.routes, config.mirrors)
 
 
-def _dispatch(parser: "configparser.ConfigParser", config: _Draft,
-              pending: List[str], pending_globals: List[str],
-              pending_nested: List[str], *, strict: bool = False,
+def _dispatch(parser: configparser.ConfigParser, config: _Draft,
+              pending: list[str], pending_globals: list[str],
+              pending_nested: list[str], *, strict: bool = False,
               profile: bool = False) -> None:
     """Route each section to its parser, or refuse/report an ignored section.
 
@@ -514,7 +514,7 @@ def _check_link_agreement(routes: Sequence[Route]) -> None:
     a linked pair fed by the hard-panned pair of an unlinked route folds
     both messages onto the same register, and one output goes dead.
     """
-    seen: Dict[Tuple[str, int], Tuple[Route, bool]] = {}
+    seen: dict[tuple[str, int], tuple[Route, bool]] = {}
     for route in routes:
         for family, channel, linked in route.link_requirements:
             key = family, channel

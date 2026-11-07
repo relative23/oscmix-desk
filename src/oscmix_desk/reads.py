@@ -12,9 +12,9 @@ from __future__ import annotations
 import os
 import sys
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Mapping, Optional
 
 from .autogain import retained_gains
 from .constants import (
@@ -66,7 +66,7 @@ DUMP_QUIET_SECONDS = 1.0
 class DeviceRead:
     """Latest values received from one checked backend instance, never a snapshot cache."""
 
-    registers: Dict[str, Args]
+    registers: dict[str, Args]
     serial: str
     epoch: str
 
@@ -85,7 +85,7 @@ _PHASE_NAMES = ((PHASE_LINK, "links"),
 _STREAMING_SUFFIXES = ("/level", "/meter")
 
 
-def _snapshot(config: Config, config_path: Optional[Path] = None) -> int:
+def _snapshot(config: Config, config_path: Path | None = None) -> int:
     """Print every register the device reports, verbatim and sorted.
 
     `--dump-config` renders a *config*, so it can only show registers a
@@ -128,7 +128,7 @@ def _snapshot(config: Config, config_path: Optional[Path] = None) -> int:
     return EXIT_OK
 
 
-def _diff(config: Config, config_path: Optional[Path] = None) -> int:
+def _diff(config: Config, config_path: Path | None = None) -> int:
     """Print what an apply would write, and what it would leave alone.
 
     The pure comparison uses the same declarations as application planning.
@@ -193,14 +193,14 @@ def _diff(config: Config, config_path: Optional[Path] = None) -> int:
     return EXIT_DIFFERS if differing else EXIT_OK
 
 
-def _diff_line(write: Write, seen: Dict[str, Args]) -> str:
+def _diff_line(write: Write, seen: dict[str, Args]) -> str:
     """One write as `path  config-value  device-value  reason`."""
     return "%-34s %-14s device %-14s %s" % (
         write.path, _values(write.args), _values(seen.get(write.path)),
         write.reason.value)
 
 
-def _values(args: Optional[Args]) -> str:
+def _values(args: Args | None) -> str:
     """OSC arguments as a config would read them, or a dash for absent.
 
     A missing register and a register holding an empty value are
@@ -217,8 +217,8 @@ def _one_value(value: Value) -> str:
     return str(value)
 
 
-def _read_device(config: Config, config_path: Optional[Path] = None
-                 ) -> Optional[DeviceRead]:
+def _read_device(config: Config, config_path: Path | None = None
+                 ) -> DeviceRead | None:
     """Request a fresh window as a nonwriting subscriber of the checked backend.
 
     Readings belong to this epoch and use the latest decoded value per path.
@@ -228,7 +228,7 @@ def _read_device(config: Config, config_path: Optional[Path] = None
     try:
         with _operation(config, config_path, reader=True) as desk:
             device = desk._control
-            seen: Dict[str, Args] = {}
+            seen: dict[str, Args] = {}
             device.request_dump()
             deadline = time.monotonic() + DUMP_READ_SECONDS
             quiet_after = deadline
@@ -251,7 +251,7 @@ def _read_device(config: Config, config_path: Optional[Path] = None
         return None
 
 
-def _dump_config(config: Config, config_path: Optional[Path] = None, *,
+def _dump_config(config: Config, config_path: Path | None = None, *,
                  include_written: bool = False) -> int:
     """Print a routing.conf built from what the device reports.
 
@@ -265,20 +265,20 @@ def _dump_config(config: Config, config_path: Optional[Path] = None, *,
     return EXIT_OK
 
 
-def capture_text(config: Config, config_path: Optional[Path] = None) -> Optional[str]:
+def capture_text(config: Config, config_path: Path | None = None) -> str | None:
     """The device's state as a profile for ``--capture``, journal included; None if unread."""
     return _rendered(config, config_path, include_written=True, capture=True)
 
 
-def _rendered(config: Config, config_path: Optional[Path], *, include_written: bool,
-              capture: bool = False) -> Optional[str]:
+def _rendered(config: Config, config_path: Path | None, *, include_written: bool,
+              capture: bool = False) -> str | None:
     reading = _read_device(config, config_path)
     if reading is None:
         return None
     seen = reading.registers
 
     model = device_for_name(config.device_name)
-    warnings: List[str] = []
+    warnings: list[str] = []
     dumped = Config(device_name=config.device_name, usb_id=config.usb_id,
                     osc_port=config.osc_port,
                     osc_recv_port=config.osc_recv_port,
@@ -301,15 +301,15 @@ def _rendered(config: Config, config_path: Optional[Path], *, include_written: b
                          autoset=_autoset_gains(dumped, seen) if capture else frozenset())
 
 
-def _autoset_gains(dumped: Config, seen: Mapping[str, Args]) -> FrozenSet[str]:
+def _autoset_gains(dumped: Config, seen: Mapping[str, Args]) -> frozenset[str]:
     """The gains AutoSet owns on the device, partners of linked inputs included."""
     flags = {path: ("i", tuple(args)) for path, args in seen.items()
              if path.startswith("/input/") and path.endswith(("/autoset", "/stereo"))}
     return retained_gains(dumped, flags)
 
 
-def _written(config: Config, config_path: Optional[Path], reading: DeviceRead,
-             model: Optional[Device], warnings: List[str]) -> WrittenState:
+def _written(config: Config, config_path: Path | None, reading: DeviceRead,
+             model: Device | None, warnings: list[str]) -> WrittenState:
     """What desk last wrote where the device is silent, from the journal beside the lock."""
     journal: Journal = {}
     source = "no write journal"

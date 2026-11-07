@@ -7,7 +7,7 @@ starts without any confirmations, including when retrying the same request.
 
 from __future__ import annotations
 
-from typing import Dict, Mapping, Optional, Sequence, Set, Tuple
+from collections.abc import Mapping, Sequence
 
 from .autogain import flag_value
 from .numeric import float32, integer, report_value
@@ -16,7 +16,7 @@ from .reconcile import matches
 from .registers import VERIFIABLE, Device, register_at
 
 
-def boolean_dependency(report: Optional[Tuple[str, Args]]) -> Optional[int]:
+def boolean_dependency(report: tuple[str, Args] | None) -> int | None:
     """A last typed Boolean report, without accepting numeric coercions.
 
     Missing or malformed feedback cannot authorize a dependent write. Both
@@ -28,8 +28,8 @@ def boolean_dependency(report: Optional[Tuple[str, Args]]) -> Optional[int]:
 class Observation:
     """A match can be revoked and restored; an absent report is neither."""
 
-    def __init__(self, expected: Mapping[str, Tuple[str, Args]],
-                 device: Optional[Device] = None,
+    def __init__(self, expected: Mapping[str, tuple[str, Args]],
+                 device: Device | None = None,
                  dependency_paths: Sequence[str] = (),
                  noted: Sequence[str] = ()) -> None:
         self.expected = {path: (tags, tuple(args))
@@ -38,10 +38,10 @@ class Observation:
         self.dependency_paths = frozenset(dependency_paths)
         #: Kept in ``latest`` as reported, neither expected nor waited for.
         self.noted = frozenset(noted)
-        self.latest: Dict[str, Tuple[str, Args]] = {}
-        self.confirmed: Set[str] = set()
-        self.mismatched: Set[str] = set()
-        self.invalid: Set[str] = set()
+        self.latest: dict[str, tuple[str, Args]] = {}
+        self.confirmed: set[str] = set()
+        self.mismatched: set[str] = set()
+        self.invalid: set[str] = set()
 
     def absorb(self, report: Message) -> None:
         path, tags, args = report
@@ -82,7 +82,7 @@ class Observation:
             return False
         register = register_at(self.device, path)
         try:
-            for index, (tag, value) in enumerate(zip(tags, args)):
+            for index, (tag, value) in enumerate(zip(tags, args, strict=False)):
                 if register is not None and register.mix_level:
                     if index == 0 and value == float("-inf"):
                         continue
@@ -103,7 +103,7 @@ class Observation:
         return True
 
     @property
-    def unobserved(self) -> Set[str]:
+    def unobserved(self) -> set[str]:
         return self.expected.keys() - self.confirmed - self.mismatched
 
     @property

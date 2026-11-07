@@ -35,9 +35,9 @@ import sys
 import tempfile
 import time
 import wave
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -113,7 +113,7 @@ class LevelReader:
         except BaseException:
             self.close()
             raise
-        self.dspvers: Optional[object] = None
+        self.dspvers: object | None = None
         self.reports = 0
 
     def close(self) -> None:
@@ -121,9 +121,9 @@ class LevelReader:
             self.device.close()
         self.lock.release()
 
-    def peaks(self, seconds: float) -> Dict[int, float]:
+    def peaks(self, seconds: float) -> dict[int, float]:
         """Highest METERS-origin peak per output over the measured window."""
-        result: Dict[int, float] = {}
+        result: dict[int, float] = {}
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
             for path, _tags, args, origin, _seq in observations(self.device, .2):
@@ -144,11 +144,11 @@ class LevelReader:
         return result
 
     def output_state(self, outputs: Sequence[int],
-                     seconds: float = 6.0) -> Dict[int, Dict[str, object]]:
+                     seconds: float = 6.0) -> dict[int, dict[str, object]]:
         """Latest device-origin fader/mute reports after a fresh request."""
         wanted = {"/output/%d/%s" % (channel, field): (channel, field)
                   for channel in outputs for field in ("volume", "mute")}
-        state: Dict[int, Dict[str, object]] = {c: {} for c in outputs}
+        state: dict[int, dict[str, object]] = {c: {} for c in outputs}
         self.device.request_dump()
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
@@ -163,7 +163,7 @@ class LevelReader:
         return state
 
 
-def sink_layout(sink: Optional[str]) -> Optional[Tuple[str, List[str]]]:
+def sink_layout(sink: str | None) -> tuple[str, list[str]] | None:
     """The name and channel layout of the sink the tone will go to.
 
     Returns None when PipeWire cannot be asked, which is not an error --
@@ -216,7 +216,7 @@ def sink_layout(sink: Optional[str]) -> Optional[Tuple[str, List[str]]]:
     return name, sinks[name]
 
 
-def playback_sinks() -> Dict[Tuple[int, ...], str]:
+def playback_sinks() -> dict[tuple[int, ...], str]:
     """Which PipeWire sink feeds which pair of playback channels.
 
     The named sinks this project generates carry the mapping on their
@@ -236,7 +236,7 @@ def playback_sinks() -> Dict[Tuple[int, ...], str]:
     except (OSError, subprocess.SubprocessError, ValueError):
         return {}
 
-    found: Dict[Tuple[int, ...], str] = {}
+    found: dict[tuple[int, ...], str] = {}
     for obj in objects:
         props = ((obj.get("info") or {}).get("props")) or {}
         name = props.get("node.name") or ""
@@ -255,7 +255,7 @@ def playback_sinks() -> Dict[Tuple[int, ...], str]:
     return found
 
 
-def device_serial(config) -> Optional[str]:
+def device_serial(config) -> str | None:
     """The serial of the interface this measures, from the one resolution.
 
     Raises DeviceAmbiguous on a machine with two identical interfaces and
@@ -274,7 +274,7 @@ def is_stereo(positions: Sequence[str]) -> bool:
     return len(upper) == 2 and upper[0].startswith("FL") and upper[1].startswith("FR")
 
 
-def play(wav: Path, sink: Optional[str]) -> None:
+def play(wav: Path, sink: str | None) -> None:
     command = ["pw-play"]
     if sink:
         command += ["--target", sink]
@@ -286,7 +286,7 @@ def play(wav: Path, sink: Optional[str]) -> None:
         raise OSError("tone playback failed: %s" % exc) from exc
 
 
-def measure(reader: LevelReader, wav: Path, sink: Optional[str]) -> Dict[int, float]:
+def measure(reader: LevelReader, wav: Path, sink: str | None) -> dict[int, float]:
     """Play the tone and return the peak level seen per output."""
     with ThreadPoolExecutor(max_workers=1) as collector:
         measured = collector.submit(reader.peaks, TONE_SECONDS + 1.0)
@@ -299,7 +299,7 @@ def measure(reader: LevelReader, wav: Path, sink: Optional[str]) -> Dict[int, fl
         return measured.result()
 
 
-def explain_silence(channel: int, state: Dict[int, Dict[str, object]]) -> str:
+def explain_silence(channel: int, state: dict[int, dict[str, object]]) -> str:
     """Why an output carries nothing, when the device can say.
 
     Only two causes are visible from here, and both are ordinary user
@@ -320,9 +320,9 @@ def explain_silence(channel: int, state: Dict[int, Dict[str, object]]) -> str:
     return ""
 
 
-def check_route(name: str, outputs: Tuple[int, ...], left: Dict[int, float],
-                right: Dict[int, float], silence: Dict[int, float],
-                state: Optional[Dict[int, Dict[str, object]]] = None) -> dict:
+def check_route(name: str, outputs: tuple[int, ...], left: dict[int, float],
+                right: dict[int, float], silence: dict[int, float],
+                state: dict[int, dict[str, object]] | None = None) -> dict:
     """Turn the measurements into a verdict for one stereo route.
 
     Each output is compared against itself across the two runs: it must
@@ -429,12 +429,12 @@ def main() -> int:
         # which is what it has always meant.
         sinks[(1, 2)] = args.sink
 
-    by_source: Dict[Tuple[int, ...], List] = {}
+    by_source: dict[tuple[int, ...], list] = {}
     for route in pairs:
         by_source.setdefault(tuple(route.playback), []).append(route)
 
-    findings: List[dict] = []
-    unmeasured: List[dict] = []
+    findings: list[dict] = []
+    unmeasured: list[dict] = []
     reports = 0
 
     with tempfile.TemporaryDirectory() as tmp:

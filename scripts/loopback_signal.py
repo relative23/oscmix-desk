@@ -13,7 +13,7 @@ from __future__ import annotations
 import cmath
 import math
 import struct
-from typing import List, Optional, Sequence, Tuple
+from collections.abc import Sequence
 
 RATE = 48000
 CHANNELS = 20
@@ -26,7 +26,7 @@ PRESENT = 0.5
 ABSENT = 0.1
 
 
-def channel(raw: bytes, index: int, *, channels: int = CHANNELS) -> List[float]:
+def channel(raw: bytes, index: int, *, channels: int = CHANNELS) -> list[float]:
     """One channel (0-based) of an interleaved s32 recording, scaled to -1..1."""
     frame = SAMPLE.size * channels
     count = len(raw) // frame
@@ -34,7 +34,7 @@ def channel(raw: bytes, index: int, *, channels: int = CHANNELS) -> List[float]:
             for i in range(count)]
 
 
-def middle(samples: Sequence[float], length: int) -> List[float]:
+def middle(samples: Sequence[float], length: int) -> list[float]:
     """``length`` samples from the middle, away from the start and stop of a recording."""
     if len(samples) < length:
         raise ValueError("recording holds %d samples, %d needed" % (len(samples), length))
@@ -50,7 +50,7 @@ def level_dbfs(samples: Sequence[float]) -> float:
     return 10 * math.log10(power) if power > 0 else -math.inf
 
 
-def _fft(values: List[complex], invert: bool = False) -> List[complex]:
+def _fft(values: list[complex], invert: bool = False) -> list[complex]:
     n = len(values)
     if n & (n - 1):
         raise ValueError("FFT length must be a power of two")
@@ -83,7 +83,7 @@ def _fft(values: List[complex], invert: bool = False) -> List[complex]:
 
 
 def correlate(source: Sequence[float], target: Sequence[float],
-              max_lag: int) -> Tuple[int, float, float]:
+              max_lag: int) -> tuple[int, float, float]:
     """(lag, peak, refined lag) of the normalised cross-correlation, lag in samples.
 
     A positive lag means ``target`` follows ``source``. ``peak`` is the correlation
@@ -103,7 +103,7 @@ def correlate(source: Sequence[float], target: Sequence[float],
         size *= 2
     a = _fft([complex(x) for x in source] + [0j] * (size - n))
     b = _fft([complex(y) for y in target] + [0j] * (size - n))
-    product = _fft([x.conjugate() * y for x, y in zip(a, b)], invert=True)
+    product = _fft([x.conjugate() * y for x, y in zip(a, b, strict=False)], invert=True)
     values = {lag: product[lag % size].real / energy for lag in range(-max_lag, max_lag + 1)}
     lag = max(values, key=lambda k: abs(values[k]))
     refined = float(lag)
@@ -137,11 +137,11 @@ def analyse(raw: bytes, source: int, target: int, *, length: int = 8192,
                 verdict=verdict(peak))
 
 
-def _rounded(value: float) -> Optional[float]:
+def _rounded(value: float) -> float | None:
     return None if math.isinf(value) else round(value, 2)
 
 
-def delay_slope(points: Sequence[Tuple[float, float]]) -> Tuple[float, float]:
+def delay_slope(points: Sequence[tuple[float, float]]) -> tuple[float, float]:
     """Least-squares (slope, intercept) of lag in ms against the written OSC delay."""
     if len(points) < 2:
         raise ValueError("a slope needs two points")

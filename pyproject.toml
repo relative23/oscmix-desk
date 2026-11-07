@@ -15,10 +15,9 @@ include = ["src/**/*.py", "tests/**/*.py", "scripts/**/*.py", "packaging/reposit
 # mutants/ holds machine-rewritten copies of the source; linting them
 # measures the mutation engine, not this project.
 extend-exclude = ["mutants", "build"]
-# 3.9 is the oldest interpreter the CI matrix covers; keeping it means no
-# PEP 604 unions (`X | None`) and no PEP 585 builtins in evaluated
-# annotations, which is why the modernization rules stay off below.
-target-version = "py39"
+# 3.12 is the oldest interpreter the CI matrix covers since 0.10.0, so
+# annotations use PEP 604 unions and PEP 585 builtins (the UP rules below).
+target-version = "py312"
 # The code wraps at 79; a handful of pre-existing lines run to 90.
 line-length = 99
 
@@ -33,11 +32,15 @@ select = ["E", "F", "W", "I", "B", "C4", "SIM", "RET", "ARG", "PIE", "PT",
           "RUF",    # ruff's own correctness checks
           "PERF",   # loops that should not be loops
           "FURB",   # genuinely simpler stdlib usage
-          "TRY"]    # exception handling that hides the cause
+          "TRY",    # exception handling that hides the cause
+          "UP"]     # syntax of the oldest supported Python (3.12)
 ignore = [
     # `%`-formatting is deliberate and consistent here: logging takes its
     # arguments lazily, and the OSC paths read better as format strings.
     "UP031",
+    # (str, Enum) stays: StrEnum changes format() and str() of the members,
+    # which logs, status JSON and the config grammar print.
+    "UP042",
     # try/except/pass is clearer than contextlib.suppress in the
     # best-effort teardown paths, and avoids an import in a hot loop.
     "SIM105",

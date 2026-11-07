@@ -9,6 +9,12 @@
   publication did not have yet, without a predecessor; every earlier channel
   still has to continue.
 
+### Changed
+
+- Python 3.12 or newer is required, as announced with 0.9.0: the installer
+  check, the package dependencies and CI (3.12 to 3.15). The workarounds for
+  3.9 to 3.11 are gone and the sources use the newer syntax.
+
 ### Fixed
 
 - Repository staging and the publication checks read the RPM payload digest

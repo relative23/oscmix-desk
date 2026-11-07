@@ -57,7 +57,7 @@ def sysex(registers):
     data = bytearray(b'\xf0\x00\x20\x0d\x10\x00')
     for address, value in registers:
         word = address << 16 | (value & 0xffff)
-        word |= (1 - bin(word).count('1') % 2) << 31
+        word |= (1 - (word).bit_count() % 2) << 31
         data.extend((word >> shift) & 0x7f for shift in range(0, 35, 7))
     return bytes(data) + b'\xf7'
 
@@ -270,7 +270,7 @@ class ScriptedControl:
             while not self.done.is_set():
                 try:
                     self.peer, _ = self.listener.accept()
-                except socket.timeout:
+                except TimeoutError:
                     continue
                 self.peer.settimeout(0.1)
                 try:
@@ -286,7 +286,7 @@ class ScriptedControl:
         while not self.done.is_set():
             try:
                 data = self.peer.recv(10000)
-            except socket.timeout:
+            except TimeoutError:
                 continue
             if not data:
                 return

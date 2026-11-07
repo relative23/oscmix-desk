@@ -7,8 +7,8 @@ refuses before the first write it would make wrong; routing decides when each on
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
-from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 from .autogain import dependency_paths, flag_value, retained_gains
 from .backend import Control
@@ -33,10 +33,10 @@ StopCheck = Callable[[], bool]
 
 def read_dependencies(backend: Control, paths: Sequence[str],
                             should_stop: StopCheck, *,
-                            links: Optional[Mapping[str, int]] = None,
+                            links: Mapping[str, int] | None = None,
                             purpose: str = "AutoSet",
-                            settled: Optional[Callable[[Observation], bool]] = None
-                            ) -> Dict[str, Tuple[str, Args]]:
+                            settled: Callable[[Observation], bool] | None = None
+                            ) -> dict[str, tuple[str, Args]]:
     """One fresh, completed DEVICE window; missing or malformed stays unknown.
 
     The window closes once every Boolean dependency and expected link reported validly, or
@@ -62,7 +62,7 @@ def read_dependencies(backend: Control, paths: Sequence[str],
 
 
 def volume_reader(backend: Control, should_stop: StopCheck
-                   ) -> Callable[[Sequence[str]], Dict[str, Tuple[str, Args]]]:
+                   ) -> Callable[[Sequence[str]], dict[str, tuple[str, Args]]]:
     """One dependency read of the output volumes a peak-safe switch has to give back."""
     return lambda paths: read_dependencies(
         backend, paths, should_stop, purpose="peak-safe",
@@ -70,8 +70,8 @@ def volume_reader(backend: Control, should_stop: StopCheck
 
 
 def dsp_limit_problem(config: Config, selected: Sequence[Write],
-                       latest: Mapping[str, Tuple[str, Args]], backend: Control,
-                       should_stop: StopCheck) -> Optional[str]:
+                       latest: Mapping[str, tuple[str, Args]], backend: Control,
+                       should_stop: StopCheck) -> str | None:
     """Room EQ and Crossfeed counted over every output before anything is switched on."""
     writes = [(write.path, write.args) for write in selected]
     if not switches_on(config, writes):
@@ -85,7 +85,7 @@ def dsp_limit_problem(config: Config, selected: Sequence[Write],
     return dsp_problem(config, writes, counted)
 
 
-def within_dsp_limits(config: Config, wanted: Plan, latest: Mapping[str, Tuple[str, Args]],
+def within_dsp_limits(config: Config, wanted: Plan, latest: Mapping[str, tuple[str, Args]],
                        backend: Control, should_stop: StopCheck, intent: ApplyIntent) -> Plan:
     """The plan if it keeps the DSP limits; refused on an explicit apply, else without them.
 
@@ -105,8 +105,8 @@ def within_dsp_limits(config: Config, wanted: Plan, latest: Mapping[str, Tuple[s
 
 
 def gain_problem(config: Config, selected: Sequence[Write],
-                  latest: Mapping[str, Tuple[str, Args]], intent: ApplyIntent,
-                  retained: Sequence[str], confirmed: Sequence[str]) -> Optional[str]:
+                  latest: Mapping[str, tuple[str, Args]], intent: ApplyIntent,
+                  retained: Sequence[str], confirmed: Sequence[str]) -> str | None:
     """No direct or indirect gain write may defeat AutoSet's ownership."""
     linked = [w.path for w in selected if w.path.endswith("/stereo") and w.args == (1,)]
     gains = retained_gains(config, latest, linked=linked,
@@ -124,11 +124,11 @@ def gain_problem(config: Config, selected: Sequence[Write],
                              observed=latest)
 
 
-def input_link_expectations(config: Config, selected: Sequence[Write]) -> Dict[str, int]:
+def input_link_expectations(config: Config, selected: Sequence[Write]) -> dict[str, int]:
     """AutoSet-relevant input links needed by the selected matrix writes."""
     writes = {w.path for w in selected}
     dependencies = set(dependency_paths(config))
-    links: Dict[str, int] = {}
+    links: dict[str, int] = {}
     for route in config.routes:
         kind, _source = route.source
         if kind != "input" or not writes.intersection(
@@ -141,7 +141,7 @@ def input_link_expectations(config: Config, selected: Sequence[Write]) -> Dict[s
 
 
 def require_gain_ownership(config: Config, selected: Sequence[Write],
-                            latest: Mapping[str, Tuple[str, Args]], intent: ApplyIntent,
+                            latest: Mapping[str, tuple[str, Args]], intent: ApplyIntent,
                             retained: Sequence[str], confirmed: Sequence[str]) -> None:
     problem = gain_problem(config, selected, latest, intent, retained, confirmed)
     if problem:

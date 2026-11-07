@@ -222,7 +222,7 @@ def test_receive_error_invalidates_the_connection_instead_of_spinning(wire_peer)
 
 def test_socket_timeout_remains_silence(wire_peer):
     with wire_peer() as (device, _peer):
-        sock = _BrokenReceive(device._sock, socket.timeout("timed out"))
+        sock = _BrokenReceive(device._sock, TimeoutError("timed out"))
         device._sock = sock
         assert list(device.messages(.1)) == []
         assert sock.reads == 1

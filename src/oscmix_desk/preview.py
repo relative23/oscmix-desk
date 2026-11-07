@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import List
-
 from .model import Config
 from .reconcile import PHASE_LINK, PHASE_MIX, desired
 
 
-def transition_lines(previous: Config, target: Config) -> List[str]:
+def transition_lines(previous: Config, target: Config) -> list[str]:
     """Describe omissions and link changes between two partial desks.
 
     Both maps come from the real planner, including duplicate crosspoint

@@ -15,7 +15,6 @@ import json
 import re
 import subprocess
 from pathlib import Path
-from typing import Dict
 
 
 def git(root: Path, *args: str) -> bytes:
@@ -23,7 +22,7 @@ def git(root: Path, *args: str) -> bytes:
                           capture_output=True, check=True).stdout
 
 
-def build(root: Path, ref: str, output: Path) -> Dict[str, str]:
+def build(root: Path, ref: str, output: Path) -> dict[str, str]:
     commit = git(root, "rev-parse", "--verify", ref + "^{commit}").decode().strip()
     constants = git(root, "show", commit + ":src/oscmix_desk/constants.py").decode()
     version = re.search(r'^__version__ = "(\d+\.\d+\.\d+)"$', constants, re.MULTILINE)

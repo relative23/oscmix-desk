@@ -82,7 +82,7 @@ def deb(root, payload, _work, output, record):
     (control / 'control').write_text(
         'Package: oscmix-desk-repository\nVersion: ' + version + '\nArchitecture: '
         + record['architecture'] + '\nMaintainer: oscmix-desk contributors <noreply@github.com>\n'
-        'Section: admin\nPriority: optional\nPre-Depends: python3 (>= 3.9)\n'
+        'Section: admin\nPriority: optional\nPre-Depends: python3 (>= 3.12)\n'
         'Depends: apt, python3-apt, gnupg, gpgv\n'
         'Homepage: https://github.com/relative23/oscmix-desk\n'
         'Description: Scoped signed repository integration for oscmix-desk\n'
@@ -126,7 +126,7 @@ Summary: Scoped signed repository integration for oscmix-desk
 License: MIT
 URL: https://github.com/relative23/oscmix-desk
 Source0: payload.tar
-Requires: python3 >= 3.9
+Requires: python3 >= 3.12
 Requires: @DEPENDENCY@
 Requires(pre): /usr/bin/python3
 %global debug_package %{nil}

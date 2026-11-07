@@ -35,9 +35,9 @@ read every part of it.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Sequence, Tuple
 
 
 def _short(paths: Sequence[str], limit: int = 6) -> str:
@@ -87,14 +87,14 @@ class Outcome:
     name: str
     reason: str = ""
     #: Everything not confirmed at its expected value.
-    unverified: Tuple[str, ...] = ()
+    unverified: tuple[str, ...] = ()
     #: The subset of ``unobserved`` this backend never reports at all --
     #: the playback mix matrix, and anything write-only. Kept separate
     #: because "I could not check it" and "it cannot be checked" are
     #: different facts, and on a real routing the second is the normal
     #: case: every switch leaves /mix/<out>/playback/<pb> unconfirmed,
     #: measured, by design (backend.Traits.dumps_playback_matrix).
-    unverifiable: Tuple[str, ...] = ()
+    unverifiable: tuple[str, ...] = ()
     #: Whether the marker records the intended selection. It does not
     #: confirm that every device value matches it. False when the
     #: switch landed but the marker could not be written, or the restore
@@ -116,19 +116,19 @@ class Outcome:
     #: wire gave out, in order, and the ones that had not. Submission or
     #: a lost acknowledgment does not confirm a hardware value. The
     #: uncertain in-flight write stays in ``written`` to prevent replay.
-    written: Tuple[str, ...] = ()
-    unwritten: Tuple[str, ...] = ()
+    written: tuple[str, ...] = ()
+    unwritten: tuple[str, ...] = ()
     #: The running service refused the hand-over after a persisted or
     #: partial write. Device and marker facts still stand; False also covers
     #: a stopped service or one that runs another config and needs no reload.
     reload_failed: bool = False
     #: Differing or invalid hardware-origin reports from a completed read-back.
-    mismatched: Tuple[str, ...] = ()
+    mismatched: tuple[str, ...] = ()
     #: Expected paths absent from that read-back, including write-only paths.
     #: Empty when no valid read-back completed; unverified then holds unknowns.
-    unobserved: Tuple[str, ...] = ()
+    unobserved: tuple[str, ...] = ()
     #: The subset of mismatched whose reports could not represent a valid value.
-    invalid: Tuple[str, ...] = ()
+    invalid: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.state, OutcomeState):

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional
 
 from .diagnostics import query
 from .discovery import resolve_binary
@@ -13,12 +12,12 @@ from .discovery import resolve_binary
 class DesktopStatus:
     """Desktop prerequisites; inspection changes no connection settings."""
 
-    binary: Optional[str]
-    problem: Optional[str]
-    connection: Dict[str, object] = field(default_factory=dict)
+    binary: str | None
+    problem: str | None
+    connection: dict[str, object] = field(default_factory=dict)
 
 
-def inspect_desktop(binary: Optional[str] = None) -> DesktopStatus:
+def inspect_desktop(binary: str | None = None) -> DesktopStatus:
     """The companion's version-only command opens no GTK display or socket."""
     binary = binary or resolve_binary("oscmix-gtk", "OSCMIX_BIN_GTK")
     if binary is None:

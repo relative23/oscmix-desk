@@ -584,7 +584,7 @@ def test_a_send_timeout_is_a_timeout_not_a_refusal(control, monkeypatch):
             self.real.settimeout(value)
 
         def send(self, _packet):
-            raise socket.timeout("timed out")
+            raise TimeoutError("timed out")
 
         def close(self):
             self.real.close()

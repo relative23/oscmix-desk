@@ -7,9 +7,10 @@ these and everything else reads them.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import NamedTuple
 
 from .constants import (
     CHANNEL_MAX,
@@ -25,7 +26,7 @@ from .registers import ENABLE_OPTION, Policy
 
 #: What a channel or global setting may hold once it is parsed: a switch,
 #: a number, or an enum's name as the device spells it.
-SettingValue = Union[bool, int, float, str]
+SettingValue = bool | int | float | str
 
 
 @dataclass(frozen=True)
@@ -43,18 +44,18 @@ class Route:
     name: str
     #: Required. Every route has a destination; only the *source* is a
     #: choice, which is why `playback` gained a default and this did not.
-    output: Tuple[int, ...]
-    playback: Tuple[int, ...] = ()
+    output: tuple[int, ...]
+    playback: tuple[int, ...] = ()
     level: float = 0.0
-    volume: Optional[float] = None
+    volume: float | None = None
     stereo: bool = True
     #: Hardware input channels, as an alternative to ``playback``.
-    input: Tuple[int, ...] = ()
+    input: tuple[int, ...] = ()
     #: Balance of a linked stereo source and output pair, as OSC Int32.
     #: Level and balance belong to one compound matrix register.
     pan: int = 0
     #: The outputs this route copies, when a `mirror =` declared it rather than the file.
-    mirror_of: Tuple[int, ...] = ()
+    mirror_of: tuple[int, ...] = ()
     #: Declared by `[desk] base`, not by the file: REMEMBERed after an explicit apply.
     base: bool = False
 
@@ -86,7 +87,7 @@ class Route:
         return self.pan
 
     @property
-    def source(self) -> Tuple[str, Tuple[int, ...]]:
+    def source(self) -> tuple[str, tuple[int, ...]]:
         """``("input", channels)`` or ``("playback", channels)``.
 
         One accessor rather than a branch at every call site: the OSC
@@ -96,7 +97,7 @@ class Route:
         return ("input", self.input) if self.input else ("playback", self.playback)
 
     @property
-    def link_requirements(self) -> Tuple[Tuple[str, int, bool], ...]:
+    def link_requirements(self) -> tuple[tuple[str, int, bool], ...]:
         """The pair flags required to address exactly this route's channels.
 
         Even channel addresses fold onto the odd partner while linked.
@@ -158,15 +159,15 @@ class GlobalSetting:
 class Overrides(NamedTuple):
     """Config overrides: device name and the retained legacy OSC port."""
 
-    device_name: Optional[str] = None
-    osc_port: Optional[int] = None
+    device_name: str | None = None
+    osc_port: int | None = None
 
 
 #: Compatibility name for callers constructing command-line overrides.
 CommandLine = Overrides
 
 
-def _resolve_overrides(overrides: Optional[Overrides], said: Optional[Overrides]) -> Overrides:
+def _resolve_overrides(overrides: Overrides | None, said: Overrides | None) -> Overrides:
     """Accept the legacy keyword once, without choosing between two inputs."""
     if overrides is not None and said is not None:
         raise TypeError("use overrides or the legacy said argument, not both")
@@ -188,22 +189,22 @@ class Machine(NamedTuple):
     osc_port: int
     osc_recv_port: int
 
-    def differs_from(self, other: "Machine") -> str:
+    def differs_from(self, other: Machine) -> str:
         """The identity settings that differ, for a person."""
         return ", ".join(
             "%s %r (not %r)" % (name.replace("_", " "), mine, theirs)
-            for name, mine, theirs in zip(self._fields, self, other)
+            for name, mine, theirs in zip(self._fields, self, other, strict=False)
             if name not in ("osc_port", "osc_recv_port") and mine != theirs)
 
-    def under(self, overrides: Optional[Overrides] = None, *,
-              said: Optional[Overrides] = None) -> "Machine":
+    def under(self, overrides: Overrides | None = None, *,
+              said: Overrides | None = None) -> Machine:
         """This machine as a start resolves it: the command line over the file."""
         overrides = _resolve_overrides(overrides, said)
         return self._replace(
             device_name=overrides.device_name or self.device_name,
             osc_port=self.osc_port if overrides.osc_port is None else overrides.osc_port)
 
-    def elsewhere(self, live: "Machine") -> str:
+    def elsewhere(self, live: Machine) -> str:
         """Why this names another device than the session, or "".
 
         ``self`` is resolved under the session's command-line overrides.
@@ -232,13 +233,13 @@ class Config:
     serial: str = ""
     osc_port: int = DEFAULT_OSC_PORT
     osc_recv_port: int = DEFAULT_OSC_RECV_PORT
-    routes: Tuple[Route, ...] = ()
-    channels: Tuple[ChannelSetting, ...] = ()
+    routes: tuple[Route, ...] = ()
+    channels: tuple[ChannelSetting, ...] = ()
     #: Settings from `[<family>]` sections -- families with no channel.
-    globals: Tuple[GlobalSetting, ...] = ()
+    globals: tuple[GlobalSetting, ...] = ()
     #: ``(family, option) -> "pin" | "remember"`` from a ``[pin]``
     #: section, overriding the register table's default for that option.
-    policies: Mapping[Tuple[str, str], Policy] = field(default_factory=dict)
+    policies: Mapping[tuple[str, str], Policy] = field(default_factory=dict)
     #: The machine settings as the *file* resolved them, set by
     #: ``load_config`` and never changed. The five attributes above can be
     #: replaced afterwards -- by ``--device`` and ``--osc-port``, by the
@@ -247,7 +248,7 @@ class Config:
     #: before command-line overrides. The OSC ports select no backend.
     #: None only for a ``Config``
     #: that ``load_config`` never saw; no file resolves to the defaults.
-    loaded: Optional[Machine] = None
+    loaded: Machine | None = None
     #: What the command line put in place of the file's settings. No file
     #: this process reads again has a say in these, exactly as at its start.
     overrides: Overrides = field(default_factory=Overrides)
@@ -278,8 +279,8 @@ def validate_route_pan(routes: Sequence[Route]) -> None:
     """
     if not any(route.checked_pan for route in routes):
         return
-    links: Dict[Tuple[str, int], int] = {}
-    claims: Dict[Tuple[int, str, int], List[Route]] = {}
+    links: dict[tuple[str, int], int] = {}
+    claims: dict[tuple[int, str, int], list[Route]] = {}
     for route in routes:
         for family, channel, linked in route.link_requirements:
             key = (family, channel)

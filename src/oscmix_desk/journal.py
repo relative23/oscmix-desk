@@ -27,9 +27,9 @@ import re
 import stat
 import tempfile
 import time
-from datetime import datetime, timezone
+from collections.abc import Mapping
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Tuple
 
 from .locking import SWITCH_LOCK, device_lock_path
 from .log import log
@@ -43,13 +43,13 @@ FILE_MODE = 0o660
 STAMP = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 #: path -> (OSC type tags, arguments)
-Written = Dict[str, Tuple[str, Args]]
+Written = dict[str, tuple[str, Args]]
 #: path -> (OSC type tags, arguments, UTC time of the write)
-Journal = Dict[str, Tuple[str, Args, str]]
+Journal = dict[str, tuple[str, Args, str]]
 
 
-def journal_path(config_path: Optional[Path], key: str,
-                 uid: Optional[int] = None, kind: str = "written") -> Optional[Path]:
+def journal_path(config_path: Path | None, key: str,
+                 uid: int | None = None, kind: str = "written") -> Path | None:
     """This user's journal beside the interface's lock; None outside a runtime lock directory.
 
     ``kind`` names the file: ``written`` for the journal, ``seen`` for the record beside it.
@@ -60,8 +60,8 @@ def journal_path(config_path: Optional[Path], key: str,
     return lock.with_name("%s.%s.%d.json" % (key, kind, os.getuid() if uid is None else uid))
 
 
-def journal_paths(config_path: Optional[Path], key: str,
-                  kind: str = "written") -> Tuple[Path, ...]:
+def journal_paths(config_path: Path | None, key: str,
+                  kind: str = "written") -> tuple[Path, ...]:
     """Every user's journal of this interface."""
     own = journal_path(config_path, key, kind=kind)
     if own is None:
@@ -76,18 +76,18 @@ def journal_paths(config_path: Optional[Path], key: str,
 
 def stamp(seconds: float) -> str:
     """A time as the journal stores it: UTC, microseconds, so users' files merge by it."""
-    return datetime.fromtimestamp(seconds, timezone.utc).strftime(STAMP)
+    return datetime.fromtimestamp(seconds, UTC).strftime(STAMP)
 
 
-def stamp_seconds(text: str) -> Optional[float]:
+def stamp_seconds(text: str) -> float | None:
     """The time a stored stamp names, or None for one in another format."""
     try:
-        return datetime.strptime(text, STAMP).replace(tzinfo=timezone.utc).timestamp()
+        return datetime.strptime(text, STAMP).replace(tzinfo=UTC).timestamp()
     except ValueError:
         return None
 
 
-def read_journals(config_path: Optional[Path], key: str) -> Journal:
+def read_journals(config_path: Path | None, key: str) -> Journal:
     """Every user's recorded writes, merged: per register the latest one."""
     merged: Journal = {}
     for path in journal_paths(config_path, key):
@@ -97,10 +97,10 @@ def read_journals(config_path: Optional[Path], key: str) -> Journal:
     return merged
 
 
-def _encode(tags: str, args: Args) -> List[object]:
+def _encode(tags: str, args: Args) -> list[object]:
     """JSON values for the arguments; non-finite floats as their names, which JSON lacks."""
-    encoded: List[object] = []
-    for tag, value in zip(tags, args):
+    encoded: list[object] = []
+    for tag, value in zip(tags, args, strict=False):
         if tag == "f" and isinstance(value, float) and not math.isfinite(value):
             encoded.append(repr(value))
         else:
@@ -112,8 +112,8 @@ def _decode(tags: object, values: object) -> Args:
     if (not isinstance(tags, str) or not isinstance(values, list)
             or len(tags) != len(values) or not tags):
         raise ValueError("malformed arguments")
-    decoded: List[Value] = []
-    for tag, value in zip(tags, values):
+    decoded: list[Value] = []
+    for tag, value in zip(tags, values, strict=False):
         if tag == "f" and isinstance(value, (int, float, str)) and not isinstance(value, bool):
             decoded.append(float(value))
         elif (tag == "i" and type(value) is int) or (tag == "s" and isinstance(value, str)):
@@ -150,7 +150,7 @@ def _bounded(path: Path) -> bytes:
         return stream.read(MAX_BYTES + 1)
 
 
-def read_journal(path: Optional[Path]) -> Journal:
+def read_journal(path: Path | None) -> Journal:
     """Every recorded write; empty, with a warning, for anything but a sound journal."""
     if path is None:
         return {}
@@ -164,8 +164,8 @@ def read_journal(path: Optional[Path]) -> Journal:
     return journal
 
 
-def record_written(path: Optional[Path], written: Mapping[str, Tuple[str, Args]],
-                   now: Optional[float] = None) -> bool:
+def record_written(path: Path | None, written: Mapping[str, tuple[str, Args]],
+                   now: float | None = None) -> bool:
     """Add one operation's acknowledged writes, replacing the file atomically.
 
     Called with the device lock held, so no other writer of this interface merges at the same

@@ -12,9 +12,9 @@ import errno
 import io
 import os
 import tempfile
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
-from typing import Dict, Optional, Sequence, Tuple, Union
 
 from .arguments import build_arg_parser
 from .backend import Control
@@ -51,9 +51,9 @@ from .reconcile import ApplyIntent, desired, policy_for
 from .verify import expected_registers, register_ever_reported
 
 
-def load_profile(name: str, config_path: Optional[Path] = None,
-                 overrides: Optional[Overrides] = None, *,
-                 said: Optional[Overrides] = None, strict: bool = False) -> Config:
+def load_profile(name: str, config_path: Path | None = None,
+                 overrides: Overrides | None = None, *,
+                 said: Overrides | None = None, strict: bool = False) -> Config:
     """Parse and validate a profile for the main config's device.
 
     Missing machine settings are inherited from the main config. A
@@ -76,8 +76,8 @@ def load_profile(name: str, config_path: Optional[Path] = None,
     return _profile_at(path, name, config_path, overrides, strict=strict)
 
 
-def _profile_at(path: Path, name: str, config_path: Optional[Path],
-                overrides: Optional[Overrides], *, strict: bool) -> Config:
+def _profile_at(path: Path, name: str, config_path: Path | None,
+                overrides: Overrides | None, *, strict: bool) -> Config:
     """The profile in ``path``, validated as profile ``name`` of ``config_path``."""
     # Read *onto* the machine settings rather than patched with them
     # afterwards. Patched, the profile was validated while it still named
@@ -142,15 +142,15 @@ def keep_machine_settings(desk: Config, running: Config) -> Config:
     return replace(desk, overrides=running.overrides, **kept)
 
 
-def _refused_for_the_device(name: str, reason: str) -> "Outcome":
+def _refused_for_the_device(name: str, reason: str) -> Outcome:
     log.error("profile %r refused, nothing written: %s", name, reason)
     return Outcome(state=REFUSED, name=name, reason=reason)
 
 
-def effective_config(config_path: Optional[Path],
-                     overrides: Optional[Overrides] = None, *,
-                     said: Optional[Overrides] = None, strict: bool = False,
-                     quiet: bool = False) -> Tuple[Config, Optional[str]]:
+def effective_config(config_path: Path | None,
+                     overrides: Overrides | None = None, *,
+                     said: Overrides | None = None, strict: bool = False,
+                     quiet: bool = False) -> tuple[Config, str | None]:
     """The desk a start applies, and the profile it came from.
 
     The active profile when one is remembered and loads, `routing.conf`
@@ -196,8 +196,8 @@ def effective_config(config_path: Optional[Path],
     return profile, name
 
 
-def switch_profile(name: str, config_path: Optional[Path] = None,
-                   backend: Optional[Control] = None,
+def switch_profile(name: str, config_path: Path | None = None,
+                   backend: Control | None = None,
                    verify: bool = True, *, strict: bool = False) -> Outcome:
     """Parse a profile fully, then apply it as one coordinated operation.
 
@@ -216,8 +216,8 @@ def switch_profile(name: str, config_path: Optional[Path] = None,
         _activate(config, config_path, name, backend, verify), config_path)
 
 
-def restore_main(config_path: Optional[Path] = None,
-                 backend: Optional[Control] = None,
+def restore_main(config_path: Path | None = None,
+                 backend: Control | None = None,
                  verify: bool = True, *, strict: bool = False) -> Outcome:
     """Apply the main desk; clear the marker only after the operation finishes.
 
@@ -236,15 +236,15 @@ def restore_main(config_path: Optional[Path] = None,
         _activate(config, config_path, None, backend, verify), config_path)
 
 
-def _restore_config(config_path: Optional[Path], *, strict: bool = False) -> Config:
+def _restore_config(config_path: Path | None, *, strict: bool = False) -> Config:
     """Load the resolved main config for both restore and read-only preview."""
     if config_path is None:
         raise ConfigError("no config file found, so there is no main desk to restore")
     return load_config(config_path, strict=strict)
 
 
-def _activate(config: Config, config_path: Optional[Path], name: Optional[str],
-              backend: Optional[Control], verify: bool) -> Outcome:
+def _activate(config: Config, config_path: Path | None, name: str | None,
+              backend: Control | None, verify: bool) -> Outcome:
     label = name if name is not None else Path(config_path or "routing.conf").name
     problem = maintenance_problem()
     if problem:
@@ -288,7 +288,7 @@ def _activate(config: Config, config_path: Optional[Path], name: Optional[str],
                        persisted=False, read_back=False)
 
 
-def _written(name: str, desk: Desk) -> Optional[Outcome]:
+def _written(name: str, desk: Desk) -> Outcome | None:
     """Classify sent and pending paths after an explicit application.
 
     Partial writes retain the previous marker. Reload repairs PIN only;
@@ -352,7 +352,7 @@ def _check(name: str, desk: Desk) -> Outcome:
                    invalid=tuple(result.invalid))
 
 
-def save_capture(name: str, text: str, config_path: Optional[Path] = None) -> Path:
+def save_capture(name: str, text: str, config_path: Path | None = None) -> Path:
     """Store a captured desk as a new profile, kept only if it loads like any other.
 
     Never replaces a file: the name must be free, and the profile appears in one link of a
@@ -379,7 +379,7 @@ def save_capture(name: str, text: str, config_path: Optional[Path] = None) -> Pa
 
 
 def _store_checked(fd: int, temporary: Path, target: Path, name: str, text: str,
-                   config_path: Optional[Path]) -> None:
+                   config_path: Path | None) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
             os.fchmod(stream.fileno(), 0o644)
@@ -406,13 +406,13 @@ def _store_checked(fd: int, temporary: Path, target: Path, name: str, text: str,
 MAIN_DESK = ":main"
 
 
-def _desk_named(name: str, config_path: Optional[Path], strict: bool) -> Config:
+def _desk_named(name: str, config_path: Path | None, strict: bool) -> Config:
     if name == MAIN_DESK:
         return _restore_config(config_path or discover_config_path(), strict=strict)
     return load_profile(name, config_path, strict=strict)
 
 
-def _set_by(config: Config) -> Dict[str, Tuple[str, str]]:
+def _set_by(config: Config) -> dict[str, tuple[str, str]]:
     """Each register a desk sets: its value as written, and the policy it holds it with."""
     device = device_for_name(config.device_name)
     return {entry.path: (" ".join(map(str, entry.args)),
@@ -421,11 +421,11 @@ def _set_by(config: Config) -> Dict[str, Tuple[str, str]]:
             for entry in desired(config)}
 
 
-def _natural(path: str) -> Tuple[Union[int, str], ...]:
+def _natural(path: str) -> tuple[int | str, ...]:
     return tuple(int(part) if part.isdigit() else part for part in path.split("/"))
 
 
-def compare_desks(first: str, second: str, config_path: Optional[Path] = None, *,
+def compare_desks(first: str, second: str, config_path: Path | None = None, *,
                   strict: bool = False) -> Sequence[str]:
     """What choosing ``second`` over ``first`` would set differently, without a device.
 
@@ -446,7 +446,7 @@ def compare_desks(first: str, second: str, config_path: Optional[Path] = None, *
     return lines
 
 
-def describe_profiles(config_path: Optional[Path] = None, *,
+def describe_profiles(config_path: Path | None = None, *,
                       strict: bool = False) -> Sequence[str]:
     """Profile names with a one-line summary each, for ``--list-profiles``.
 
@@ -468,7 +468,7 @@ def describe_profiles(config_path: Optional[Path] = None, *,
     return lines
 
 
-def _check_configurations(config_path: Optional[Path]) -> Sequence[Path]:
+def _check_configurations(config_path: Path | None) -> Sequence[Path]:
     """Strictly validate the main desk, every profile and the stored selection.
 
     No device access or marker change. Directory enumeration errors and broken
@@ -499,7 +499,7 @@ def _check_configurations(config_path: Optional[Path]) -> Sequence[Path]:
     return (config_path, *paths)
 
 
-def _hand_over_to_the_unit(outcome: Outcome, config_path: Optional[Path]) -> Outcome:
+def _hand_over_to_the_unit(outcome: Outcome, config_path: Path | None) -> Outcome:
     """Hand a persisted or partial selection to the matching running service.
 
     Its verifier must follow the new selection. Reloading another config
@@ -543,7 +543,7 @@ def _hand_over_to_the_unit(outcome: Outcome, config_path: Optional[Path]) -> Out
     return replace(outcome, reload_failed=True)
 
 
-def _unit_desk() -> Tuple[bool, Optional[Path]]:
+def _unit_desk() -> tuple[bool, Path | None]:
     """(whether it could be told, the config the running unit resolves).
 
     ``(True, None)`` is an answer -- the unit resolves no config, so it has
@@ -570,7 +570,7 @@ def _unit_desk() -> Tuple[bool, Optional[Path]]:
     return True, None if named is None else unit.cwd / named
 
 
-def _same_file(one: Path, other: Optional[Path]) -> bool:
+def _same_file(one: Path, other: Path | None) -> bool:
     if other is None:
         return False
     try:

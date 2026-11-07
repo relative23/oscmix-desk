@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import math
 import struct
-from typing import Dict, Optional, Tuple
 
 from .constants import LEVEL_MIN
 from .registers import BOOL, ENUM, NUMBER, Register
@@ -18,15 +17,15 @@ from .registers import BOOL, ENUM, NUMBER, Register
 #: (unit, physical value per backend unit). Room EQ delay, through output loopback on a UCX II
 #: (2026-11-05, tests/data/output-loopback-probes-ucx2.json): 10.005 ms per OSC unit with a
 #: 0.008 ms residual, so one backend step (0.001) is 0.01 ms -- the step RME documents.
-PHYSICAL: Dict[str, Tuple[str, float]] = {"/output/{ch}/roomeq/delay": ("ms", 10.0)}
+PHYSICAL: dict[str, tuple[str, float]] = {"/output/{ch}/roomeq/delay": ("ms", 10.0)}
 
 
-def physical(register: Optional[Register]) -> Optional[Tuple[str, float]]:
+def physical(register: Register | None) -> tuple[str, float] | None:
     """The measured physical unit of a register's backend value, if one was measured."""
     return None if register is None else PHYSICAL.get(register.template)
 
 
-def from_physical(text: str, register: Register) -> Optional[float]:
+def from_physical(text: str, register: Register) -> float | None:
     """The backend value of ``text`` written in the register's measured unit, else None."""
     measured = physical(register)
     if measured is None or not text.strip().endswith(measured[0]):
@@ -129,8 +128,8 @@ def number_value(value: object, register: Register, *,
     return number
 
 
-def equal_float(want: object, got: object, register: Optional[Register],
-                tolerance: Optional[float] = None) -> bool:
+def equal_float(want: object, got: object, register: Register | None,
+                tolerance: float | None = None) -> bool:
     """Compare a float argument according to its actual parameter contract."""
     wanted = finite(want)
     if register is not None and register.mix_level:
@@ -167,7 +166,7 @@ def report_value(value: object, register: Register) -> float:
     return result
 
 
-def render_number(value: object, register: Optional[Register]) -> str:
+def render_number(value: object, register: Register | None) -> str:
     """Preserve a reported quantum without displaying Float32 noise."""
     number = finite(value)
     if register is not None:

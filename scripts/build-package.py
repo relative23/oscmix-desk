@@ -134,7 +134,7 @@ def deb(root, stage, work, output, record, gtk):
     (control / 'control').write_text(
         'Package: ' + name + '\nVersion: ' + version + '\nArchitecture: ' + architecture
         + '\nMaintainer: oscmix-desk contributors <noreply@github.com>\nSection: sound\n'
-        'Priority: optional\nPre-Depends: python3 (>= 3.9)\nDepends: ' + dependencies
+        'Priority: optional\nPre-Depends: python3 (>= 3.12)\nDepends: ' + dependencies
         + (', oscmix-desk (= ' + version + '), libglib2.0-bin' if gtk else ', adduser')
         + '\nRecommends: systemd, udev\nHomepage: https://github.com/relative23/oscmix-desk\n'
         + ('Description: Optional upstream GTK mixer for oscmix-desk\n'

@@ -6,8 +6,8 @@ import argparse
 import logging
 import math
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence
 
 from .arguments import build_arg_parser
 from .constants import (
@@ -43,7 +43,7 @@ from .session import run_session
 from .status import print_status
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """The entry point: `_main`, with Ctrl-C turned into an exit code.
 
     A SIGINT handler exists once the backend runs; before that -- the
@@ -57,7 +57,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 130
 
 
-def _config_overrides(args: "argparse.Namespace") -> Optional[Overrides]:
+def _config_overrides(args: argparse.Namespace) -> Overrides | None:
     """``--device`` and ``--osc-port`` as the parser takes them, or None.
 
     Handed to the parser rather than put over its result: the desk is then
@@ -80,8 +80,8 @@ def _config_overrides(args: "argparse.Namespace") -> Optional[Overrides]:
                        args.osc_port)
 
 
-def _desk_in_effect(config_path: Optional[Path],
-                    overrides: Overrides, *, strict: bool = False) -> Optional[Config]:
+def _desk_in_effect(config_path: Path | None,
+                    overrides: Overrides, *, strict: bool = False) -> Config | None:
     """The desk this invocation is about, named in the log; None if refused.
 
     The active profile if one is remembered, else routing.conf; only
@@ -103,7 +103,7 @@ def _desk_in_effect(config_path: Optional[Path],
     return config
 
 
-def _main(argv: Optional[Sequence[str]] = None) -> int:
+def _main(argv: Sequence[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
     # A usage error before any file is read: it ran after the config
@@ -158,7 +158,7 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     return _act(args, config, config_path)
 
 
-def _act(args: "argparse.Namespace", config: Config, config_path: Optional[Path]) -> int:
+def _act(args: argparse.Namespace, config: Config, config_path: Path | None) -> int:
     """The actions on the desk in effect, once it loaded and no maintenance blocks them."""
     if args.snapshot:
         return _snapshot(config, config_path)
@@ -184,7 +184,7 @@ def _act(args: "argparse.Namespace", config: Config, config_path: Optional[Path]
     return run_session(args, config)
 
 
-def _check_files(config_path: Optional[Path]) -> int:
+def _check_files(config_path: Path | None) -> int:
     """Report strict offline validation, without entering a device operation."""
     try:
         checked = _check_configurations(config_path)
@@ -197,7 +197,7 @@ def _check_files(config_path: Optional[Path]) -> int:
     return EXIT_OK
 
 
-def _capture(name: str, config: Config, config_path: Optional[Path]) -> int:
+def _capture(name: str, config: Config, config_path: Path | None) -> int:
     """Read the device and keep its desk as a new profile; nothing on the device changes."""
     text = capture_text(config, config_path)
     if text is None:
@@ -211,7 +211,7 @@ def _capture(name: str, config: Config, config_path: Optional[Path]) -> int:
     return EXIT_OK
 
 
-def _compare_desks(names: Sequence[str], config_path: Optional[Path], *,
+def _compare_desks(names: Sequence[str], config_path: Path | None, *,
                    strict: bool) -> int:
     """Print what two desks set differently; EXIT_DIFFERS if anything does."""
     first, second = names
@@ -229,7 +229,7 @@ def _compare_desks(names: Sequence[str], config_path: Optional[Path], *,
     return EXIT_DIFFERS
 
 
-def _pipewire_sinks(args: "argparse.Namespace", config: Config) -> int:
+def _pipewire_sinks(args: argparse.Namespace, config: Config) -> int:
     """Print one named PipeWire sink per stereo route of the desk in effect."""
     target, positions = args.pipewire_target, None
     objects = pw_dump_objects()
@@ -272,7 +272,7 @@ _ACTIONS = (("--profile", "profile"), ("--no-profile", "no_profile"),
 
 
 def _refuse_conflicting_actions(parser: argparse.ArgumentParser,
-                                args: "argparse.Namespace") -> None:
+                                args: argparse.Namespace) -> None:
     """Two actions asked for in one command is a config error.
 
     Refusing before anything is written is the promise a bad profile
@@ -318,8 +318,8 @@ def _refuse_conflicting_actions(parser: argparse.ArgumentParser,
                      % args.timeout)
 
 
-def _dry_run_desk(args: "argparse.Namespace",
-                  config_path: Optional[Path]) -> int:
+def _dry_run_desk(args: argparse.Namespace,
+                  config_path: Path | None) -> int:
     """Show the desk a switch would apply, without switching to it.
 
     Until 0.6.6 `--profile X --dry-run` took the lock, wrote the device
@@ -352,7 +352,7 @@ def _dry_run_desk(args: "argparse.Namespace",
     return run_session(args, desk)
 
 
-def _switch_profile(name: str, config_path: Optional[Path], *, strict: bool = False) -> int:
+def _switch_profile(name: str, config_path: Path | None, *, strict: bool = False) -> int:
     """Apply a profile and turn its outcome into an exit code.
 
     The codes are in docs/ARCHITECTURE.md, and the distinction the caller

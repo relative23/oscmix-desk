@@ -8,7 +8,7 @@ a write. The declared state remains unchanged for readback and diff.
 
 from __future__ import annotations
 
-from typing import Dict, FrozenSet, Iterable, Mapping, Optional, Set, Tuple, Union
+from collections.abc import Iterable, Mapping
 
 from .devices import UCX2, device_for_name
 from .errors import ConfigError
@@ -17,11 +17,11 @@ from .numeric import number_value
 from .osc import Args
 from .registers import PIN, option_register
 
-Reports = Union[Mapping[str, Optional[Tuple[str, Args]]],
-                Iterable[Tuple[str, Optional[Tuple[str, Args]]]]]
+Reports = (Mapping[str, tuple[str, Args] | None]
+           | Iterable[tuple[str, tuple[str, Args] | None]])
 
 
-def flag_value(report: Optional[Tuple[str, Args]]) -> Optional[int]:
+def flag_value(report: tuple[str, Args] | None) -> int | None:
     """Return a strict typed Boolean DEVICE value, or unknown.
 
     Python bools, floating-point equivalents, strings, wrong type tags and
@@ -41,7 +41,7 @@ def _supported(config: Config) -> bool:
     return device is not None and device.name == UCX2.name
 
 
-def _pairs(config: Config) -> Tuple[int, ...]:
+def _pairs(config: Config) -> tuple[int, ...]:
     if not _supported(config):
         return ()
     pairs = {setting.channel - (setting.channel - 1) % 2
@@ -58,7 +58,7 @@ def _pairs(config: Config) -> Tuple[int, ...]:
     return tuple(sorted(pairs))
 
 
-def _declared_flag(value: object) -> Optional[int]:
+def _declared_flag(value: object) -> int | None:
     # Config booleans become Int32 writes; exact numeric 0/1 retains the
     # existing programmatic BOOL contract. Wire observations stay strict.
     if isinstance(value, (int, float)) and value in (0, 1):
@@ -66,7 +66,7 @@ def _declared_flag(value: object) -> Optional[int]:
     return None
 
 
-def dependency_paths(config: Config) -> Tuple[str, ...]:
+def dependency_paths(config: Config) -> tuple[str, ...]:
     """Prerequisites for configured gains, AutoSet and input-source links.
 
     Both AutoSet flags matter even if only one gain or flag is declared.
@@ -80,7 +80,7 @@ def dependency_paths(config: Config) -> Tuple[str, ...]:
 
 def retained_gains(config: Config, latest: Reports = (), *,
                    linked: Iterable[str] = (),
-                   use_declarations: bool = True) -> FrozenSet[str]:
+                   use_declarations: bool = True) -> frozenset[str]:
     """Gain paths an operation must retain, including undeclared partners.
 
     Repair/reconcile includes declared AutoSet-on as well as live-on or
@@ -97,7 +97,7 @@ def retained_gains(config: Config, latest: Reports = (), *,
     declared_on = {setting.channel for setting in config.channels
                    if setting.family == "input" and setting.option == "autoset"
                    and _declared_flag(setting.value) == 1} if use_declarations else set()
-    retained: Set[str] = set()
+    retained: set[str] = set()
     for left in _pairs(config):
         pair = (left, left + 1)
         protected = {channel for channel in pair
@@ -110,9 +110,9 @@ def retained_gains(config: Config, latest: Reports = (), *,
     return frozenset(retained)
 
 
-def _declared_mono_pairs(config: Config) -> FrozenSet[int]:
+def _declared_mono_pairs(config: Config) -> frozenset[int]:
     """Static mono declarations, without making a physical-state claim."""
-    links: Dict[int, Set[bool]] = {}
+    links: dict[int, set[bool]] = {}
     for route in config.routes:
         family, source = route.source
         if family != "input" or not source or type(source[0]) is not int:

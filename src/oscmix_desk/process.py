@@ -9,9 +9,9 @@ import signal
 import stat
 import subprocess
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from . import hostservice
 from .constants import CHILD_STOP_GRACE, SERVICE_UNIT, STALE_BACKEND_SETTLE
@@ -23,7 +23,7 @@ from .discovery import (
 from .log import log
 
 
-def find_stale_backends(proc_root: Path) -> List[int]:
+def find_stale_backends(proc_root: Path) -> list[int]:
     """PIDs of oscmix processes owned by this user.
 
     Matches the kernel comm name (what ``pkill -x`` used) as well as the
@@ -55,10 +55,10 @@ def find_stale_backends(proc_root: Path) -> List[int]:
     return sorted(pids)
 
 
-def _owner_of_sockets(inodes: Set[str], proc_root: Path) -> Optional[int]:
+def _owner_of_sockets(inodes: set[str], proc_root: Path) -> int | None:
     if not inodes:
         return None
-    owners: Set[int] = set()
+    owners: set[int] = set()
     for entry in sorted(proc_root.iterdir()):
         if not entry.name.isdigit():
             continue
@@ -78,7 +78,7 @@ def _owner_of_sockets(inodes: Set[str], proc_root: Path) -> Optional[int]:
     return next(iter(owners), None)
 
 
-def control_socket_owner(path: Path, proc_root: Path) -> Optional[int]:
+def control_socket_owner(path: Path, proc_root: Path) -> int | None:
     """Read the listening SEQPACKET inode; never connect or create a path.
 
     A missing/unreadable/malformed table is uncertainty, not an absent
@@ -90,7 +90,7 @@ def control_socket_owner(path: Path, proc_root: Path) -> Optional[int]:
     if not lines or lines[0].split()[:7] != [
             "Num", "RefCount", "Protocol", "Flags", "Type", "St", "Inode"]:
         raise OSError("Unix socket table is missing its header")
-    inodes: Set[str] = set()
+    inodes: set[str] = set()
     for line in lines[1:]:
         fields = line.split(maxsplit=7)
         if len(fields) < 7:
@@ -105,7 +105,7 @@ def control_socket_owner(path: Path, proc_root: Path) -> Optional[int]:
     return _owner_of_sockets(inodes, proc_root)
 
 
-def control_holder(path: Path, proc_root: Path) -> Optional[BackendOwner]:
+def control_holder(path: Path, proc_root: Path) -> BackendOwner | None:
     """Associate this endpoint with its exact coordinated backend and bridge."""
     owner = control_socket_owner(path, proc_root)
     if owner is None:
@@ -141,11 +141,11 @@ class BackendOwner:
 
     pid: int
     oscmix: bool
-    client: Optional[int]
-    serial: Optional[str]
+    client: int | None
+    serial: str | None
 
 
-def _bridged_client(entry: Path, proc_root: Path) -> Optional[int]:
+def _bridged_client(entry: Path, proc_root: Path) -> int | None:
     """The sequencer client the alsaseqio beside ``entry`` bridges.
 
     The unit runs ``alsaseqio -x 24:1 oscmix ...``. alsaseqio forks, the
@@ -176,7 +176,7 @@ def _bridged_client(entry: Path, proc_root: Path) -> Optional[int]:
     return clients[0] if len(clients) == 1 else None
 
 
-def _children_of(pid: str, proc_root: Path) -> List[Path]:
+def _children_of(pid: str, proc_root: Path) -> list[Path]:
     children = []
     for candidate in sorted(proc_root.iterdir()):
         if not candidate.name.isdigit():
@@ -186,12 +186,12 @@ def _children_of(pid: str, proc_root: Path) -> List[Path]:
     return children
 
 
-def _parent_of(entry: Path, proc_root: Path) -> List[Path]:
+def _parent_of(entry: Path, proc_root: Path) -> list[Path]:
     parent = _ppid(entry)
     return [proc_root / parent] if parent is not None else []
 
 
-def _ppid(entry: Path) -> Optional[str]:
+def _ppid(entry: Path) -> str | None:
     """Field four of /proc/<pid>/stat, read past the parenthesised comm."""
     try:
         return (entry / "stat").read_text(errors="replace").rsplit(
@@ -200,7 +200,7 @@ def _ppid(entry: Path) -> Optional[str]:
         return None
 
 
-def _client_serial(client: Optional[int], proc_root: Path) -> Optional[str]:
+def _client_serial(client: int | None, proc_root: Path) -> str | None:
     if client is None:
         return None
     try:
@@ -213,7 +213,7 @@ def _client_serial(client: Optional[int], proc_root: Path) -> Optional[str]:
 
 
 def _cleanup_stale_backend(path: Path, device: Device,
-                            proc_root: Path) -> Optional[int]:
+                            proc_root: Path) -> int | None:
     """Terminate only this user's orphaned, exactly associated control owner.
 
     The backend itself handles an abandoned socket under its owner lock.
@@ -251,7 +251,7 @@ def _cleanup_stale_backend(path: Path, device: Device,
     return None
 
 
-def _supervising_session(entry: Path, proc_root: Path) -> Optional[int]:
+def _supervising_session(entry: Path, proc_root: Path) -> int | None:
     """The pid of the live oscmix-session that spawned ``entry``, or None.
 
     The session runs ``alsaseqio -x <client>:1 oscmix``; alsaseqio forks
@@ -326,10 +326,10 @@ def _terminate(pid: int, still_stale: Callable[[], bool]) -> bool:
     return True
 
 
-def supervise(child: "subprocess.Popen[bytes]",
-              stop_requested: Dict[str, bool],
-              on_reload: Optional[Callable[[], None]] = None,
-              reload_requested: Optional[Dict[str, bool]] = None) -> int:
+def supervise(child: subprocess.Popen[bytes],
+              stop_requested: dict[str, bool],
+              on_reload: Callable[[], None] | None = None,
+              reload_requested: dict[str, bool] | None = None) -> int:
     """Wait for the child; escalate SIGTERM -> SIGKILL on shutdown.
 
     Also the one place a reconcile can safely run. ``reload_requested``
@@ -342,7 +342,7 @@ def supervise(child: "subprocess.Popen[bytes]",
     during a reconcile queues one more rather than being swallowed by
     it: holding a key down should not lose the last request.
     """
-    kill_deadline: Optional[float] = None
+    kill_deadline: float | None = None
     while True:
         try:
             return child.wait(timeout=0.5)
@@ -384,12 +384,12 @@ def _systemctl(*verb: str) -> int:
 class UnitProcess:
     """What the unit's main process was started with (0.6.10)."""
 
-    argv: Tuple[str, ...]
-    environ: Dict[str, str]
+    argv: tuple[str, ...]
+    environ: dict[str, str]
     cwd: Path
 
 
-def unit_process(proc_root: Path) -> Optional[UnitProcess]:
+def unit_process(proc_root: Path) -> UnitProcess | None:
     """The unit's main process as it was started, or None.
 
     A switch reloads the unit only when it changed the unit's own desk,
@@ -405,7 +405,7 @@ def unit_process(proc_root: Path) -> Optional[UnitProcess]:
     """
     try:
         host = hostservice.registered()
-        shown: Optional[str]
+        shown: str | None
         if host:
             shown = str(hostservice.main_pid(host, proc_root) or 0)
         else:
@@ -434,7 +434,7 @@ def unit_process(proc_root: Path) -> Optional[UnitProcess]:
         cwd=Path(cwd))
 
 
-def _systemctl_output(*verb: str) -> Optional[str]:
+def _systemctl_output(*verb: str) -> str | None:
     """``systemctl --user <verb...>``'s stdout, or None on any failure.
 
     The second of the two places this package runs systemctl (see

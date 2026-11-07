@@ -3,7 +3,7 @@
 Use the instructions for the version you downloaded; 0.7.0/0.7.1 installers do not have the `--check`,
 `--manual`, `--enable` or `oscmix-setup` interface.
 
-The common runtime needs Python 3.9 or newer and the pinned `oscmix` C
+The common runtime needs Python 3.12 or newer and the pinned `oscmix` C
 backend. It has no third-party Python dependencies. `pip` alone does not
 provide ALSA, udev, the shared device-lock directory or service integration,
 so native packages and a source installer are the whole-product paths.

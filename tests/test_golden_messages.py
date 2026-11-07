@@ -119,7 +119,7 @@ CHANNEL = [
 def _same(messages, literals):
     """Paths, tags and order exactly; floats to within rounding."""
     assert [(p, t) for p, t, _a in messages] == [(p, t) for p, t, _a in literals]
-    for (path, _t, got), (_p, _tt, want) in zip(messages, literals):
+    for (path, _t, got), (_p, _tt, want) in zip(messages, literals, strict=True):
         assert got == pytest.approx(want, abs=1e-12), path
         assert [type(v) for v in got] == [type(v) for v in want], path
 

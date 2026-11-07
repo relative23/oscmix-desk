@@ -13,7 +13,8 @@ Pure, like the reconciler it reads from: what was seen goes in, a
 
 from __future__ import annotations
 
-from typing import AbstractSet, Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple
+from collections.abc import Mapping, Sequence, Set
+from typing import NamedTuple
 
 from .constants import LEVEL_MAX, LEVEL_MIN, UNLINKED_GAIN_OFFSET
 from .model import (
@@ -44,8 +45,7 @@ from .registers import (
 )
 
 
-def _linked(seen: Mapping[str, Args], family: str,
-            channel: int) -> Optional[bool]:
+def _linked(seen: Mapping[str, Args], family: str, channel: int) -> bool | None:
     """A reported link, never an unlinked state inferred from silence."""
     odd = channel - (channel - 1) % 2
     args = seen.get("/%s/%d/stereo" % (family, odd))
@@ -62,13 +62,13 @@ def _linked(seen: Mapping[str, Args], family: str,
         return None
 
 
-def _omitted(warnings: Optional[List[str]], path: str, reason: str) -> None:
+def _omitted(warnings: list[str] | None, path: str, reason: str) -> None:
     if warnings is not None:
         warnings.append(" ".join(("%s: %s; omitted" % (path, reason)).splitlines()))
 
 
-def _mix_cell(parts: List[str], args: Args, device: Optional[Device], kind: str = "input"
-              ) -> Optional[Tuple[int, int, Args]]:
+def _mix_cell(parts: list[str], args: Args, device: Device | None, kind: str = "input"
+              ) -> tuple[int, int, Args] | None:
     out, src = int(parts[2]), int(parts[4])
     if (device is None or out not in device.channels["output"]
             or src not in device.channels[kind]):
@@ -91,11 +91,10 @@ def _mix_cell(parts: List[str], args: Args, device: Optional[Device], kind: str 
     return out, src, (level, pan)
 
 
-def _mix_entries(seen: Mapping[str, Args], device: Optional[Device],
-                 warnings: Optional[List[str]], kind: str = "input"
-                 ) -> Dict[Tuple[int, int], Args]:
+def _mix_entries(seen: Mapping[str, Args], device: Device | None, warnings: list[str] | None,
+                 kind: str = "input") -> dict[tuple[int, int], Args]:
     """Every input-matrix (or playback-matrix) cell that is not muted."""
-    entries: Dict[Tuple[int, int], Args] = {}
+    entries: dict[tuple[int, int], Args] = {}
     for path, args in seen.items():
         parts = path.split("/")
         if len(parts) != 5 or parts[1] != "mix" or parts[3] != kind:
@@ -111,9 +110,9 @@ def _mix_entries(seen: Mapping[str, Args], device: Optional[Device],
 
 
 def channels_from_observed(seen: Mapping[str, Args],
-                           device: Optional[Device] = None,
-                           warnings: Optional[List[str]] = None
-                           ) -> Tuple[ChannelSetting, ...]:
+                           device: Device | None = None,
+                           warnings: list[str] | None = None
+                           ) -> tuple[ChannelSetting, ...]:
     """Channel state read back out of a dump, as config would express it.
 
     Only options a config can actually set: the register model's
@@ -128,7 +127,7 @@ def channels_from_observed(seen: Mapping[str, Args],
     """
     if device is None:
         return ()
-    found: List[ChannelSetting] = []
+    found: list[ChannelSetting] = []
     for family in ("input", "output"):
         # Rows, not names: one option can have several registers when
         # the device's limits differ per channel, and a dict keyed by
@@ -152,9 +151,9 @@ def channels_from_observed(seen: Mapping[str, Args],
 
 
 def globals_from_observed(seen: Mapping[str, Args],
-                          device: Optional[Device] = None,
-                          warnings: Optional[List[str]] = None
-                          ) -> Tuple[GlobalSetting, ...]:
+                          device: Device | None = None,
+                          warnings: list[str] | None = None
+                          ) -> tuple[GlobalSetting, ...]:
     """Channel-less settings read back out of a dump.
 
     The counterpart to `channels_from_observed` for the families with no
@@ -164,7 +163,7 @@ def globals_from_observed(seen: Mapping[str, Args],
     """
     if device is None:
         return ()
-    found: List[GlobalSetting] = []
+    found: list[GlobalSetting] = []
     for family in global_families(device):
         for option, register in sorted(settable_globals(device, family).items()):
             args = seen.get(register.template)
@@ -177,7 +176,7 @@ def globals_from_observed(seen: Mapping[str, Args],
     return tuple(found)
 
 
-def _unnameable(register: "Register", value: SettingValue) -> bool:
+def _unnameable(register: Register, value: SettingValue) -> bool:
     """Whether an enum value is one this backend cannot put a name to.
 
     Written for `/controlroom/mainout`, which reported -1 for "no main
@@ -197,7 +196,7 @@ def _unnameable(register: "Register", value: SettingValue) -> bool:
     return register.domain == ENUM and value not in register.choices
 
 
-def _config_value(register: "Register", args: Args) -> SettingValue:
+def _config_value(register: Register, args: Args) -> SettingValue:
     """One reported register as the value a config would carry.
 
     Enums report ``(index, name)`` and a config writes the name; booleans
@@ -219,14 +218,14 @@ def _config_value(register: "Register", args: Args) -> SettingValue:
     return args[0]
 
 
-def _canonicalize_balanced_cells(entries: Dict[Tuple[int, int], Args],
+def _canonicalize_balanced_cells(entries: dict[tuple[int, int], Args],
                                   seen: Mapping[str, Args],
-                                  warnings: Optional[List[str]], kind: str = "input") -> None:
+                                  warnings: list[str] | None, kind: str = "input") -> None:
     """Fold linked aliases only when every declared level/balance agrees."""
     # Nonzero linked balances include both components of one crosspoint.
     # Equivalent aliases can be canonicalized; contradictory aliases must
     # not yield an export that silently chooses one requested balance.
-    groups: Dict[Tuple[int, int], List[Tuple[int, int]]] = {}
+    groups: dict[tuple[int, int], list[tuple[int, int]]] = {}
     for out, src in entries:
         if _linked(seen, "output", out) and _linked(seen, kind, src):
             key = (out - (out - 1) % 2, src - (src - 1) % 2)
@@ -245,7 +244,7 @@ def _canonicalize_balanced_cells(entries: Dict[Tuple[int, int], Args],
             entries[key] = cell
 
 
-def _route(kind: str, name: str, source: Tuple[int, ...], output: Tuple[int, ...],
+def _route(kind: str, name: str, source: tuple[int, ...], output: tuple[int, ...],
            level: float, *, pan: int = 0, stereo: bool = True) -> Route:
     if kind == "playback":
         return Route(name=name, playback=source, output=output, level=level, pan=pan,
@@ -254,9 +253,9 @@ def _route(kind: str, name: str, source: Tuple[int, ...], output: Tuple[int, ...
 
 
 def routes_from_observed(seen: Mapping[str, Args],
-                         device: Optional[Device] = None,
-                         warnings: Optional[List[str]] = None,
-                         kind: str = "input") -> Tuple[Route, ...]:
+                         device: Device | None = None,
+                         warnings: list[str] | None = None,
+                         kind: str = "input") -> tuple[Route, ...]:
     """Reconstruct the routes a device's reported state implies.
 
     Deterministic in name and order, because the round trip has to be a
@@ -326,30 +325,30 @@ class WrittenState(NamedTuple):
     """What desk itself last wrote where the device reports nothing, from its journal."""
 
     source: str
-    routes: Tuple[Route, ...]
+    routes: tuple[Route, ...]
     mutes: Mapping[int, int]
     stamps: Mapping[str, str]
 
 
-def _reestablished(device: Optional[Device], path: str) -> bool:
+def _reestablished(device: Device | None, path: str) -> bool:
     register = register_at(device, path)
     return register is not None and register.verify == REESTABLISHED
 
 
-def written_state(journal: Mapping[str, Tuple[str, Args, str]], reported: Mapping[str, Args],
-                  device: Optional[Device], source: str,
-                  warnings: Optional[List[str]] = None) -> WrittenState:
+def written_state(journal: Mapping[str, tuple[str, Args, str]], reported: Mapping[str, Args],
+                  device: Device | None, source: str,
+                  warnings: list[str] | None = None) -> WrittenState:
     """Playback routes and mute flags recovered from the write journal, never from the device.
 
     Only registers the device does not report are taken from the journal; the output link
     flags a playback route depends on are the device's own reports.
     """
-    seen: Dict[str, Args] = {path: args for path, (_tags, args, _at) in journal.items()
+    seen: dict[str, Args] = {path: args for path, (_tags, args, _at) in journal.items()
                              if _reestablished(device, path)}
     seen.update({path: args for path, args in reported.items()
                  if path.startswith("/output/") and path.endswith("/stereo")})
     routes = routes_from_observed(seen, device, warnings, kind="playback")
-    mutes: Dict[int, int] = {}
+    mutes: dict[int, int] = {}
     for path, args in seen.items():
         parts = path.split("/")
         if len(parts) == 4 and parts[1] == "playback" and parts[3] == "mute":
@@ -361,7 +360,7 @@ def written_state(journal: Mapping[str, Tuple[str, Args, str]], reported: Mappin
     return WrittenState(source, routes, mutes, stamps)
 
 
-def unrecoverable(device: Optional[Device] = None) -> Tuple[str, ...]:
+def unrecoverable(device: Device | None = None) -> tuple[str, ...]:
     """Register families a dump cannot reproduce, and why it matters.
 
     Read from the register model rather than listed here, so a family
@@ -393,8 +392,8 @@ _CAPTURE_NOTE = [
 ]
 
 
-def _header_lines(config: Config, device: Optional[Device], warnings: Sequence[str],
-                  written: Optional[WrittenState], capture: bool) -> List[str]:
+def _header_lines(config: Config, device: Device | None, warnings: Sequence[str],
+                  written: WrittenState | None, capture: bool) -> list[str]:
     """What the file is, what it leaves out, and how to read its values."""
     missing = unrecoverable(device)
     lines = [
@@ -454,9 +453,9 @@ def _header_lines(config: Config, device: Optional[Device], warnings: Sequence[s
     return lines
 
 
-def render_config(config: Config, device: Optional[Device] = None,
-                  warnings: Sequence[str] = (), written: Optional[WrittenState] = None,
-                  *, capture: bool = False, autoset: AbstractSet[str] = frozenset()) -> str:
+def render_config(config: Config, device: Device | None = None,
+                  warnings: Sequence[str] = (), written: WrittenState | None = None,
+                  *, capture: bool = False, autoset: Set[str] = frozenset()) -> str:
     """Render the representable subset, with all observed omissions visible.
 
     PIN settings are active; REMEMBER settings are comments so a dump
@@ -483,7 +482,7 @@ def render_config(config: Config, device: Optional[Device] = None,
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _route_lines(route: Route) -> List[str]:
+def _route_lines(route: Route) -> list[str]:
     kind, source = route.source
     lines = [
         "[route:%s]" % route.name,
@@ -499,7 +498,7 @@ def _route_lines(route: Route) -> List[str]:
     return lines
 
 
-def _written_sections(written: WrittenState) -> List[str]:
+def _written_sections(written: WrittenState) -> list[str]:
     """The journal's playback routes, live, and its mute flags, commented out."""
     lines = [
         "# ---------------------------------------------------------------------",
@@ -530,9 +529,9 @@ def _written_sections(written: WrittenState) -> List[str]:
     return lines
 
 
-def _channel_sections(config: Config, device: Optional[Device],
-                      capture: bool = False, autoset: AbstractSet[str] = frozenset()
-                      ) -> List[str]:
+def _channel_sections(config: Config, device: Device | None,
+                      capture: bool = False, autoset: Set[str] = frozenset()
+                      ) -> list[str]:
     """``[input:N]`` / ``[output:N]`` blocks for the observed channel state.
 
     Pinned options become config lines, remembered ones become comments
@@ -545,7 +544,7 @@ def _channel_sections(config: Config, device: Optional[Device],
     # nested option goes to `[eq:input:3]` and a flat one to `[input:3]`,
     # so one channel produces several sections and they must
     # not be run together.
-    by_section: Dict[Tuple[str, str, int], List[ChannelSetting]] = {}
+    by_section: dict[tuple[str, str, int], list[ChannelSetting]] = {}
     for setting in config.channels:
         sub = setting.option.split("/", 1)[0] if "/" in setting.option else ""
         if not sub and setting.option in nested_families(device,
@@ -553,7 +552,7 @@ def _channel_sections(config: Config, device: Optional[Device],
             sub = setting.option          # the sub-family's own switch
         by_section.setdefault((sub, setting.family, setting.channel),
                               []).append(setting)
-    lines: List[str] = []
+    lines: list[str] = []
     for (sub, family, channel), settings in sorted(by_section.items()):
         header = ("[%s:%s:%d]" % (sub, family, channel) if sub
                   else "[%s:%d]" % (family, channel))
@@ -571,13 +570,13 @@ def _channel_sections(config: Config, device: Optional[Device],
     return lines
 
 
-def _global_sections(config: Config, device: Optional[Device],
-                     capture: bool = False) -> List[str]:
+def _global_sections(config: Config, device: Device | None,
+                     capture: bool = False) -> list[str]:
     """`[echo]` and the other channel-less families."""
-    by_family: Dict[str, List[GlobalSetting]] = {}
+    by_family: dict[str, list[GlobalSetting]] = {}
     for setting in config.globals:
         by_family.setdefault(setting.family, []).append(setting)
-    lines: List[str] = []
+    lines: list[str] = []
     for family, settings in sorted(by_family.items()):
         lines.append("[%s]" % family)
         for setting in sorted(settings, key=lambda s: s.option):
@@ -588,7 +587,7 @@ def _global_sections(config: Config, device: Optional[Device],
 
 
 def _setting_line(name: str, value: SettingValue, path: str,
-                  device: Optional[Device], capture: bool = False) -> str:
+                  device: Device | None, capture: bool = False) -> str:
     """One config line, live or commented, with the reason for commenting."""
     register = register_at(device, path)
     try:
@@ -605,7 +604,7 @@ def _setting_line(name: str, value: SettingValue, path: str,
 
 
 def _render_value(value: SettingValue,
-                  register: "Optional[Register]" = None) -> str:
+                  register: Register | None = None) -> str:
     """A value as the config file spells it.
 
     Keyed off the declared domain rather than the Python type, for the

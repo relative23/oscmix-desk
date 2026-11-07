@@ -10,7 +10,6 @@ sections; they are passed over with a warning that says what is modelled.
 from __future__ import annotations
 
 import configparser
-from typing import List, Optional, Tuple
 
 from .devices import device_for_name, modelled_names
 from .errors import ConfigError
@@ -92,7 +91,7 @@ def _unknown_section(section: str, device_name: str, *, strict: bool = False) ->
         (section, _known_sections(device_name)), strict)
 
 
-def _ignored(message: str, values: Tuple[object, ...], strict: bool) -> None:
+def _ignored(message: str, values: tuple[object, ...], strict: bool) -> None:
     """Strict parsing refuses what tolerant parsing would ignore."""
     detail = message % values
     if strict:
@@ -135,8 +134,8 @@ def _is_nested_section(section: str, device_name: str) -> bool:
                                                                     family)
 
 
-def _parse_nested_section(parser: "configparser.ConfigParser", section: str,
-                          device: Optional[Device]) -> List[ChannelSetting]:
+def _parse_nested_section(parser: configparser.ConfigParser, section: str,
+                          device: Device | None) -> list[ChannelSetting]:
     """Parse ``[eq:input:3]`` and the families that follow it.
 
     Produces ``ChannelSetting`` like a flat section does, with the option
@@ -188,7 +187,7 @@ def _parse_nested_section(parser: "configparser.ConfigParser", section: str,
     return found
 
 
-def _has_channel(device: Optional[Device], family: str, sub: str,
+def _has_channel(device: Device | None, family: str, sub: str,
                  channel: int) -> bool:
     """Whether this device has that channel in that sub-family."""
     if device is None:
@@ -198,8 +197,8 @@ def _has_channel(device: Optional[Device], family: str, sub: str,
     return False
 
 
-def _parse_global_section(parser: "configparser.ConfigParser", section: str,
-                          device: Optional[Device]) -> List[GlobalSetting]:
+def _parse_global_section(parser: configparser.ConfigParser, section: str,
+                          device: Device | None) -> list[GlobalSetting]:
     """Parse ``[echo]`` and the other channel-less families.
 
     Same rule as a channel section and for the same reason: which
@@ -230,9 +229,9 @@ def _parse_global_section(parser: "configparser.ConfigParser", section: str,
     return found
 
 
-def _parse_channel_section(parser: "configparser.ConfigParser", section: str,
-                           family: str, device: Optional[Device],
-                           device_name: str, *, strict: bool = False) -> List[ChannelSetting]:
+def _parse_channel_section(parser: configparser.ConfigParser, section: str,
+                           family: str, device: Device | None,
+                           device_name: str, *, strict: bool = False) -> list[ChannelSetting]:
     """Parse ``[input:N]`` / ``[output:N]``.
 
     Everything here is checked against the register model rather than

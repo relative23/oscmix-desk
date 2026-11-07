@@ -35,8 +35,8 @@ The latest release is **0.9.0**.
 ## Requirements
 
 - Linux with ALSA; a Fireface UCX II in class-compliant mode
-- Python 3.9 or newer (standard library only)
-  CI covers 3.9 through 3.15.
+- Python 3.12 or newer (standard library only)
+  CI covers 3.12 through 3.15.
 - To build the backend: `git`, `make`, a C compiler, `pkg-config`, the ALSA
   headers and, for the mixer GUI, GTK 3
 

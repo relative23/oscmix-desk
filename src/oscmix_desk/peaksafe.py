@@ -20,8 +20,8 @@ reload write the same desk again and are not quieted.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
-from typing import Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from .backend import Control
 from .constants import LEVEL_MIN
@@ -36,10 +36,10 @@ from .registers import Device
 VOLUME = "/output/%d/volume"
 
 
-def changed_outputs(paths: Sequence[str], device: Device) -> Tuple[int, ...]:
+def changed_outputs(paths: Sequence[str], device: Device) -> tuple[int, ...]:
     """The outputs a plan that writes ``paths`` changes."""
     outputs = device.channels_for("output")
-    changed: Set[int] = set()
+    changed: set[int] = set()
     for path in paths:
         parts = path.strip("/").split("/")
         # A link sounds through the cells the same plan writes; any other input or playback
@@ -54,9 +54,9 @@ def changed_outputs(paths: Sequence[str], device: Device) -> Tuple[int, ...]:
 
 
 def reported_volumes(outputs: Sequence[int],
-                     observed: Mapping[str, Tuple[str, Args]]) -> Dict[int, float]:
+                     observed: Mapping[str, tuple[str, Args]]) -> dict[int, float]:
     """The volume each output reported, for the ones that reported a usable one."""
-    volumes: Dict[int, float] = {}
+    volumes: dict[int, float] = {}
     for output in outputs:
         report = observed.get(VOLUME % output)
         if not report:
@@ -70,24 +70,24 @@ def reported_volumes(outputs: Sequence[int],
     return volumes
 
 
-def quieting(volumes: Mapping[int, float]) -> List[Message]:
+def quieting(volumes: Mapping[int, float]) -> list[Message]:
     """The writes that pull every quieted output down to the explicit zero."""
     return [(VOLUME % output, "f", (LEVEL_MIN,)) for output in sorted(volumes)]
 
 
 def giving_back(volumes: Mapping[int, float],
-                declared: Mapping[str, Args]) -> List[Message]:
+                declared: Mapping[str, Args]) -> list[Message]:
     """Each quieted output's volume after the switch: declared, else what it was."""
-    back: List[Message] = []
+    back: list[Message] = []
     for output, before in sorted(volumes.items()):
-        wanted: Optional[Args] = declared.get(VOLUME % output)
+        wanted: Args | None = declared.get(VOLUME % output)
         back.append((VOLUME % output, "f", wanted if wanted is not None else (before,)))
     return back
 
 
 def send_quietly(config: Config, wanted: Plan, backend: Control, intent: ApplyIntent,
-                 latest: Mapping[str, Tuple[str, Args]],
-                 read: Callable[[Sequence[str]], Mapping[str, Tuple[str, Args]]],
+                 latest: Mapping[str, tuple[str, Args]],
+                 read: Callable[[Sequence[str]], Mapping[str, tuple[str, Args]]],
                  send: Callable[[Plan], None]) -> None:
     """Send ``wanted`` with ``send``; for a peak-safe explicit apply, between quieted outputs.
 

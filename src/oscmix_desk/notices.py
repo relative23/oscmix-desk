@@ -9,14 +9,12 @@ warned about afterwards, so this is the one that is left.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from .devices import device_for_name, modelled_names
 from .log import log
 from .model import Config
 
 
-def unchecked_routes_warning(config: "Config") -> Optional[str]:
+def unchecked_routes_warning(config: Config) -> str | None:
     """What to say about routes on a device nobody modelled, or None.
 
     Still no opinion, and no longer a silent one: a channel
@@ -34,7 +32,7 @@ def unchecked_routes_warning(config: "Config") -> Optional[str]:
             % (config.device_name, len(config.routes), modelled_names()))
 
 
-def log_desk_notices(config: "Config") -> None:
+def log_desk_notices(config: Config) -> None:
     """Warn, once, where a desk is about to be written or shown.
 
     A start, a dry run, a diff and the PipeWire sinks ask about the desk

@@ -8,7 +8,7 @@ python3 -m venv .venv
 make check PYTHON=.venv/bin/python
 ```
 
-The runtime uses only the Python standard library (3.9 or newer). `make check`
+The runtime uses only the Python standard library (3.12 or newer). `make check`
 also needs `shellcheck` from your distribution (`apt install shellcheck`,
 `dnf install ShellCheck`). The test suite needs no audio hardware; tests that need a device or a desktop session
 skip or run in their own qualification scripts.

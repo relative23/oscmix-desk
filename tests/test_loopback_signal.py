@@ -56,7 +56,7 @@ def test_digital_silence_is_not_carried_and_has_no_level():
 
 def test_a_half_correlated_mix_decides_nothing():
     source, other = noise(24000, 1), noise(24000, 2)
-    target = [0.3 * a + b for a, b in zip(source, other)]
+    target = [0.3 * a + b for a, b in zip(source, other, strict=True)]
     found = signal.analyse(recording({0: source, 2: target}, 24000), 1, 3)
     assert found["verdict"] == "undetermined"
 
@@ -103,7 +103,7 @@ def test_the_fft_needs_a_power_of_two():
         signal._fft([0j] * 3)
     values = [complex(x) for x in range(8)]
     back = signal._fft(signal._fft(values), invert=True)
-    assert all(abs(a - b) < 1e-9 for a, b in zip(values, back))
+    assert all(abs(a - b) < 1e-9 for a, b in zip(values, back, strict=True))
 
 
 def test_the_delay_slope_fits_the_points():

@@ -17,9 +17,9 @@ questions.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Mapping, Optional, Sequence, Set, Tuple
 
 # --------------------------------------------------------------------------
 # Verification classes.
@@ -54,7 +54,7 @@ class VerifyClass(str, Enum):
 
 VERIFIABLE, WRITE_ONLY = VerifyClass.VERIFIABLE, VerifyClass.WRITE_ONLY
 REESTABLISHED = VerifyClass.REESTABLISHED
-VERIFY_CLASSES: Tuple[VerifyClass, ...] = tuple(VerifyClass)
+VERIFY_CLASSES: tuple[VerifyClass, ...] = tuple(VerifyClass)
 
 
 # --------------------------------------------------------------------------
@@ -97,7 +97,7 @@ class Policy(str, Enum):
 
 
 PIN, REMEMBER = Policy.PIN, Policy.REMEMBER
-POLICIES: Tuple[Policy, ...] = tuple(Policy)
+POLICIES: tuple[Policy, ...] = tuple(Policy)
 
 
 class Domain(str, Enum):
@@ -152,12 +152,12 @@ class Register:
     #: What a config may set it to, or None when this project does not
     #: expose it as a setting. A register with no domain is readable and
     #: writable by the code, not by a `routing.conf`.
-    domain: Optional[Domain] = None
+    domain: Domain | None = None
     #: For ENUM: the accepted names, exactly as the device reports them.
     #: Taken from upstream's device table, which is where the device's
     #: own vocabulary lives -- inventing synonyms here would mean a
     #: config that reads well and sets nothing.
-    choices: Tuple[str, ...] = ()
+    choices: tuple[str, ...] = ()
     #: For ENUM: the wire value of each name, when it is not simply the
     #: name's position. Upstream's `setenum` takes a `,i` argument as the
     #: **raw value**, not as an index -- so a discontinuous enum written
@@ -165,13 +165,13 @@ class Register:
     #: the one that has this: "None" sits at position 10 and its value is
     #: -1 (upstream `.enumvals`, added in e8151cd for #30). Empty means
     #: position and value agree, which is true of every other enum here.
-    values: Tuple[int, ...] = ()
+    values: tuple[int, ...] = ()
     #: For NUMBER: the inclusive bounds and the unit, taken from
     #: upstream's node table (``min``/``max``/``scale``) rather than
     #: from what a device happened to report. ``None`` means upstream
     #: declares no bound.
-    lo: Optional[float] = None
-    hi: Optional[float] = None
+    lo: float | None = None
+    hi: float | None = None
     unit: str = ""
     #: Who wins after the initial write, PIN or REMEMBER. The default is
     #: REMEMBER because a route rewrites only what it declares -- do not wipe what the
@@ -186,7 +186,7 @@ class Register:
     policy: Policy = REMEMBER
     #: Scalar fixed-point scale in the pinned backend. None means no
     #: fixed-point contract is declared, not a universal dB tolerance.
-    scale: Optional[float] = None
+    scale: float | None = None
     #: Input gain uses float32 multiplication followed by C truncation,
     #: unlike setfixed's lroundf division. Both report tenths of a dB.
     truncates: bool = False
@@ -223,29 +223,29 @@ class Device:
     key: str
     name: str
     usb_id: str
-    channels: Mapping[str, Tuple[int, ...]]
-    registers: Tuple[Register, ...]
+    channels: Mapping[str, tuple[int, ...]]
+    registers: tuple[Register, ...]
     supported: bool
     #: Families measured to arrive *complete*, for every channel, within
     #: seconds of a cold plug. See ``cold_plug_complete`` -- everything
     #: not listed here may be partially delivered, and 0.3.0 must not
     #: fail a verification over it.
-    complete_after_cold_plug: Tuple[str, ...] = ()
-    evidence: Optional[str] = None
+    complete_after_cold_plug: tuple[str, ...] = ()
+    evidence: str | None = None
     #: The USB release (``bcdDevice``) the table, the hardware evidence and
     #: the write sweep were recorded on. A start says so when the
     #: interface reports another one: what was measured was measured on
     #: this firmware, and nothing else is claimed.
-    firmware: Optional[str] = None
+    firmware: str | None = None
 
-    def channels_for(self, capability: str) -> Tuple[int, ...]:
+    def channels_for(self, capability: str) -> tuple[int, ...]:
         return self.channels.get(capability, ())
 
     def has(self, capability: str, channel: int) -> bool:
         return channel in self.channels_for(capability)
 
 
-def register_policy(device: Optional[Device], path: str) -> Policy:
+def register_policy(device: Device | None, path: str) -> Policy:
     """PIN or REMEMBER for a concrete path, from the register table.
 
     REMEMBER for anything the model does not know, matching the field
@@ -260,8 +260,8 @@ def register_policy(device: Optional[Device], path: str) -> Policy:
     return REMEMBER
 
 
-def verify_class(device: Optional[Device],
-                 path: str) -> Optional[VerifyClass]:
+def verify_class(device: Device | None,
+                 path: str) -> VerifyClass | None:
     """How a concrete OSC path verifies, or None when nothing is known.
 
     Concrete paths, not templates: the caller has a path off the wire.
@@ -280,7 +280,7 @@ def _matches(template: str, path: str) -> bool:
     got = path.split("/")
     if len(want) != len(got):
         return False
-    for part_want, part_got in zip(want, got):
+    for part_want, part_got in zip(want, got, strict=False):
         if part_want.startswith("{") and part_want.endswith("}"):
             if not part_got.isascii() or not part_got.isdigit():
                 return False
@@ -289,20 +289,20 @@ def _matches(template: str, path: str) -> bool:
     return True
 
 
-def _channel_in(template: str, path: str) -> Optional[int]:
+def _channel_in(template: str, path: str) -> int | None:
     """The channel a concrete path names, or None for a global register.
 
     The *first* placeholder is the one the capability describes: a matrix
     row is indexed by its output, and its second index is a different
     capability entirely.
     """
-    for part_want, part_got in zip(template.split("/"), path.split("/")):
+    for part_want, part_got in zip(template.split("/"), path.split("/"), strict=False):
         if part_want.startswith("{") and part_want.endswith("}"):
             return int(part_got)
     return None
 
 
-def register_at(device: Optional[Device], path: str) -> Optional[Register]:
+def register_at(device: Device | None, path: str) -> Register | None:
     """The register a concrete path is an instance of, or None.
 
     One lookup for the two modules that were each doing their own. The
@@ -323,7 +323,7 @@ def register_at(device: Optional[Device], path: str) -> Optional[Register]:
     return None
 
 
-def cold_plug_complete(device: Optional[Device], path: str) -> bool:
+def cold_plug_complete(device: Device | None, path: str) -> bool:
     """Whether a cold plug reports this register for *every* channel.
 
     Measured across a real USB replug: the device delivers 1234 of 1932
@@ -344,8 +344,8 @@ def cold_plug_complete(device: Optional[Device], path: str) -> bool:
                for template in device.complete_after_cold_plug)
 
 
-def declared_paths(device: Device, capability_channels: Optional[
-        Dict[str, Sequence[int]]] = None) -> Tuple[str, ...]:
+def declared_paths(device: Device, capability_channels: dict[str, Sequence[int]] | None = None
+                   ) -> tuple[str, ...]:
     """Every concrete path the model declares for a device.
 
     Used by the tests to check the model against a recording. Matrix
@@ -380,8 +380,8 @@ def declared_paths(device: Device, capability_channels: Optional[
 ENABLE_OPTION = "enabled"
 
 
-def settable_globals(device: Optional[Device],
-                     family: str) -> Dict[str, Register]:
+def settable_globals(device: Device | None,
+                     family: str) -> dict[str, Register]:
     """Options a ``[<family>]`` section may set, for a global family.
 
     Keyed the way a config writes them: the last path segment, or
@@ -393,7 +393,7 @@ def settable_globals(device: Optional[Device],
     if device is None:
         return {}
     prefix = "/" + family
-    found: Dict[str, Register] = {}
+    found: dict[str, Register] = {}
     for register in device.registers:
         if register.channels != GLOBAL or register.domain is None:
             continue
@@ -404,7 +404,7 @@ def settable_globals(device: Optional[Device],
     return found
 
 
-def global_families(device: Optional[Device]) -> Tuple[str, ...]:
+def global_families(device: Device | None) -> tuple[str, ...]:
     """Every family name a `[<family>]` section may use."""
     if device is None:
         return ()
@@ -413,7 +413,7 @@ def global_families(device: Optional[Device]) -> Tuple[str, ...]:
     return tuple(sorted(names))
 
 
-def settable_options(device: Optional[Device], family: str) -> Dict[str, Register]:
+def settable_options(device: Device | None, family: str) -> dict[str, Register]:
     """Options a ``[input:N]`` / ``[output:N]`` section may set.
 
     Derived from the model rather than listed twice: a register is
@@ -438,8 +438,8 @@ def settable_options(device: Optional[Device], family: str) -> Dict[str, Registe
     return dict(settable_option_rows(device, family))
 
 
-def settable_option_rows(device: Optional[Device],
-                         family: str) -> Tuple[Tuple[str, Register], ...]:
+def settable_option_rows(device: Device | None,
+                         family: str) -> tuple[tuple[str, Register], ...]:
     """The same options, one entry per *row* rather than per name.
 
     `settable_options` is keyed by option name, which is right for "what
@@ -459,7 +459,7 @@ def settable_option_rows(device: Optional[Device],
                  and r.template not in parents)
 
 
-def nested_families(device: Optional[Device], family: str) -> Tuple[str, ...]:
+def nested_families(device: Device | None, family: str) -> tuple[str, ...]:
     """The sub-families a `[<sub>:<family>:<n>]` section may name."""
     if device is None:
         return ()
@@ -474,8 +474,8 @@ def nested_families(device: Optional[Device], family: str) -> Tuple[str, ...]:
     return tuple(sorted(found))
 
 
-def option_register(device: Optional[Device], family: str, option: str,
-                    channel: int) -> Optional[Register]:
+def option_register(device: Device | None, family: str, option: str,
+                    channel: int) -> Register | None:
     """The register a ``[family:channel]`` section's option resolves to.
 
     One option name can have several rows when the device's own limits
@@ -495,21 +495,21 @@ def option_register(device: Optional[Device], family: str, option: str,
     return None
 
 
-def option_channels(device: Optional[Device], family: str,
-                    option: str) -> Tuple[int, ...]:
+def option_channels(device: Device | None, family: str,
+                    option: str) -> tuple[int, ...]:
     """Every channel that can set this option, across all its rows."""
     if device is None:
         return ()
     template = "/%s/{ch}/%s" % (family, option)
-    found: Set[int] = set()
+    found: set[int] = set()
     for register in device.registers:
         if register.template == template and register.domain is not None:
             found.update(device.channels_for(register.channels))
     return tuple(sorted(found))
 
 
-def settable_nested(device: Optional[Device], sub: str,
-                    family: str) -> Dict[str, Register]:
+def settable_nested(device: Device | None, sub: str,
+                    family: str) -> dict[str, Register]:
     """Options a ``[<sub>:<family>:<n>]`` section may set.
 
     Keyed like every other section: the last path segment, or
@@ -528,7 +528,7 @@ def settable_nested(device: Optional[Device], sub: str,
     if device is None or sub not in nested_families(device, family):
         return {}
     prefix = "/%s/{ch}/%s" % (family, sub)
-    found: Dict[str, Register] = {}
+    found: dict[str, Register] = {}
     for register in device.registers:
         if register.domain is None:
             continue

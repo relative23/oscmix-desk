@@ -18,8 +18,8 @@ import grp
 import os
 import stat
 import time
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Callable, Iterator, Optional, Union
 
 from .constants import SWITCH_LOCK_WAIT
 from .log import log
@@ -51,7 +51,7 @@ class DeviceLock:
     ``take_device_lock``, and every caller refuses on it (since 0.6.7).
     """
 
-    def __init__(self, fd: Optional[int] = None) -> None:
+    def __init__(self, fd: int | None = None) -> None:
         self._fd = fd
 
     def release(self) -> None:
@@ -64,8 +64,8 @@ class DeviceLock:
             os.close(fd)
 
 
-def device_lock_path(config_path: Optional[Path],
-                     key: Optional[str] = None) -> Optional[Path]:
+def device_lock_path(config_path: Path | None,
+                     key: str | None = None) -> Path | None:
     """Where the lock for this device lives, without creating anything.
 
     `/run/oscmix-desk/<key>.lock` whenever that directory exists, which
@@ -97,7 +97,7 @@ def device_lock_path(config_path: Optional[Path],
     return Path(config_path).parent / SWITCH_LOCK
 
 
-def control_path(config_path: Optional[Path], key: str) -> Path:
+def control_path(config_path: Path | None, key: str) -> Path:
     """The same runtime directory and device key for every cooperating client.
 
     Selection must not depend on whether the caller can create a directory:
@@ -127,7 +127,7 @@ _LOCK_OPEN = os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
 LOCK_FILE_MODE = 0o660
 
 
-def _open_lock(path: Path) -> Optional[int]:
+def _open_lock(path: Path) -> int | None:
     """Open the lock file read-write, or read-only, or not at all.
 
     The unit runs with `ProtectHome=read-only`, so under a config
@@ -147,7 +147,7 @@ def _open_lock(path: Path) -> Optional[int]:
     return _open_regular(path, os.O_RDONLY)
 
 
-def _open_regular(path: Path, flags: int) -> Optional[int]:
+def _open_regular(path: Path, flags: int) -> int | None:
     try:
         fd = os.open(path, flags | _LOCK_OPEN, LOCK_FILE_MODE)
     except OSError:
@@ -237,11 +237,11 @@ def _group_of(directory: Path) -> str:
 STOPPED_WAITING = "stop requested while waiting for the device lock"
 
 
-def take_device_lock(config_path: Optional[Path],
-                     key: Optional[str] = None,
-                     wait: Optional[float] = None,
-                     should_stop: Optional[Callable[[], bool]] = None
-                     ) -> Optional[DeviceLock]:
+def take_device_lock(config_path: Path | None,
+                     key: str | None = None,
+                     wait: float | None = None,
+                     should_stop: Callable[[], bool] | None = None
+                     ) -> DeviceLock | None:
     """Take the lock every writer of this device holds, or log why not
     and return None. ``device_lock`` without the logging."""
     lock = device_lock(config_path, key, wait, should_stop)
@@ -251,11 +251,11 @@ def take_device_lock(config_path: Optional[Path],
     return None
 
 
-def device_lock(config_path: Optional[Path],
-                key: Optional[str] = None,
-                wait: Optional[float] = None,
-                should_stop: Optional[Callable[[], bool]] = None
-                ) -> Union[DeviceLock, str]:
+def device_lock(config_path: Path | None,
+                key: str | None = None,
+                wait: float | None = None,
+                should_stop: Callable[[], bool] | None = None
+                ) -> DeviceLock | str:
     """Take the lock every writer of this device holds, or say why not.
 
     Every writer: a switch, `--no-profile`, and the unit's own apply,
@@ -313,8 +313,8 @@ def held_elsewhere() -> str:
             % SWITCH_LOCK_WAIT)
 
 
-def _switch_lock_held(config_path: Optional[Path],
-                      key: Optional[str] = None) -> Iterator[Optional[str]]:
+def _switch_lock_held(config_path: Path | None,
+                      key: str | None = None) -> Iterator[str | None]:
     """Hold the device lock for this config and yield None, or yield why not.
 
     Taken *after* the profile parsed: a refusal for a bad config needs

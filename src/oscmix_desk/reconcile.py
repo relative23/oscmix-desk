@@ -11,9 +11,9 @@ for mono routes. Tests compare complete message sequences with the oracle.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import Callable, Collection, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from .autogain import dependency_paths, flag_value, retained_gains, validate_autogain
 from .base import base_entries
@@ -52,7 +52,7 @@ from .registers import (
 )
 
 
-def link_messages(route: Route) -> List[Message]:
+def link_messages(route: Route) -> list[Message]:
     """The channel-pair link state a route needs before its mix is written.
 
     These must reach the device -- and be reported back to oscmix -- before
@@ -68,7 +68,7 @@ def link_messages(route: Route) -> List[Message]:
             for kind, channel, linked in route.link_requirements]
 
 
-def mix_messages(route: Route) -> List[Message]:
+def mix_messages(route: Route) -> list[Message]:
     """The mix-matrix and volume writes of a route.
 
     oscmix folds stereo-linked channels onto the odd (left) channel of a
@@ -82,7 +82,7 @@ def mix_messages(route: Route) -> List[Message]:
     ``level`` dB).
     """
     pan = route.checked_pan
-    messages: List[Message] = []
+    messages: list[Message] = []
     kind, source = route.source
     if len(route.output) == 2:
         left, right = route.output
@@ -211,7 +211,7 @@ class Write:
     phase: Phase
     reason: WriteReason
 
-    def message(self) -> Tuple[str, str, Args]:
+    def message(self) -> tuple[str, str, Args]:
         """The shape the OSC encoder and the dry run both consume."""
         return self.path, self.tags, self.args
 
@@ -220,28 +220,28 @@ class Write:
 class Plan:
     """What to write, plus what did not need writing and what cannot be told."""
 
-    writes: Tuple[Write, ...]
-    confirmed: Tuple[str, ...]
-    unverifiable: Tuple[str, ...]
+    writes: tuple[Write, ...]
+    confirmed: tuple[str, ...]
+    unverifiable: tuple[str, ...]
     # Includes omitted indirect PIN paths, without claiming confirmation.
-    retained: Tuple[str, ...] = ()
+    retained: tuple[str, ...] = ()
 
-    def links(self) -> Tuple[Write, ...]:
+    def links(self) -> tuple[Write, ...]:
         return tuple(w for w in self.writes if w.phase == PHASE_LINK)
 
-    def mix(self) -> Tuple[Write, ...]:
+    def mix(self) -> tuple[Write, ...]:
         return tuple(w for w in self.writes if w.phase == PHASE_MIX)
 
-    def channel(self) -> Tuple[Write, ...]:
+    def channel(self) -> tuple[Write, ...]:
         return tuple(w for w in self.writes
                      if w.phase not in (PHASE_LINK, PHASE_MIX))
 
-    def messages(self) -> Tuple[Tuple[str, str, Args], ...]:
+    def messages(self) -> tuple[tuple[str, str, Args], ...]:
         """Every write in send order: all links, the barrier, then all mix."""
         return tuple(w.message() for w in self.writes)
 
 
-def desired(config: Config) -> Tuple[Entry, ...]:
+def desired(config: Config) -> tuple[Entry, ...]:
     """The register state a config asks the device to be in.
 
     Ordered the way it is sent, which is per *routing* and not per
@@ -266,7 +266,7 @@ def desired(config: Config) -> Tuple[Entry, ...]:
                     if any(ch not in device.channels_for(family) for ch in channels):
                         raise ValueError("route %r pan: %s channels do not exist on %s"
                                          % (route.name, family, device.name))
-    entries: Dict[str, Entry] = {}
+    entries: dict[str, Entry] = {}
     for phase, produce in ((PHASE_LINK, link_messages), (PHASE_MIX, mix_messages)):
         for route in config.routes:
             for path, tags, args in produce(route):
@@ -283,8 +283,8 @@ def desired(config: Config) -> Tuple[Entry, ...]:
 
 
 def remembered_paths(config: Config,
-                     observed: Optional[Mapping[str, Tuple[str, Args]]] = None,
-                     *, linked: Sequence[str] = ()) -> Tuple[str, ...]:
+                     observed: Mapping[str, tuple[str, Args]] | None = None,
+                     *, linked: Sequence[str] = ()) -> tuple[str, ...]:
     """Declared REMEMBER and gains owned by AutoSet, including undeclared partners."""
     device = device_for_name(config.device_name)
     kept = {entry.path for entry in desired(config)
@@ -296,7 +296,7 @@ def remembered_paths(config: Config,
 def application_plan(config: Config, intent: ApplyIntent,
                      leave_alone: Sequence[str] = (),
                      confirmed: Sequence[str] = (), *,
-                     observed: Optional[Mapping[str, Tuple[str, Args]]] = None) -> Plan:
+                     observed: Mapping[str, tuple[str, Args]] | None = None) -> Plan:
     """Select writes without turning preserved state into confirmed state.
 
     Later operations preserve every REMEMBER path, even when it matched or
@@ -318,7 +318,7 @@ def application_plan(config: Config, intent: ApplyIntent,
 
 
 def protected_entries(config: Config, retained: Collection[str],
-                      confirmed: Sequence[str] = ()) -> Tuple[str, ...]:
+                      confirmed: Sequence[str] = ()) -> tuple[str, ...]:
     """Indirect paths an unobservable retained playback mute cannot authorize.
 
     Retention includes both mute flags, the pair link and its matrix writes.
@@ -358,7 +358,7 @@ def _playback_prerequisites(config: Config, selected: Plan,
         channel = int(write.path.split("/")[2])
         left = channel - (channel - 1) % 2
         required = {mute_path(left), mute_path(left + 1)}
-        links: Set[str] = set()
+        links: set[str] = set()
         for route in config.routes:
             if set(route.playback).intersection((left, left + 1)):
                 required.update(path for path, _tags, _args in mix_messages(route)
@@ -377,7 +377,7 @@ def _playback_prerequisites(config: Config, selected: Plan,
 
 
 def matrix_repair_plan(config: Config, confirmed: Sequence[str] = (), *,
-                       observed: Optional[Mapping[str, Tuple[str, Args]]] = None) -> Plan:
+                       observed: Mapping[str, tuple[str, Args]] | None = None) -> Plan:
     """Matrix repair cannot discard selected mute safety prerequisites.
 
     A legacy matrix-only operation keeps its existing MIX scope. An owned
@@ -398,7 +398,7 @@ def matrix_repair_plan(config: Config, confirmed: Sequence[str] = (), *,
 
 def retention_problem(config: Config, selected: Sequence[Write], retained: Sequence[str],
                       confirmed: Sequence[str], *,
-                      observed: Optional[Mapping[str, Tuple[str, Args]]] = None) -> Optional[str]:
+                      observed: Mapping[str, tuple[str, Args]] | None = None) -> str | None:
     """Refuse indirect changes to retained settings and unknown retained links.
 
     Linking may copy a partner's settings. A scalar write may also propagate
@@ -445,7 +445,7 @@ def retention_problem(config: Config, selected: Sequence[Write], retained: Seque
     return None
 
 
-def channel_entries(config: Config) -> Tuple[Entry, ...]:
+def channel_entries(config: Config) -> tuple[Entry, ...]:
     """The `[input:N]` / `[output:N]` settings, as registers to write.
 
     Enums go out as their **index**, not their name. Upstream accepts
@@ -486,7 +486,7 @@ def channel_entries(config: Config) -> Tuple[Entry, ...]:
     return tuple(out)
 
 
-def global_entries(config: Config) -> Tuple[Entry, ...]:
+def global_entries(config: Config) -> tuple[Entry, ...]:
     """The `[echo]`-style settings, as registers to write.
 
     Same encoding rules as `channel_entries`, and deliberately the same
@@ -512,7 +512,7 @@ def global_entries(config: Config) -> Tuple[Entry, ...]:
     return tuple(out)
 
 
-def _enum_value(register: "Register", value: SettingValue) -> int:
+def _enum_value(register: Register, value: SettingValue) -> int:
     """The wire value for an enum name.
 
     Its position, unless the register declares otherwise. Upstream's
@@ -527,7 +527,7 @@ def _enum_value(register: "Register", value: SettingValue) -> int:
     return position
 
 
-def _encode(path: str, register: "Register",
+def _encode(path: str, register: Register,
             value: SettingValue) -> Entry:
     """One setting as the entry that writes it.
 
@@ -563,7 +563,7 @@ def _encode(path: str, register: "Register",
 
 def _send_order(config: Config) -> Callable[[Entry], int]:
     """Sort key restoring the order the messages were produced in."""
-    position: Dict[str, int] = {}
+    position: dict[str, int] = {}
     index = 0
     for produce in (link_messages, mix_messages):
         for route in config.routes:
@@ -574,7 +574,7 @@ def _send_order(config: Config) -> Callable[[Entry], int]:
     return lambda entry: position[entry.path]
 
 
-def observed(reports: Mapping[str, Sequence[Value]]) -> Dict[str, Args]:
+def observed(reports: Mapping[str, Sequence[Value]]) -> dict[str, Args]:
     """The device's own view, as the dump reported it.
 
     A plain projection. It is a named step because
@@ -586,9 +586,9 @@ def observed(reports: Mapping[str, Sequence[Value]]) -> Dict[str, Args]:
 
 
 def plan(entries: Sequence[Entry],
-         seen: Optional[Mapping[str, Args]] = None,
-         device: Optional[Device] = None,
-         tolerance: Optional[float] = None) -> Plan:
+         seen: Mapping[str, Args] | None = None,
+         device: Device | None = None,
+         tolerance: float | None = None) -> Plan:
     """What to write to get from ``seen`` to ``entries``.
 
     ``seen=None`` means *nothing was observed* -- the dump could not be
@@ -603,9 +603,9 @@ def plan(entries: Sequence[Entry],
     Float comparisons use each register's encoding. The logarithmic mix
     gain keeps its measured tolerance; fixed-point scalars do not share it.
     """
-    writes: List[Write] = []
-    confirmed: List[str] = []
-    unverifiable: List[str] = []
+    writes: list[Write] = []
+    confirmed: list[str] = []
+    unverifiable: list[str] = []
     blind = seen is None
     observations: Mapping[str, Args] = {} if seen is None else seen
 
@@ -639,8 +639,8 @@ def plan(entries: Sequence[Entry],
 
 
 def matches(tags: str, want: Args, got: Args,
-            tolerance: Optional[float] = None, *,
-            register: Optional[Register] = None) -> bool:
+            tolerance: float | None = None, *,
+            register: Register | None = None) -> bool:
     """Whether a reported value satisfies a desired one.
 
     Extra trailing arguments in the report are ignored, so a richer
@@ -663,7 +663,7 @@ def matches(tags: str, want: Args, got: Args,
     """
     if len(got) < len(want) or len(tags) != len(want) or not tags:
         return False
-    for tag, wanted, reported in zip(tags, want, got):
+    for tag, wanted, reported in zip(tags, want, got, strict=False):
         try:
             if tag == "f":
                 if not equal_float(wanted, reported, register, tolerance):
@@ -693,8 +693,8 @@ def matches(tags: str, want: Args, got: Args,
 
 
 
-def policy_for(path: str, device: Optional[Device] = None,
-               overrides: Optional[Mapping[Tuple[str, str], Policy]] = None
+def policy_for(path: str, device: Device | None = None,
+               overrides: Mapping[tuple[str, str], Policy] | None = None
                ) -> Policy:
     """PIN or REMEMBER for a path, config override beating the table.
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 
 class ConfigError(Exception):
@@ -60,8 +60,8 @@ class WriteFailed(OSError):
     establishes that the hardware applied the value.
     """
 
-    def __init__(self, cause: OSError, written: "Sequence[str]",
-                 unwritten: "Sequence[str]") -> None:
+    def __init__(self, cause: OSError, written: Sequence[str],
+                 unwritten: Sequence[str]) -> None:
         super().__init__(cause.errno, cause.strerror or str(cause))
         self.written = tuple(written)
         self.unwritten = tuple(unwritten)

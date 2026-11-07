@@ -58,7 +58,7 @@ def test_switch_and_restore_only_change_the_selected_configs_marker(tmp_path, re
     write_config(tmp_path / 'profiles/tracking.conf', TRACKING)
     write_config(tmp_path / 'profiles/mixdown.conf', GOOD)
     names = ('tracking', 'mixdown', 'tracking')
-    for path, name in zip(paths, names):
+    for path, name in zip(paths, names, strict=True):
         result = profiles.switch_profile(name, path, recording_backend, verify=False)
         assert result.applied
         assert result.persisted

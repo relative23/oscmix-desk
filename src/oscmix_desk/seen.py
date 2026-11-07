@@ -20,9 +20,9 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Tuple
 
 from .journal import _bounded, _decode, _encode, _replace, journal_paths, stamp
 from .log import log
@@ -39,8 +39,8 @@ CHECK_STATES = ("matched", "mismatched", "incomplete")
 MAX_CELLS = 2000
 
 #: path -> (OSC type tags, arguments, UTC time desk saw the report)
-Reports = Dict[str, Tuple[str, Args, str]]
-Record = Dict[str, object]
+Reports = dict[str, tuple[str, Args, str]]
+Record = dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -49,7 +49,7 @@ class Seen:
 
     reports: Reports = field(default_factory=dict)
     #: The last connect check, as ``connectcheck.ConnectCheck.record`` stores it.
-    connect: Optional[Record] = None
+    connect: Record | None = None
 
 
 def cell_value(level: float, pan: object) -> Record:
@@ -79,7 +79,7 @@ def _sound_check(check: object) -> bool:
         return False
     if check.get("state") not in CHECK_STATES or type(check.get("compared")) is not int:
         return False
-    lists: List[List[object]] = []
+    lists: list[list[object]] = []
     for name in ("mismatched", "unreported", "invalid"):
         items = check.get(name)
         if not isinstance(items, list) or len(items) > MAX_CELLS:
@@ -110,7 +110,7 @@ def _parse(raw: bytes) -> Seen:
     return Seen(reports, connect)
 
 
-def read_seen(path: Optional[Path]) -> Seen:
+def read_seen(path: Path | None) -> Seen:
     """One user's record; empty, with a warning, for anything but a sound one."""
     if path is None:
         return Seen()
@@ -123,10 +123,10 @@ def read_seen(path: Optional[Path]) -> Seen:
         return Seen()
 
 
-def read_all_seen(config_path: Optional[Path], key: str) -> Seen:
+def read_all_seen(config_path: Path | None, key: str) -> Seen:
     """Every user's record of this interface, merged: per report and for the check the newest."""
     reports: Reports = {}
-    connect: Optional[Record] = None
+    connect: Record | None = None
     for path in journal_paths(config_path, key, kind="seen"):
         seen = read_seen(path)
         for name, entry in seen.reports.items():
@@ -138,8 +138,8 @@ def read_all_seen(config_path: Optional[Path], key: str) -> Seen:
     return Seen(reports, connect)
 
 
-def record_seen(path: Optional[Path], reports: Mapping[str, Tuple[str, Args, float]],
-                connect: Optional[Record] = None) -> bool:
+def record_seen(path: Path | None, reports: Mapping[str, tuple[str, Args, float]],
+                connect: Record | None = None) -> bool:
     """Add one operation's CC reports and connect check, replacing the file atomically.
 
     ``reports`` carry the time each was seen, in seconds. Called with the device lock held.
@@ -152,7 +152,7 @@ def record_seen(path: Optional[Path], reports: Mapping[str, Tuple[str, Args, flo
     merged = dict(current.reports)
     merged.update({name: (tags, tuple(args), stamp(at))
                    for name, (tags, args, at) in kept.items()})
-    rows: Dict[str, object] = {name: {"tags": tags, "args": _encode(tags, args), "at": at}
+    rows: dict[str, object] = {name: {"tags": tags, "args": _encode(tags, args), "at": at}
                                for name, (tags, args, at) in sorted(merged.items())}
     document: Record = {"schema": SCHEMA, "reports": rows,
                         "connect": current.connect if connect is None else dict(connect)}
@@ -164,8 +164,8 @@ def record_seen(path: Optional[Path], reports: Mapping[str, Tuple[str, Args, flo
     return True
 
 
-def check_record(at: float, compared: int, mismatched: List[Record],
-                 unreported: List[str], invalid: List[str]) -> Record:
+def check_record(at: float, compared: int, mismatched: list[Record],
+                 unreported: list[str], invalid: list[str]) -> Record:
     """A connect check in the shape ``read_seen`` accepts."""
     state = ("mismatched" if mismatched else "incomplete" if unreported or invalid
              else "matched")

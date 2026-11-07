@@ -102,7 +102,8 @@ def test_two_switches_from_two_processes_do_not_interleave(tmp_path):
             env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             for name in PROFILES]
         results = [p.communicate(timeout=30) for p in switches]
-        results = [(p.returncode, out, err) for p, (out, err) in zip(switches, results)]
+        results = [(p.returncode, out, err)
+                   for p, (out, err) in zip(switches, results, strict=True)]
     finally:
         for child in switches:
             if child.poll() is None:

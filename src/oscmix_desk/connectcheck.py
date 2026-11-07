@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Mapping, Optional, Tuple
 
 from .autogain import dependency_paths
 from .backend import Control
@@ -41,7 +41,7 @@ PAN_FULL_SCALE = 100
 #: Float rounding, far below the device's 0.1 dB steps: 0.07 dB stays within the tolerance.
 ROUNDING = 1e-6
 
-Reports = Dict[str, Tuple[str, Args]]
+Reports = dict[str, tuple[str, Args]]
 
 
 @dataclass(frozen=True)
@@ -60,13 +60,13 @@ class ConnectCheck:
     at: float
     compared: int
     #: (path, declared cell, device arguments), outside TotalMix's tolerances.
-    mismatched: Tuple[Tuple[str, Cell, Args], ...]
-    unreported: Tuple[str, ...]
-    invalid: Tuple[str, ...]
+    mismatched: tuple[tuple[str, Cell, Args], ...]
+    unreported: tuple[str, ...]
+    invalid: tuple[str, ...]
 
     def record(self) -> Record:
         """The check as the record beside the journal stores it."""
-        mismatched: List[Record] = [
+        mismatched: list[Record] = [
             {"route": cell.route, "path": path, "device": cell_value(float(args[0]), args[1]),
              "declared": cell_value(_silenced(cell.level), cell.pan)}
             for path, cell, args in self.mismatched]
@@ -74,13 +74,13 @@ class ConnectCheck:
                             list(self.invalid))
 
 
-def declared_cells(config: Config) -> Dict[str, Cell]:
+def declared_cells(config: Config) -> dict[str, Cell]:
     """The input-matrix registers the desk's input routes set, with their routes' names.
 
     A later route wins a shared register, as it does in the apply; the base's silent cells are
     not routes and are not compared, nor is a cell the device may fold onto its partner.
     """
-    names: Dict[str, str] = {}
+    names: dict[str, str] = {}
     for route in config.routes:
         if route.source[0] == "input" and not route.base:
             names.update((path, route.name) for path, _tags, _args in mix_messages(route)
@@ -95,7 +95,7 @@ def _silenced(level: float) -> float:
     return -math.inf if level <= LEVEL_MIN else level
 
 
-def agrees(cell: Cell, tags: str, args: Args) -> Optional[bool]:
+def agrees(cell: Cell, tags: str, args: Args) -> bool | None:
     """Whether a report is the declared cell within TotalMix's tolerances; None if no value."""
     if not tags.startswith("fi") or len(args) < 2:
         return None
@@ -112,12 +112,12 @@ def agrees(cell: Cell, tags: str, args: Args) -> Optional[bool]:
             and abs(pan - cell.pan) / PAN_FULL_SCALE <= PAN_TOLERANCE + ROUNDING)
 
 
-def judge(cells: Mapping[str, Cell], latest: Mapping[str, Tuple[str, Args]],
+def judge(cells: Mapping[str, Cell], latest: Mapping[str, tuple[str, Args]],
           at: float) -> ConnectCheck:
     """Classify every declared cell by its last report in the window."""
-    mismatched: List[Tuple[str, Cell, Args]] = []
-    unreported: List[str] = []
-    invalid: List[str] = []
+    mismatched: list[tuple[str, Cell, Args]] = []
+    unreported: list[str] = []
+    invalid: list[str] = []
     for path, cell in sorted(cells.items()):
         report = latest.get(path)
         verdict = None if report is None else agrees(cell, *report)
@@ -160,7 +160,7 @@ def _window_done(observed: Observation, cells: Mapping[str, Cell]) -> bool:
 
 
 def check_at_connect(config: Config, backend: Control, should_stop: Callable[[], bool]
-                     ) -> Tuple[Optional[ConnectCheck], Optional[Reports]]:
+                     ) -> tuple[ConnectCheck | None, Reports | None]:
     """Read and judge the declared input cells once; never refuses, never writes.
 
     Returns the check (None when nothing was compared) and, when the desk has AutoSet

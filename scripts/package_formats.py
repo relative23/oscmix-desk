@@ -48,7 +48,7 @@ Summary: Declarative mixer state for the RME Fireface UCX II
 License: MIT AND ISC AND Unlicense
 URL: https://github.com/relative23/oscmix-desk
 Source0: payload.tar
-Requires: python3 >= 3.9
+Requires: python3 >= 3.12
 Requires(pre): /usr/bin/python3
 Requires(post): /usr/sbin/groupadd
 Requires(post): /usr/bin/systemd-tmpfiles
@@ -163,7 +163,7 @@ def arch(root, stage, work, output, record, gtk):
     (recipe / 'oscmix-desk.install').write_text(install)
     version = record['version'] + ('.dev' if record['development'] else '')
     architecture = platform.machine()
-    dependencies = ['python>=3.9', 'alsa-lib', 'glibc', 'systemd', 'shadow']
+    dependencies = ['python>=3.12', 'alsa-lib', 'glibc', 'systemd', 'shadow']
     if gtk:
         dependencies = ['oscmix-desk=' + version + '-' + str(record['package_revision']), 'gtk3']
     pkgbuild = '''pkgname=@NAME@

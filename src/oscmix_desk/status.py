@@ -8,7 +8,6 @@ import os
 import sys
 from dataclasses import asdict, replace
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 from . import hostservice
 from .constants import DEFAULT_USB_ID, EXIT_CONFIG, EXIT_OK, __version__
@@ -23,11 +22,11 @@ from .playstate import interface_sections
 from .profiles import effective_config
 from .streams import playback_problem, read_playback
 
-Info = Dict[str, object]
+Info = dict[str, object]
 
 
-def _configuration(path: Optional[Path], overrides: Overrides, *,
-                   strict: bool = False) -> Tuple[Info, Optional[Config]]:
+def _configuration(path: Path | None, overrides: Overrides, *,
+                   strict: bool = False) -> tuple[Info, Config | None]:
     info: Info = {"path": str(path) if path else None}
     try:
         stored = active_profile(path)
@@ -121,13 +120,13 @@ def _playback(config: Config, proc_root: Path) -> Info:
         return {"state": "unknown", "detail": str(exc)}
 
 
-def collect_status(path: Optional[Path], overrides: Optional[Overrides] = None, *,
-                   said: Optional[Overrides] = None, strict: bool = False) -> Info:
+def collect_status(path: Path | None, overrides: Overrides | None = None, *,
+                   said: Overrides | None = None, strict: bool = False) -> Info:
     """Only inspect files and query host metadata; no OSC or audio operation."""
     overrides = _resolve_overrides(overrides, said)
     configuration, config = _configuration(path, overrides, strict=strict)
     service = service_status()
-    sections: Dict[str, Info] = {"installation": _installation(),
+    sections: dict[str, Info] = {"installation": _installation(),
         "configuration": configuration, "service": {
             key: value for key, value in service.items() if key in (
                 "state", "detail", "manager", "ActiveState", "UnitFileState", "MainPID",
@@ -159,7 +158,7 @@ def collect_status(path: Optional[Path], overrides: Optional[Overrides] = None, 
 ABSENT_WHEN_NULL = frozenset(("stored_profile", "effective_profile", "configured_serial"))
 
 
-def _text_lines(value: object, indent: str = "") -> List[str]:
+def _text_lines(value: object, indent: str = "") -> list[str]:
     lines = []
     if isinstance(value, dict):
         for key, item in value.items():
@@ -185,8 +184,8 @@ def _inline(value: object) -> str:
     return str(value)
 
 
-def print_status(path: Optional[Path], overrides: Optional[Overrides] = None,
-                 as_json: bool = False, *, said: Optional[Overrides] = None,
+def print_status(path: Path | None, overrides: Overrides | None = None,
+                 as_json: bool = False, *, said: Overrides | None = None,
                  strict: bool = False) -> int:
     overrides = _resolve_overrides(overrides, said)
     report = collect_status(path, overrides, strict=strict)

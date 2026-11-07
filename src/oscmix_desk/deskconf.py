@@ -8,7 +8,6 @@ every profile inherits them (``profiles.load_profile``).
 from __future__ import annotations
 
 import configparser
-from typing import Dict, Union
 
 from .errors import ConfigError
 from .sections import _parse_bool
@@ -19,13 +18,13 @@ ENFORCE = ("apply", "watch")
 #: Options of the session rather than of the desk.
 SESSION_OPTIONS = ("enforce", "peak-safe")
 
-Value = Union[str, bool]
+Value = str | bool
 
 
-def parse_desk(parser: "configparser.ConfigParser", section: str, *,
-               profile: bool) -> Dict[str, Value]:
+def parse_desk(parser: configparser.ConfigParser, section: str, *,
+               profile: bool) -> dict[str, Value]:
     """The `[desk]` options the file states, by Config attribute."""
-    stated: Dict[str, Value] = {}
+    stated: dict[str, Value] = {}
     if parser.has_option(section, "base"):
         stated["base"] = parser.get(section, "base").strip()
     session = [option for option in SESSION_OPTIONS if parser.has_option(section, option)]

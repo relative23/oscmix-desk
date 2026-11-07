@@ -87,7 +87,7 @@ def test_encoding_then_decoding_returns_the_message(session_mod, message):
     assert decoded_path == path
     assert decoded_tags == tags
     assert len(decoded_args) == len(args)
-    for tag, sent, got in zip(tags, args, decoded_args):
+    for tag, sent, got in zip(tags, args, decoded_args, strict=True):
         if tag == "f":
             assert got == pytest.approx(as_float32(sent), rel=1e-6, abs=1e-9)
         else:

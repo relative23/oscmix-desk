@@ -16,9 +16,10 @@ import stat
 import struct
 import time
 from collections import deque
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Deque, Iterable, Iterator, List, NoReturn, Optional, Tuple
+from typing import NoReturn
 
 from .constants import CONTROL_ACK_TIMEOUT, CONTROL_ACQUIRE_TIMEOUT
 from .diagnostics import backend_status
@@ -141,11 +142,11 @@ class Control:
     traits = OSCMIX
 
     def __init__(self, path: Path, expected_pid: int, *,
-                 expected_uid: Optional[int] = None,
-                 expected_gid: Optional[int] = None,
+                 expected_uid: int | None = None,
+                 expected_gid: int | None = None,
                  reader: bool = False,
                  sources: Source = Source.DEVICE | Source.DERIVED,
-                 should_stop: Optional[Callable[[], bool]] = None) -> None:
+                 should_stop: Callable[[], bool] | None = None) -> None:
         if sources < 1 or int(sources) & ~int(Source.DEVICE | Source.DERIVED | Source.METERS):
             raise ValueError("observation sources must be a nonempty subset of Source")
         self._sources = Source(sources)
@@ -154,19 +155,19 @@ class Control:
         self._sock = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
         self._closed = False
         self._request_id = 0
-        self._lease: Optional[int] = None
+        self._lease: int | None = None
         self._last_heartbeat = 0.0
         self._last_write = 0.0
         self._generation = 0
         self._last_sequence = 0
-        self._queue: Deque[Delivery] = deque()
+        self._queue: deque[Delivery] = deque()
         self._queue_bytes = 0
         self.epoch = b""
         self.device_name = ""
         #: Called with each write the backend acknowledged; the journal's source.
-        self.on_written: Optional[Callable[[str, str, Args], None]] = None
+        self.on_written: Callable[[str, str, Args], None] | None = None
         #: Called with each decoded device report before it is yielded; the record's source.
-        self.on_reported: Optional[Callable[[Message], None]] = None
+        self.on_reported: Callable[[Message], None] | None = None
         #: Whether some connection holds the operation lease, as the last LEASE
         #: event said; the backend sends one right after HELLO and on each change.
         self.lease_held = False
@@ -179,8 +180,8 @@ class Control:
                 raise
             raise OSError(errno.EPROTO, "invalid backend handshake") from exc
 
-    def _connect(self, expected_pid: int, expected_uid: Optional[int],
-                 expected_gid: Optional[int], reader: bool) -> None:
+    def _connect(self, expected_pid: int, expected_uid: int | None,
+                 expected_gid: int | None, reader: bool) -> None:
         if not stat.S_ISSOCK(self.path.lstat().st_mode):
             raise OSError(errno.EPERM, "control endpoint is not a socket or is a symbolic link")
         self._sock.settimeout(CONTROL_ACK_TIMEOUT)
@@ -222,7 +223,7 @@ class Control:
             raise BackendControlError(errno.ECANCELED, "backend operation cancelled")
 
     def _send_request(self, kind: Request, code: int = 0,
-                      payload: bytes = b"", token: Optional[int] = None) -> int:
+                      payload: bytes = b"", token: int | None = None) -> int:
         self._check()
         if len(payload) > PAYLOAD or self._request_id == 0xffffffff:
             self.close()
@@ -245,13 +246,13 @@ class Control:
             raise BackendControlError(errno.EIO, "incomplete control request")
         return self._request_id
 
-    def _receive(self, timeout: float) -> Optional[Tuple[int, int, int, int, bytes]]:
+    def _receive(self, timeout: float) -> tuple[int, int, int, int, bytes] | None:
         self._check()
         try:
             self._sock.settimeout(max(0.001, timeout))
             packet, _ancillary, flags, _address = self._sock.recvmsg(
                 HEADER.size + PAYLOAD + 1)
-        except socket.timeout:
+        except TimeoutError:
             return None
         except OSError as exc:
             self.close()
@@ -273,7 +274,7 @@ class Control:
         self.close()
         raise BackendControlError(errno.EPROTO, reason)
 
-    def _event(self, frame: Tuple[int, int, int, int, bytes]) -> None:
+    def _event(self, frame: tuple[int, int, int, int, bytes]) -> None:
         kind, request, code, sequence, payload = frame
         if request:
             self._protocol_error("unexpected control reply")
@@ -304,7 +305,7 @@ class Control:
         else:
             self._protocol_error("unexpected backend event")
 
-    def _acknowledgement(self, kind: Request, request: int) -> Tuple[int, int, bytes]:
+    def _acknowledgement(self, kind: Request, request: int) -> tuple[int, int, bytes]:
         deadline = time.monotonic() + CONTROL_ACK_TIMEOUT
         while True:
             remaining = deadline - time.monotonic()
@@ -325,7 +326,7 @@ class Control:
             self._event(frame)
 
     def _request(self, kind: Request, code: int = 0, payload: bytes = b"",
-                 token: Optional[int] = None) -> Tuple[int, int, bytes]:
+                 token: int | None = None) -> tuple[int, int, bytes]:
         request = self._send_request(kind, code, payload, token)
         return self._acknowledgement(kind, request)
 
@@ -383,7 +384,7 @@ class Control:
             if frame is not None:
                 self._event(frame)
 
-    def next_delivery(self, timeout: float) -> Optional[Delivery]:
+    def next_delivery(self, timeout: float) -> Delivery | None:
         deadline = time.monotonic() + timeout
         while True:
             self.heartbeat()
@@ -432,7 +433,7 @@ class Control:
     def send(self, messages: Iterable[Message]) -> None:
         burst = list(messages)
         paths = [message[0] for message in burst]
-        written: List[str] = []
+        written: list[str] = []
         if self._lease is None:
             raise WriteFailed(OSError(errno.EPERM, "writes require the complete operation lease"),
                               [], paths)
@@ -464,11 +465,11 @@ class Control:
                 self.on_written(path, tags, tuple(args))
 
 
-def connect_backend(config: Config, config_path: Optional[Path] = None, *,
+def connect_backend(config: Config, config_path: Path | None = None, *,
                     reader: bool = False,
                     sources: Source = Source.DEVICE | Source.DERIVED,
-                    should_stop: Optional[Callable[[], bool]] = None,
-                    expected_pid: Optional[int] = None) -> Control:
+                    should_stop: Callable[[], bool] | None = None,
+                    expected_pid: int | None = None) -> Control:
     """Pin a read-only identity check to the actual kernel peer connection.
 
     Connecting never acquires writing permission. The operation takes its

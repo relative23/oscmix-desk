@@ -62,7 +62,7 @@ def test_companion_owns_no_core_file_and_no_activation_files(tmp_path):
     (backend / '.oscmix-desk-source.json').write_text('{"fixture": true}\n')
     (backend / 'gtk/oscmix.gschema.xml').write_text('<schemalist/>\n')
     stages = [tmp_path / name for name in ('core', 'gtk')]
-    for stage, options in zip(stages, [[], ['--gtk-only']]):
+    for stage, options in zip(stages, [[], ['--gtk-only']], strict=True):
         subprocess.run(['bash', str(repo_file('scripts/stage-install.sh')),
                         '--destdir', str(stage), '--backend', str(backend), *options],
                        capture_output=True, text=True, check=True)

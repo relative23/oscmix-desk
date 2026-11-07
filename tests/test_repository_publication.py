@@ -135,7 +135,8 @@ def test_final_recheck_refuses_a_changed_predecessor_without_replacing_saved_evi
     path.write_text(json.dumps(dict(transition=dict(previous=promotion.digest))))
     monkeypatch.setattr(publisher.time, 'time', lambda: 200)
     checked = publisher.recheck(root)
-    assert len(checked['transition']['conditional_requests']) == len(publisher.SITE.BUILDER.TARGETS)
+    requests = checked['transition']['conditional_requests']
+    assert len(requests) == len(publisher.SITE.BUILDER.TARGETS)
     before = path.read_bytes()
     promotion.remote['publication.json'] += b' '
     with pytest.raises(ValueError, match='publication changed'):

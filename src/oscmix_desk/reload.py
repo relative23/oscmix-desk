@@ -17,8 +17,9 @@ import contextlib
 import os
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple, cast
+from typing import cast
 
 from .constants import RECONCILE_WAIT_FOR_VERIFIER, SERVICE_UNIT
 from .desk import _operation
@@ -33,7 +34,7 @@ from .profiles import effective_config, keep_machine_settings
 from .reconcile import ApplyIntent
 
 
-def _desk_under_the_lock(config_path: Optional[Path],
+def _desk_under_the_lock(config_path: Path | None,
                          running: Config, *, strict: bool = False) -> Config:
     """Re-read the desk now that nothing else may write it.
 
@@ -61,7 +62,7 @@ def _moved(fresh: Config, running: Config) -> str:
 
 
 def _kept_for_this_process(fresh: Config, running: Config
-                           ) -> Optional[Config]:
+                           ) -> Config | None:
     """Keep this process's identity, or refuse a desk for another device.
 
     Re-read and validate under the same overrides as a restart, then
@@ -79,8 +80,8 @@ def _kept_for_this_process(fresh: Config, running: Config
     return None
 
 
-def _verifier_finished(verifier: Optional[threading.Thread],
-                       stop_requested: Dict[str, bool], reason: str = "SIGHUP") -> bool:
+def _verifier_finished(verifier: threading.Thread | None,
+                       stop_requested: dict[str, bool], reason: str = "SIGHUP") -> bool:
     """Wait for the start-up verifier before a reconcile writes anything.
 
     Startup verification retains the operation's connection and ownership
@@ -112,8 +113,8 @@ def _verifier_finished(verifier: Optional[threading.Thread],
 
 
 def _reconcile(args: argparse.Namespace, config: Config,
-               stop_requested: Dict[str, bool],
-               verifier: Optional[threading.Thread] = None, *,
+               stop_requested: dict[str, bool],
+               verifier: threading.Thread | None = None, *,
                reason: str = "SIGHUP") -> None:
     """Re-read the config and selectively reconcile PIN settings on SIGHUP.
 
@@ -146,8 +147,8 @@ def _reconcile(args: argparse.Namespace, config: Config,
 
 
 def _reconcile_once(args: argparse.Namespace, config: Config,
-                    stop_requested: Dict[str, bool],
-                    verifier: Optional[threading.Thread], reason: str = "SIGHUP") -> str:
+                    stop_requested: dict[str, bool],
+                    verifier: threading.Thread | None, reason: str = "SIGHUP") -> str:
     """Report completion, a refused start, or an incomplete operation."""
     if not _verifier_finished(verifier, stop_requested, reason):
         return "reconcile skipped"
@@ -179,7 +180,7 @@ def _reconcile_once(args: argparse.Namespace, config: Config,
         return "reconciled" if complete else "reconcile incomplete"
 
 
-def _reload_config(running: Config, path: Optional[Path], *, strict: bool = False,
+def _reload_config(running: Config, path: Path | None, *, strict: bool = False,
                    reason: str = "SIGHUP") -> Config:
     fresh = _reloaded_desk(running, path, strict=strict, reason=reason)
     if fresh is None:
@@ -209,14 +210,14 @@ def _stood_down(exc: OSError, planned: bool, stopping: bool, reason: str = "SIGH
     return outcome
 
 
-def _reloaded_desk(running: Config, path: Optional[Path], *,
-                   strict: bool = False, reason: str = "SIGHUP") -> Optional[Config]:
+def _reloaded_desk(running: Config, path: Path | None, *,
+                   strict: bool = False, reason: str = "SIGHUP") -> Config | None:
     """The SIGHUP desk, or None to skip an unusable or retargeted file."""
     return _reread_desk(running, path, starting=False, strict=strict, reason=reason)
 
 
-def desk_in_effect(running: Config, path: Optional[Path], *,
-                   strict: bool = False) -> Optional[Config]:
+def desk_in_effect(running: Config, path: Path | None, *,
+                   strict: bool = False) -> Config | None:
     """The desk a reconcile would apply now, or None; quiet, for the watcher.
 
     The reconcile it may lead to reads the desk again under the lock and
@@ -231,7 +232,7 @@ def desk_in_effect(running: Config, path: Optional[Path], *,
     return None if _moved(fresh, running) else keep_machine_settings(fresh, running)
 
 
-def _files_of(path: Path) -> Tuple[Tuple[str, int, int], ...]:
+def _files_of(path: Path) -> tuple[tuple[str, int, int], ...]:
     """What the desk in effect is read from: routing.conf, the marker and every profile."""
     candidates = [path, active_profile_path(path) or path]
     profiles = profile_path("x", path).parent
@@ -247,25 +248,25 @@ def _files_of(path: Path) -> Tuple[Tuple[str, int, int], ...]:
     return tuple(stats)
 
 
-def watched_desk(running: Config, path: Optional[Path], *,
-                 strict: bool = False) -> Callable[[], Optional[Config]]:
+def watched_desk(running: Config, path: Path | None, *,
+                 strict: bool = False) -> Callable[[], Config | None]:
     """``desk_in_effect`` for the watcher, read again only after one of its files changed.
 
     So a routing.conf with a section this version ignores warns once, not on every check.
     """
-    last: Dict[str, object] = {}
+    last: dict[str, object] = {}
 
-    def current() -> Optional[Config]:
+    def current() -> Config | None:
         files = _files_of(path) if path is not None else ()
         if last.get("files") != files or "desk" not in last:
             last["files"], last["desk"] = files, desk_in_effect(running, path, strict=strict)
-        return cast(Optional[Config], last["desk"])
+        return cast(Config | None, last["desk"])
     return current
 
 
-def _reread_desk(running: Config, path: Optional[Path], *,
+def _reread_desk(running: Config, path: Path | None, *,
                  starting: bool, strict: bool = False,
-                 reason: str = "SIGHUP") -> Optional[Config]:
+                 reason: str = "SIGHUP") -> Config | None:
     """Validate the selected desk under the lock without retargeting it."""
     if path is None:
         return running
@@ -296,8 +297,8 @@ def _reread_desk(running: Config, path: Optional[Path], *,
     return kept
 
 
-def _config_path(args: argparse.Namespace) -> Optional[Path]:
+def _config_path(args: argparse.Namespace) -> Path | None:
     """Pin this invocation's selection, including no discovered config."""
     if not hasattr(args, "_desk_config_path"):
         args._desk_config_path = getattr(args, "config", None) or discover_config_path()
-    return cast(Optional[Path], args._desk_config_path)
+    return cast(Path | None, args._desk_config_path)

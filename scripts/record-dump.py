@@ -42,7 +42,6 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Set, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -67,9 +66,9 @@ QUIET_SECONDS = 6.0
 MAX_SECONDS = 60.0
 
 
-def collect(connection, seconds: float) -> Set[str]:
+def collect(connection, seconds: float) -> set[str]:
     """Paths seen without a refresh, including explicitly marked meter data."""
-    seen: Set[str] = set()
+    seen: set[str] = set()
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         for path, _tags, _args, _origin, _sequence in observations(connection, .25):
@@ -77,9 +76,9 @@ def collect(connection, seconds: float) -> Set[str]:
     return seen
 
 
-def record_dump(connection, streamed: Set[str]):
+def record_dump(connection, streamed: set[str]):
     """Time each first DEVICE report separately from cached and meter reports."""
-    by_origin: Dict[Source, Dict[str, Tuple[str, float]]] = {
+    by_origin: dict[Source, dict[str, tuple[str, float]]] = {
         Source.DEVICE: {}, Source.DERIVED: {}, Source.METERS: {}}
     connection.request_dump()
     started = last_new = time.monotonic()

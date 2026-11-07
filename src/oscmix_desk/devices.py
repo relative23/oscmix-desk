@@ -17,8 +17,6 @@ Data, and one question: which of these devices a config names.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 from .constants import LEVEL_MAX, LEVEL_MIN
 from .registers import (
     BOOL,
@@ -52,7 +50,7 @@ from .registers import (
 
 # pragma: no mutate start
 
-def _seq(first: int, last: int) -> Tuple[int, ...]:
+def _seq(first: int, last: int) -> tuple[int, ...]:
     return tuple(range(first, last + 1))
 
 
@@ -107,8 +105,8 @@ _ROOMEQ_BANDS = (
 
 
 def _band_registers(family: str, sub: str,
-                    bands: Tuple[Tuple[int, Optional[Tuple[str, ...]]], ...],
-                    ) -> Tuple["Register", ...]:
+                    bands: tuple[tuple[int, tuple[str, ...] | None], ...],
+                    ) -> tuple[Register, ...]:
     """A parametric-EQ sub-family: its switch, then freq/gain/q per band.
 
     Shared by `eq` and `roomeq`, which differ only in how many bands
@@ -135,7 +133,7 @@ def _band_registers(family: str, sub: str,
     return tuple(rows)
 
 
-def _roomeq_registers() -> Tuple["Register", ...]:
+def _roomeq_registers() -> tuple[Register, ...]:
     """Room EQ: 640 registers, modelled, readable, **and settable**.
 
     That last word changed with the pin. Until `f2fdd5e` every row here
@@ -205,9 +203,9 @@ _AUTOLEVEL_OPTIONS = (
 
 
 def _sub_registers(family: str, sub: str,
-                   options: Tuple[Tuple[str, str, Optional[float],
-                                        Optional[float], str], ...]
-                   ) -> Tuple["Register", ...]:
+                   options: tuple[tuple[str, str, float | None,
+                                        float | None, str], ...]
+                   ) -> tuple[Register, ...]:
     """One sub-family's rows: its own switch, then its options.
 
     The switch carries a value as well as a subtree (`/input/3/dynamics`
@@ -597,7 +595,7 @@ FF802 = Device(
     supported=False,
 )
 
-DEVICES: Tuple[Device, ...] = (UCX2, FF802)
+DEVICES: tuple[Device, ...] = (UCX2, FF802)
 
 # pragma: no mutate end
 
@@ -607,7 +605,7 @@ DEVICES: Tuple[Device, ...] = (UCX2, FF802)
 # --------------------------------------------------------------------------
 
 
-def device_for_name(name: str) -> Optional[Device]:
+def device_for_name(name: str) -> Device | None:
     """The device a ``routing.conf`` names, or None if it is not modelled.
 
     Matching is on the configured device name, which is what the config

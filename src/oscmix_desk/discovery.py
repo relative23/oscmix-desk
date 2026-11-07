@@ -7,9 +7,9 @@ import os
 import re
 import shutil
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 from .errors import DeviceAmbiguous
 from .log import log
@@ -17,7 +17,7 @@ from .log import log
 _CLIENT_RE = re.compile(r'^Client\s+(\d+)\s*:\s*"(.*)"', re.MULTILINE)
 
 
-def parse_seq_clients(text: str) -> List[Tuple[int, str]]:
+def parse_seq_clients(text: str) -> list[tuple[int, str]]:
     """Parse /proc/asound/seq/clients into (client number, name) pairs."""
     return [(int(num), name) for num, name in _CLIENT_RE.findall(text)]
 
@@ -27,7 +27,7 @@ def parse_seq_clients(text: str) -> List[Tuple[int, str]]:
 _SERIAL_RE = re.compile(r"\((\d{4,})\)")
 
 
-def serial_in(name: str) -> Optional[str]:
+def serial_in(name: str) -> str | None:
     """The serial in a device name such as ``Fireface UCX II (24216011)``."""
     match = _SERIAL_RE.search(name)
     return match.group(1) if match else None
@@ -44,7 +44,7 @@ _CLIENT_LINE_RE = re.compile(
 _CLIENT_NUMBER_RE = re.compile(r"^Client\s+(\d+)\s*:", re.MULTILINE)
 
 
-def _kernel_clients(text: str) -> List[Tuple[int, str]]:
+def _kernel_clients(text: str) -> list[tuple[int, str]]:
     """(number, name) of every client the kernel lists as its own.
 
     The kernel never lists a client number twice. A number that begins
@@ -72,7 +72,7 @@ def _model(name: str) -> str:
     return _SERIAL_RE.sub("", name).strip()
 
 
-def _named(names: Sequence[str], device_name: str) -> List[int]:
+def _named(names: Sequence[str], device_name: str) -> list[int]:
     """Indices of the names that are ``device_name``, exactly if any are.
 
     `[device] name` has always been a substring match, and stays one; but
@@ -86,7 +86,7 @@ def _named(names: Sequence[str], device_name: str) -> List[int]:
 
 
 def select_seq_client(text: str, device_name: str, serial: str = "",
-                      cards: Optional[Sequence[str]] = None) -> Optional[int]:
+                      cards: Sequence[str] | None = None) -> int | None:
     """The one sequencer client this desk is for, or None if it is not there.
 
     ``serial`` narrows the name match to one box. Without it, more than
@@ -126,7 +126,7 @@ def _trigger_snd_seq_load() -> None:
         pass
 
 
-def _usb_device_dirs(usb_id: str, sysfs_usb: Path) -> List[Path]:
+def _usb_device_dirs(usb_id: str, sysfs_usb: Path) -> list[Path]:
     """All sysfs devices with this vendor:product identity."""
     vendor, product = usb_id.lower().split(":")
     try:
@@ -171,7 +171,7 @@ def usb_device_authorized(usb_id: str, sysfs_usb: Path) -> bool:
         return True
 
 
-def usb_revision(usb_id: str, sysfs_usb: Path, *, serial: str = "") -> Optional[str]:
+def usb_revision(usb_id: str, sysfs_usb: Path, *, serial: str = "") -> str | None:
     """The device release number USB reports, e.g. ``3.01``.
 
     ``bcdDevice`` in sysfs is the descriptor's release field, binary-coded
@@ -214,8 +214,8 @@ def usb_revision(usb_id: str, sysfs_usb: Path, *, serial: str = "") -> Optional[
 
 
 def device_firmware(usb_id: str, sysfs_usb: Path,
-                    reports: Optional[Mapping[str, object]] = None, *, serial: str = ""
-                    ) -> Dict[str, Optional[object]]:
+                    reports: Mapping[str, object] | None = None, *, serial: str = ""
+                    ) -> dict[str, object | None]:
     """The two version numbers the device offers, in one shape.
 
     ``usb_revision`` from sysfs, and ``dsp_version`` from the register
@@ -226,7 +226,7 @@ def device_firmware(usb_id: str, sysfs_usb: Path,
     Callers with device reports pass that device's serial so the USB and
     DSP observations cannot silently describe two different interfaces.
     """
-    dsp: Optional[object] = None
+    dsp: object | None = None
     if reports:
         args = reports.get("/hardware/dspvers")
         # The CLI and the fixture recorder keep every argument, the
@@ -236,7 +236,7 @@ def device_firmware(usb_id: str, sysfs_usb: Path,
             "dsp_version": dsp}
 
 
-def _first(args: Sequence[object]) -> Optional[object]:
+def _first(args: Sequence[object]) -> object | None:
     return args[0] if args else None
 
 
@@ -263,7 +263,7 @@ class Device:
 
     usb_id: str
     serial: str
-    client: Optional[int]
+    client: int | None
 
     @property
     def key(self) -> str:
@@ -310,7 +310,7 @@ def resolve_device(usb_id: str, device_name: str, serial: str,
 
 
 def wait_for_device(usb_id: str, device_name: str, serial: str,
-                    timeout: float, proc_root: Path) -> Optional[Device]:
+                    timeout: float, proc_root: Path) -> Device | None:
     """The resolved interface once its sequencer client is up, or None.
 
     The start binds the client and pins the serial from the same
@@ -330,7 +330,7 @@ def wait_for_device(usb_id: str, device_name: str, serial: str,
             return None
         time.sleep(1.0)
 
-def resolve_binary(name: str, env_var: str) -> Optional[str]:
+def resolve_binary(name: str, env_var: str) -> str | None:
     """Locate a binary: env override, then ~/.local/bin, then PATH.
 
     The pinned build lives in ~/.local/bin (install.sh puts it there),
@@ -369,7 +369,7 @@ _CARD_LINE_RE = re.compile(
     r"^\s*\d+\s+\[[^\]]*\]:\s*\S+\s+-\s+(.*?)\s*$", re.MULTILINE)
 
 
-def card_products(cards: Path) -> Optional[List[str]]:
+def card_products(cards: Path) -> list[str] | None:
     """The product name of every card the kernel lists, or None if unreadable."""
     try:
         return _CARD_LINE_RE.findall(cards.read_text(errors="replace"))
@@ -378,7 +378,7 @@ def card_products(cards: Path) -> Optional[List[str]]:
 
 
 def device_serials(cards: Path = Path("/proc/asound/cards"),
-                   device_name: str = "") -> List[str]:
+                   device_name: str = "") -> list[str]:
     """Every serial the ALSA card list shows for ``device_name``, in order.
 
     Matched on the model the way the sequencer clients are, so a Fireface
@@ -392,7 +392,7 @@ def device_serials(cards: Path = Path("/proc/asound/cards"),
     ``resolve_device`` refuses to guess.
     """
     products = card_products(cards) or []
-    found: List[str] = []
+    found: list[str] = []
     for index in _named(products, device_name):
         serial = serial_in(products[index])
         if serial and serial not in found:

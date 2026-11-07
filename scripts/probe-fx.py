@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
@@ -545,7 +545,7 @@ def main():
         save_evidence(args.out, result)
 
     try:
-        result['recorded'] = datetime.now(timezone.utc).isoformat()
+        result['recorded'] = datetime.now(UTC).isoformat()
         result['inventory_sha256'] = hashlib.sha256(inventory_bytes).hexdigest()
         checkpoint()
         config, path = measurement_config(args.config)

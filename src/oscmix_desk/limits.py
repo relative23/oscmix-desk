@@ -20,8 +20,8 @@ device's own limiter still holds.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass
-from typing import AbstractSet, Dict, Mapping, Optional, Sequence, Set, Tuple
 
 from .devices import device_for_name
 from .errors import ConfigError
@@ -51,7 +51,7 @@ DSPLOAD = "/hardware/dspload"
 LOAD_PATHS = (DSPLOAD,)
 
 
-def _limits(config: Config) -> Optional[Tuple[DspLimits, Tuple[int, ...]]]:
+def _limits(config: Config) -> tuple[DspLimits, tuple[int, ...]] | None:
     device = device_for_name(config.device_name)
     limits = LIMITS.get(config.device_name)
     if device is None or limits is None:
@@ -65,7 +65,7 @@ def _pair(channel: int) -> int:
 
 def _problem(limits: DspLimits, roomeq: Mapping[int, int],
              crossfeed: Mapping[int, int], what: str,
-             linked: AbstractSet[int] = frozenset()) -> Optional[str]:
+             linked: Set[int] = frozenset()) -> str | None:
     """The first exceeded limit, counted over one state of the outputs."""
     rooms = sorted({channel for channel, value in roomeq.items() if value}
                    | {channel for left in linked for channel in (left, left + 1)
@@ -81,9 +81,9 @@ def _problem(limits: DspLimits, roomeq: Mapping[int, int],
     return None
 
 
-def _declared(config: Config) -> Tuple[Dict[int, int], Dict[int, int]]:
-    roomeq: Dict[int, int] = {}
-    crossfeed: Dict[int, int] = {}
+def _declared(config: Config) -> tuple[dict[int, int], dict[int, int]]:
+    roomeq: dict[int, int] = {}
+    crossfeed: dict[int, int] = {}
     for setting in config.channels:
         if setting.family == "output" and setting.option == "roomeq":
             roomeq[setting.channel] = integer(setting.value)
@@ -92,7 +92,7 @@ def _declared(config: Config) -> Tuple[Dict[int, int], Dict[int, int]]:
     return roomeq, crossfeed
 
 
-def overload(latest: Mapping[str, Tuple[str, Args]]) -> Optional[str]:
+def overload(latest: Mapping[str, tuple[str, Args]]) -> str | None:
     """A warning when the device reports more DSP work than it does, else None.
 
     `/hardware/dspload` is the device's load in percent: Room EQ costs 3 per channel and
@@ -112,7 +112,7 @@ def overload(latest: Mapping[str, Tuple[str, Args]]) -> Optional[str]:
             % load)
 
 
-def _declared_links(config: Config) -> Set[int]:
+def _declared_links(config: Config) -> set[int]:
     return {channel for route in config.routes
             for kind, channel, linked in route.link_requirements if kind == "output" and linked}
 
@@ -128,13 +128,13 @@ def validate_dsp_limits(config: Config) -> None:
         raise ConfigError(problem)
 
 
-def _written(writes: Sequence[Tuple[str, Args]], template: str,
-             channels: Sequence[int]) -> Dict[int, int]:
+def _written(writes: Sequence[tuple[str, Args]], template: str,
+             channels: Sequence[int]) -> dict[int, int]:
     paths = {template % channel: channel for channel in channels}
     return {paths[path]: integer(args[0]) for path, args in writes if path in paths}
 
 
-def switching_on(config: Config, writes: Sequence[Tuple[str, Args]]) -> Tuple[str, ...]:
+def switching_on(config: Config, writes: Sequence[tuple[str, Args]]) -> tuple[str, ...]:
     """The writes of a plan that turn Room EQ or Crossfeed on, so the limits need counting."""
     found = _limits(config)
     if found is None:
@@ -143,11 +143,11 @@ def switching_on(config: Config, writes: Sequence[Tuple[str, Args]]) -> Tuple[st
                  for channel, value in _written(writes, template, found[1]).items() if value)
 
 
-def switches_on(config: Config, writes: Sequence[Tuple[str, Args]]) -> bool:
+def switches_on(config: Config, writes: Sequence[tuple[str, Args]]) -> bool:
     return bool(switching_on(config, writes))
 
 
-def observation_paths(config: Config) -> Tuple[str, ...]:
+def observation_paths(config: Config) -> tuple[str, ...]:
     """Every output register the count reads, for a device that has limits."""
     found = _limits(config)
     if found is None:
@@ -156,8 +156,8 @@ def observation_paths(config: Config) -> Tuple[str, ...]:
             *(LINK % channel for channel in found[1] if channel % 2))
 
 
-def dsp_problem(config: Config, writes: Sequence[Tuple[str, Args]],
-                observed: Mapping[str, Tuple[str, Args]]) -> Optional[str]:
+def dsp_problem(config: Config, writes: Sequence[tuple[str, Args]],
+                observed: Mapping[str, tuple[str, Args]]) -> str | None:
     """The limit this plan would break, counting its writes over the observed outputs.
 
     An output that did not report is counted as off: the observation cannot prove it on, and
@@ -169,7 +169,7 @@ def dsp_problem(config: Config, writes: Sequence[Tuple[str, Args]],
     limits, channels = found
     state = []
     for template in (ROOMEQ, CROSSFEED, LINK):
-        values: Dict[int, int] = {}
+        values: dict[int, int] = {}
         for channel in channels:
             report = observed.get(template % channel)
             try:

@@ -13,6 +13,7 @@ starts rather than the work it completes.
 """
 
 import importlib.util
+import itertools
 import struct
 
 import pytest
@@ -397,16 +398,14 @@ def test_silence_on_an_unbounded_register_is_not_a_defect(sweep):
 def fx_artifact():
     import json
 
-    return json.loads(
-        repo_file("tests", "data", "fx-probes-ucx2.json").read_text())
+    return json.loads(repo_file("tests", "data", "fx-probes-ucx2.json").read_text())
 
 
 @pytest.fixture(scope="module")
 def pan_artifact():
     import json
 
-    return json.loads(
-        repo_file("tests", "data", "output-pan-probes-ucx2.json").read_text())
+    return json.loads(repo_file("tests", "data", "output-pan-probes-ucx2.json").read_text())
 
 
 @pytest.fixture(scope="module")
@@ -548,7 +547,7 @@ def test_fx_artifact_records_device_probes_and_restoration(fx_artifact):
         phases = ("baseline_first", "baseline", "probe", "restoration", "final")
         for path in baseline:
             sequences = [states[phase][path]["sequence"] for phase in phases]
-            assert all(a < b for a, b in zip(sequences, sequences[1:])), (target, path)
+            assert all(a < b for a, b in itertools.pairwise(sequences)), (target, path)
         requested = case["requested_db"]
         assert math.isfinite(requested), target
         assert -65 <= requested <= 0, target
@@ -630,7 +629,7 @@ def test_output_pan_artifact_records_integer_device_readbacks_and_restoration(pa
                        for path, report in baseline.items())
         for path in baseline:
             sequences = [states[phase][path]["sequence"] for phase in phases]
-            assert all(first < second for first, second in zip(sequences, sequences[1:]))
+            assert all(first < second for first, second in itertools.pairwise(sequences))
         requested = case["requested_pan"]
         assert type(requested) is int
         assert -100 <= requested <= 100

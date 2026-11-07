@@ -3,17 +3,8 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import (
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-)
 
 from .autogain import dependency_paths
 from .backend import Control
@@ -54,7 +45,7 @@ from .routing import (
 
 # One expected register: its OSC type tags and the arguments it must
 # report back. Keyed by OSC path.
-Registers = Dict[str, Tuple[str, Args]]
+Registers = dict[str, tuple[str, Args]]
 
 
 def expected_registers(config: Config) -> Registers:
@@ -81,7 +72,7 @@ def expected_registers(config: Config) -> Registers:
 
 
 def register_ever_reported(path: str,
-                           device: Optional[Device] = None) -> bool:
+                           device: Device | None = None) -> bool:
     """Whether the device reports the register *at all*.
 
     Two families never do: the playback *mix matrix*,
@@ -128,7 +119,7 @@ def register_ever_reported(path: str,
 
 
 def register_promptly_reported(path: str,
-                               device: Optional[Device] = None) -> bool:
+                               device: Device | None = None) -> bool:
     """Whether an *absent* register is worth re-sending for.
 
     A hint, not a filter: every register that *does* appear in the dump
@@ -185,12 +176,12 @@ def _is_channel_state(device: Device, path: str) -> bool:
 class VerifyResult:
     """Per-register outcome of a routing read-back."""
 
-    confirmed: List[str]
-    mismatched: List[str]
-    unobserved: List[str]
+    confirmed: list[str]
+    mismatched: list[str]
+    unobserved: list[str]
     # Invalid is a subset of mismatched, preserving strict callers' meaning
     # while avoiding a claim that a malformed value was a user adjustment.
-    invalid: List[str] = field(default_factory=list)
+    invalid: list[str] = field(default_factory=list)
     # Observation metadata is not another expected-value classification.
     # Excluding it from equality preserves existing result comparisons.
     latest: Registers = field(default_factory=dict, compare=False)
@@ -200,8 +191,8 @@ class VerifyResult:
                        for path, (tags, args) in self.latest.items()}
 
 
-def _observe(backend: Control, observed: Observation, prompt: Set[str],
-             on_observed: Optional[Callable[[str, Sequence[Value]], None]],
+def _observe(backend: Control, observed: Observation, prompt: set[str],
+             on_observed: Callable[[str, Sequence[Value]], None] | None,
              should_stop: StopCheck, timeout: float) -> None:
     """Read reports until the window closes, a stop is asked, or time runs out.
 
@@ -224,8 +215,8 @@ def _observe(backend: Control, observed: Observation, prompt: Set[str],
                 on_observed(report[0], report[2])
 
 
-def _window_may_close(registers: Registers, reportable: Set[str],
-                      confirmed: Set[str], mismatched: Set[str]) -> bool:
+def _window_may_close(registers: Registers, reportable: set[str],
+                      confirmed: set[str], mismatched: set[str]) -> bool:
     """Whether the observation window has learned everything it can.
 
     A mismatch always keeps it open: a stale value echoed during
@@ -252,11 +243,10 @@ def _window_may_close(registers: Registers, reportable: Set[str],
 
 def verify_routing(registers: Registers, backend: Control,
                    timeout: float = VERIFY_TIMEOUT,
-                   on_observed: Optional[Callable[[str, Sequence[Value]],
-                                                  None]] = None,
+                   on_observed: Callable[[str, Sequence[Value]], None] | None = None,
                    should_stop: StopCheck = never_stop,
                    *,
-                   device_model: Optional[Device] = None,
+                   device_model: Device | None = None,
                    dependency_paths: Sequence[str] = (),
                    ) -> VerifyResult:
     # device_model is keyword-only on purpose: inserting it into
@@ -306,8 +296,8 @@ def verify_routing(registers: Registers, backend: Control,
                         latest=dict(observed.latest))
 
 
-def _report(result: VerifyResult, config: Config, device: Optional[Device],
-            attempt: int) -> List[str]:
+def _report(result: VerifyResult, config: Config, device: Device | None,
+            attempt: int) -> list[str]:
     """Classify results; write ownership is selected independently by intent."""
     linked = [entry.path for entry in desired(config)
               if entry.phase == PHASE_LINK and entry.args == (1,)
@@ -345,10 +335,10 @@ def _report(result: VerifyResult, config: Config, device: Optional[Device],
     return problems
 
 
-def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
-                 overrides: Optional[Mapping[Tuple[str, str], Policy]] = None, *,
+def _unconfirmed(result: VerifyResult, device: Device | None = None,
+                 overrides: Mapping[tuple[str, str], Policy] | None = None, *,
                  retained: Sequence[str] = ()
-                 ) -> List[str]:
+                 ) -> list[str]:
     """The registers that count as a problem worth re-sending for.
 
     Absent counts only for the families the dump reports promptly --
@@ -369,10 +359,10 @@ def _unconfirmed(result: VerifyResult, device: Optional[Device] = None,
 
 
 def _kept_by_the_device(result: VerifyResult,
-                        device: Optional[Device] = None,
-                        overrides: Optional[Mapping[Tuple[str, str], Policy]] = None, *,
+                        device: Device | None = None,
+                        overrides: Mapping[tuple[str, str], Policy] | None = None, *,
                         retained: Sequence[str] = ()
-                        ) -> List[str]:
+                        ) -> list[str]:
     """Mismatches this session is deliberately letting the device keep."""
     return sorted(path for path in result.mismatched
                   if path not in result.invalid and
@@ -452,7 +442,7 @@ def verify_and_repair(config: Config, backend: Control,
     registers = expected_registers(config)
     links = {entry.path for entry in desired(config) if entry.phase == PHASE_LINK}
 
-    problems: List[str] = []
+    problems: list[str] = []
     for attempt in (1, 2):
         if should_stop():
             return False

@@ -37,7 +37,8 @@ Mix setup to take the defaults from, and desk does not guess them.
 
 from __future__ import annotations
 
-from typing import AbstractSet, Dict, List, Optional, Sequence, Set, Tuple
+from collections.abc import Sequence
+from collections.abc import Set as AbstractSet
 
 from .constants import LEVEL_MIN
 from .errors import ConfigError
@@ -53,8 +54,8 @@ _SILENCES = {"keep": (), "clear-inputs": ("input",), "clear-submixes": ("input",
 _STRAIGHT = {"straight-playback", "daw"}
 
 #: (path, tags, args, compared) of one silent cell; a register that may fold is not compared.
-BaseEntry = Tuple[str, str, Args, bool]
-Links = Dict[Tuple[str, int], bool]
+BaseEntry = tuple[str, str, Args, bool]
+Links = dict[tuple[str, int], bool]
 
 
 def check_base(base: str) -> None:
@@ -70,17 +71,17 @@ def _declared_links(routes: Sequence[Route]) -> Links:
     return declared
 
 
-def _odd(device: Device, family: str) -> List[int]:
+def _odd(device: Device, family: str) -> list[int]:
     channels = device.channels_for(family)
     return [ch for ch in channels if ch % 2 and ch + 1 in channels]
 
 
 def base_entries(base: str, routes: Sequence[Route], declared: AbstractSet[str],
-                 device: Device) -> Tuple[BaseEntry, ...]:
+                 device: Device) -> tuple[BaseEntry, ...]:
     """The silent cells of ``base`` where no route writes (``declared``), in block order."""
     check_base(base)
     links = _declared_links(routes)
-    entries: List[BaseEntry] = []
+    entries: list[BaseEntry] = []
     for out in _odd(device, "output"):
         outs = (out,) if links.get(("output", out)) else (out, out + 1)
         for kind in _SILENCES[base]:
@@ -96,7 +97,7 @@ def base_entries(base: str, routes: Sequence[Route], declared: AbstractSet[str],
     return tuple(entries)
 
 
-def _merged(settings: Sequence[ChannelSetting], family: str, left: int) -> Optional[str]:
+def _merged(settings: Sequence[ChannelSetting], family: str, left: int) -> str | None:
     """What a link of ``family`` pair ``left`` would merge that the desk keeps apart, or None."""
     odd = {s.option: s.value for s in settings if s.family == family and s.channel == left}
     even = {s.option: s.value for s in settings if s.family == family and s.channel == left + 1}
@@ -106,8 +107,8 @@ def _merged(settings: Sequence[ChannelSetting], family: str, left: int) -> Optio
     return ("%s %d and %d set %s differently" % (family, left, left + 1, ", ".join(apart)))
 
 
-def _diagonal(left: int, playback: Optional[bool], output: Optional[bool],
-              taken: AbstractSet[Tuple[int, int]], base: str) -> List[Route]:
+def _diagonal(left: int, playback: bool | None, output: bool | None,
+              taken: AbstractSet[tuple[int, int]], base: str) -> list[Route]:
     """Playback pair ``left`` on output pair ``left`` at 0 dB, shaped by the declared links."""
     pair, name = (left, left + 1), "[desk] base %d/%d" % (left, left + 1)
     if playback is False and output is True:
@@ -143,8 +144,8 @@ def _check_mirrors(base: str, left: int, diagonal: Sequence[Route], mirrored: Ab
 
 
 def base_routes(base: str, routes: Sequence[Route], settings: Sequence[ChannelSetting],
-                mirrors: Sequence[Tuple[Tuple[int, ...], Tuple[int, ...]]],
-                device: Device) -> Tuple[Route, ...]:
+                mirrors: Sequence[tuple[tuple[int, ...], tuple[int, ...]]],
+                device: Device) -> tuple[Route, ...]:
     """The routes ``straight-playback`` and ``daw`` declare: each playback pair on its outputs.
 
     Skips a mirror target, which gets its source's, and every cell a route already sets.
@@ -154,12 +155,12 @@ def base_routes(base: str, routes: Sequence[Route], settings: Sequence[ChannelSe
         return ()
     links = _declared_links(routes)
     targets = {source[0]: target[0] for target, source in mirrors if len(source) == 2}
-    mirrored: Set[int] = {channel for target, _source in mirrors for channel in target}
+    mirrored: set[int] = {channel for target, _source in mirrors for channel in target}
     alone = {source[0] for _target, source in mirrors if len(source) == 1}
     paired = {source[0] for _target, source in mirrors if len(source) == 2}
     taken = {(out, pb) for route in routes for out in route.output for pb in route.playback}
     playback = set(_odd(device, "playback"))
-    added: List[Route] = []
+    added: list[Route] = []
     for left in _odd(device, "output"):
         if left not in playback or {left, left + 1} <= mirrored:
             continue

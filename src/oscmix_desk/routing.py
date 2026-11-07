@@ -6,8 +6,8 @@ See docs/OSC-PROTOCOL.md for why."""
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Mapping, Sequence
 from enum import Enum
-from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 from . import prechecks
 from .autogain import dependency_paths, flag_value, retained_gains
@@ -49,7 +49,7 @@ def never_stop() -> bool:
 
 
 def wait_unless_stopped(seconds: float, should_stop: StopCheck,
-                        backend: Optional[Control] = None) -> bool:
+                        backend: Control | None = None) -> bool:
     """Sleep, waking early on a stop request. True if a stop was asked for.
 
     A plain ``time.sleep`` is what let ``LINK_SYNC_BLIND_DELAY`` outlast
@@ -90,7 +90,7 @@ class LinkEcho(Enum):
 
 
 def await_link_echo(expected: Mapping[str, int], backend: Control,
-                    timeout: Optional[float] = None, *,
+                    timeout: float | None = None, *,
                     should_stop: StopCheck = never_stop) -> LinkEcho:
     """Wait until oscmix reports every register in ``expected`` at its value.
 
@@ -138,7 +138,7 @@ def await_link_echo(expected: Mapping[str, int], backend: Control,
 
 
 def _cross_the_barrier(config: Config, device: Control, *,
-                       expected: Optional[Mapping[str, int]] = None,
+                       expected: Mapping[str, int] | None = None,
                        require_confirmation: Sequence[str] = (),
                        should_stop: StopCheck = never_stop) -> None:
     """Confirm, settle for silence, or refuse dependent writes with cause."""
@@ -174,7 +174,7 @@ def apply_routing(config: Config, backend: Control, *,
                   require_link_confirmation: Sequence[str] = (),
                   intent: ApplyIntent = ApplyIntent.INITIAL,
                   confirmed: Sequence[str] = (),
-                  observed: Optional[Mapping[str, Tuple[str, Args]]] = None,
+                  observed: Mapping[str, tuple[str, Args]] | None = None,
                   should_stop: StopCheck = never_stop) -> None:
     """Send the routing in two phases: link the pairs, then fill the mix.
 
@@ -274,7 +274,7 @@ def _log_apply(config: Config, wanted: Plan, skip: Sequence[str]) -> None:
 def _send_in_order(wanted: Plan, config: Config,
                    device: Control, require_confirmation: Sequence[str],
                    should_stop: StopCheck, intent: ApplyIntent,
-                   latest: Mapping[str, Tuple[str, Args]], retained: Sequence[str],
+                   latest: Mapping[str, tuple[str, Args]], retained: Sequence[str],
                    confirmed: Sequence[str]) -> None:
     """Links, the barrier, the mix, then channel state.
 
@@ -335,7 +335,7 @@ def _send_in_order(wanted: Plan, config: Config,
             raise WriteFailed(exc, before, remaining + after) from exc
 
 
-def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
+def output_link_state(routes: Sequence[Route]) -> dict[str, int]:
     """The ``/output/<n>/stereo`` values a routing depends on.
 
     Maps each register to the value the device has to report before the
@@ -343,7 +343,7 @@ def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
     later route targeting the same pair wins -- the same rule the mix
     writes follow.
     """
-    state: Dict[str, int] = {}
+    state: dict[str, int] = {}
     for route in routes:
         for path, _types, args in link_messages(route):
             if path.startswith("/output/"):
@@ -352,7 +352,7 @@ def output_link_state(routes: Sequence[Route]) -> Dict[str, int]:
 
 
 def send_mix(config: Config, backend: Control, *, confirmed: Sequence[str] = (),
-             observed: Optional[Mapping[str, Tuple[str, Args]]] = None) -> None:
+             observed: Mapping[str, tuple[str, Args]] | None = None) -> None:
     """Repair the mix matrix without reasserting REMEMBER starting values.
 
     Through the planner, like the apply: a register two routes share

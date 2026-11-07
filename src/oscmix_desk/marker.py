@@ -12,7 +12,7 @@ import contextlib
 import os
 import tempfile
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 from .errors import ConfigError
 from .log import log
@@ -22,7 +22,7 @@ from .paths import discover_config_path, profile_path, regular_file
 ACTIVE_MARKER = "active-profile"
 
 
-def active_profile_path(config_path: Optional[Path]) -> Optional[Path]:
+def active_profile_path(config_path: Path | None) -> Path | None:
     """The marker file for this config, or None without a config."""
     if config_path is None:
         return None
@@ -32,7 +32,7 @@ def active_profile_path(config_path: Optional[Path]) -> Optional[Path]:
     return config.with_name(name)
 
 
-def active_profile(config_path: Optional[Path] = None) -> Optional[str]:
+def active_profile(config_path: Path | None = None) -> str | None:
     """The remembered profile name, or None.
 
     A marker whose content is not a profile name is ignored with a
@@ -75,7 +75,7 @@ class Marked(NamedTuple):
     durable: bool
 
 
-def remember_active_profile(name: str, config_path: Optional[Path]) -> Marked:
+def remember_active_profile(name: str, config_path: Path | None) -> Marked:
     """Record a switch that was applied; a warning when it cannot.
 
     Not an outcome state: the device already has the profile, and a
@@ -146,7 +146,7 @@ def _fsync_directory(directory: Path) -> bool:
     return True
 
 
-def forget_active_profile(config_path: Optional[Path]) -> Marked:
+def forget_active_profile(config_path: Path | None) -> Marked:
     """Remove the marker; nothing to remove is not an error.
 
     Not ``in_effect`` when it is still there afterwards, which the caller

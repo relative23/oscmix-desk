@@ -135,7 +135,7 @@ def test_an_unlinked_input_pair_uses_the_same_pair_balance(session_mod):
                               stereo=False)
     messages = reconcile.mix_messages(route)
     assert [p for p, _t, _a in messages] == ["/mix/5/input/1", "/mix/6/input/1"]
-    for (_p, _t, args), pan in zip(messages, (-100, 100)):
+    for (_p, _t, args), pan in zip(messages, (-100, 100), strict=True):
         assert abs(args[0] - 6.0206) < 0.001
         assert args[1] == pan
 

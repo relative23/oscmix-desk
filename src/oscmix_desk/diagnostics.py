@@ -7,9 +7,9 @@ import re
 import shlex
 import stat
 import subprocess
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Sequence
 
 from . import hostservice
 from .constants import SERVICE_UNIT
@@ -40,15 +40,15 @@ class BackendStatus:
 
     state: str
     detail: str
-    device: Optional[Device] = None
-    pid: Optional[int] = None
-    endpoint: Optional[str] = None
-    uid: Optional[int] = None
-    gid: Optional[int] = None
+    device: Device | None = None
+    pid: int | None = None
+    endpoint: str | None = None
+    uid: int | None = None
+    gid: int | None = None
 
 
 def backend_status(config: Config, proc_root: Path,
-                   config_path: Optional[Path] = None) -> BackendStatus:
+                   config_path: Path | None = None) -> BackendStatus:
     """Inspect the exact coordinated endpoint without connecting to it."""
     try:
         device = resolve_device(config.usb_id, config.device_name, config.serial, proc_root)
@@ -90,7 +90,7 @@ def backend_status(config: Config, proc_root: Path,
                          device, holder.pid, str(path), process.st_uid, process.st_gid)
 
 
-def service_status() -> Dict[str, str]:
+def service_status() -> dict[str, str]:
     """Read the selected manager without enabling or starting the service."""
     try:
         host = hostservice.registered()
@@ -112,7 +112,7 @@ def service_status() -> Dict[str, str]:
     return {"state": "observed", **values}
 
 
-def service_start_problem(config_path: Optional[Path], service: Dict[str, str]) -> Optional[str]:
+def service_start_problem(config_path: Path | None, service: dict[str, str]) -> str | None:
     """Only launch an enabled default session belonging to this desk.
 
     Custom commands/environment files need an explicit manual start. A

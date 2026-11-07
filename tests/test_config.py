@@ -161,7 +161,7 @@ def test_unlinked_pair_route_uses_pair_balance(session_mod):
     assert [args for _p, _t, args in messages[:2]] == [(1,), (0,)]
     # The mix requests carry the +6 dB that compensates oscmix's halving
     # on this path; only the pan differs between the two halves.
-    for (_path, _types, args), pan in zip(messages[2:], (-100, 100)):
+    for (_path, _types, args), pan in zip(messages[2:], (-100, 100), strict=True):
         assert abs(args[0] - 6.0206) < 0.001
         assert args[1] == pan
 

@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 from .config import load_config
 from .constants import SERVICE_UNIT
@@ -44,7 +43,7 @@ def systemctl_user(*verb: str) -> int:
         return 1
 
 
-def ensure_backend(config: Config, path: Optional[Path], proc_root: Path) -> BackendStatus:
+def ensure_backend(config: Config, path: Path | None, proc_root: Path) -> BackendStatus:
     """Reuse a matching manual/service backend; otherwise start only an enabled desk."""
     status = backend_status(config, proc_root, path)
     if status.state == "ready":
@@ -72,7 +71,7 @@ def ensure_backend(config: Config, path: Optional[Path], proc_root: Path) -> Bac
         time.sleep(0.25)
 
 
-def resolve_gtk_binary() -> Optional[str]:
+def resolve_gtk_binary() -> str | None:
     """Same explicit-override/per-user/PATH ordering as the backend binaries."""
     return resolve_binary("oscmix-gtk", "OSCMIX_BIN_GTK")
 

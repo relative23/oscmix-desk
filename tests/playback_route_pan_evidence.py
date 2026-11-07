@@ -193,7 +193,7 @@ def dsp_stage(value, pan, baseline=None):
 
 def register_word(reg, value):
     base = reg << 16 | value
-    return base | ((bin(base).count("1") % 2 ^ 1) << 31)
+    return base | ((base.bit_count() % 2 ^ 1) << 31)
 
 
 def coefficient_code(bits):
@@ -207,7 +207,7 @@ def bulk(value, bits):
     ordered = (bits[1], bits[3], bits[0], bits[2])
     expected = [
         f"{register_word(reg, coefficient_code(bit)):08x}"
-        for reg, bit in zip(regs, ordered)
+        for reg, bit in zip(regs, ordered, strict=True)
     ]
     need(
         type(value["frame_bytes"]) is int
@@ -376,7 +376,7 @@ def case(value, case_id, pan, *, completion_scope_required=False):
     sha(value["guard_journal_sha256"])
     writes = value["writes"]
     need(len(writes) == 2, "two own route writes required")
-    for row, phase, target_pan in zip(writes, ("probe", "restore-target"), (pan, 0)):
+    for row, phase, target_pan in zip(writes, ("probe", "restore-target"), (pan, 0), strict=True):
         need(
             row["phase"] == phase
             and row["path"] == "/mix/1/playback/1"
@@ -609,7 +609,7 @@ def validate(value):
         "strict bounded claim booleans required",
     )
     need(len(value["cases"]) == 3, "all3sealed representative cases required")
-    for row, name, pan in zip(value["cases"], CASES, PANS):
+    for row, name, pan in zip(value["cases"], CASES, PANS, strict=True):
         case(row, name, pan, completion_scope_required=value["schema"] == 2)
     sha_map(
         value["acceptance_sha256"],

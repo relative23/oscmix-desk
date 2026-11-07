@@ -14,7 +14,6 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
 
 from .constants import DEFAULT_DEVICE_NAME, DEFAULT_USB_ID
 from .log import log
@@ -36,12 +35,12 @@ class PlaybackMode:
 class PlaybackState:
     """An identity and its current stream; no mode means no active PCM."""
 
-    card: Optional[int]
+    card: int | None
     serial: str
-    mode: Optional[PlaybackMode]
+    mode: PlaybackMode | None
 
 
-def _playback_status(text: str) -> Tuple[str, Optional[int]]:
+def _playback_status(text: str) -> tuple[str, int | None]:
     """The active setting, not the first entry in the descriptor list."""
     playback = re.search(r"^Playback:\n(.*?)(?=^\S|\Z)", text,
                          re.MULTILINE | re.DOTALL)
@@ -60,7 +59,7 @@ def _playback_status(text: str) -> Tuple[str, Optional[int]]:
     return playback.group(1), int(altset[0])
 
 
-def parse_playback(stream: str, params: str) -> Optional[PlaybackMode]:
+def parse_playback(stream: str, params: str) -> PlaybackMode | None:
     """Decode one UCX II proc recording; inconsistent active data is refused.
 
     ``Status: Stop`` is an idle PCM, not a 48-kHz default. Advertised
@@ -95,7 +94,7 @@ def parse_playback(stream: str, params: str) -> Optional[PlaybackMode]:
     return PlaybackMode(nominal, count, altset)
 
 
-def _stable_playback(stream: Path, first: str) -> Optional[PlaybackMode]:
+def _stable_playback(stream: Path, first: str) -> PlaybackMode | None:
     """Correlate two stream observations with two hardware-parameter reads."""
     _status, active = _playback_status(first)
     params_path = stream.parent / "pcm0p/sub0/hw_params"
@@ -165,7 +164,7 @@ def read_playback(config: Config, proc_root: Path) -> PlaybackState:
     return PlaybackState(int(stream.parent.name[4:]), serial, mode)
 
 
-def playback_problem(config: Config, mode: PlaybackMode) -> Optional[str]:
+def playback_problem(config: Config, mode: PlaybackMode) -> str | None:
     """Known playback limits, from the 24 recorded 0.7.1 combinations."""
     description = "%d Hz / %d USB channels" % (mode.rate, mode.channels)
     if _CHANNELS_BY_ALTSET.get(mode.altset) != mode.channels:
@@ -201,7 +200,7 @@ class PlaybackGuard:
 
     def __init__(self, config: Config) -> None:
         self.config = config
-        self.before: Optional[PlaybackState] = None
+        self.before: PlaybackState | None = None
 
     def check(self) -> None:
         config = self.config

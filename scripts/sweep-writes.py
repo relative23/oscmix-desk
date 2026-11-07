@@ -26,9 +26,9 @@ import signal
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from collections.abc import Collection, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Collection, Dict, List, Optional, Sequence, Set, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -123,7 +123,7 @@ def permitted(path: str, register: R.Register) -> bool:
 
 
 def _number_candidates(register: R.Register,
-                       current: float) -> List[Tuple[float, float]]:
+                       current: float) -> list[tuple[float, float]]:
     """Escalating (value, step) pairs for a NUMBER, all inside bounds.
 
     The direction is away from the nearer bound, so a large step never
@@ -152,7 +152,7 @@ def _number_candidates(register: R.Register,
     return out
 
 
-def _enum_candidates(register: R.Register, current: object) -> List[Tuple[object, float]]:
+def _enum_candidates(register: R.Register, current: object) -> list[tuple[object, float]]:
     """The next value, then the most distant one.
 
     "Larger" has no meaning for an enum, so the escalation is distance in
@@ -169,7 +169,7 @@ def _enum_candidates(register: R.Register, current: object) -> List[Tuple[object
     return [(others[0], 1.0), (others[-1], 1.0)]
 
 
-def candidates(register: R.Register, current: object) -> List[Tuple[object, float]]:
+def candidates(register: R.Register, current: object) -> list[tuple[object, float]]:
     """Legal values to try, smallest change first.
 
     Each pair is the value to write and the size of the change it makes,
@@ -210,8 +210,8 @@ def _followed(path: str, written: object, reported: object) -> bool:
 
 
 def verdict(path: str, current: object,
-            attempts: Sequence[Tuple[object, float, object]],
-            bounded: bool = True) -> Dict[str, object]:
+            attempts: Sequence[tuple[object, float, object]],
+            bounded: bool = True) -> dict[str, object]:
     """What a register's attempts mean.
 
     The legacy label `clamped` means a changed-but-wrong report. This
@@ -223,7 +223,7 @@ def verdict(path: str, current: object,
     tool does not attribute it; a trace does. It says only that the
     promise is not kept.
     """
-    finding: Dict[str, object] = {
+    finding: dict[str, object] = {
         "path": path, "current": current, "attempts": len(attempts),
         "observations": [_observation(path, value, step, got)
                          for value, step, got in attempts],
@@ -265,7 +265,7 @@ def verdict(path: str, current: object,
 
 
 def _observation(path: str, value: object, step: float,
-                  got: object) -> Dict[str, object]:
+                  got: object) -> dict[str, object]:
     register = R.register_at(devices.UCX2, path)
     tags = register.tags[:1] if register is not None else "f"
     expected = None
@@ -282,7 +282,7 @@ def _observation(path: str, value: object, step: float,
             "truncates": register.truncates if register is not None else False}
 
 
-def skipped(path: str, reason: str) -> Dict[str, object]:
+def skipped(path: str, reason: str) -> dict[str, object]:
     """A register the sweep declined to touch, kept in the artifact.
 
     Reporting 1228 of 1228 while quietly omitting fourteen would be a
@@ -307,7 +307,7 @@ class Readback(dict):
         self.messages = {}
 
 
-def read_all(device, listener, seconds: float = 6.0) -> Dict[str, object]:
+def read_all(device, listener, seconds: float = 6.0) -> dict[str, object]:
     """Every register the backend reports, as a path -> value map."""
     seen = Readback()
     device.request_dump()
@@ -322,7 +322,7 @@ def read_all(device, listener, seconds: float = 6.0) -> Dict[str, object]:
 
 
 def read_complete(device, listener, expected: Collection[str] = (), *,
-                  again: bool = False) -> Dict[str, object]:
+                  again: bool = False) -> dict[str, object]:
     """A dump, requested once more when it left out a path it should hold.
 
     A refresh can end without some reports: the backend withholds an
@@ -361,8 +361,8 @@ def as_tag(value: object, tags: str) -> object:
     return value
 
 
-def settable(limit: Optional[int] = None,
-             match: str = "") -> List[Tuple[str, R.Register]]:
+def settable(limit: int | None = None,
+             match: str = "") -> list[tuple[str, R.Register]]:
     """Every register a config can set, in declaration order."""
     out = []
     for path in R.declared_paths(devices.UCX2):
@@ -375,7 +375,7 @@ def settable(limit: Optional[int] = None,
     return out if limit is None else out[:limit]
 
 
-def channel_of(path: str) -> Optional[int]:
+def channel_of(path: str) -> int | None:
     """The channel number in a path, or None for a global register."""
     parts = path.split("/")
     for part in parts[2:3]:
@@ -394,7 +394,7 @@ def _unchanged(before: object, after: object) -> bool:
         return after == before
 
 
-def write_batch(device, writes: Sequence[Tuple[str, R.Register, object]],
+def write_batch(device, writes: Sequence[tuple[str, R.Register, object]],
                 pace: float = WRITE_PACE, *, restoring: bool = False) -> None:
     """Put a pass of writes on the wire, slowly enough to survive.
 
@@ -412,9 +412,9 @@ def write_batch(device, writes: Sequence[Tuple[str, R.Register, object]],
         time.sleep(pace)
 
 
-def _pass(device, listener, group: Sequence[Tuple[str, R.Register]],
-          state: Dict[str, object], step: int,
-          attempts: Dict[str, list]) -> Tuple[Dict[str, object], List[str]]:
+def _pass(device, listener, group: Sequence[tuple[str, R.Register]],
+          state: dict[str, object], step: int,
+          attempts: dict[str, list]) -> tuple[dict[str, object], list[str]]:
     """Write one candidate to each register in a group, then read back.
 
     Reading back is the only way to see the result. Waiting for an echo
@@ -451,9 +451,9 @@ def _pass(device, listener, group: Sequence[Tuple[str, R.Register]],
     return read_complete(device, listener, known(state)), settled
 
 
-def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
-          state: Dict[str, object],
-          note=None, step: int = 0) -> List[Dict[str, object]]:
+def sweep(device, listener, targets: Sequence[tuple[str, R.Register]],
+          state: dict[str, object],
+          note=None, step: int = 0) -> list[dict[str, object]]:
     """One bounded attempt, restoring each parity before the next one.
 
     Passes are split by channel parity because a linked pair moves
@@ -480,7 +480,7 @@ def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
                              "detail": "no valid observation and legal alternative"})
         else:
             pending.append((path, register))
-    attempts: Dict[str, list] = {path: [] for path, _r in pending}
+    attempts: dict[str, list] = {path: [] for path, _r in pending}
     for odd in (True, False):
         group = [(p, r) for p, r in pending
                  if bool((channel_of(p) or 1) % 2) is odd]
@@ -510,17 +510,17 @@ def sweep(device, listener, targets: Sequence[Tuple[str, R.Register]],
     return findings
 
 
-def summarise(findings: Sequence[Dict[str, object]]) -> Dict[str, int]:
+def summarise(findings: Sequence[dict[str, object]]) -> dict[str, int]:
     """How many registers landed in each verdict."""
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for finding in findings:
         key = str(finding.get("verdict"))
         counts[key] = counts.get(key, 0) + 1
     return counts
 
 
-def drifted(before: Dict[str, object],
-            after: Dict[str, object]) -> List[str]:
+def drifted(before: dict[str, object],
+            after: dict[str, object]) -> list[str]:
     """Registers the sweep failed to put back.
 
     Compared over the whole reported surface, not only the registers
@@ -536,14 +536,14 @@ def drifted(before: Dict[str, object],
                   and not path.endswith(STREAMING))
 
 
-def known(state: Dict[str, object]) -> Set[str]:
+def known(state: dict[str, object]) -> set[str]:
     """The paths a read has carried, whichever view of it this is."""
     return set(state.messages if isinstance(state, Readback) else state)
 
 
-def repair(device, listener, reference: Dict[str, object],
-           current: Dict[str, object], rounds: int = 3,
-           readback=None) -> Tuple[Dict[str, object], List[str]]:
+def repair(device, listener, reference: dict[str, object],
+           current: dict[str, object], rounds: int = 3,
+           readback=None) -> tuple[dict[str, object], list[str]]:
     """Re-write what drifted until it matches, or say what would not.
 
     The per-pass restoration is a single write, and this repository has
@@ -580,7 +580,7 @@ class CheckedBackend:
     cannot reconnect to a replacement and overwrite its state.
     """
 
-    def __init__(self, interface: Device, config_path: Optional[Path], build_dir: Path,
+    def __init__(self, interface: Device, config_path: Path | None, build_dir: Path,
                  proc_root: Path = Path("/proc")) -> None:
         self.interface = interface
         self.proc_root = proc_root
@@ -641,7 +641,7 @@ class CheckedBackend:
     def close(self):
         self.device.close()
 
-    def binary_evidence(self) -> Dict[str, object]:
+    def binary_evidence(self) -> dict[str, object]:
         return self.evidence
 
 
@@ -689,7 +689,7 @@ def measure_chunks(device, targets, note=None):
     findings, history, transactions = {}, {}, []
     failure = None
     unrestored = []
-    surface: Set[str] = set()
+    surface: set[str] = set()
     for step in range(max(len(STEPS), len(UNBOUNDED_STEPS))):
         pending = [(path, register) for path, register in targets
                    if path not in findings or findings[path]['verdict'] == 'ignored'
@@ -848,7 +848,7 @@ def main() -> int:
     serial = interface.serial or None
     artifact = {
         "schema": 3,
-        "taken": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "taken": datetime.now(UTC).isoformat(timespec="seconds"),
         "device": ("Fireface UCX II, serial %s" % serial if serial
                    else "serial unknown"),
         "oscmix_revision": running_backend["upstream"],

@@ -13,8 +13,8 @@ import os
 import pwd
 import re
 import stat
+from collections.abc import Mapping
 from pathlib import Path
-from typing import List, Mapping, Optional
 
 from .errors import ConfigError
 
@@ -50,7 +50,7 @@ def regular_file(path: Path) -> bool:
 
 
 def discover_config_path(
-        environ: Optional[Mapping[str, str]] = None) -> Optional[Path]:
+        environ: Mapping[str, str] | None = None) -> Path | None:
     """Return the first existing config file in the search order.
 
     ``environ`` is the environment to resolve in, this process's by
@@ -64,7 +64,7 @@ def discover_config_path(
         return Path(named)
     # A relative XDG_CONFIG_HOME is invalid and ignored (the spec's
     # words), which also keeps the answer independent of who asks.
-    xdg: Optional[str] = env.get("XDG_CONFIG_HOME", "")
+    xdg: str | None = env.get("XDG_CONFIG_HOME", "")
     if not xdg or not os.path.isabs(xdg):
         home = _home(env)
         xdg = home and os.path.join(home, ".config")
@@ -82,7 +82,7 @@ def discover_config_path(
     return None
 
 
-def _home(env: Mapping[str, str]) -> Optional[str]:
+def _home(env: Mapping[str, str]) -> str | None:
     """HOME from ``env``, else the password database -- what ``~`` expands
     to -- or None for a uid without an entry, where ``~`` stays ``~``."""
     if env.get("HOME"):
@@ -93,7 +93,7 @@ def _home(env: Mapping[str, str]) -> Optional[str]:
         return None
 
 
-def profiles_dir(config_path: Optional[Path] = None) -> Optional[Path]:
+def profiles_dir(config_path: Path | None = None) -> Path | None:
     """Where profiles live: ``profiles/`` beside the routing config.
 
     Beside it rather than inside it, because a profile *is* a
@@ -108,7 +108,7 @@ def profiles_dir(config_path: Optional[Path] = None) -> Optional[Path]:
     return base.parent / "profiles"
 
 
-def list_profiles(config_path: Optional[Path] = None) -> List[str]:
+def list_profiles(config_path: Path | None = None) -> list[str]:
     """Profile names, sorted. Missing directory is empty, not an error."""
     directory = profiles_dir(config_path)
     # os.path, not pathlib: False rather than PermissionError before 3.14.
@@ -117,7 +117,7 @@ def list_profiles(config_path: Optional[Path] = None) -> List[str]:
     return sorted(p.stem for p in directory.glob("*.conf") if os.path.isfile(p))
 
 
-def profile_path(name: str, config_path: Optional[Path] = None) -> Path:
+def profile_path(name: str, config_path: Path | None = None) -> Path:
     """The file a profile name refers to.
 
     Refuses a name that is not a plain identifier: profiles are selected

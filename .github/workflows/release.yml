@@ -120,7 +120,7 @@ jobs:
           series = hashlib.sha256(Path('patches/backend-series.json').read_bytes()).hexdigest()
           assert software['backend_series_sha256'] == series, 'Software qualification used another backend series'
           required = {'check', 'coverage', 'flake', 'soak-200', 'unit', 'mutation'}
-          required.update('python-3.%d' % minor for minor in range(9, 15))
+          required.update('python-3.%d' % minor for minor in range(12, 16))
           required.update('fault-%02d' % index for index in range(1, 16))
           assert required <= {row['gate'] for row in software['gates'] if row['exit'] == 0}
           assert all(row['exit'] == 0 for row in software['gates'])

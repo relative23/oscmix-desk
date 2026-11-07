@@ -17,18 +17,19 @@ the device and upstream do, not from that code, and
 ``tests/test_golden_messages.py`` holds both to the same literals.
 """
 
-from typing import List, NamedTuple, Sequence, Tuple
+from collections.abc import Sequence
+from typing import NamedTuple
 
 from oscmix_desk.model import Route
 
-Message = Tuple[str, str, Tuple[object, ...]]
+Message = tuple[str, str, tuple[object, ...]]
 
 #: An unlinked pair is fed through the pair balance, which halves the
 #: gain: 20 * log10(2), measured on a UCX II as an exact 6 dB deficit.
 HALVED = 6.020599913279624
 
 
-def _links(route: Route) -> List[Message]:
+def _links(route: Route) -> list[Message]:
     """The source pair is linked; the output pair says which it is."""
     if len(route.output) == 1:
         return []
@@ -38,7 +39,7 @@ def _links(route: Route) -> List[Message]:
              (int(bool(route.stereo)),))]
 
 
-def _mix(route: Route) -> List[Message]:
+def _mix(route: Route) -> list[Message]:
     """One pair register for a linked pair, two hard-panned ones for an
     unlinked pair, one plain one for a mono route; then the volumes."""
     kind, source = route.source
@@ -50,7 +51,7 @@ def _mix(route: Route) -> List[Message]:
         level = (-65.0 if route.level <= -65.0
                  else min(route.level, 0.0) + HALVED)
         written = [(route.output[0], level, -100), (route.output[1], level, 100)]
-    messages: List[Message] = [
+    messages: list[Message] = [
         ("/mix/%d/%s/%d" % (out, kind, first), "fi", (level, pan))
         for out, level, pan in written]
     if route.volume is not None:
@@ -59,7 +60,7 @@ def _mix(route: Route) -> List[Message]:
     return messages
 
 
-def route_messages(route: Route) -> List[Message]:
+def route_messages(route: Route) -> list[Message]:
     """Every OSC message a route declares, in dependency order."""
     return _links(route) + _mix(route)
 
@@ -67,10 +68,10 @@ def route_messages(route: Route) -> List[Message]:
 class RoutingPlan(NamedTuple):
     """The datagrams a routing consists of, split at the link barrier."""
 
-    links: List[Message]
-    mix: List[Message]
+    links: list[Message]
+    mix: list[Message]
 
-    def messages(self) -> List[Message]:
+    def messages(self) -> list[Message]:
         return [*self.links, *self.mix]
 
 

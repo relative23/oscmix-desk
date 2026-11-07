@@ -11,10 +11,10 @@ from __future__ import annotations
 import errno
 import os
 import time
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from types import TracebackType
-from typing import Callable, Dict, Optional, Tuple, Type
 
 from .autogain import dependency_paths
 from .backend import Control, connect_backend
@@ -51,24 +51,24 @@ class Desk:
     Re-entry and reuse after finishing or failing are refused.
     """
 
-    def __init__(self, config: Config, config_path: Optional[Path] = None) -> None:
+    def __init__(self, config: Config, config_path: Path | None = None) -> None:
         self._config = config
         self._config_path = config_path
-        self._backend: Optional[Control] = None
-        self._lock: Optional[DeviceLock] = None
+        self._backend: Control | None = None
+        self._lock: DeviceLock | None = None
         self._reader = False
         self._resolved = False
-        self._expected_pid: Optional[int] = None
-        self._reread: Optional[Callable[[Config], Config]] = None
+        self._expected_pid: int | None = None
+        self._reread: Callable[[Config], Config] | None = None
         self._should_stop: Callable[[], bool] = never_stop
         self._opened = self._entered = self._closed = False
         self._lease = self._finished = self._failed = self._aborted = False
-        self._journal: Optional[Path] = None
+        self._journal: Path | None = None
         self._written: Written = {}
         # What the record beside the journal keeps: CC reports and the start's connect check.
-        self._seen: Optional[Path] = None
-        self._reported: Dict[str, Tuple[str, Args, float]] = {}
-        self._connected: Optional[ConnectCheck] = None
+        self._seen: Path | None = None
+        self._reported: dict[str, tuple[str, Args, float]] = {}
+        self._connected: ConnectCheck | None = None
 
     @property
     def config(self) -> Config:
@@ -76,7 +76,7 @@ class Desk:
         return self._config
 
     @property
-    def config_path(self) -> Optional[Path]:
+    def config_path(self) -> Path | None:
         """The selected config path, discovered at most once."""
         return self._config_path
 
@@ -87,8 +87,8 @@ class Desk:
         self._entered = True
         return self
 
-    def __exit__(self, _exc_type: Optional[Type[BaseException]],
-                 exc: Optional[BaseException], _traceback: Optional[TracebackType]) -> None:
+    def __exit__(self, _exc_type: type[BaseException] | None,
+                 exc: BaseException | None, _traceback: TracebackType | None) -> None:
         if exc is None:
             self._close()
         else:
@@ -293,7 +293,7 @@ class Desk:
             backend.close()
 
 
-def open_desk(config: Config, config_path: Optional[Path] = None) -> Desk:
+def open_desk(config: Config, config_path: Path | None = None) -> Desk:
     """Prepare one operation; entering it checks the interface and backend.
 
     Use ``with open_desk(load_config(path), path) as desk``. Successful exit
@@ -303,11 +303,11 @@ def open_desk(config: Config, config_path: Optional[Path] = None) -> Desk:
     return Desk(config, config_path or discover_config_path())
 
 
-def _operation(config: Config, config_path: Optional[Path] = None, *,
-               backend: Optional[Control] = None, reader: bool = False,
+def _operation(config: Config, config_path: Path | None = None, *,
+               backend: Control | None = None, reader: bool = False,
                resolved: bool = False,
-               expected_pid: Optional[int] = None,
-               reread: Optional[Callable[[Config], Config]] = None,
+               expected_pid: int | None = None,
+               reread: Callable[[Config], Config] | None = None,
                should_stop: Callable[[], bool] = never_stop) -> Desk:
     """The runtime's operation, with an already-owned connection or startup PID."""
     operation = Desk(config, config_path)

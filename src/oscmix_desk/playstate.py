@@ -29,8 +29,8 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Dict, Mapping, Optional, Tuple
 
 from .constants import DEFAULT_USB_ID
 from .devices import device_for_name
@@ -43,7 +43,7 @@ from .reconcile import desired
 from .registers import Device, register_at
 from .seen import CC_MIX, CC_MODE, Record, Seen, read_all_seen
 
-Info = Dict[str, object]
+Info = dict[str, object]
 
 KNOWN_NOTE = ("the firmware's fixed playback routing for this CC Mix mode, from a static reading "
               "of the firmware (2026-11-04); not read back and not measured. A playback write "
@@ -66,7 +66,7 @@ def is_playback(path: str) -> bool:
     return path.startswith("/playback/") or (path.startswith("/mix/") and "/playback/" in path)
 
 
-def backend_started(pid: int, proc_root: Path, now: Optional[float] = None) -> Optional[float]:
+def backend_started(pid: int, proc_root: Path, now: float | None = None) -> float | None:
     """When a process started, in seconds since the epoch; None when /proc does not say."""
     try:
         line = (proc_root / str(pid) / "stat").read_text()
@@ -86,12 +86,12 @@ def _since(at: str, started: float) -> bool:
     return moment is not None and moment > started
 
 
-def _same(declared: Tuple[str, Args], written: Tuple[str, Args, str]) -> bool:
+def _same(declared: tuple[str, Args], written: tuple[str, Args, str]) -> bool:
     """Whether a recorded write carries the declared value."""
     tags, args = declared
     if written[0] != tags or len(written[1]) != len(args):
         return False
-    for tag, want, got in zip(tags, args, written[1]):
+    for tag, want, got in zip(tags, args, written[1], strict=False):
         try:
             if (float(want) != float(got)) if tag == "f" else want != got:
                 return False
@@ -100,7 +100,7 @@ def _same(declared: Tuple[str, Args], written: Tuple[str, Args, str]) -> bool:
     return True
 
 
-def _mix_mode(device: Device, seen: Seen, started: float) -> Optional[Tuple[int, str]]:
+def _mix_mode(device: Device, seen: Seen, started: float) -> tuple[int, str] | None:
     """CC Mix as the device last reported it since the interface appeared, by index and name."""
     report = seen.reports.get(CC_MIX)
     register = register_at(device, CC_MIX)
@@ -119,7 +119,7 @@ def _cc_mode_on(seen: Seen, started: float) -> bool:
             and report[0] == "i" and report[1] == (1,))
 
 
-def _state(state: str, summary: str, evidence: Optional[str], detail: str, note: str,
+def _state(state: str, summary: str, evidence: str | None, detail: str, note: str,
            **facts: object) -> Info:
     return {"state": state, "summary": summary, "evidence": evidence, "detail": detail,
             **facts, "note": note}
@@ -145,7 +145,7 @@ def _preset(name: str, mode_on: bool, written: Mapping[str, object], **facts: ob
 
 
 def playback_state(config: Config, journal: Journal, seen: Seen,
-                   started: Optional[float]) -> Info:
+                   started: float | None) -> Info:
     """The playback matrix state of the desk's interface; see the module docstring."""
     device = device_for_name(config.device_name)
     if device is None or config.usb_id != DEFAULT_USB_ID:
@@ -153,7 +153,7 @@ def playback_state(config: Config, journal: Journal, seen: Seen,
                       "the playback evidence is for the UCX II", UNKNOWN_NOTE)
     if started is None:
         return unknown("no running backend for the interface, or its start time is unreadable")
-    facts: Dict[str, object] = {"since": stamp(started)}
+    facts: dict[str, object] = {"since": stamp(started)}
     declared = {entry.path: (entry.tags, entry.args) for entry in desired(config)
                 if is_playback(entry.path)}
     written = {path: entry for path, entry in journal.items()
@@ -184,7 +184,7 @@ def playback_state(config: Config, journal: Journal, seen: Seen,
                   REESTABLISHED_NOTE, declared=len(declared), ccmix=mix[1], **facts)
 
 
-def connect_section(record: Optional[Record], started: Optional[float]) -> Info:
+def connect_section(record: Record | None, started: float | None) -> Info:
     """The last connect check, and whether it belongs to the running backend."""
     if record is None:
         return {"state": "not-checked", "detail": "no connect check recorded: the desk "
@@ -194,8 +194,8 @@ def connect_section(record: Optional[Record], started: Optional[float]) -> Info:
     return {**record, "current": current, "note": CHECK_NOTE}
 
 
-def interface_sections(config: Config, config_path: Optional[Path], backend: BackendStatus,
-                       proc_root: Path) -> Dict[str, Info]:
+def interface_sections(config: Config, config_path: Path | None, backend: BackendStatus,
+                       proc_root: Path) -> dict[str, Info]:
     """``playback_matrix`` and ``connect_check`` for the status report; only reads files."""
     serial = backend.device.serial if backend.device is not None else config.serial
     if config.usb_id != DEFAULT_USB_ID or not serial:

@@ -6,7 +6,8 @@ import json
 import re
 import shutil
 import subprocess
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from typing import Any
 
 from .errors import ConfigError
 from .model import Config, Route
@@ -18,8 +19,8 @@ SURROUND_POSITIONS = {1: "FL", 2: "FR", 3: "RL", 4: "RR",
 
 
 def pipewire_positions(channels: Sequence[int],
-                       sink_positions: Optional[Sequence[str]] = None
-                       ) -> List[str]:
+                       sink_positions: Sequence[str] | None = None
+                       ) -> list[str]:
     """Map device playback channels to the target sink's channel labels.
 
     With the sink's real ``audio.position`` array (from pw-dump), channel
@@ -46,7 +47,7 @@ def pipewire_positions(channels: Sequence[int],
     return positions
 
 
-def _parse_positions(raw: object) -> Optional[List[str]]:
+def _parse_positions(raw: object) -> list[str] | None:
     """audio.position from pw-dump: either a list or '[ AUX0, AUX1 ]'."""
     if isinstance(raw, list):
         return [str(item) for item in raw] or None
@@ -56,8 +57,8 @@ def _parse_positions(raw: object) -> Optional[List[str]]:
     return None
 
 
-def pw_dump_objects(dump_text: Optional[str] = None
-                    ) -> Optional[List[Dict[str, Any]]]:
+def pw_dump_objects(dump_text: str | None = None
+                    ) -> list[dict[str, Any]] | None:
     """``pw-dump``'s objects, or None when they cannot be had.
 
     None covers pw-dump missing, failing, and printing something that is
@@ -85,9 +86,9 @@ def pw_dump_objects(dump_text: Optional[str] = None
     return [obj for obj in objects if isinstance(obj, dict)]
 
 
-def find_sink(objects: List[Dict[str, Any]], device_name: str,
-              target: Optional[str] = None
-              ) -> Optional[Tuple[str, Optional[List[str]]]]:
+def find_sink(objects: list[dict[str, Any]], device_name: str,
+              target: str | None = None
+              ) -> tuple[str, list[str] | None] | None:
     """(node.name, channel positions) of the device's sink, or None.
 
     With ``target`` given, look that node up; otherwise search for a sink
@@ -145,17 +146,17 @@ _LOOPBACK_TEMPLATE = """\
     }}"""
 
 
-def generate_pipewire_conf(config: Config, target: Optional[str],
-                           sink_positions: Optional[Sequence[str]] = None
+def generate_pipewire_conf(config: Config, target: str | None,
+                           sink_positions: Sequence[str] | None = None
                            ) -> str:
     """One named virtual sink per stereo route, feeding the device
     playback channels of the route's output pair."""
     # One sink per unique output pair; several routes can feed the same
     # outputs (e.g. a default-sink route plus the identity route for the
     # named sink), and the first route's name wins.
-    pair_routes: List[Route] = []
-    dropped: List[Tuple[Route, str]] = []
-    seen_pairs: Dict[Tuple[int, ...], str] = {}
+    pair_routes: list[Route] = []
+    dropped: list[tuple[Route, str]] = []
+    seen_pairs: dict[tuple[int, ...], str] = {}
     for route in config.routes:
         # A mirror sends the same signals as its source and needs no sink of its own; a
         # base's 1:1 playback is the device's default, not a desktop destination.

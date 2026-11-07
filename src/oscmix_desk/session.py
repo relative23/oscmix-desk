@@ -14,7 +14,6 @@ import threading
 import time
 from dataclasses import replace
 from pathlib import Path
-from typing import Dict, Optional, Tuple
 
 from .constants import (
     CHILD_STOP_GRACE,
@@ -55,7 +54,7 @@ from .reload import _config_path, _desk_under_the_lock, _reconcile, watched_desk
 from .watch import Watch, reader
 
 
-def _print_dry_run(client: Optional[int], config: Config) -> None:
+def _print_dry_run(client: int | None, config: Config) -> None:
     """Show what would be started and sent, in the order it would happen.
 
     Without the interface too (``client`` is None): what would be sent
@@ -81,8 +80,8 @@ def _print_dry_run(client: Optional[int], config: Config) -> None:
               % (path, types, " ".join(map(str, values))))
 
 
-def _start_backend(client: int, config: Config, config_path: Optional[Path] = None
-                    ) -> Optional["subprocess.Popen[bytes]"]:
+def _start_backend(client: int, config: Config, config_path: Path | None = None
+                    ) -> subprocess.Popen[bytes] | None:
     """Launch ``alsaseqio <client>:1 oscmix``, or None if a binary is missing."""
     alsaseqio = resolve_binary("alsaseqio", "OSCMIX_BIN_ALSASEQIO")
     backend = resolve_binary("oscmix", "OSCMIX_BIN_BACKEND")
@@ -97,8 +96,8 @@ def _start_backend(client: int, config: Config, config_path: Optional[Path] = No
     return subprocess.Popen(command)
 
 
-def _install_stop_handlers(child: "subprocess.Popen[bytes]",
-                           stop_requested: Dict[str, bool]) -> None:
+def _install_stop_handlers(child: subprocess.Popen[bytes],
+                           stop_requested: dict[str, bool]) -> None:
     """Turn SIGTERM/SIGINT into an orderly backend shutdown."""
     def handle_stop(signum: int, _frame: object) -> None:
         stop_requested["stop"] = True
@@ -111,7 +110,7 @@ def _install_stop_handlers(child: "subprocess.Popen[bytes]",
     signal.signal(signal.SIGINT, handle_stop)
 
 
-def _install_reload_handler(reload_requested: Dict[str, bool]) -> None:
+def _install_reload_handler(reload_requested: dict[str, bool]) -> None:
     """Turn SIGHUP into a request to reconcile, not into a reconcile.
 
     The handler sets a flag and returns. Everything a reconcile does --
@@ -130,7 +129,7 @@ def _install_reload_handler(reload_requested: Dict[str, bool]) -> None:
     signal.signal(signal.SIGHUP, handle_reload)
 
 
-def _await_backend_port(child: "subprocess.Popen[bytes]", endpoint: Path,
+def _await_backend_port(child: subprocess.Popen[bytes], endpoint: Path,
                         proc_root: Path) -> bool:
     """Wait for this child's listening control socket, without connecting."""
     deadline = time.monotonic() + PORT_READY_TIMEOUT
@@ -154,7 +153,7 @@ def _await_backend_port(child: "subprocess.Popen[bytes]", endpoint: Path,
     return False
 
 
-def _stop_child(child: "subprocess.Popen[bytes]") -> None:
+def _stop_child(child: subprocess.Popen[bytes]) -> None:
     """Stop a backend this process started and will not use."""
     try:
         child.terminate()
@@ -165,10 +164,10 @@ def _stop_child(child: "subprocess.Popen[bytes]") -> None:
         pass
 
 
-def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
-                      stop_requested: Dict[str, bool],
-                      config_path: Optional[Path] = None, *, strict: bool = False
-                      ) -> Optional[threading.Thread]:
+def _apply_and_verify(child: subprocess.Popen[bytes], config: Config,
+                      stop_requested: dict[str, bool],
+                      config_path: Path | None = None, *, strict: bool = False
+                      ) -> threading.Thread | None:
     """Transfer one checked operation from initial apply to its verifier."""
     operation = _operation(
         config, config_path, expected_pid=child.pid,
@@ -205,8 +204,8 @@ def _apply_and_verify(child: "subprocess.Popen[bytes]", config: Config,
         raise
 
 
-def _interrupted(child: "subprocess.Popen[bytes]",
-                 stop_requested: Dict[str, bool]) -> Optional[str]:
+def _interrupted(child: subprocess.Popen[bytes],
+                 stop_requested: dict[str, bool]) -> str | None:
     """Why the start is not to go on writing, or None.
 
     Two reasons, told apart: until 0.8.1 a backend that died during the
@@ -219,8 +218,8 @@ def _interrupted(child: "subprocess.Popen[bytes]",
     return None
 
 
-def _verify_in_background(child: "subprocess.Popen[bytes]",
-                          stop_requested: Dict[str, bool],
+def _verify_in_background(child: subprocess.Popen[bytes],
+                          stop_requested: dict[str, bool],
                           operation: Desk) -> threading.Thread:
     """Retain startup ownership until observation, repair and END finish."""
     def should_stop() -> bool:
@@ -287,7 +286,7 @@ def _log_verifier_failure(exc: OSError, verified: bool) -> None:
 
 
 def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
-                   stop_requested: Dict[str, bool]) -> int:
+                   stop_requested: dict[str, bool]) -> int:
     """Translate the backend's exit into the service's exit contract.
 
     Every clean exit must have signalled READY under Type=notify --
@@ -314,7 +313,7 @@ def _exit_code_for(returncode: int, config: Config, sysfs_usb: Path,
 
 
 def _find_client(args: argparse.Namespace, config: Config, proc_root: Path,
-                 sysfs_usb: Path) -> Tuple[Optional[Interface], int]:
+                 sysfs_usb: Path) -> tuple[Interface | None, int]:
     """The interface this desk is for: its sequencer client and its serial.
 
     Returns it, or None and the exit code the start ends with.
@@ -404,10 +403,10 @@ def _no_client(args: argparse.Namespace, config: Config, proc_root: Path,
     return EXIT_FAILURE
 
 
-def _apply_or_fail(child: "subprocess.Popen[bytes]", config: Config,
-                   stop_requested: Dict[str, bool], config_path: Optional[Path], *,
+def _apply_or_fail(child: subprocess.Popen[bytes], config: Config,
+                   stop_requested: dict[str, bool], config_path: Path | None, *,
                    strict: bool = False
-                   ) -> Tuple[Optional[threading.Thread], Optional[int]]:
+                   ) -> tuple[threading.Thread | None, int | None]:
     """Apply the desk and signal READY, or stop the backend and say why.
 
     The service is "started" when the backend is up and the routing is
@@ -499,8 +498,8 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
             _stop_child(child)
         return EXIT_FAILURE
 
-    verifier: Optional[threading.Thread] = None
-    watch: Optional[Watch] = None
+    verifier: threading.Thread | None = None
+    watch: Watch | None = None
     if child.poll() is None:
         watch = _start_watch(child, config, config_path, args, stop_requested, reload_requested)
         verifier, failed = _apply_or_fail(child, config, stop_requested,
@@ -516,10 +515,10 @@ def run_session(args: argparse.Namespace, config: Config) -> int:
     return _exit_code_for(returncode, config, sysfs_usb, stop_requested)
 
 
-def _start_watch(child: "subprocess.Popen[bytes]", config: Config,
-                 config_path: Optional[Path], args: argparse.Namespace,
-                 stop_requested: Dict[str, bool],
-                 reload_requested: Dict[str, bool]) -> Optional[Watch]:
+def _start_watch(child: subprocess.Popen[bytes], config: Config,
+                 config_path: Path | None, args: argparse.Namespace,
+                 stop_requested: dict[str, bool],
+                 reload_requested: dict[str, bool]) -> Watch | None:
     """Watch the device for `[desk] enforce = watch`, from before the first apply.
 
     Connected before the start-up operation so the watcher learns the link
@@ -532,7 +531,7 @@ def _start_watch(child: "subprocess.Popen[bytes]", config: Config,
     def should_stop() -> bool:
         return stop_requested["stop"] or child.poll() is not None
 
-    def request(_paths: Tuple[str, ...]) -> None:
+    def request(_paths: tuple[str, ...]) -> None:
         reload_requested["watch"] = True
         reload_requested["reload"] = True
 
@@ -545,8 +544,8 @@ def _start_watch(child: "subprocess.Popen[bytes]", config: Config,
 
 
 def _serve_reload(args: argparse.Namespace, config: Config,
-                  stop_requested: Dict[str, bool], verifier: Optional[threading.Thread],
-                  reload_requested: Dict[str, bool], watch: Optional[Watch]) -> None:
+                  stop_requested: dict[str, bool], verifier: threading.Thread | None,
+                  reload_requested: dict[str, bool], watch: Watch | None) -> None:
     """One reconcile for every pending request; a SIGHUP among them wins.
 
     A reload also watches again what the watcher left to the device.
@@ -563,7 +562,7 @@ def _serve_reload(args: argparse.Namespace, config: Config,
     _reconcile(args, config, stop_requested, verifier)
 
 
-def _await_verifier(verifier: Optional[threading.Thread]) -> None:
+def _await_verifier(verifier: threading.Thread | None) -> None:
     """Do not exit while the verifier may still be writing routing.
 
     "The mix is never left half-applied" is the property the two-phase

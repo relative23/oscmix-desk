@@ -12,8 +12,8 @@ is mirrored: a cell set by hand on the source output is not the desk's to copy.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import replace
-from typing import Dict, List, Optional, Sequence, Tuple
 
 from .errors import ConfigError
 from .model import Route
@@ -22,10 +22,10 @@ from .registers import Device
 MIRROR_OPTION = "mirror"
 
 #: (target outputs, source outputs), as one channel or one adjacent pair each.
-Mirror = Tuple[Tuple[int, ...], Tuple[int, ...]]
+Mirror = tuple[tuple[int, ...], tuple[int, ...]]
 
 
-def parse_mirror(raw: str, section: str, channel: int, device: Optional[Device]) -> Mirror:
+def parse_mirror(raw: str, section: str, channel: int, device: Device | None) -> Mirror:
     """``mirror = S`` or ``mirror = S/S+1`` in ``[output:N]``; the target has its width."""
     try:
         source = tuple(int(part) for part in raw.strip().split("/"))
@@ -39,7 +39,7 @@ def parse_mirror(raw: str, section: str, channel: int, device: Optional[Device])
         if channel % 2 != 1:
             raise ConfigError("[%s] mirror: a pair mirrors onto a pair, so the section must "
                               "name its odd output" % section)
-        target: Tuple[int, ...] = (channel, channel + 1)
+        target: tuple[int, ...] = (channel, channel + 1)
     elif len(source) == 1:
         target = (channel,)
     else:
@@ -53,7 +53,7 @@ def parse_mirror(raw: str, section: str, channel: int, device: Optional[Device])
     return target, source
 
 
-def expand_mirrors(routes: Sequence[Route], mirrors: Sequence[Mirror]) -> List[Route]:
+def expand_mirrors(routes: Sequence[Route], mirrors: Sequence[Mirror]) -> list[Route]:
     """The declared routes plus, for each mirror, a copy of its source's routes.
 
     Refused: two mirrors writing one output, a mirror of a mirror, and a mirror target that
@@ -61,7 +61,7 @@ def expand_mirrors(routes: Sequence[Route], mirrors: Sequence[Mirror]) -> List[R
     """
     if not mirrors:
         return list(routes)
-    claimed: Dict[int, Tuple[int, ...]] = {}
+    claimed: dict[int, tuple[int, ...]] = {}
     for target, source in mirrors:
         for channel in target:
             if channel in claimed:

@@ -19,7 +19,7 @@ def assessment(repeats=1):
         for source in range(20):
             own = repeats if (output, source) == (16, 11) else 0
             word = ((0x2000 | output << 6 | source) << 16) | 0x8064
-            word |= 0 if bin(word).count("1") % 2 else 0x80000000
+            word |= 0 if (word).bit_count() % 2 else 0x80000000
             cells.append(dict(
                 output=output, source=source, db_events=1, pan_events=1 + own,
                 pan_repeats=own, pan_word=word,

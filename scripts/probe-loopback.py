@@ -25,7 +25,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
@@ -333,7 +333,7 @@ def main():
     if args.out is None:
         parser.error('--execute requires --out')
     result = dict(schema=1, kind='output-loopback-probes-ucx2', plan=plan, cases=[], sources={},
-                  started=datetime.now(timezone.utc).isoformat(), hardware_used=False)
+                  started=datetime.now(UTC).isoformat(), hardware_used=False)
     fd = os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     os.close(fd)
 
@@ -361,7 +361,7 @@ def main():
             except (OSError, ValueError, ConfigError, DeviceLockUnavailable, WriteFailed) as exc:
                 result['restore_error'] = '%s: %s' % (type(exc).__name__, exc)
                 result['restored'] = False
-        result['finished'] = datetime.now(timezone.utc).isoformat()
+        result['finished'] = datetime.now(UTC).isoformat()
         result['passed'] = (not result.get('error') and result.get('restored') is True
                             and all(c.get('passed') for c in result['cases'])
                             and result.get('delay', {}).get('carried') is True)

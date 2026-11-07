@@ -309,7 +309,7 @@ def apt_metadata(args, signer):
         by_hash.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, by_hash)
         sums.append(' %s %d main/binary-amd64/%s\n' % (digest, path.stat().st_size, name))
-    now = datetime.datetime.fromtimestamp(args.epoch, datetime.timezone.utc)
+    now = datetime.datetime.fromtimestamp(args.epoch, datetime.UTC)
     release = root / 'dists/stable/Release'
     release.write_text('Origin: oscmix-desk\nLabel: oscmix-desk\nSuite: stable\n'
                        'Codename: stable\nArchitectures: amd64\nComponents: main\n'

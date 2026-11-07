@@ -27,8 +27,8 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from .backend import Control, connect_backend
 from .constants import (
@@ -56,18 +56,18 @@ SLICE = 0.25
 #: some 270 a second on a UCX II (measured 2026-10-27): never a register, never a reason.
 METER = "meter"
 
-Reports = Dict[str, Tuple[str, Args]]
+Reports = dict[str, tuple[str, Args]]
 
 
-def reader(config: Config, config_path: Optional[Path],
+def reader(config: Config, config_path: Path | None,
            expected_pid: int) -> Callable[[Callable[[], bool]], Control]:
     """Connections to the started backend that subscribe to device reports alone."""
     return lambda stop: connect_backend(config, config_path, reader=True, sources=Source.DEVICE,
                                         should_stop=stop, expected_pid=expected_pid)
 
 
-def drift(desk: Config, reports: Mapping[str, Tuple[str, Args]],
-          known: Mapping[str, Tuple[str, Args]]) -> Tuple[str, ...]:
+def drift(desk: Config, reports: Mapping[str, tuple[str, Args]],
+          known: Mapping[str, tuple[str, Args]]) -> tuple[str, ...]:
     """PIN paths a reconcile of ``desk`` would write whose last report contradicts it.
 
     ``known`` is every report seen, for the links and AutoSet flags that decide what a reconcile
@@ -94,15 +94,15 @@ class Repeats:
     """How often watch re-asserted each register, and the ones it left to the device."""
 
     def __init__(self) -> None:
-        self._times: Dict[str, List[float]] = {}
-        self._desk: Optional[Config] = None
-        self.left: Set[str] = set()
+        self._times: dict[str, list[float]] = {}
+        self._desk: Config | None = None
+        self.left: set[str] = set()
 
     def forgive(self) -> None:
         self._times.clear()
         self.left.clear()
 
-    def admit(self, desk: Config, paths: Sequence[str], now: float) -> Tuple[str, ...]:
+    def admit(self, desk: Config, paths: Sequence[str], now: float) -> tuple[str, ...]:
         """The paths still worth a reconcile; a new desk starts every count again."""
         if desk != self._desk:
             self.forgive()
@@ -133,8 +133,8 @@ class Watch:
     """
 
     def __init__(self, connect: Callable[[Callable[[], bool]], Control],
-                 desk: Callable[[], Optional[Config]],
-                 request: Callable[[Tuple[str, ...]], None],
+                 desk: Callable[[], Config | None],
+                 request: Callable[[tuple[str, ...]], None],
                  should_stop: Callable[[], bool],
                  clock: Callable[[], float] = time.monotonic) -> None:
         self._connect = connect
@@ -146,7 +146,7 @@ class Watch:
         self._repeats = Repeats()
         self.known: Reports = {}
         self._pending: Reports = {}
-        self._first: Optional[float] = None
+        self._first: float | None = None
         self._last = 0.0
 
     def forgive(self) -> None:
@@ -191,7 +191,7 @@ class Watch:
             if self._pending and self._settled() and not self._judge():
                 return
 
-    def _absorb(self, reports: Sequence[Tuple[str, str, Args]], *, owned: bool) -> None:
+    def _absorb(self, reports: Sequence[tuple[str, str, Args]], *, owned: bool) -> None:
         if owned:
             # An operation's own writes, and whatever it is about to overwrite.
             self._pending.clear()
