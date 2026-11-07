@@ -41,19 +41,24 @@ delivery through a particular connector. Those need signal measurements.
 
 The [UCX II manual, version 1.6, February 2026](https://rme-audio.de/downloads/fface_ucx2_e.pdf),
 page 62, specifies Room EQ delay up to 42 ms, with 0.01 ms increments.
-The pinned backend declares raw limits 0–425 and OSC scale 0.001, so the
-backend value runs from 0 to 0.425.
+The pinned backend's node table gives raw limits 0–425 and OSC scale 0.001,
+but the backend does not enforce those limits: it sends any value it is
+given.
 
 Measured on a UCX II through output loopback (2026-11-05,
 [evidence](../tests/data/output-loopback-probes-ucx2.json)): one OSC unit is
 10.005 ms of delay at the output, with a 0.008 ms residual over five settings
 from 0 to 0.425. One backend step (0.001) is therefore 0.01 ms, the step RME
-documents, and the backend's upper limit, 425 steps, is **4.25 ms** -- a tenth
-of the 42 ms the device offers. A config states the delay in milliseconds,
-`delay = 2.5 ms`, from 0 to 4.25 ms; exports write it that way. A number
-without a unit keeps its old meaning, OSC units, so an existing config sets
-what it set before. The output path itself adds 8 samples (0.17 ms at
-48 kHz) whatever the delay.
+documents. Measured again to the device's end (2026-11-07,
+[evidence](../tests/data/roomeq-delay-ucx2.json)): 0, 10, 20, 30 and 42 ms
+were 10.000 ms per OSC unit with a 0.0002 ms residual. 0.10.0 therefore
+accepts the device's 0 to 42 ms (0 to 4.2 OSC units); 0.9.0 stopped at the
+node table's 4.25 ms. A config states the delay in milliseconds,
+`delay = 2.5 ms`; exports write it that way. A number without a unit keeps
+its old meaning, OSC units, so an existing config sets what it set before.
+Values above 42 ms are refused; the device's behaviour there is not
+documented and was not tried. The output path itself adds 5 to 8 samples
+(0.10 to 0.17 ms at 48 kHz) whatever the delay.
 
 Since `89ed835` the backend's output-loopback setter sends `on << 7 | output
 index` (0-based); the setter before it sent `0xffffffff` for every output and

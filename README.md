@@ -149,7 +149,7 @@ testing overload-driven gain reduction or acoustic protection.
 `[output:N] loopback = on` makes capture channel N carry output N instead of
 input N, taken after Room EQ and before the output fader; the device never
 reports it, so it stays unverified. Room EQ delay is set in milliseconds,
-`[roomeq:output:N] delay = 2.5 ms`, from 0 to 4.25 ms (the backend's limit).
+`[roomeq:output:N] delay = 2.5 ms`, from 0 to 42 ms, the device's range.
 Room EQ runs on at most 16 output channels and Crossfeed on at most 4 stereo
 outputs: a config that declares more is refused when it loads.
 

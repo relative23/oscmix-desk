@@ -874,9 +874,9 @@ def test_a_real_pass_records_requested_wire_and_actual_report(sweep, monkeypatch
     after, settled = sweep._pass(Device(), None, [(path, register)], before, 0, attempts)
     finding = sweep.verdict(path, 0., attempts[path])
     observation, = finding["observations"]
-    assert observation["requested"] == .00425
+    assert observation["requested"] == .042
     assert observation["encoded"] == sent[0][2][0]
-    assert observation["expected_report"] == .004000000189989805
+    assert observation["expected_report"] == .04200000315904617
     assert observation["reported"] == .0001
     assert finding["verdict"] != "confirmed"
     assert settled == [path]

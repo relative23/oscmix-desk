@@ -317,9 +317,9 @@ level = 0.0
 # [output:20]
 # loopback = on
 #
-# Room EQ delay is given in milliseconds, 0 to 4.25 ms (the backend's limit;
-# the device's own is 42 ms). A plain number still means the backend's units
-# of 10 ms. Room EQ runs on at most 16 output channels.
+# Room EQ delay is given in milliseconds, 0 to 42 ms (the device's range,
+# measured to its end). A plain number still means the backend's units of
+# 10 ms. Room EQ runs on at most 16 output channels.
 # [roomeq:output:1]
 # delay = 2.5 ms
 #

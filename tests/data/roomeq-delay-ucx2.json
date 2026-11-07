@@ -1,0 +1,181 @@
+{
+ "schema": 1,
+ "kind": "output-loopback-probes-ucx2",
+ "plan": {
+  "outputs": [
+   3
+  ],
+  "source": 1,
+  "alternate": 3,
+  "gain": 60.0,
+  "delay_output": 3,
+  "delays": [
+   0.0,
+   1.0,
+   2.0,
+   3.0,
+   4.2
+  ]
+ },
+ "cases": [
+  {
+   "output": 3,
+   "source": 1,
+   "mix_input": 1,
+   "before": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -52.01,
+    "target_dbfs": -91.54,
+    "lag_samples": 733,
+    "lag_ms": 15.2806,
+    "peak": 0.0319,
+    "verdict": "not-carried"
+   },
+   "on": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -49.66,
+    "target_dbfs": -49.66,
+    "lag_samples": 5,
+    "lag_ms": 0.1041,
+    "peak": 1.0,
+    "verdict": "carried"
+   },
+   "off": {
+    "source": 1,
+    "target": 3,
+    "samples": 8192,
+    "source_dbfs": -50.1,
+    "target_dbfs": -91.38,
+    "lag_samples": -77,
+    "lag_ms": -1.6056,
+    "peak": -0.0451,
+    "verdict": "not-carried"
+   },
+   "given_back": 0,
+   "passed": true
+  }
+ ],
+ "sources": {
+  "1": {
+   "gain_db": 60.0,
+   "dbfs": -53.5
+  },
+  "2": {
+   "gain_db": 60.0,
+   "dbfs": -74.96
+  },
+  "3": {
+   "gain_db": 24.0,
+   "dbfs": -91.61
+  },
+  "4": {
+   "gain_db": 24.0,
+   "dbfs": -91.62
+  }
+ },
+ "started": "2026-11-07T15:57:27.499216+00:00",
+ "hardware_used": true,
+ "running_backend": {
+  "pid": 1327518,
+  "epoch": "7fe813a83834a87a5b49f7302e5491fc",
+  "device": "Fireface UCX II (24216011) Port",
+  "sha256": "0008b85f3eb82106c2b2d6ec40a0e3caa297e8783b7269ecfea67d0a01d77af9",
+  "upstream": "89ed835ecf8118a21d1d451be7d71944fa5ec384",
+  "series_sha256": "75f8a9673b57891291c9511c2999b8f6a761b41bfd50632fa61efc3998daba3b",
+  "protocol": "ODK1",
+  "matches_local_build": true
+ },
+ "first_dump": {
+  "paths": 2231,
+  "sha256": "f43743bfcece88f0755204efde8b45cfdae08fffc70bb23e52c9498d1e17001a"
+ },
+ "serial": "24216011",
+ "firmware": {
+  "usb_revision": "3.01",
+  "dsp_version": 36
+ },
+ "delay": {
+  "output": 3,
+  "source": 1,
+  "points": [
+   {
+    "osc": 0.0,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -50.18,
+    "target_dbfs": -50.18,
+    "lag_samples": 5,
+    "lag_ms": 0.104,
+    "peak": 0.9994,
+    "verdict": "carried"
+   },
+   {
+    "osc": 1.0,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -57.47,
+    "target_dbfs": -58.02,
+    "lag_samples": 485,
+    "lag_ms": 10.1042,
+    "peak": 0.9336,
+    "verdict": "carried"
+   },
+   {
+    "osc": 2.0,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -52.13,
+    "target_dbfs": -51.75,
+    "lag_samples": 965,
+    "lag_ms": 20.1041,
+    "peak": 0.941,
+    "verdict": "carried"
+   },
+   {
+    "osc": 3.0,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -52.53,
+    "target_dbfs": -51.97,
+    "lag_samples": 1445,
+    "lag_ms": 30.1038,
+    "peak": 0.9296,
+    "verdict": "carried"
+   },
+   {
+    "osc": 4.2,
+    "source": 1,
+    "target": 3,
+    "samples": 16384,
+    "source_dbfs": -54.48,
+    "target_dbfs": -54.54,
+    "lag_samples": 2021,
+    "lag_ms": 42.1041,
+    "peak": 0.8423,
+    "verdict": "carried"
+   }
+  ],
+  "ms_per_osc_unit": 10.0,
+  "path_latency_ms": 0.1041,
+  "residual_ms": 0.0002,
+  "carried": true
+ },
+ "final_dump": {
+  "paths": 2231,
+  "sha256": "f43743bfcece88f0755204efde8b45cfdae08fffc70bb23e52c9498d1e17001a",
+  "missing": [],
+  "changed": [],
+  "new": []
+ },
+ "restored": true,
+ "finished": "2026-11-07T15:58:01.811476+00:00",
+ "passed": true
+}

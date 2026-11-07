@@ -1,4 +1,4 @@
-"""Room EQ delay in milliseconds, the unit measured through output loopback (2026-11-05).
+"""Room EQ delay in milliseconds, the unit measured through output loopback (2026-11-05/07).
 
 `[roomeq:output:N] delay = 2.5 ms` writes the backend value 0.25. A bare number keeps its old
 meaning, the backend's OSC units, so no existing config changes what it sets. The factor is the
@@ -19,6 +19,7 @@ from oscmix_desk.model import Config
 from oscmix_desk.registers import register_at
 
 PATH = "/output/3/roomeq/delay"
+UCX2_DELAY = "/output/{ch}/roomeq/delay"
 
 
 def written(tmp_path, raw):
@@ -30,15 +31,16 @@ def written(tmp_path, raw):
 
 @pytest.mark.parametrize(("raw", "value"), [
     ("2.5 ms", 0.25), ("2.5ms", 0.25), ("0 ms", 0.0), ("0.01 ms", 0.001), ("4.25 ms", 0.425),
+    ("10 ms", 1.0), ("42 ms", 4.2),
     # Without a unit, the backend's OSC units, as before.
-    ("0.25", 0.25), ("0.425", 0.425),
+    ("0.25", 0.25), ("0.425", 0.425), ("4.2", 4.2),
 ])
 def test_milliseconds_and_bare_osc_units_both_load(tmp_path, raw, value):
     assert written(tmp_path, raw) == [(pytest.approx(value),)]
 
 
 @pytest.mark.parametrize(("raw", "message"), [
-    ("4.26 ms", "outside 0..4.25 ms"), ("-1 ms", "outside 0..4.25 ms"),
+    ("42.01 ms", "outside 0..42 ms"), ("-1 ms", "outside 0..42 ms"),
     ("fast ms", "not a number in OSC units or ms"), ("2.5 s", "not a number"),
 ])
 def test_a_delay_the_backend_cannot_take_is_refused(tmp_path, raw, message):
@@ -52,19 +54,33 @@ def test_only_the_measured_register_has_a_physical_unit():
     assert numeric.physical(None) is None
 
 
-def test_the_factor_is_the_one_measured_through_loopback():
-    probe = repo_file("tests", "data", "output-loopback-probes-ucx2.json")
-    fixture = json.loads(probe.read_text())
+@pytest.mark.parametrize("name", ["output-loopback-probes-ucx2.json", "roomeq-delay-ucx2.json"])
+def test_the_factor_is_the_one_measured_through_loopback(name):
+    fixture = json.loads(repo_file("tests", "data", name).read_text())
     delay = fixture["delay"]
     unit, factor = numeric.PHYSICAL["/output/{ch}/roomeq/delay"]
     assert unit == "ms"
     assert delay["ms_per_osc_unit"] == pytest.approx(factor, rel=0.002)
     assert delay["residual_ms"] < 0.05
     assert delay["carried"] is True
-    assert max(point["osc"] for point in delay["points"]) == register_at(UCX2, PATH).hi
+    assert all(point["verdict"] == "carried" for point in delay["points"])
 
 
-@pytest.mark.parametrize("reported", [0.0, 0.25, 0.123, 0.425])
+def test_the_whole_range_was_measured_and_given_back():
+    """0 to 42 ms (2026-11-07): the desk allows exactly what reached the device."""
+    fixture = json.loads(repo_file("tests", "data", "roomeq-delay-ucx2.json").read_text())
+    assert fixture["passed"] is True
+    assert fixture["restored"] is True
+    assert not any(fixture["final_dump"][key] for key in ("missing", "changed", "new"))
+    points = fixture["delay"]["points"]
+    assert max(point["osc"] for point in points) == register_at(UCX2, PATH).hi
+    assert register_at(UCX2, PATH).hi * numeric.PHYSICAL[UCX2_DELAY][1] == pytest.approx(42.0)
+    for point in points:
+        expected = point["osc"] * 10.0 + fixture["delay"]["path_latency_ms"]
+        assert point["lag_ms"] == pytest.approx(expected, abs=0.01)
+
+
+@pytest.mark.parametrize("reported", [0.0, 0.25, 0.123, 0.425, 4.2])
 def test_an_export_in_milliseconds_loads_back_to_the_same_register(tmp_path, reported):
     seen = {PATH: (reported,)}
     config = Config(channels=dump.channels_from_observed(seen, UCX2),

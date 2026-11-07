@@ -147,15 +147,17 @@ def _roomeq_registers() -> tuple[Register, ...]:
 
     where it had always read 0.0 before. So the family now carries the
     same domains as the channel EQ (checked against both upstream
-    trees), plus `delay` with upstream's own bounds: `.min=0 .max=425
-    .scale=0.001`, i.e. 0 to 0.425 in backend units: measured through
-    loopback, 10 ms per unit (numeric.PHYSICAL), so 4.25 ms of RME's 42.
+    trees), plus `delay`, 0.001 backend units per raw step: measured through
+    loopback, 10 ms per unit (numeric.PHYSICAL), so one step is the 0.01 ms
+    RME documents. Upstream's `.max=425` is node metadata the backend does
+    not enforce; the range here is the device's 0 to 42 ms (4.2 units),
+    measured to its end on 2026-11-07 (tests/data/roomeq-delay-ucx2.json).
     See docs/NUMERIC-CONTRACT.md. `settable_nested`
     answers for it, and `[roomeq:output:N]` sections load.
     """
     rows = list(_band_registers("output", "roomeq", _ROOMEQ_BANDS))
     rows.append(Register("/output/{ch}/roomeq/delay", "f", VERIFIABLE,
-                         "output", NUMBER, lo=0.0, hi=0.425,
+                         "output", NUMBER, lo=0.0, hi=4.2,
                          unit="OSC units", scale=0.001))
     return tuple(rows)
 

@@ -16,7 +16,9 @@ from .registers import BOOL, ENUM, NUMBER, Register
 #: Physical units measured for values the backend declares in its own units: template ->
 #: (unit, physical value per backend unit). Room EQ delay, through output loopback on a UCX II
 #: (2026-11-05, tests/data/output-loopback-probes-ucx2.json): 10.005 ms per OSC unit with a
-#: 0.008 ms residual, so one backend step (0.001) is 0.01 ms -- the step RME documents.
+#: 0.008 ms residual, so one backend step (0.001) is 0.01 ms -- the step RME documents; and
+#: to the device's end on 2026-11-07 (tests/data/roomeq-delay-ucx2.json): 0 to 42 ms, 10.000 ms
+#: per unit with a 0.0002 ms residual.
 PHYSICAL: dict[str, tuple[str, float]] = {"/output/{ch}/roomeq/delay": ("ms", 10.0)}
 
 

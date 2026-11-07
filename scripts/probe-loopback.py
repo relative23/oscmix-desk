@@ -268,12 +268,12 @@ class Probe:
         with self.lease() as connection:
             self.write(connection, *on, (loopback, 'i', (1,)), undo=undo)
             try:
-                values = list(DELAYS)
+                values = list(self.args.delays or DELAYS)
                 for index, setting in enumerate(values):
                     self.write(connection, (delay, original[0], (setting,)))
                     found = self.analysed(connection, source, number, length=16384, max_lag=8000)
                     record_['points'].append(dict(osc=setting, **found))
-                    if index == len(DELAYS) - 1:
+                    if index == len(DELAYS) - 1 and not self.args.delays:
                         done = [(p['osc'], p['lag_ms']) for p in record_['points']]
                         slope, _ = delay_slope(done)
                         if slope * DELAY_ENDPOINT < 150:
@@ -316,17 +316,22 @@ def main():
     parser.add_argument('--gain', type=float, default=GAIN)
     parser.add_argument('--outputs', default='1-20')
     parser.add_argument('--delay-output', type=int, default=3)
+    parser.add_argument('--delays', type=lambda text: [float(x) for x in text.split(',')],
+                        help='OSC values of the delay sweep instead of the default; '
+                             '0.001 OSC units = 0.01 ms, the manual allows up to 4.2 (42 ms)')
     parser.add_argument('--backend-build', type=Path,
                         default=Path(__file__).resolve().parents[1] / 'build/coordinated')
     args = parser.parse_args()
     low, _, high = args.outputs.partition('-')
     outputs = list(range(int(low), int(high or low) + 1))
     if not ({args.source, args.alternate} == {1, 3} and set(outputs) <= set(range(1, 21))
-            and args.delay_output in outputs and 0 <= args.gain <= 75):
+            and args.delay_output in outputs and 0 <= args.gain <= 75
+            and all(0 <= x <= 4.2 for x in args.delays or ())):
         parser.error('the sources are the input pairs 1/2 and 3/4, outputs within 1..20, '
-                     'the delay output among them, gain 0..75 dB')
+                     'the delay output among them, gain 0..75 dB, delays 0..4.2')
     plan = dict(outputs=outputs, source=args.source, alternate=args.alternate, gain=args.gain,
-                delay_output=args.delay_output, delays=[*DELAYS, DELAY_ENDPOINT])
+                delay_output=args.delay_output,
+                delays=args.delays or [*DELAYS, DELAY_ENDPOINT])
     if not args.execute:
         print(json.dumps(plan, indent=2))
         return 0
