@@ -305,3 +305,35 @@ def test_publication_recovery_cannot_follow_a_moving_or_ambiguous_workflow(
     monkeypatch.setattr(builder, 'run', lambda *_: pytest.fail('invalid identity reached gh'))
     with pytest.raises(ValueError, match='full workflow commit'):
         builder.verify_publication_provenance(tmp_path / 'repository.json', commit)
+
+
+@pytest.mark.parametrize(('tags', 'expected'), [
+    ('PAYLOADDIGEST\nPAYLOADDIGESTALT\nSHA256HEADER\n', 'PAYLOADDIGEST'),   # RPM 4
+    ('PAYLOADSHA256\nPAYLOADSHA256ALT\nPAYLOADSHA512\nSHA256HEADER\n', 'PAYLOADSHA256'),  # RPM 6
+])
+def test_the_payload_digest_is_queried_under_either_rpm_generation_s_name(
+        builder, monkeypatch, tags, expected):
+    header, payload = 'a' * 64, 'b' * 64
+    calls = []
+
+    def rpm(command, **kwargs):
+        calls.append(command)
+        if command == ['rpm', '--querytags']:
+            return tags
+        return header + '\n' + payload + '\n'
+    monkeypatch.setattr(builder, 'run', rpm)
+    assert builder.rpm_payload_identity('package.rpm') == header + '\n' + payload + '\n'
+    assert calls[-1] == ['rpm', '-qp', '--queryformat',
+                         '%{SHA256HEADER}\n%{' + expected + '}\n', 'package.rpm']
+
+
+def test_an_rpm_without_a_payload_digest_tag_or_value_is_refused(builder, monkeypatch):
+    monkeypatch.setattr(builder, 'run', lambda command, **kwargs: 'SHA256HEADER\n')
+    with pytest.raises(ValueError, match='no payload digest tag'):
+        builder.rpm_payload_identity('package.rpm')
+
+    def unset(command, **kwargs):
+        return 'PAYLOADSHA256\n' if command[1] == '--querytags' else 'a' * 64 + '\n(none)\n'
+    monkeypatch.setattr(builder, 'run', unset)
+    with pytest.raises(ValueError, match='strong immutable-header or payload digest'):
+        builder.rpm_payload_identity('package.rpm')

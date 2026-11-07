@@ -54,9 +54,18 @@ def relative_file(root, name):
     return file
 
 
+def payload_digest_tag():
+    """RPM 6 renamed PAYLOADDIGEST to PAYLOADSHA256; both name the same tag and value."""
+    tags = set(run(['rpm', '--querytags']).split())
+    for name in ('PAYLOADSHA256', 'PAYLOADDIGEST'):
+        if name in tags:
+            return name
+    raise ValueError('rpm reports no payload digest tag')
+
+
 def rpm_payload_identity(package):
     identity = run(['rpm', '-qp', '--queryformat',
-                    '%{SHA256HEADER}\n%{PAYLOADDIGEST}\n', package])
+                    '%{SHA256HEADER}\n%{' + payload_digest_tag() + '}\n', package])
     if not re.fullmatch(r'[0-9a-f]{64}\n[0-9a-f]{64,128}\n', identity):
         raise ValueError('RPM lacks a strong immutable-header or payload digest')
     return identity
