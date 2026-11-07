@@ -69,10 +69,12 @@ not be determined. The JSON uses `null` for both.
 
 ## The playback matrix and the connect check
 
-The UCX II cannot report its playback matrix: USB captures, a hardware test,
-static analysis of its firmware and TotalMix FX's behaviour agree on that
-(2026-09-28 to 2026-11-04). The desk tracks it from what it wrote, and
-`playback_matrix.summary` is one of:
+The UCX II reports its playback matrix to no client, in class-compliant or USB
+mode, in any state tested: USB captures, hardware tests and static analysis of
+its firmware agree on that (2026-09-28 to 2026-11-06). TotalMix FX does not read
+it back either and keeps its own copy (measured on an iPad on 2026-11-04 and on
+Windows with RME's driver on 2026-11-06). The desk does the same: it keeps what
+it wrote, and `playback_matrix.summary` is one of:
 
 | Summary | Evidence | What it rests on | What it does not prove |
 | --- | --- | --- | --- |

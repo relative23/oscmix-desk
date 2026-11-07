@@ -171,9 +171,11 @@ input.gain = remember
 Pinning does not snap a value back while you work: the device reports
 changes only when asked, so the desk insists during its read-back after a
 start, a reload or a resume. Remembered values are never reset by those
-later checks. The playback mix matrix is re-established on each start but
-cannot be read back from the device; `--status` says whether it is known
-from a CC Mix preset, re-established by the desk, or unknown.
+later checks. The playback mix matrix is re-established on each start: the
+UCX II reports it to no client in any state tested, and TotalMix FX does not
+read it back either but keeps its own copy. The desk keeps what it wrote, and
+`--status` says whether the matrix is known from a CC Mix preset,
+re-established by the desk, or unknown.
 `[desk] enforce = watch` in routing.conf goes one step further and
 reconciles as soon as a report that contradicts a pinned value arrives -- a
 change at the front panel or a link change, which the device announces

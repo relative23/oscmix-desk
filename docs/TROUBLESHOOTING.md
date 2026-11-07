@@ -210,8 +210,9 @@ repair or mix reapply. It never writes from the middle of a delivery, and
 malformed deliveries, contradictions or transport failures cannot authorize
 blind continuation. Input-matrix feedback and the unreadable playback
 matrix have different meanings; see [the protocol guide](OSC-PROTOCOL.md).
-The device cannot report its playback matrix at all; `--status` says whether
-it is known from a CC Mix preset, re-established by the desk, or unknown
+The device reports its playback matrix to no client, and TotalMix FX keeps
+its own copy as well; `--status` says whether it is known from a CC Mix
+preset, re-established by the desk, or unknown
 ([runtime status](STATUS.md#the-playback-matrix-and-the-connect-check)).
 
 GTK has its own subscription and may remain open. Its controls are read-only

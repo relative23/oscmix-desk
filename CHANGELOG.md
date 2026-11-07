@@ -32,6 +32,9 @@
 
 - Troubleshooting says that the interface stores its settings a few seconds
   after the last change, and to wait before switching it off.
+- The playback matrix pages add the Windows measurements of 2026-11-06: the
+  UCX II reports the matrix to no client in class-compliant or USB mode, and
+  TotalMix FX keeps its own copy as well.
 
 ## 0.9.0 -- 2026-11-07
 
