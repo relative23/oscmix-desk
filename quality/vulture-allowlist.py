@@ -63,3 +63,8 @@ HELLO_TIMEOUT                    # noqa: F821
 LEASE_IDLE                       # noqa: F821
 LEASE_TOTAL                      # noqa: F821
 REFRESH_WINDOW                   # noqa: F821
+
+# usb_midi_words: every register word of a capture, both directions, with its
+# parity; the probes read only the host's messages (bulks), and
+# tests/test_usb_midi_words.py holds the decoder to both directions through it.
+register_words                   # noqa: F821
