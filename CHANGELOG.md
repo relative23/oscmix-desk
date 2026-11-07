@@ -54,6 +54,8 @@
 
 ### Documentation
 
+- The upgrade notes say what 0.10.0 changes for an existing desk, above all that a declared
+  `phase` is now heard.
 - Troubleshooting says that the interface stores its settings a few seconds
   after the last change, and to wait before switching it off.
 - The playback matrix pages add the Windows measurements of 2026-11-06: the

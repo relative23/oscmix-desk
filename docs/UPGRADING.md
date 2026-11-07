@@ -1,5 +1,25 @@
 # Upgrade and recovery
 
+## Upgrading to 0.10.0
+
+Configs, profiles and the profile marker carry over. Check these before upgrading:
+
+- Python 3.12 or newer is required. The installer check refuses an older one; every
+  packaged distribution ships 3.12 or later.
+- **Phase now inverts the signal.** On the UCX II, `phase = true` set the phase register,
+  which changes nothing in the signal, so a desk or profile that declared it heard no
+  difference. From 0.10.0 the backend also negates the channel's mix coefficients, as
+  TotalMix FX does: such a channel is inverted after the upgrade. Search configs and
+  profiles for `phase` and remove what was never meant to be heard. A phase switched in the
+  GTK mixer or by another client takes effect the same way.
+- Room EQ `delay` accepts up to 42 ms; 0.9.0 refused more than 4.25 ms.
+- The backend gains patches 0017-0019 (coefficient encoding at 0.5, phase, refresh echo); the
+  installer builds it, and native packages of core and GTK are upgraded together.
+
+Rolling back to 0.9.0: install it with its own installer or package, which builds its
+backend again. 0.9.0 refuses a Room EQ `delay` above 4.25 ms, and its phase switch is the
+register alone again.
+
 ## Upgrading to 0.9.0
 
 Configs, profiles and the `routing.conf` profile marker carry over. Check
