@@ -153,9 +153,10 @@ def exercise(args):
     held = args.output / 'distribution-definitions'
     held.mkdir()
     preserved = {}
+    # dnf5 reads all three directories; Fedora 45 keeps its own definitions in the last.
     patterns = (['/etc/apt/sources.list', '/etc/apt/sources.list.d/*'] if client.kind == 'apt'
-                else ['/etc/yum.repos.d/*'] if client.kind == 'dnf' else
-                ['/etc/zypp/repos.d/*', '/etc/zypp/services.d/*'])
+                else ['/etc/yum.repos.d/*', '/etc/distro.repos.d/*', '/usr/share/dnf5/repos.d/*']
+                if client.kind == 'dnf' else ['/etc/zypp/repos.d/*', '/etc/zypp/services.d/*'])
     for pattern in patterns:
         for path in Path('/').glob(pattern.lstrip('/')):
             if path.is_file():
