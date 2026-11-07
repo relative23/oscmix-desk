@@ -28,6 +28,11 @@
   `uninstall.sh`, so the test suite runs on a machine with the native
   package installed. The upgrade tests start from 0.9.0 as well.
 
+### Documentation
+
+- Troubleshooting says that the interface stores its settings a few seconds
+  after the last change, and to wait before switching it off.
+
 ## 0.9.0 -- 2026-11-07
 
 0.9.0 is the last release for Python 3.9 to 3.11; the next one requires

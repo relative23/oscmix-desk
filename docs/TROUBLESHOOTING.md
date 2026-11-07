@@ -555,3 +555,20 @@ minute and then left to the device until the desk changes or a reload:
 `watch: the device set <path> back 3 times within 60s`. A desk with
 `enforce = apply` (the default) never watches; turning watch on needs a
 restart of the service, turning it off takes effect at the next reload.
+
+## 13. A change is gone after the interface was switched off
+
+Symptom: a value changed in the mixer GUI or on the front panel has its
+earlier value again after the interface was switched off and on.
+
+The interface stores its settings by itself, a few seconds after the last
+change: its firmware writes them about 5.4 s after the last change (static
+analysis of the firmware, 2026-11-06; the delay was not timed on the device).
+A value stored that way survived a cold power cycle in a test the same day.
+Switching off sooner can lose the last change, so wait about ten seconds
+after the last change before switching the interface off.
+
+What the config declares does not depend on this: the desk writes it as its
+pin and remember rules say (README, *Who wins: pin and remember*), and it
+re-establishes the playback matrix at every start. A value changed by hand
+exists only in the device, so it is the one at risk.
