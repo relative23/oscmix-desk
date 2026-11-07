@@ -45,8 +45,11 @@ class Native(Client):
             # ordinary channel commands below retain all signature checks.
             return ['zypper', '--non-interactive', '--no-refresh', '--no-gpg-checks',
                     'install', '--force', '--oldpackage', str(package)]
+        # RPM 6.1 (Fedora 45) requires signatures by default; these fixtures still
+        # carry digests, which is what an unsigned local package can prove.
         return (['dpkg', '-i', str(package)] if self.kind == 'apt' else
-                ['rpm', '-Uvh', '--oldpackage', '--replacepkgs', str(package)])
+                ['rpm', '--define', '_pkgverify_level digest', '-Uvh', '--oldpackage',
+                 '--replacepkgs', str(package)])
 
     def status(self):
         return json.loads(self.run(COMMAND + ['status']).stdout)

@@ -40,8 +40,15 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+# The packages under test are unsigned build artifacts; signing happens only in the
+# repository layer, whose own qualification installs them signed. RPM 6.1 (Fedora 45)
+# defaults to _pkgverify_level all, so ask for what Fedora 44 required: digests.
+RPM_INSTALL = ['rpm', '--define', '_pkgverify_level digest', '-Uvh', '--oldpackage',
+               '--replacepkgs']
+
+
 def install(*paths, expected=0):
-    command = {'deb': ['dpkg', '-i'], 'rpm': ['rpm', '-Uvh', '--oldpackage', '--replacepkgs'],
+    command = {'deb': ['dpkg', '-i'], 'rpm': RPM_INSTALL,
                'arch': ['pacman', '-U', '--noconfirm']}[kind]
     return run(command + [str(path) for path in paths], expected)
 
