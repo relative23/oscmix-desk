@@ -205,8 +205,10 @@ def test_source_uninstall_removes_permission_but_keeps_the_selected_desk(tmp_pat
     assert result.returncode == 0, result.stdout + result.stderr
     assert not marker.exists()
     assert all(path.read_bytes() == contents for path, contents in before.items())
-    # The fixture's backend binaries were uninstalled as well.
-    for name in ('oscmix', 'alsaseqio'):
+    # The fixture's backend binaries were uninstalled as well. All three come
+    # back: without oscmix-gtk here, the preflight would find the machine's own
+    # (a native package installs one in /usr/bin) and judge its series.
+    for name in ('oscmix', 'alsaseqio', 'oscmix-gtk'):
         binary = home / '.local/bin' / name
         binary.write_text(backend_identity_stub())
         binary.chmod(0o755)
