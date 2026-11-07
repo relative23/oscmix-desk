@@ -16,8 +16,10 @@ import re
 
 from support import repo_file
 
-WORKFLOW = ("quality", "test", "coverage", "flake", "mutation",
+WORKFLOW = ("quality", "test", "coverage", "flake", "mutation", "mutation-score",
             "build-oscmix")
+#: The nightly jobs: the mutation shards and the job that judges them together.
+NIGHTLY = ("mutation", "mutation-score")
 
 
 def _jobs(name="ci.yml"):
@@ -57,16 +59,14 @@ def test_timeouts_are_bounded_for_their_job_cost():
 
     Each one is meant to catch a hang, so it belongs well above the
     job's measured maximum and far below the default -- the numbers are
-    recorded in the workflow next to them. Mutation gets a specific
-    ceiling: 240 minutes after two scheduled runs exhausted 180, and 330
-    after two more exhausted 240 (0.8.0). That exception must not increase
-    another job's allowed duration.
+    recorded in the workflow next to them. Mutation had its own ceiling,
+    240 and then 330 minutes, until the run was split into shards in
+    0.10.0; a shard has to fit the same bound as every other job.
     """
     too_generous = {}
     for job, block in _jobs().items():
         found = re.search(r"timeout-minutes:\s*(\d+)", block)
-        limit = 330 if job == "mutation" else 180
-        if found and int(found.group(1)) > limit:
+        if found and int(found.group(1)) > 180:
             too_generous[job] = int(found.group(1))
     assert too_generous == {}, (
         "these are long enough to hide a hang: %s" % too_generous)
@@ -135,21 +135,29 @@ def test_the_mutation_job_runs_nightly_and_not_on_every_push():
     the policy was green either way. A nightly score change still
     prompts that reading, a day later.
     """
-    condition = _job_condition("mutation")
-    assert condition is not None
-    assert "schedule" in condition
-    assert "push" not in condition
+    for job in NIGHTLY:
+        condition = _job_condition(job)
+        assert condition is not None
+        assert "schedule" in condition
+        assert "push" not in condition
 
 
 def test_every_other_job_still_runs_on_a_push():
     """The nightly move is for the one expensive job, not a retreat from
     per-push checking. Nothing else may quietly follow it."""
     for job in WORKFLOW:
-        if job == "mutation":
+        if job in NIGHTLY:
             continue
         condition = _job_condition(job)
         assert condition is None or "push" in condition, (
             "%s no longer runs on a push: %s" % (job, condition))
+
+
+def test_the_score_waits_for_every_shard():
+    block = _jobs()["mutation-score"]
+    assert re.search(r"^\s{4}needs: mutation$", block, re.MULTILINE)
+    assert "!cancelled()" in _job_condition("mutation-score")
+    assert "make mutation-merge" in block
 
 
 def test_the_workflow_is_scheduled_at_all():

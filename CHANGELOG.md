@@ -14,6 +14,10 @@
 - Python 3.12 or newer is required, as announced with 0.9.0: the installer
   check, the package dependencies and CI (3.12 to 3.15). The workarounds for
   3.9 to 3.11 are gone and the sources use the newer syntax.
+- The nightly mutation run is split into five shards by mutant number and
+  judged as one run (`make mutation-shard`, `make mutation-merge`): a
+  missing, partial or overlapping shard gives no score. The single job had
+  reached the 330-minute limit. `make mutation` stays the full local run.
 
 ### Fixed
 

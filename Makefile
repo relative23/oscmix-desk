@@ -11,7 +11,8 @@ SOAK_CYCLES ?= 50
 # runner/worker to 2 GiB; clean tests run under the same limit before mutants.
 MUTATION_VMEM_KB ?= 2097152
 
-.PHONY: all check test lint typecheck deadcode coverage mutation flake soak \
+.PHONY: all check test lint typecheck deadcode coverage mutation mutation-shard \
+	mutation-merge flake soak \
 	verify-hardware install uninstall clean
 
 all: check
@@ -70,6 +71,23 @@ verify-hardware:
 mutation:
 	$(PYTHON) scripts/mutation-fork-check.py
 	ulimit -v $(MUTATION_VMEM_KB) && $(PYTHON) -m mutmut run --max-children 4
+	$(PYTHON) scripts/mutation-policy.py
+
+# The same run in parts, as the nightly CI job runs it: one shard of
+# $(SHARDS) per runner, its results recorded, then mutation-merge joins the
+# shards and judges them as one run (scripts/mutation-shards.py).
+SHARDS ?= 5
+SHARD_OUTPUT ?= build/mutation-shard
+SHARD_RESULTS ?= build/mutation-shards/*
+mutation-shard:
+	$(PYTHON) scripts/mutation-fork-check.py
+	pattern=$$($(PYTHON) scripts/mutation-shards.py pattern "$(SHARD)" "$(SHARDS)") \
+		&& ulimit -v $(MUTATION_VMEM_KB) \
+		&& $(PYTHON) -m mutmut run --max-children 4 "$$pattern"
+	$(PYTHON) scripts/mutation-shards.py record "$(SHARD)" "$(SHARDS)" --output $(SHARD_OUTPUT)
+
+mutation-merge:
+	$(PYTHON) scripts/mutation-shards.py merge $(SHARD_RESULTS)
 	$(PYTHON) scripts/mutation-policy.py
 
 # Runs the suite repeatedly: races in the socket/threading fakes only show up

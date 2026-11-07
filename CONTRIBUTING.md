@@ -22,6 +22,8 @@ skip or run in their own qualification scripts.
 | `make flake REPEAT=5` | the full suite repeatedly, for timing-dependent failures |
 | `make soak SOAK_CYCLES=200` | repeated start/apply/stop cycles |
 | `make mutation` | the suite in a forked child, then mutmut and `scripts/mutation-policy.py` |
+| `make mutation-shard SHARD=k` | shard k of `SHARDS` (5) of the same run, recorded for the join, as nightly CI runs it |
+| `make mutation-merge` | joins the recorded shards into `mutants/` and applies the same policy |
 
 Remove `mutants/` before a mutation run that should count as a fresh
 measurement; the score floor is in `quality/mutation-baseline.json`.
