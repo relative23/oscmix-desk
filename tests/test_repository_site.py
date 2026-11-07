@@ -74,6 +74,7 @@ def channels(site, tmp_path):
     certificate.write_bytes(b'public certificate')
     releases = {'debian13': ('debian', '13'), 'ubuntu2404': ('ubuntu', '24.04'),
                 'ubuntu2604': ('ubuntu', '26.04'), 'fedora44': ('fedora', '44'),
+                'fedora45': ('fedora', '45'),
                 'opensuse16': ('opensuse-leap', '16.0')}
     for target, (_, kind, architecture) in site.BUILDER.TARGETS.items():
         directory = root / target
@@ -140,7 +141,7 @@ def test_complete_archive_is_reproducible_and_restores_verified_site(
     assert result['signatures_and_files_verified'] is True
     assert result['authenticated_build_manifests'] == 15
     assert set(result['channels']) == set(site.BUILDER.TARGETS)
-    assert len(list(options.output.glob('*/repository.json'))) == 5
+    assert len(list(options.output.glob('*/repository.json'))) == len(site.BUILDER.TARGETS)
     assert (options.output / 'index.html').stat().st_mode & 0o777 == 0o644
 
 

@@ -25,6 +25,7 @@ TARGETS = {
     'ubuntu2404': ('ubuntu24.04', 'deb', 'amd64'),
     'ubuntu2604': ('ubuntu26.04', 'deb', 'amd64'),
     'fedora44': ('fedora44', 'rpm', 'x86_64'),
+    'fedora45': ('fedora45', 'rpm', 'x86_64'),
     'opensuse16': ('opensuse-leap16.0', 'rpm', 'x86_64'),
 }
 MANIFEST = 'repository.json'

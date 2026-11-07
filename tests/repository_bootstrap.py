@@ -32,7 +32,7 @@ class Native(Client):
     def __init__(self, target, output):
         self.target, self.output = target, output
         self.kind = ('apt' if target.startswith(('debian', 'ubuntu')) else
-                     'dnf' if target == 'fedora44' else 'zypper')
+                     'dnf' if target.startswith('fedora') else 'zypper')
         self.command = {'apt': ['apt-get', '-y', '-o', 'Acquire::Retries=0'],
                         'dnf': ['dnf', '-y'], 'zypper': ['zypper', '--non-interactive']}[self.kind]
         self.source = Path({'apt': '/etc/apt/sources.list.d/oscmix-desk.sources',

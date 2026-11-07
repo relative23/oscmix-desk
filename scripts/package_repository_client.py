@@ -203,6 +203,7 @@ def build(root, work, output, metadata, kind, packaged_hashes):
     platform = target_name(record)
     targets = {'debian13': ('debian13', 'apt'), 'ubuntu24.04': ('ubuntu2404', 'apt'),
                'ubuntu26.04': ('ubuntu2604', 'apt'), 'fedora44': ('fedora44', 'dnf'),
+               'fedora45': ('fedora45', 'dnf'),
                'opensuse-leap16.0': ('opensuse16', 'zypp')}
     record['target'], record['manager'] = targets[platform]
     payload = work / 'client-stage'

@@ -75,10 +75,17 @@ def transition(site, previous_digest):
     if public['sha256'] != previous_digest:
         raise ValueError('the deployed publication changed; prepare from its actual successor')
     publication = json.loads(data)
-    if publication.get('schema') != 1 or set(publication['channels']) != set(SITE.BUILDER.TARGETS):
+    # Every previous channel must continue; a target added since may start without one.
+    previous_targets = set(publication.get('channels') or ())
+    if publication.get('schema') != 1 or not previous_targets <= set(SITE.BUILDER.TARGETS):
         raise ValueError('unknown previous publication')
     conditional = {}
     for target in SITE.BUILDER.TARGETS:
+        if target not in publication['channels']:
+            new = json.loads((site / target / SITE.BUILDER.MANIFEST).read_text())
+            if new.get('predecessor') is not None:
+                raise ValueError('a channel new to this publication cannot claim a predecessor')
+            continue
         info, data = remote(target + '/' + SITE.BUILDER.MANIFEST, METADATA_LIMIT, collect=True)
         if info['sha256'] != publication['channels'][target]:
             raise ValueError('previous channel differs from selected publication')

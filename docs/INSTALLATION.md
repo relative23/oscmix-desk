@@ -123,7 +123,7 @@ systems, use the distribution's boot-time directory mechanism. Without this
 directory, the per-user fallback does not coordinate different users.
 `--no-udev` skips all root integration, including provisioning this lock.
 
-The source installer is tested on Debian 13, Ubuntu 24.04/26.04, Fedora 44,
+The source installer is tested on Debian 13, Ubuntu 24.04/26.04, Fedora 44/45,
 openSUSE Leap 16, Arch and Alpine 3.22 (musl).
 
 ## Alpine/OpenRC and Void/runit
@@ -223,9 +223,9 @@ sandbox cannot own it. The guide includes audio-group provisioning and removal.
 ## Native packages
 
 Use a package built for your distribution release and architecture: Debian 13
-and Ubuntu 24.04/26.04 DEBs, Fedora 44 and openSUSE Leap 16 RPMs, and Arch, all
-x86_64 (releases before 0.8.0 cover Ubuntu 24.04, Fedora 44, openSUSE Leap 16
-and Arch). A Fedora RPM is not an openSUSE binary, and a newer Ubuntu binary is
+and Ubuntu 24.04/26.04 DEBs, Fedora 44/45 and openSUSE Leap 16 RPMs, and Arch, all
+x86_64 (Fedora 45 packages start with 0.10.0; releases before 0.8.0 cover Ubuntu
+24.04, Fedora 44, openSUSE Leap 16 and Arch). A Fedora RPM is not an openSUSE binary, and a newer Ubuntu binary is
 not compatible with an older Ubuntu. Verify downloaded packages as described in
 [release artifacts](RELEASE-ARTIFACTS.md), or use the
 [signed package repositories](PACKAGE-REPOSITORIES.md). There is no built-in

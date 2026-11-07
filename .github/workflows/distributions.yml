@@ -61,7 +61,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [debian13, ubuntu2404, ubuntu2604, fedora44, opensuse16, arch, alpine322]
+        target: [debian13, ubuntu2404, ubuntu2604, fedora44, fedora45, opensuse16, arch, alpine322]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [debian13, ubuntu2404, ubuntu2604, fedora44, opensuse16, arch]
+        target: [debian13, ubuntu2404, ubuntu2604, fedora44, fedora45, opensuse16, arch]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:

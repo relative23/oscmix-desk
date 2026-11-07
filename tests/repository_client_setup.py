@@ -63,7 +63,7 @@ def install(target):
         link.unlink(missing_ok=True)
         link.symlink_to(CLIENT / 'zypp-sigcheck.py')
     else:
-        assert target == 'fedora44'
+        assert target in ('fedora44', 'fedora45')
         flags = shlex.split(subprocess.check_output(
             ['pkg-config', '--cflags', '--libs', 'libdnf5'], text=True))
         output = Path('/usr/lib64/libdnf5/plugins/oscmix-repository.so')

@@ -8,7 +8,7 @@ before 0.8.0 are available as [release artifacts](RELEASE-ARTIFACTS.md) only.
 | --- | --- |
 | Debian 13 | APT |
 | Ubuntu 24.04, 26.04 | APT |
-| Fedora 44 | RPM (DNF5) |
+| Fedora 44, 45 (45 from 0.10.0) | RPM (DNF5) |
 | openSUSE Leap 16 | RPM (zypper) |
 
 Each channel carries the core package (`oscmix-desk`), the matching GTK mixer

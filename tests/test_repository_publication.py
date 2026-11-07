@@ -61,7 +61,7 @@ def test_new_publication_extends_all_channels_and_records_native_http_validators
         publisher, promotion):
     result = publisher.transition(promotion.site, promotion.digest)
     assert result['previous'] == promotion.digest
-    assert len(result['conditional_requests']) == 5
+    assert len(result['conditional_requests']) == len(publisher.SITE.BUILDER.TARGETS)
     assert set(result['conditional_requests']) == {
         target + ('/dists/stable/InRelease' if kind == 'deb' else '/repodata/repomd.xml')
         for target, (_, kind, _) in publisher.SITE.BUILDER.TARGETS.items()}
@@ -135,7 +135,7 @@ def test_final_recheck_refuses_a_changed_predecessor_without_replacing_saved_evi
     path.write_text(json.dumps(dict(transition=dict(previous=promotion.digest))))
     monkeypatch.setattr(publisher.time, 'time', lambda: 200)
     checked = publisher.recheck(root)
-    assert len(checked['transition']['conditional_requests']) == 5
+    assert len(checked['transition']['conditional_requests']) == len(publisher.SITE.BUILDER.TARGETS)
     before = path.read_bytes()
     promotion.remote['publication.json'] += b' '
     with pytest.raises(ValueError, match='publication changed'):
@@ -175,3 +175,40 @@ def test_published_verification_checks_bytes_and_each_old_validator(
         assert result['passed']
         assert not result['native_package_managers_tested']
         assert calls == [None, {'If-None-Match': 'old-etag'}, {'If-Modified-Since': 'old-date'}]
+
+
+def _previous_without(promotion, target):
+    """A previous publication made before target existed."""
+    record = json.loads(promotion.remote['publication.json'])
+    del record['channels'][target]
+    promotion.remote['publication.json'] = json.dumps(record).encode()
+    return hashlib.sha256(promotion.remote['publication.json']).hexdigest()
+
+
+def test_a_target_added_since_the_previous_publication_starts_without_a_predecessor(
+        publisher, promotion):
+    digest = _previous_without(promotion, 'fedora45')
+    manifest = promotion.site / 'fedora45/repository.json'
+    new = json.loads(manifest.read_text())
+    del new['predecessor']
+    manifest.write_text(json.dumps(new))
+    result = publisher.transition(promotion.site, digest)
+    assert result['previous'] == digest
+    assert 'fedora45/repodata/repomd.xml' not in result['conditional_requests']
+    assert len(result['conditional_requests']) == len(publisher.SITE.BUILDER.TARGETS) - 1
+
+
+def test_a_new_channel_cannot_claim_a_predecessor_the_publication_never_had(
+        publisher, promotion):
+    digest = _previous_without(promotion, 'fedora45')
+    with pytest.raises(ValueError, match='cannot claim a predecessor'):
+        publisher.transition(promotion.site, digest)
+
+
+def test_a_channel_of_the_previous_publication_cannot_disappear(publisher, promotion):
+    record = json.loads(promotion.remote['publication.json'])
+    record['channels']['retired'] = 'd' * 64
+    promotion.remote['publication.json'] = json.dumps(record).encode()
+    digest = hashlib.sha256(promotion.remote['publication.json']).hexdigest()
+    with pytest.raises(ValueError, match='unknown previous publication'):
+        publisher.transition(promotion.site, digest)

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.10.0 -- unreleased
+
+### Added
+
+- Fedora 45 native packages and a signed `fedora45` repository channel, beside
+  Fedora 44. The repository publication accepts a channel that the previous
+  publication did not have yet, without a predecessor; every earlier channel
+  still has to continue.
+
+### Fixed
+
+- Repository staging and the publication checks read the RPM payload digest
+  under RPM 6 as well (Fedora 44/45, Ubuntu 26.04), where the tag is named
+  `PAYLOADSHA256`; RPM 4 calls it `PAYLOADDIGEST`.
+
 ## 0.9.0 -- 2026-11-07
 
 0.9.0 is the last release for Python 3.9 to 3.11; the next one requires

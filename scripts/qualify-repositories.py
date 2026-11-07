@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGETS = ('debian13', 'ubuntu2404', 'ubuntu2604', 'fedora44', 'opensuse16')
+TARGETS = ('debian13', 'ubuntu2404', 'ubuntu2604', 'fedora44', 'fedora45', 'opensuse16')
 BOOTSTRAP_FILES = ('scripts/build-package.py', 'scripts/package_repository_client.py',
                    'scripts/package_formats.py', 'scripts/package_gtk.py',
                    'tests/repository_bootstrap.py', 'tests/repository_client_setup.py',
@@ -84,7 +84,7 @@ def qualify(args):
             client = create(result['client_image'])
             tools = create(result['tools_image'], temporary=True)
             manager = ('apt-get' if target.startswith(('debian', 'ubuntu')) else
-                       'dnf' if target == 'fedora44' else 'zypper')
+                       'dnf' if target.startswith('fedora') else 'zypper')
             result['manager_version'] = run('docker', 'exec', client, manager, '--version',
                                              capture=True).splitlines()
             result['gpg_version'] = run('docker', 'exec', tools, 'gpg', '--version',

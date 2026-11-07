@@ -43,7 +43,7 @@ class Client:
                             '-o', 'Dir::State::lists=' + str(lists),
                             '-o', 'Acquire::Retries=0']
         else:
-            self.kind = 'dnf' if target == 'fedora44' else 'zypper'
+            self.kind = 'dnf' if target.startswith('fedora') else 'zypper'
             repos = output / 'repos'
             repos.mkdir()
             services = output / 'services'
@@ -297,7 +297,8 @@ def exercise(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--target', required=True,
-                        choices=['debian13', 'ubuntu2404', 'ubuntu2604', 'fedora44', 'opensuse16'])
+                        choices=['debian13', 'ubuntu2404', 'ubuntu2604', 'fedora44', 'fedora45',
+                                 'opensuse16'])
     parser.add_argument('--fixtures', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--strict', action='store_true',
@@ -309,7 +310,7 @@ def main():
                    if '=' in line)
     platform = release['ID'].strip('"') + release['VERSION_ID'].strip('"')
     expected = {'debian13': 'debian13', 'ubuntu2404': 'ubuntu24.04',
-                'ubuntu2604': 'ubuntu26.04', 'fedora44': 'fedora44',
+                'ubuntu2604': 'ubuntu26.04', 'fedora44': 'fedora44', 'fedora45': 'fedora45',
                 'opensuse16': 'opensuse-leap16.0'}
     if platform != expected[args.target]:
         raise RuntimeError('container OS does not match selected repository target')

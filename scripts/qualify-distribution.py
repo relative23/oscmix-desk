@@ -35,6 +35,13 @@ TARGETS = {
                  'rpm', ('dnf install -y rpm-build systemd gtk3-devel '
                          'xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon '
                          'python3-gobject at-spi2-core gnupg2 gcc-c++ libdnf5-devel')),
+    'fedora45': ('fedora:45',
+                 ('dnf install -y python3 python3-pip git gcc make pkgconf-pkg-config '
+                  'alsa-lib-devel util-linux diffutils ca-certificates bash '
+                  'shadow-utils procps-ng'),
+                 'rpm', ('dnf install -y rpm-build systemd gtk3-devel '
+                         'xorg-x11-server-Xvfb xorg-x11-xauth dbus-daemon '
+                         'python3-gobject at-spi2-core gnupg2 gcc-c++ libdnf5-devel')),
     'opensuse16': ('opensuse/leap:16.0',
                    ('zypper --non-interactive install python3 python3-pip git gcc make pkg-config '
                     'alsa-devel util-linux diffutils ca-certificates bash shadow procps'),
