@@ -9,13 +9,13 @@
   "min_score": 0.88,
   "tolerance": 0.01,
   "measured": {
-    "recorded": "2026-11-05",
+    "recorded": "2026-11-07",
     "total": 17150,
-    "killed": 15138,
+    "killed": 15139,
     "survived": 1989,
-    "timeout": 23,
+    "timeout": 22,
     "not_covered": 0,
-    "score": 0.883867577509196,
-    "commit": "532b60a79c83a501e4488720c7e74c73b9eddff3"
+    "score": 0.8838743577767398,
+    "commit": "fb2ddd1b997a75255be3728d7da91911e7705cfb"
   }
 }

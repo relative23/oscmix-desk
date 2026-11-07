@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0 -- 2026-11-05
+## 0.9.0 -- 2026-11-07
 
 0.9.0 is the last release for Python 3.9 to 3.11; the next one requires
 Python 3.12 or newer. Every packaged distribution already ships 3.12 or later.
