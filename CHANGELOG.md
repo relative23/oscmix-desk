@@ -20,6 +20,9 @@
 - Repository staging and the publication checks read the RPM payload digest
   under RPM 6 as well (Fedora 44/45, Ubuntu 26.04), where the tag is named
   `PAYLOADSHA256`; RPM 4 calls it `PAYLOADDIGEST`.
+- The source installer's preflight reads `OSCMIX_PACKAGE_GUARD` like
+  `uninstall.sh`, so the test suite runs on a machine with the native
+  package installed. The upgrade tests start from 0.9.0 as well.
 
 ## 0.9.0 -- 2026-11-07
 

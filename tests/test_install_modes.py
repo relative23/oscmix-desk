@@ -1,5 +1,7 @@
 """First activation, upgrade state and systemd-free source installation."""
 
+from pathlib import Path
+
 import pytest
 from test_install_sh import make_fake_home, plug_in, run, session_home_stub
 
@@ -19,6 +21,15 @@ def test_preflight_does_not_install_or_start_anything(tmp_path):
     assert 'enable' not in calls
     assert 'restart' not in calls
     assert 'sudo' not in calls
+
+
+def test_preflight_refuses_to_shadow_a_native_package(tmp_path):
+    home, env, _log = make_fake_home(tmp_path)
+    Path(env['OSCMIX_PACKAGE_GUARD']).write_text('')
+    result = run('install.sh', ['--no-build', '--no-udev'], env)
+    assert result.returncode == 1
+    assert 'MISSING source installation must not shadow a native package' in result.stdout
+    assert not (home / '.local/bin/oscmix-session').exists()
 
 
 def test_fresh_install_with_device_present_never_applies_example(tmp_path):

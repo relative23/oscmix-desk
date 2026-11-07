@@ -80,7 +80,9 @@ def main():
     print('INFO    backend pin: ' + series['upstream'])
     check((os.environ.get('OSCMIX_REF') or default_pin) == series['upstream'],
           'backend ref matches the required versioned patch series')
-    check(not Path('/usr/lib/oscmix-desk/package-guard').exists(),
+    # uninstall.sh reads the same override; the suite points both at a fake system.
+    guard = os.environ.get('OSCMIX_PACKAGE_GUARD') or '/usr/lib/oscmix-desk/package-guard'
+    check(not Path(guard).exists(),
           'source installation must not shadow a native package; '
           'use its package manager to upgrade, or remove it before switching to source')
     registration = Path('/etc/oscmix-desk/service.json')

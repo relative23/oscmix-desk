@@ -22,6 +22,7 @@ BASES = [
     ("0.7.2", "2cf9b02a1c271582d042ce4ad064331fb09f3619"),
     ("0.8.0", "fd4f4bece9af3b0eb32cba386785a7e440ea6e9d"),
     ("0.8.1", "9a12290fb9968c5f367d163b75df13116b41bdad"),
+    ("0.9.0", "cf3a7091025efbfbbeb561155dff2558b3d30b0a"),
 ]
 pytestmark = pytest.mark.skipif(
     bool(os.environ.get("MUTANT_UNDER_TEST")),
@@ -48,16 +49,26 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless, previous_ver
         pytest.skip("upgrade test needs " + base + " (fetch-depth: 0 in CI)")
     subprocess.run(["tar", "-xf", "-", "-C", str(previous)],
                    input=archived.stdout, check=True)
+    # 0.7.2 to 0.9.0 read the host's package guard directly and refuse on a
+    # machine with the native package installed; point that one line at the
+    # fake system, as make_fake_home does for every other system path.
+    preflight = previous / "scripts" / "install-preflight.py"
+    fixed = "Path('/usr/lib/oscmix-desk/package-guard')"
+    if preflight.exists() and fixed in preflight.read_text():
+        source = preflight.read_text()
+        assert source.count(fixed) == 1
+        preflight.write_text(source.replace(
+            fixed, "Path(os.environ['OSCMIX_PACKAGE_GUARD'])"))
     args = ["--no-build"] + (["--no-udev"] if rootless else [])
 
-    def install(tree, expect_hotplug=True):
+    def install(tree, expect_hotplug=True, enable=False):
         # --no-build installs against the backend that is already there, and
         # each tree requires the one built from its own patch series. When a
         # release changes the series, the upgrade rebuilds the backend and a
         # rollback needs the previous one again: model that per phase.
         for tool in ("oscmix", "alsaseqio", "oscmix-gtk"):
             (home / ".local" / "bin" / tool).write_text(backend_identity_stub(tree))
-        result = run(str(tree / "install.sh"), args, env)
+        result = run(str(tree / "install.sh"), args + (["--enable"] if enable else []), env)
         assert result.returncode == 0, result.stderr + result.stdout
         package = home / ".local" / "lib" / "oscmix-desk" / "oscmix_desk"
         assert {p.name: p.read_bytes() for p in package.glob("*.py")} == {
@@ -78,8 +89,11 @@ def test_upgrade_and_rollback_preserve_the_desk(tmp_path, rootless, previous_ver
         return package
 
     # Since 0.7.2 a first install defers hotplug and resume until --enable.
-    deferred = tuple(map(int, previous_version.split("."))) >= (0, 7, 2)
-    install(previous, expect_hotplug=not deferred)
+    # From 0.9.0 an enabled unit is no opt-in by itself: the desk was enabled
+    # with --enable, and only that is carried into the upgrade.
+    release = tuple(map(int, previous_version.split(".")))
+    guarded = release >= (0, 9, 0)
+    install(previous, expect_hotplug=guarded or release < (0, 7, 2), enable=guarded)
     session_home_stub(tmp_path, str(home), enabled=True)
     config = home / ".config" / "oscmix"
     files = {config / "routing.conf": "# custom desk\n",
