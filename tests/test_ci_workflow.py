@@ -157,7 +157,47 @@ def test_the_score_waits_for_every_shard():
     block = _jobs()["mutation-score"]
     assert re.search(r"^\s{4}needs: mutation$", block, re.MULTILINE)
     assert "!cancelled()" in _job_condition("mutation-score")
-    assert "make mutation-merge" in block
+    assert "make mutation-join" in block
+
+
+def _steps(job):
+    """The steps of one job, each as its block of text."""
+    return re.split(r"\n\s{6}- ", _jobs()[job])[1:]
+
+
+def test_a_night_without_a_joined_result_fails_while_the_score_only_reports():
+    """November 8 to 12, 2026: every shard stopped after nine minutes and
+    the nights stayed green, because both jobs had continue-on-error. A
+    missing joined result is broken tooling; the score keeps its old
+    standing, a report that prompts reading the survivors."""
+    block = _jobs()["mutation-score"]
+    assert not re.search(r"^\s{4}continue-on-error:", block, re.MULTILINE)
+    join = [step for step in _steps("mutation-score") if "make mutation-join" in step]
+    policy = [step for step in _steps("mutation-score") if "mutation-policy.py" in step]
+    assert len(join) == 1
+    assert "continue-on-error" not in join[0]
+    assert len(policy) == 1
+    assert re.search(r"^\s{8}continue-on-error: true$", policy[0], re.MULTILINE)
+
+
+def test_the_mutation_jobs_install_the_pinned_tools():
+    # mutmut pinned alone met pytest 9.2.0, which it cannot run under.
+    for job in NIGHTLY:
+        block = _jobs()[job]
+        assert "pip install -r requirements-mutation.txt" in block, job
+        assert "mutmut==" not in block, job
+        assert "requirements-mutation.txt\n" in block.split("cache-dependency-path:")[1], job
+
+
+def test_the_release_fingerprints_every_requirements_file():
+    # The tag build refuses a tree whose tested files changed after the
+    # software qualification; a requirements file it does not list could.
+    workflow = repo_file(".github", "workflows", "release.yml").read_text()
+    names = sorted(path.name for path in
+                   repo_file("requirements-dev.txt").parent.glob("requirements*.txt"))
+    assert "requirements-mutation.txt" in names
+    for name in names:
+        assert "'%s'" % name in workflow, name
 
 
 def test_the_workflow_is_scheduled_at_all():

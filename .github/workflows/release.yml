@@ -128,7 +128,8 @@ jobs:
                    for path in Path(directory).rglob('*')
                    if path.is_file() and '__pycache__' not in path.parts
                    and path.suffix not in ('.pyc', '.pyo')]
-          paths += [Path(name) for name in ('pyproject.toml', 'requirements-dev.txt', 'Makefile')]
+          paths += [Path(name) for name in ('pyproject.toml', 'requirements-dev.txt',
+                                            'requirements-mutation.txt', 'Makefile')]
           tested = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
           assert software['tested_files_sha256'] == tested, 'Software qualification predates these files'
           support = [Path('install.sh'), Path('uninstall.sh'), Path('quality/vulture-allowlist.py')]

@@ -179,4 +179,7 @@ def test_ci_runs_every_shard_the_makefile_splits_into(shards):
     matrix = re.search(r"^\s+shard: \[([\d, ]+)\]$", workflow, re.MULTILINE).group(1)
     assert [int(item) for item in matrix.split(",")] == list(range(1, count + 1))
     assert "SHARDS=%d" % count in workflow
-    assert "mutmut==" in workflow
+    # Every shard runs the same mutmut: the pin lives in one file the jobs install.
+    assert "pip install -r requirements-mutation.txt" in workflow
+    pins = repo_file("requirements-mutation.txt").read_text()
+    assert re.search(r"^mutmut==\S+$", pins, re.MULTILINE)

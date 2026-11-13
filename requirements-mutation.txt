@@ -1,0 +1,13 @@
+# The mutation tools, pinned together: nightly CI installs exactly this, and
+# every `make mutation*` target refuses other versions
+# (scripts/mutation-tools-check.py).
+#
+# mutmut: scripts/mutation-shards.py joins mutmut 3.7's result files and
+# refuses any other layout, and every shard must name its mutants alike.
+# pytest: mutmut 3.7.0 reads pytest's private Item._nodeid, which pytest
+# 9.2.0 removed. From November 8 to 12, 2026 every nightly shard stopped
+# after its first test with "failed to collect stats".
+# Move both together, with a measured run, never one alone.
+-r requirements-dev.txt
+mutmut==3.7.0
+pytest==9.1.1

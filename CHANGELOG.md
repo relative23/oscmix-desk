@@ -16,8 +16,12 @@
   3.9 to 3.11 are gone and the sources use the newer syntax.
 - The nightly mutation run is split into five shards by mutant number and
   judged as one run (`make mutation-shard`, `make mutation-merge`): a
-  missing, partial or overlapping shard gives no score. The single job had
-  reached the 330-minute limit. `make mutation` stays the full local run.
+  missing, partial or overlapping shard gives no score, and a night without
+  a score fails the run, while a lower score still only reports. The single
+  job had reached the 330-minute limit. `make mutation` stays the full local
+  run. mutmut and pytest are pinned together in `requirements-mutation.txt`,
+  and every mutation target refuses other versions: mutmut 3.7.0 cannot run
+  under pytest 9.2.
 - Room EQ delay accepts the device's whole range, 0 to 42 ms; 0.9.0 stopped
   at 4.25 ms, the backend's node table, which the backend does not enforce.
   Measured through output loopback at 0, 10, 20, 30 and 42 ms: 10.000 ms per

@@ -12,7 +12,7 @@ SOAK_CYCLES ?= 50
 MUTATION_VMEM_KB ?= 2097152
 
 .PHONY: all check test lint typecheck deadcode coverage mutation mutation-shard \
-	mutation-merge flake soak \
+	mutation-join mutation-merge flake soak \
 	verify-hardware install uninstall clean
 
 all: check
@@ -68,26 +68,34 @@ verify-hardware:
 # `check`; the baseline in quality/ turns the result into a ratchet.
 # mutmut forks a child per mutant after importing the tests, so the suite
 # must first pass in a forked child too; otherwise its failures read as kills.
+# Every mutation target first checks the tools against requirements-mutation.txt.
 mutation:
+	$(PYTHON) scripts/mutation-tools-check.py
 	$(PYTHON) scripts/mutation-fork-check.py
 	ulimit -v $(MUTATION_VMEM_KB) && $(PYTHON) -m mutmut run --max-children 4
 	$(PYTHON) scripts/mutation-policy.py
 
 # The same run in parts, as the nightly CI job runs it: one shard of
-# $(SHARDS) per runner, its results recorded, then mutation-merge joins the
-# shards and judges them as one run (scripts/mutation-shards.py).
+# $(SHARDS) per runner, its results recorded, then mutation-join joins the
+# shards into ./mutants (scripts/mutation-shards.py) and mutation-merge also
+# judges them as one run. Nightly CI fails when the join fails; the score
+# itself only reports there.
 SHARDS ?= 5
 SHARD_OUTPUT ?= build/mutation-shard
 SHARD_RESULTS ?= build/mutation-shards/*
 mutation-shard:
+	$(PYTHON) scripts/mutation-tools-check.py
 	$(PYTHON) scripts/mutation-fork-check.py
 	pattern=$$($(PYTHON) scripts/mutation-shards.py pattern "$(SHARD)" "$(SHARDS)") \
 		&& ulimit -v $(MUTATION_VMEM_KB) \
 		&& $(PYTHON) -m mutmut run --max-children 4 "$$pattern"
 	$(PYTHON) scripts/mutation-shards.py record "$(SHARD)" "$(SHARDS)" --output $(SHARD_OUTPUT)
 
-mutation-merge:
+mutation-join:
+	$(PYTHON) scripts/mutation-tools-check.py
 	$(PYTHON) scripts/mutation-shards.py merge $(SHARD_RESULTS)
+
+mutation-merge: mutation-join
 	$(PYTHON) scripts/mutation-policy.py
 
 # Runs the suite repeatedly: races in the socket/threading fakes only show up

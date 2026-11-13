@@ -236,8 +236,15 @@ jobs:
     # five: on a 0.9.0-era run the shards differed by 5% in summed mutant
     # time, where backend.py alone was a third of it. Expected per shard:
     # about 60 minutes of mutants plus the clean and stats runs every shard
-    # repeats; 150 is about twice that. mutmut is pinned because the join
-    # reads its result files and every shard must name mutants alike.
+    # repeats; 150 is about twice that.
+    #
+    # The tools are pinned together in requirements-mutation.txt: the join
+    # reads mutmut 3.7's result files and every shard must name mutants
+    # alike, and mutmut 3.7.0 does not run under pytest 9.2, which removed
+    # the Item._nodeid it reads. With mutmut pinned alone, every shard of the
+    # nights of November 8 to 12 stopped after nine minutes ("failed to
+    # collect stats") while this job's continue-on-error kept the run green.
+    # The Mutation Score job now fails when there is no joined result.
     name: Mutation Shard ${{ matrix.shard }}/5
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     continue-on-error: true
@@ -253,8 +260,10 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: requirements-dev.txt
-      - run: pip install -r requirements-dev.txt mutmut==3.7.0
+          cache-dependency-path: |
+            requirements-dev.txt
+            requirements-mutation.txt
+      - run: pip install -r requirements-mutation.txt
       - env:
           SHARD: ${{ matrix.shard }}
         run: make mutation-shard SHARD="$SHARD" SHARDS=5
@@ -268,10 +277,12 @@ jobs:
   mutation-score:
     name: Mutation Score
     # Judges the five shards as one run: a missing, partial or overlapping
-    # shard gives no score instead of a partial one.
+    # shard gives no score instead of a partial one. A night without a joined
+    # result is broken tooling, not a score, so the join fails the run. The
+    # score itself only reports, as it always has: it moves for reasons other
+    # than test quality, and its value is in reading the survivors.
     needs: mutation
     if: ${{ !cancelled() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
-    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -280,13 +291,17 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: requirements-dev.txt
-      - run: pip install -r requirements-dev.txt mutmut==3.7.0
+          cache-dependency-path: |
+            requirements-dev.txt
+            requirements-mutation.txt
+      - run: pip install -r requirements-mutation.txt
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: mutation-shard-*
           path: build/mutation-shards/
-      - run: make mutation-merge
+      - run: make mutation-join
+      - run: python3 scripts/mutation-policy.py
+        continue-on-error: true
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
