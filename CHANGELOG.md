@@ -9,6 +9,13 @@
   measurements; the measured values are unchanged. A test refuses any other
   serial than the made-up ones of the multi-device cases, so a new recording
   cannot bring the real one back.
+- The measurement tools (`verify-hardware.py`, `sweep-writes.py`,
+  `record-dump.py` and the probes) write the placeholder into their records
+  wherever the serial stood, and add `device_pseudonym`: an HMAC of the serial
+  keyed with the machine ID, so records still show which box they measured
+  without naming it. The FX probe compares an inventory by that pseudonym. The
+  tools still read the serial while they run, to pick the box and find its
+  ALSA card and PipeWire nodes.
 
 ## 0.10.0 -- 2026-11-14
 

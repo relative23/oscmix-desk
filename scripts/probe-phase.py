@@ -36,6 +36,7 @@ LOOP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(LOOP)
 
 from loopback_signal import PRESENT  # noqa: E402 -- after probe-loopback set the path
+from measurement import without_serial  # noqa: E402
 
 from oscmix_desk.config import load_config  # noqa: E402
 from oscmix_desk.errors import ConfigError, DeviceLockUnavailable, WriteFailed  # noqa: E402
@@ -256,7 +257,7 @@ def main():
     os.close(fd)
 
     def checkpoint():
-        args.out.write_text(json.dumps(result, indent=1, allow_nan=False) + '\n')
+        args.out.write_text(json.dumps(without_serial(result), indent=1, allow_nan=False) + '\n')
 
     probe = None
     try:

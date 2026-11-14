@@ -413,7 +413,9 @@ def test_the_evidence_names_the_particular_device():
     Two Fireface units on one desk are meant to work. The
     serial is read from `/proc/asound/cards`, where the driver puts the
     device's own product string -- not the USB `iSerial`, which is a
-    different number and not the one printed on the hardware.
+    different number and not the one printed on the hardware. Since
+    2026-11-14 the written record names the box by `device_pseudonym`
+    and the serial by its placeholder (test_measurement_privacy.py).
     """
     source = repo_file("scripts", "verify-hardware.py").read_text()
     assert '"serial"' in source

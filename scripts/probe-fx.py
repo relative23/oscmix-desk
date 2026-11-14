@@ -31,7 +31,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from measurement import build_evidence, observations
+from measurement import build_evidence, device_pseudonym, observations, without_serial
 
 from oscmix_desk import open_desk
 from oscmix_desk.config import load_config
@@ -193,7 +193,7 @@ def require_stable(first, before):
 
 def require_inventory_peer(inventory, evidence, serial):
     old = inventory['running_backend']
-    if (inventory.get('serial') != serial
+    if (inventory.get('device_pseudonym') != device_pseudonym(serial)
             or any(old.get(key) != evidence[key]
                    for key in ('pid', 'epoch', 'sha256', 'series_sha256'))):
         raise ValueError('inventory belongs to a different peer, build or device')
@@ -492,7 +492,7 @@ def save_evidence(path, result):
         with tempfile.NamedTemporaryFile(mode='w', dir=path.parent,
                                          prefix='.fx-probe-', delete=False) as stream:
             temporary = Path(stream.name)
-            json.dump(json_safe(result), stream, indent=2, allow_nan=False)
+            json.dump(without_serial(json_safe(result)), stream, indent=2, allow_nan=False)
             stream.write('\n')
             stream.flush()
             os.fsync(stream.fileno())

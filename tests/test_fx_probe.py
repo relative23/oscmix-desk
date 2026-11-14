@@ -711,7 +711,7 @@ def test_failed_evidence_update_preserves_the_complete_baseline(probe, monkeypat
     monkeypatch.setattr(probe.os, 'fsync', failed_flush)
     with pytest.raises(OSError, match='evidence disk full'):
         probe.save_evidence(out, {'phase': 'probe', 'messages': {}})
-    assert json.loads(out.read_text()) == before
+    assert json.loads(out.read_text()) == dict(before, device_pseudonym=None)
     assert list(tmp_path.iterdir()) == [out]
 
 
@@ -762,7 +762,7 @@ def test_main_requires_end_ack_and_keeps_actual_state_evidence_private(
     evidence = {'pid': 123, 'epoch': peer.epoch.hex(), 'sha256': 'a' * 64,
                 'series_sha256': 'b' * 64, 'matches_local_build': True}
     inventory = inventory_for(state)
-    inventory.update(serial='12345678', running_backend=evidence)
+    inventory.update(device_pseudonym=probe.device_pseudonym('12345678'), running_backend=evidence)
     recorded = tmp_path / 'inventory.json'
     recorded.write_text(json.dumps(inventory))
     out = tmp_path / 'evidence.json'

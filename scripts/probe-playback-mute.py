@@ -39,6 +39,7 @@ SPEC.loader.exec_module(LOOP)
 
 import usb_midi_words  # noqa: E402 -- after probe-loopback set the path
 from loopback_signal import channel, level_dbfs, middle  # noqa: E402
+from measurement import without_serial  # noqa: E402
 
 from oscmix_desk.config import load_config  # noqa: E402
 from oscmix_desk.discovery import resolve_device  # noqa: E402
@@ -291,7 +292,7 @@ def execute(args):
     os.close(fd)
 
     def checkpoint():
-        args.out.write_text(json.dumps(result, indent=1, allow_nan=False) + '\n')
+        args.out.write_text(json.dumps(without_serial(result), indent=1, allow_nan=False) + '\n')
 
     probe = None
     try:
@@ -347,7 +348,7 @@ def main():
     if None in (args.capture, args.bus, args.device):
         parser.error('--assess needs --capture, --bus and --device')
     evidence = assess(json.loads(args.out.read_text()), args.capture, args.bus, args.device)
-    args.out.write_text(json.dumps(evidence, indent=1, allow_nan=False) + '\n')
+    args.out.write_text(json.dumps(without_serial(evidence), indent=1, allow_nan=False) + '\n')
     print('probe-playback-mute: %s -> %s' % ('passed' if evidence['passed'] else 'FAILED',
                                             args.out))
     return 0 if evidence['passed'] else 1

@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from measurement import build_evidence
+from measurement import build_evidence, without_serial
 
 from oscmix_desk import devices
 from oscmix_desk import registers as R
@@ -871,7 +871,7 @@ def main() -> int:
         "not_restored": unrestored,
         "findings": findings,
     }
-    text = json.dumps(json_safe(artifact), indent=2, sort_keys=False, allow_nan=False)
+    text = json.dumps(without_serial(json_safe(artifact), serial), indent=2, allow_nan=False)
     sys.stderr.write("%.1f s for %d registers; %s\n"
                      % (elapsed, len(targets), summarise(findings)))
     if artifact["not_restored"]:

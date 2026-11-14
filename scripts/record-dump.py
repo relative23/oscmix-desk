@@ -47,7 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from measurement import build_evidence, observations
+from measurement import build_evidence, observations, without_serial
 
 from oscmix_desk import discover_config_path, load_config
 from oscmix_desk.backend import connect_backend
@@ -182,7 +182,7 @@ def main() -> int:
         "streamed": sorted(streamed),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(_render(fixture))
+    args.out.write_text(_render(without_serial(fixture, interface.serial)))
     print("dump finished after %.1fs: %d device-origin registers -> %s"
           % (duration, len(recorded[Source.DEVICE]), args.out))
     return 0

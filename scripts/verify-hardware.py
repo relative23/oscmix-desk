@@ -43,7 +43,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from measurement import build_evidence, observations
+from measurement import build_evidence, observations, without_serial
 
 from oscmix_desk import discover_config_path, load_config
 from oscmix_desk.backend import connect_backend
@@ -546,7 +546,7 @@ def main() -> int:
         "complete": not unmeasured and bool(findings),
     }
     if args.evidence:
-        args.evidence.write_text(json.dumps(evidence, indent=2) + "\n")
+        args.evidence.write_text(json.dumps(without_serial(evidence, serial), indent=2) + "\n")
 
     for finding in findings:
         status = "ok" if finding["ok"] else "FAIL"

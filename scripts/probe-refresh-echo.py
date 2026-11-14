@@ -26,6 +26,7 @@ LOOP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(LOOP)
 
 import usb_midi_words  # noqa: E402 -- after probe-loopback set the path
+from measurement import without_serial  # noqa: E402
 
 from oscmix_desk.config import load_config  # noqa: E402
 from oscmix_desk.errors import ConfigError, DeviceLockUnavailable, WriteFailed  # noqa: E402
@@ -110,7 +111,7 @@ def main():
         if None in (args.capture, args.bus, args.device):
             parser.error('--assess needs --capture, --bus and --device')
         evidence = assess(json.loads(args.out.read_text()), args.capture, args.bus, args.device)
-        args.out.write_text(json.dumps(evidence, indent=1, allow_nan=False) + '\n')
+        args.out.write_text(json.dumps(without_serial(evidence), indent=1, allow_nan=False) + '\n')
         counts = [w['input_coefficient_words'] for w in evidence['refreshes']]
         print('probe-refresh-echo: input coefficient words per refresh %s -> %s'
               % (counts, args.out))
@@ -121,7 +122,7 @@ def main():
     os.close(fd)
 
     def checkpoint():
-        args.out.write_text(json.dumps(result, indent=1, allow_nan=False) + '\n')
+        args.out.write_text(json.dumps(without_serial(result), indent=1, allow_nan=False) + '\n')
 
     probe = None
     try:

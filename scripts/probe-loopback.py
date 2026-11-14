@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from loopback_signal import CHANNELS, RATE, analyse, delay_slope
-from measurement import build_evidence, observations
+from measurement import build_evidence, observations, without_serial
 
 from oscmix_desk import open_desk
 from oscmix_desk.config import load_config
@@ -343,7 +343,8 @@ def main():
     os.close(fd)
 
     def checkpoint():
-        args.out.write_text(json.dumps(result, indent=1, allow_nan=False) + '\n')
+        record = without_serial(result, result.get('serial'))
+        args.out.write_text(json.dumps(record, indent=1, allow_nan=False) + '\n')
 
     probe = None
     try:

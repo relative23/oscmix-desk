@@ -5,10 +5,67 @@ transport and neither acquire a lease nor write a register on their own.
 """
 
 import hashlib
+import hmac
 import json
+import re
 from pathlib import Path
 
 from oscmix_desk.osc import decode_delivery
+
+#: What the records name instead of the serial of the box they measured (2026-11-14).
+PLACEHOLDER_SERIAL = '12345678'
+#: Where a serial stands in what the tools record: the ALSA product name, a serial
+#: field or text, the device lock key, the ALSA card id and PipeWire node names.
+SERIAL_CONTEXTS = (
+    re.compile(r'(?:UCX II|802) \((\d{6,12})\)'),
+    re.compile(r'(?i)serial\W{0,12}(\d{6,12})(?!\d)'),
+    re.compile(r'2a39-3f[0-9a-f]{2}-(\d{6,12})(?!\d)'),
+    re.compile(r'\bII(\d{6,12})(?!\d)'),
+    re.compile(r'Fireface_\w*?__(\d{6,12})(?!\d)'),
+)
+MACHINE_ID_FILES = (Path('/etc/machine-id'), Path('/var/lib/dbus/machine-id'))
+
+
+def device_pseudonym(serial):
+    """A stable name for one box on this installation that does not give its serial away.
+
+    HMAC-SHA256 of the serial, keyed with the machine ID as systemd advises for
+    application-specific IDs: without the machine ID nobody can try the few
+    possible serials against it. None without a machine ID, as in a container.
+    """
+    for path in MACHINE_ID_FILES:
+        try:
+            key = path.read_text().strip()
+        except OSError:
+            continue
+        if key:
+            message = b'oscmix-desk device pseudonym\0' + serial.encode()
+            return 'box-' + hmac.new(key.encode(), message, 'sha256').hexdigest()[:16]
+    return None
+
+
+def without_serial(record, serial=None):
+    """The record with each serial it names replaced by the placeholder, and device_pseudonym.
+
+    The serial the tool resolved and any serial in a known context are replaced
+    wherever they stand alone; the same digits inside a hex digest stay. A record
+    already without a serial keeps the pseudonym it has.
+    """
+    text = json.dumps(record, allow_nan=True)
+    found = {match.group(1) for pattern in SERIAL_CONTEXTS for match in pattern.finditer(text)}
+    serial = serial if serial and re.fullmatch(r'\d{6,12}', serial) else None
+    serials = (found | {serial} if serial else found) - {PLACEHOLDER_SERIAL}
+    for one in sorted(serials, key=len, reverse=True):
+        text = re.sub(r'(?<![0-9A-Fa-f])%s(?![0-9A-Fa-f])' % re.escape(one),
+                      PLACEHOLDER_SERIAL, text)
+    clean = json.loads(text)
+    named = serial if serial in serials else (min(serials) if len(serials) == 1 else None)
+    if isinstance(clean, dict):
+        if named:
+            clean['device_pseudonym'] = device_pseudonym(named)
+        else:
+            clean.setdefault('device_pseudonym', None)
+    return clean
 
 
 def build_evidence(connection, build_dir, proc_root=Path('/proc')):
