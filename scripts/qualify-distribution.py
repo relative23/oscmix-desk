@@ -15,8 +15,11 @@ import tempfile
 import time
 from pathlib import Path
 
+# build-essential, as the installer and the README tell users: on Ubuntu 26.04.1
+# gcc-15 only recommends libc6-dev, and with `gcc make` the backend build
+# stopped at assert.h (distribution run of 2026-11-13).
 APT = ('apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y '
-       'python3 python3-venv git gcc make pkg-config libasound2-dev util-linux '
+       'python3 python3-venv git build-essential pkg-config libasound2-dev util-linux '
        'ca-certificates bash procps')
 APT_NATIVE = ('apt-get update && DEBIAN_FRONTEND=noninteractive '
               'apt-get install -y dpkg-dev binutils adduser libgtk-3-dev '
