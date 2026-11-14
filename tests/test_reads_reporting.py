@@ -18,7 +18,7 @@ from oscmix_desk.journal import journal_path, record_written
 from oscmix_desk.model import Config
 from oscmix_desk.reads import DUMP_QUIET_SECONDS, DUMP_READ_SECONDS, DeviceRead
 
-SERIAL = "24216011"
+SERIAL = "12345678"
 KEY = "2a39-3fd9-" + SERIAL
 LOGGER = "oscmix-session"
 CONFIG = ("[device]\nname = Fireface UCX II\n\n"

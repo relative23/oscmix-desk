@@ -28,7 +28,7 @@ from oscmix_desk.playstate import (
 from oscmix_desk.reconcile import desired
 from oscmix_desk.seen import CC_MIX, CC_MODE, Seen, check_record
 
-SERIAL = "24216011"
+SERIAL = "12345678"
 START = 1000.0
 DAW = Route(name="daw", output=(1, 2), playback=(1, 2))
 DESK = Config(serial=SERIAL, routes=(DAW,))

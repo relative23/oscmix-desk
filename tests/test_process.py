@@ -120,7 +120,7 @@ def test_the_identity_is_rechecked_after_pidfd_open(process_mod, endpoint, monke
             (proc / "102/cmdline").write_bytes(b"alsaseqio\0-x\0" + b"25:1\0oscmix\0")
         elif change == "serial":
             clients = proc / "asound/seq/clients"
-            clients.write_text(clients.read_text().replace("24216011", "99887766"))
+            clients.write_text(clients.read_text().replace("12345678", "99887766"))
         return 999
 
     monkeypatch.setattr(process_mod.os, "pidfd_open", replaced_before_open, raising=False)

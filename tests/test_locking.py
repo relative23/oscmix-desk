@@ -151,10 +151,10 @@ def test_the_lock_lives_in_the_runtime_directory(tmp_path, monkeypatch):
     runtime = tmp_path / "run"
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
     path = desk(tmp_path, tracking=TRACKING)
-    assert locking.device_lock_path(path, "2a39-3fd9-24216011") == \
-        runtime / "oscmix-desk" / "2a39-3fd9-24216011.lock"
+    assert locking.device_lock_path(path, "2a39-3fd9-12345678") == \
+        runtime / "oscmix-desk" / "2a39-3fd9-12345678.lock"
     assert not (runtime / "oscmix-desk").exists(), "path selection is read-only"
-    lock = locking.take_device_lock(path, "2a39-3fd9-24216011")
+    lock = locking.take_device_lock(path, "2a39-3fd9-12345678")
     assert lock is not None
     assert (runtime / "oscmix-desk").is_dir(), "the writer creates its directory"
     lock.release()
@@ -163,9 +163,9 @@ def test_without_a_runtime_directory_the_lock_stays_beside_the_config(
         tmp_path, monkeypatch):
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     path = desk(tmp_path, tracking=TRACKING)
-    assert locking.device_lock_path(path, "2a39-3fd9-24216011") == \
+    assert locking.device_lock_path(path, "2a39-3fd9-12345678") == \
         tmp_path / "active-profile.lock"
-    assert locking.device_lock_path(None, "2a39-3fd9-24216011") is None
+    assert locking.device_lock_path(None, "2a39-3fd9-12345678") is None
 
 def test_two_configs_over_one_device_take_the_same_lock(tmp_path, monkeypatch):
     """The point of keying on the hardware.
@@ -177,7 +177,7 @@ def test_two_configs_over_one_device_take_the_same_lock(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
     first = desk(tmp_path / "a", tracking=TRACKING)
     second = desk(tmp_path / "b", tracking=TRACKING)
-    key = "2a39-3fd9-24216011"
+    key = "2a39-3fd9-12345678"
     assert locking.device_lock_path(first, key) == \
         locking.device_lock_path(second, key)
     held = locking.take_device_lock(first, key)
@@ -195,14 +195,14 @@ def test_without_a_runtime_directory_the_config_path_is_the_lock(
     """
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
     path = desk(tmp_path, tracking=TRACKING)
-    lock = locking.take_device_lock(path, "2a39-3fd9-24216011")
+    lock = locking.take_device_lock(path, "2a39-3fd9-12345678")
     assert lock is not None
     assert (tmp_path / "active-profile.lock").exists()
-    assert locking.take_device_lock(path, "2a39-3fd9-24216011",
+    assert locking.take_device_lock(path, "2a39-3fd9-12345678",
                                      wait=0.2) is None
     lock.release()
     # And with no config either there is nothing to contend over.
-    assert locking.take_device_lock(None, "2a39-3fd9-24216011") is not None
+    assert locking.take_device_lock(None, "2a39-3fd9-12345678") is not None
 
 def test_an_unusable_runtime_refuses_without_selecting_another_lock(
         tmp_path, monkeypatch, caplog):
@@ -213,7 +213,7 @@ def test_an_unusable_runtime_refuses_without_selecting_another_lock(
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(blocker))
     path = desk(tmp_path, tracking=TRACKING)
     with caplog.at_level("WARNING"):
-        lock = locking.take_device_lock(path, "2a39-3fd9-24216011")
+        lock = locking.take_device_lock(path, "2a39-3fd9-12345678")
     assert lock is None
     assert not (tmp_path / "active-profile.lock").exists()
     assert "cannot create the device runtime directory" in caplog.text
@@ -247,8 +247,8 @@ def test_the_shared_directory_wins_over_the_runtime_directory(
     shared = shared_lock_dir(tmp_path, monkeypatch)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
     path = desk(tmp_path, tracking=TRACKING)
-    assert locking.device_lock_path(path, "2a39-3fd9-24216011") == \
-        shared / "2a39-3fd9-24216011.lock"
+    assert locking.device_lock_path(path, "2a39-3fd9-12345678") == \
+        shared / "2a39-3fd9-12345678.lock"
 
 def test_a_writer_without_a_runtime_directory_computes_the_same_path(
         tmp_path, monkeypatch):
@@ -262,18 +262,18 @@ def test_a_writer_without_a_runtime_directory_computes_the_same_path(
     shared = shared_lock_dir(tmp_path, monkeypatch)
     path = desk(tmp_path, tracking=TRACKING)
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
-    with_env = locking.device_lock_path(path, "2a39-3fd9-24216011")
+    with_env = locking.device_lock_path(path, "2a39-3fd9-12345678")
     monkeypatch.delenv("XDG_RUNTIME_DIR")
-    without_env = locking.device_lock_path(path, "2a39-3fd9-24216011")
-    assert with_env == without_env == shared / "2a39-3fd9-24216011.lock"
+    without_env = locking.device_lock_path(path, "2a39-3fd9-12345678")
+    assert with_env == without_env == shared / "2a39-3fd9-12345678.lock"
 
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run"))
-    held = locking.take_device_lock(path, "2a39-3fd9-24216011")
+    held = locking.take_device_lock(path, "2a39-3fd9-12345678")
     assert held is not None
     try:
         monkeypatch.delenv("XDG_RUNTIME_DIR")
         assert locking.take_device_lock(
-            path, "2a39-3fd9-24216011", wait=0.2) is None
+            path, "2a39-3fd9-12345678", wait=0.2) is None
     finally:
         held.release()
 
@@ -281,7 +281,7 @@ def test_two_user_sessions_over_one_interface_contend(tmp_path, monkeypatch):
     """`/run/user/<uid>` is per user; one piece of hardware is not."""
     shared = shared_lock_dir(tmp_path, monkeypatch)
     path = desk(tmp_path, tracking=TRACKING)
-    key = "2a39-3fd9-24216011"
+    key = "2a39-3fd9-12345678"
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path / "run-1000"))
     first = locking.take_device_lock(path, key)
     assert first is not None
@@ -304,12 +304,12 @@ def test_a_vanishing_runtime_directory_does_not_free_the_lock(
     runtime = tmp_path / "run"
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(runtime))
     path = desk(tmp_path, tracking=TRACKING)
-    held = locking.take_device_lock(path, "2a39-3fd9-24216011")
+    held = locking.take_device_lock(path, "2a39-3fd9-12345678")
     assert held is not None
     try:
         shutil.rmtree(runtime, ignore_errors=True)
         assert locking.take_device_lock(
-            path, "2a39-3fd9-24216011", wait=0.2) is None
+            path, "2a39-3fd9-12345678", wait=0.2) is None
     finally:
         held.release()
 
@@ -320,11 +320,11 @@ def test_a_writer_without_a_config_still_takes_the_lock(tmp_path, monkeypatch):
     loudest writer in the repository.
     """
     shared_lock_dir(tmp_path, monkeypatch)
-    held = locking.take_device_lock(None, "2a39-3fd9-24216011")
+    held = locking.take_device_lock(None, "2a39-3fd9-12345678")
     assert held is not None
     try:
         assert locking.take_device_lock(
-            None, "2a39-3fd9-24216011", wait=0.2) is None
+            None, "2a39-3fd9-12345678", wait=0.2) is None
     finally:
         held.release()
 
@@ -344,7 +344,7 @@ def test_an_existing_shared_directory_is_never_fallen_back_from(
     shared.chmod(0o500)                      # no new file may be created
     try:
         with caplog.at_level("ERROR"):
-            lock = locking.take_device_lock(path, "2a39-3fd9-24216011")
+            lock = locking.take_device_lock(path, "2a39-3fd9-12345678")
     finally:
         shared.chmod(0o1777)
     assert lock is None
@@ -365,12 +365,12 @@ def test_the_lock_file_is_openable_by_a_second_user(tmp_path, monkeypatch):
     shared_lock_dir(tmp_path, monkeypatch)
     umask = os.umask(0o077)
     try:
-        held = locking.take_device_lock(None, "2a39-3fd9-24216011")
+        held = locking.take_device_lock(None, "2a39-3fd9-12345678")
     finally:
         os.umask(umask)
     assert held is not None
     try:
-        info = locking.device_lock_path(None, "2a39-3fd9-24216011").stat()
+        info = locking.device_lock_path(None, "2a39-3fd9-12345678").stat()
         assert stat.S_IMODE(info.st_mode) == 0o660, \
             "created 0o%o; a second writer cannot open it" % stat.S_IMODE(info.st_mode)
         assert info.st_gid == (tmp_path / "shared").stat().st_gid
@@ -433,5 +433,5 @@ def test_without_an_override_the_lock_directory_is_the_shared_one(
     shared.mkdir(mode=0o1777)
     monkeypatch.delenv("OSCMIX_LOCK_DIR", raising=False)
     monkeypatch.setattr(locking, "SHARED_LOCK_DIR", str(shared))
-    assert locking.device_lock_path(None, "2a39-3fd9-24216011") == \
-        shared / "2a39-3fd9-24216011.lock"
+    assert locking.device_lock_path(None, "2a39-3fd9-12345678") == \
+        shared / "2a39-3fd9-12345678.lock"

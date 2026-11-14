@@ -626,9 +626,9 @@ def test_the_device_key_names_the_box_not_the_file(tmp_path):
 
     from oscmix_desk.discovery import resolve_device
 
-    proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
+    proc = fake_proc(tmp_path / "proc", boxes=[(24, "12345678")])
     assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc).key == \
-        "2a39-3fd9-24216011"
+        "2a39-3fd9-12345678"
     # No interface to be had: the model alone.
     empty = fake_proc(tmp_path / "empty")
     assert resolve_device("2a39:3fd9", "Fireface UCX II", "", empty).key == \
@@ -650,14 +650,14 @@ def test_target_resolution_uses_host_defaults_without_overrides(monkeypatch):
     monkeypatch.delenv("OSCMIX_PROC_ROOT", raising=False)
     seen = []
     present = [True]
-    target = [Device(usb_id="2a39:3fd9", serial="24216011", client=24)]
+    target = [Device(usb_id="2a39:3fd9", serial="12345678", client=24)]
     monkeypatch.setattr(desk_mod, "usb_device_present",
                         lambda usb_id, sysfs: seen.append(sysfs) or present[0])
     monkeypatch.setattr(desk_mod, "resolve_device",
                         lambda usb, name, serial, proc: seen.append(proc) or target[0])
     assert desk_mod._target(Config(), reach=True) == target[0]
     assert seen == [Path("/proc"), Path("/sys/bus/usb/devices")]
-    target[0] = Device(usb_id="2a39:3fd9", serial="24216011", client=None)
+    target[0] = Device(usb_id="2a39:3fd9", serial="12345678", client=None)
     with pytest.raises(OSError, match="not visible to ALSA"):
         desk_mod._target(Config(), reach=True)
     present[0] = False
@@ -721,7 +721,7 @@ def test_a_switch_connects_for_its_desk_and_the_resolved_interface(
     lock_dir(tmp_path, monkeypatch)
     path = write_config(tmp_path / "routing.conf", GOOD)
     write_config(tmp_path / "profiles" / "tracking.conf", GOOD)
-    target = Device("2a39:3fd9", "24216011", 24)
+    target = Device("2a39:3fd9", "12345678", 24)
     monkeypatch.setattr(desk_mod, "_target", lambda _config, reach: target)
     connected = []
 
@@ -732,4 +732,4 @@ def test_a_switch_connects_for_its_desk_and_the_resolved_interface(
     monkeypatch.setattr(desk_mod, "connect_backend", connect)
     outcome = profiles.switch_profile("tracking", config_path=path, verify=False)
     assert outcome.applied is True
-    assert connected == [("24216011", path)]
+    assert connected == [("12345678", path)]

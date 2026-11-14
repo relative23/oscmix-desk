@@ -207,7 +207,7 @@ def validate(value):
         and value["schema"] in (1, 2)
         and value["kind"] == "playback-mute-pcm-effect-ucx2"
         and value["device"] == "Fireface UCX II"
-        and value["serial"] == "24216011"
+        and value["serial"] == "12345678"
         and value["accepted"] is True,
         "actual accepted UCX II PCM effect required",
     )

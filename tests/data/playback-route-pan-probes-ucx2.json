@@ -119263,7 +119263,7 @@
   "kind": "playback-route-pan-representative-pcm-ucx2",
   "mode": "warm",
   "schema": 2,
-  "serial": "24216011",
+  "serial": "12345678",
   "source_sha256": {
     "adapters.py": "744a414b58fe754a97680337eb740883826207bde1d354b4347dab196acadfa2",
     "bindings.py": "ffa14b832eacc1a1e863f713bad0ebe3a6778ac74dcdf58d58952c5173f55adf",

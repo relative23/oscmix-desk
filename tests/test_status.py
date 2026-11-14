@@ -25,7 +25,7 @@ def world(tmp_path, monkeypatch, endpoint):
     monkeypatch.setattr(socket, 'socket', lambda *_a, **_kw: pytest.fail('status opened a socket'))
     monkeypatch.setattr(cli, 'run_session', lambda *_: pytest.fail('status started a session'))
     path = tmp_path / 'routing.conf'
-    path.write_text('[device]\nserial=24216011\n[route:main]\nplayback=1/2\noutput=5/6\n')
+    path.write_text('[device]\nserial=12345678\n[route:main]\nplayback=1/2\noutput=5/6\n')
     return path, proc
 
 
@@ -52,7 +52,7 @@ def test_status_preserves_override_names_and_positional_json(world, capsys, oper
     assert section['state'] == 'loaded'
     assert section['device_name'] == 'Fireface 802'
     assert section['send_port'] == 9000
-    assert path.read_text().startswith('[device]\nserial=24216011\n')
+    assert path.read_text().startswith('[device]\nserial=12345678\n')
 
 
 @pytest.mark.parametrize('operation', ['collect_status', 'print_status'])
@@ -79,7 +79,7 @@ def test_json_describes_the_observation_without_claiming_verified(world, capsys)
     assert sections['backend']['state'] == 'ready'
     assert sections['backend']['device']['serial'] == A[1]
     assert sections['playback']['rate'] == 48000
-    assert sections['backend']['endpoint'].endswith('24216011.control')
+    assert sections['backend']['endpoint'].endswith('12345678.control')
     assert sections['backend']['pid'] == 101
     assert 'receive_port' not in sections
     assert sections['desktop']['binary'] is None
@@ -296,7 +296,7 @@ def test_json_status_keeps_effective_configuration_identity(world, capsys):
     assert info['selected_file'] == str(path)
     assert info['device_name'] == 'Fireface UCX II'
     assert info['usb_id'] == '2a39:3fd9'
-    assert info['configured_serial'] == '24216011'
+    assert info['configured_serial'] == '12345678'
     assert info['send_port'] == 9345
     assert info['receive_port'] == 8222
     assert 'detail' not in info
@@ -378,10 +378,10 @@ def test_status_hands_the_config_path_and_resolved_device_to_its_readers(world, 
         assert proc_root == Path('/proc')
         assert config_path == path
         seen.append('backend')
-        return BackendStatus('absent', 'not running', Device('2a39:3fd9', '24216011', 24))
+        return BackendStatus('absent', 'not running', Device('2a39:3fd9', '12345678', 24))
 
     def playback(config, proc_root):
-        assert config.serial == '24216011'
+        assert config.serial == '12345678'
         assert proc_root == Path('/proc')
         seen.append('playback')
         return {'state': 'unobserved'}
@@ -429,7 +429,7 @@ def test_playback_status_retains_the_observed_card_and_serial(world, active):
     write_card(proc, recorded(), number=7, serial='99887766')
     info = status.collect_status(path, CommandLine())['sections']['playback']
     assert info['state'] == ('observed' if active else 'idle')
-    assert info['serial'] == '24216011'
+    assert info['serial'] == '12345678'
     assert info['card'] == 2
     if active:
         assert info['problem'] is None

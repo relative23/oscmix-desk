@@ -375,11 +375,11 @@ def test_a_config_is_not_changed_after_it_is_read(session_mod, tmp_path):
     assert (config.device_name, config.overrides.device_name) == (
         "Fireface UCX II", None), "and the one read without it is as it was"
 
-    running = dataclasses.replace(config, osc_port=9000, serial="24216011")
+    running = dataclasses.replace(config, osc_port=9000, serial="12345678")
     fresh = session_mod.load_config(routing_conf(
         tmp_path, "[route:y]\nplayback = 3/4\noutput = 3/4\n"))
     kept = profiles.keep_machine_settings(fresh, running)
-    assert (kept.osc_port, kept.serial) == (9000, "24216011")
+    assert (kept.osc_port, kept.serial) == (9000, "12345678")
     assert [r.name for r in kept.routes] == ["y"]
     assert (fresh.osc_port, fresh.serial) == (7222, ""), "nor is this one"
 
@@ -398,7 +398,7 @@ def test_a_frozen_desk_cannot_change_ownership_through_its_policy_table(tmp_path
 
     policies = {("output", "volume"): Policy.REMEMBER}
     constructed = Config(policies=policies)
-    pinned_serial = replace(constructed, serial="24216011")
+    pinned_serial = replace(constructed, serial="12345678")
     policies[("output", "volume")] = Policy.PIN
     assert constructed.policies[("output", "volume")] is Policy.REMEMBER
     assert pinned_serial.policies[("output", "volume")] is Policy.REMEMBER

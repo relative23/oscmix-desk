@@ -17,7 +17,7 @@ from oscmix_desk.errors import ConfigError
 from oscmix_desk.model import CommandLine
 from oscmix_desk.outcome import REFUSED
 
-DEVICE = "[device]\nserial=24216011\n"
+DEVICE = "[device]\nserial=12345678\n"
 GOOD = "[output:5]\nvolume=-20\n"
 TYPO = "[ouput:5]\nvolume=-30\n"
 
@@ -146,7 +146,7 @@ def test_strict_explicit_selection_can_recover_an_unusable_active_profile(
     marker = path.with_name("active-profile")
     marker.write_text("missing\n")
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(
-        tmp_path / "proc", boxes=[(24, "24216011")])))
+        tmp_path / "proc", boxes=[(24, "12345678")])))
     monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: confirming_backend)
     previews = []
     monkeypatch.setattr(cli, "run_session", lambda args, config: previews.append(config) or 0)

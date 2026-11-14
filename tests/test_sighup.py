@@ -362,15 +362,15 @@ def test_a_reload_keeps_the_ports_the_backend_is_bound_to(
     # What the start replaced: --osc-port, --device, and the serial it
     # pinned. The file says none of it and is this session's all the same.
     running = started_with(session_mod.load_config(path),
-                           device="Fireface UCX II (24216011)",
-                           osc_port=9000, serial="24216011")
+                           device="Fireface UCX II (12345678)",
+                           osc_port=9000, serial="12345678")
 
     fresh = _reconciled(monkeypatch, argparse.Namespace(config=path), running)
     assert fresh is not running, "the file was not re-read at all"
     assert [r.name for r in fresh.routes] == ["main"]
     assert (fresh.osc_port, fresh.osc_recv_port) == (9000, 8222)
-    assert fresh.device_name == "Fireface UCX II (24216011)"
-    assert (fresh.usb_id, fresh.serial) == ("2a39:3fd9", "24216011")
+    assert fresh.device_name == "Fireface UCX II (12345678)"
+    assert (fresh.usb_id, fresh.serial) == ("2a39:3fd9", "12345678")
 
     # A file that names another backend and another box is not moved to,
     # and since 0.6.11 it is not applied *here* either: it was pinned to

@@ -248,12 +248,12 @@ def test_a_changed_register_extends_the_quiet_window_to_receive_later_changes(mo
         return reports
 
     peer = SimpleNamespace(request_dump=lambda: None, messages=messages,
-        device_name='Fireface UCX II (24216011)', epoch=b'\xab' * 16,
+        device_name='Fireface UCX II (12345678)', epoch=b'\xab' * 16,
         close=lambda: closed.append(True))
     monkeypatch.setattr(desk_mod, 'connect_backend', lambda *_args, **_kwargs: peer)
     monkeypatch.setattr(reads_mod.time, 'monotonic', lambda: clock[0])
     monkeypatch.setattr(reads_mod, 'DUMP_QUIET_SECONDS', 1.0)
     reading = reads_mod._read_device(Config())
     assert reading.registers == {'/output/5/volume': (-30.0,)}
-    assert reading.serial == '24216011'
+    assert reading.serial == '12345678'
     assert closed == [True]

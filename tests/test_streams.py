@@ -23,12 +23,12 @@ def recorded(rate=48000, channels=20):
     return next(row for row in RECORDED if (row["rate"], row["channels"]) == (rate, channels))
 
 
-def write_card(proc, row, number=2, serial="24216011"):
+def write_card(proc, row, number=2, serial="12345678"):
     card = proc / "asound" / ("card%d" % number)
     params = card / "pcm0p/sub0/hw_params"
     params.parent.mkdir(parents=True, exist_ok=True)
     (card / "usbid").write_text("2a39:3fd9\n")
-    (card / "stream0").write_text(row["stream0"].replace("24216011", serial))
+    (card / "stream0").write_text(row["stream0"].replace("12345678", serial))
     params.write_text(row["hw_params"])
     return card
 
@@ -144,8 +144,8 @@ def test_integral_rate_may_have_a_nonunit_denominator():
 def test_only_the_configured_serials_card_is_read(proc):
     write_card(proc, recorded(192000, 20), number=2, serial="11111111")
     write_card(proc, recorded(), number=12)
-    state = streams.read_playback(replace(routed(), serial="24216011"), proc)
-    assert (state.card, state.serial, state.mode.rate) == (12, "24216011", 48000)
+    state = streams.read_playback(replace(routed(), serial="12345678"), proc)
+    assert (state.card, state.serial, state.mode.rate) == (12, "12345678", 48000)
     with pytest.raises(OSError, match="more than one"):
         streams.read_playback(routed(), proc)
     assert streams.read_playback(replace(routed(), serial="absent"), proc).mode is None
@@ -219,7 +219,7 @@ def test_mid_read_changes_are_refused(proc, monkeypatch, change):
         counts[path] = counts.get(path, 0) + 1
         if path == card / "stream0" and counts[path] == 2:
             if change == "identity":
-                return text.replace("24216011", "11111111")
+                return text.replace("12345678", "11111111")
             if change == "mode":
                 return text.replace("Status: Running", "Status: Stop")
             if change == "unreadable":
@@ -252,7 +252,7 @@ def test_active_log_names_the_observed_card_and_not_the_requested_desktop_rate(p
     guard = streams.PlaybackGuard(routed())
     guard.check()
     guard.check()
-    assert caplog.text.count("active USB playback on ALSA card 12 (serial 24216011)") == 1
+    assert caplog.text.count("active USB playback on ALSA card 12 (serial 12345678)") == 1
     assert "96000 Hz, 14 channels, alternate setting 3" in caplog.text
 
 
@@ -370,15 +370,15 @@ def test_a_damaged_unrelated_card_before_the_ucx_does_not_hide_it(proc):
 
 def test_the_selected_serial_is_found_after_another_ucx(proc):
     write_card(proc, recorded(), number=1, serial="99887766")
-    write_card(proc, recorded(), number=2, serial="24216011")
-    state = streams.read_playback(replace(routed(), serial="24216011"), proc)
-    assert (state.card, state.serial) == (2, "24216011")
+    write_card(proc, recorded(), number=2, serial="12345678")
+    state = streams.read_playback(replace(routed(), serial="12345678"), proc)
+    assert (state.card, state.serial) == (2, "12345678")
 
 
 def test_no_playback_stream_keeps_the_desk_serial(proc):
     (proc / "asound").mkdir()
-    state = streams.read_playback(replace(routed(), serial="24216011"), proc)
-    assert state == streams.PlaybackState(None, "24216011", None)
+    state = streams.read_playback(replace(routed(), serial="12345678"), proc)
+    assert state == streams.PlaybackState(None, "12345678", None)
 
 
 def test_the_guard_reads_the_machine_proc_by_default(monkeypatch):

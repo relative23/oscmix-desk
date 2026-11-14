@@ -500,7 +500,7 @@ def fake_sysfs(tmp_path):
     dev.mkdir(parents=True)
     (dev / "idVendor").write_text("2a39\n")
     (dev / "idProduct").write_text("3fd9\n")
-    (dev / "product").write_text("Fireface UCX II (24216011)\n")
+    (dev / "product").write_text("Fireface UCX II (12345678)\n")
     (dev / "serial").write_text("opaque-usb-identifier\n")
     (dev / "bcdDevice").write_text("0301\n")
     # An interface directory without id files, as in real sysfs.

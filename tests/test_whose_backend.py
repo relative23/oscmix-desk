@@ -19,7 +19,7 @@ from oscmix_desk.process import control_holder
 def test_the_holder_is_followed_to_the_client_it_bridges(endpoint):
     _config, path, proc = endpoint
     holder = control_holder(path, proc)
-    assert (holder.oscmix, holder.client, holder.serial) == (True, 24, "24216011")
+    assert (holder.oscmix, holder.client, holder.serial) == (True, 24, "12345678")
 
 
 def test_a_bridge_above_the_holder_is_found_too(endpoint):
@@ -27,7 +27,7 @@ def test_a_bridge_above_the_holder_is_found_too(endpoint):
     (proc / "101/stat").write_text("101 (oscmix) S 102 0 0\n")
     (proc / "102/stat").write_text("102 (alsaseqio) S 1 0 0\n")
     holder = control_holder(path, proc)
-    assert (holder.client, holder.serial) == (24, "24216011")
+    assert (holder.client, holder.serial) == (24, "12345678")
 
 
 def test_the_bridge_is_found_past_an_unreadable_sibling_and_a_bracket_in_a_name(endpoint):
@@ -36,7 +36,7 @@ def test_the_bridge_is_found_past_an_unreadable_sibling_and_a_bracket_in_a_name(
     (proc / "100/stat").write_text("100 (gone) S 101 0 0\n")
     (proc / "102/stat").write_text("102 (als)aseqio) S 101 0 0\n")
     holder = control_holder(path, proc)
-    assert (holder.client, holder.serial) == (24, "24216011")
+    assert (holder.client, holder.serial) == (24, "12345678")
 
 def _backend_with_parent(endpoint, parent_argv):
     """A coordinated backend with the given parent; no actual process is signalled."""

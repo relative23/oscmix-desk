@@ -141,7 +141,7 @@ def _config_with(tmp_path, profiles, monkeypatch=None):
 
         monkeypatch.setattr(desk_mod, "connect_backend", quiet)
         monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(
-            tmp_path / "proc", boxes=[(24, "24216011")])))
+            tmp_path / "proc", boxes=[(24, "12345678")])))
     return write_config(tmp_path / "routing.conf",
                         "[osc]\nport = %d\nrecv-port = %d\n"
                         % (send_port, recv_port))

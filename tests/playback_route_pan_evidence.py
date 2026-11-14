@@ -597,7 +597,7 @@ def validate(value):
         and value["schema"] in (1, 2)
         and value["kind"] == "playback-route-pan-representative-pcm-ucx2"
         and value["device"] == "Fireface UCX II"
-        and value["serial"] == "24216011"
+        and value["serial"] == "12345678"
         and value["accepted"] is True
         and value["mode"] == "warm"
         and value["device_meter_dsp_effect_confirmed"] is True

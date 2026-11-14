@@ -762,18 +762,18 @@ def test_main_requires_end_ack_and_keeps_actual_state_evidence_private(
     evidence = {'pid': 123, 'epoch': peer.epoch.hex(), 'sha256': 'a' * 64,
                 'series_sha256': 'b' * 64, 'matches_local_build': True}
     inventory = inventory_for(state)
-    inventory.update(serial='24216011', running_backend=evidence)
+    inventory.update(serial='12345678', running_backend=evidence)
     recorded = tmp_path / 'inventory.json'
     recorded.write_text(json.dumps(inventory))
     out = tmp_path / 'evidence.json'
     config_path = tmp_path / 'routing.conf'
-    config_path.write_text('[device]\nserial = 24216011\n')
+    config_path.write_text('[device]\nserial = 12345678\n')
     argv = ['probe-fx.py', '--execute', '--inventory', str(recorded), '--out', str(out),
             '--config', str(config_path)]
     if value is not None:
         argv.append('--value=%s' % value)
     monkeypatch.setattr(probe.sys, 'argv', argv)
-    interface = SimpleNamespace(serial='24216011', client=24)
+    interface = SimpleNamespace(serial='12345678', client=24)
     monkeypatch.setattr(probe, 'resolve_device', lambda *_args: interface)
     monkeypatch.setattr(probe, 'read_playback', lambda *_args: SimpleNamespace(mode=None))
     monkeypatch.setattr(probe, 'build_evidence', lambda *_args: evidence)

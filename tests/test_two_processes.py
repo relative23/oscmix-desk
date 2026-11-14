@@ -75,7 +75,7 @@ def test_two_switches_from_two_processes_do_not_interleave(tmp_path):
         "XDG_RUNTIME_DIR": str(runtime),
         "OSCMIX_LOCK_DIR": str(tmp_path / "no-shared-lock-dir"),
         "OSCMIX_SYSTEM_CONFIG": str(tmp_path / "no-system-config"),
-        "OSCMIX_PROC_ROOT": str(fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])),
+        "OSCMIX_PROC_ROOT": str(fake_proc(tmp_path / "proc", boxes=[(24, "12345678")])),
         "OSCMIX_SYSFS_USB": str(tmp_path / "sysfs"),
         "OSCMIX_SEQ_DEV": str(tmp_path / "no-such-seq-device"),
         # The barrier is what gives two unserialised switches the room to

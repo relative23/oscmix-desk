@@ -8,7 +8,7 @@ from oscmix_desk import discovery
 @pytest.fixture
 def usb_pair(fake_sysfs):
     first = fake_sysfs / '5-2'
-    (first / 'product').write_text('Fireface UCX II (24216011)\n')
+    (first / 'product').write_text('Fireface UCX II (12345678)\n')
     (first / 'serial').write_text('opaque-usb-a\n')
     second = fake_sysfs / '5-3'
     second.mkdir()
@@ -20,7 +20,7 @@ def usb_pair(fake_sysfs):
 
 
 @pytest.mark.parametrize(('serial', 'expected'), [
-    ('24216011', '3.01'), ('99887766', '3.02'), ('', None),
+    ('12345678', '3.01'), ('99887766', '3.02'), ('', None),
     ('00000000', None), ('opaque-usb-b', None),
 ])
 def test_firmware_belongs_to_the_selected_rme_identity(usb_pair, serial, expected):
@@ -42,7 +42,7 @@ def test_firmware_with_uncertain_product_identity_is_unknown(usb_pair, change):
     assert discovery.usb_revision('2a39:3fd9', usb_pair, serial='99887766') is None
 
 
-@pytest.mark.parametrize(('serial', 'revision'), [('24216011', '3.01'), ('99887766', '3.02')])
+@pytest.mark.parametrize(('serial', 'revision'), [('12345678', '3.01'), ('99887766', '3.02')])
 def test_snapshot_uses_the_reported_device_identity_for_its_firmware(
         usb_pair, monkeypatch, capsys, serial, revision):
     from oscmix_desk import reads
@@ -57,7 +57,7 @@ def test_snapshot_uses_the_reported_device_identity_for_its_firmware(
     assert '/mix/5/input/1 -6.0 0\n' in text
 
 
-@pytest.mark.parametrize(('serial', 'warning'), [('24216011', False), ('99887766', True)])
+@pytest.mark.parametrize(('serial', 'warning'), [('12345678', False), ('99887766', True)])
 def test_firmware_notice_uses_the_configured_device(
         usb_pair, caplog, session_module, serial, warning):
     from oscmix_desk.model import Config

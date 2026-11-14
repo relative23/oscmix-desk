@@ -156,7 +156,7 @@ def proc_with_ports(directory, *ports):
     it is the outcome-to-exit-code translation it is testing, and
     reachability has tests of its own.
     """
-    return fake_proc(directory, boxes=[(24, "24216011")],
+    return fake_proc(directory, boxes=[(24, "12345678")],
                      bound=[(port, "oscmix", 24) for port in ports])
 
 def read_until_ready(notify_sock):

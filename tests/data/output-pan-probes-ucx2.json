@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "device": "Fireface UCX II",
-  "serial": "24216011",
+  "serial": "12345678",
   "firmware": {
     "usb_revision": "3.01",
     "dsp_version": 36

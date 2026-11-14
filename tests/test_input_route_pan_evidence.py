@@ -869,7 +869,7 @@ def validate_fixture(value):
     need(value["schema"] == 1 and type(value["schema"]) is int, "schema1 required")
     need(
         value["device"] == "Fireface UCX II"
-        and value["serial"] == "24216011"
+        and value["serial"] == "12345678"
         and value["firmware"] == dict(usb_revision="3.01", dsp_version=36),
         "measured UCX2 required",
     )

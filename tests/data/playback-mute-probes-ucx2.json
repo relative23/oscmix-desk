@@ -2,7 +2,7 @@
   "schema": 1,
   "kind": "playback-mute-probes-ucx2",
   "device": "Fireface UCX II",
-  "serial": "24216011",
+  "serial": "12345678",
   "backend": {
     "protocol": "ODK1",
     "upstream": "f2fdd5ec78338848754aad32cc07f3440de63395",

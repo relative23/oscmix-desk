@@ -492,7 +492,7 @@ def test_fx_artifact_records_device_probes_and_restoration(fx_artifact):
 
     assert fx_artifact["schema"] == 1
     assert fx_artifact["device"] == "Fireface UCX II"
-    assert fx_artifact["serial"] == "24216011"
+    assert fx_artifact["serial"] == "12345678"
     assert fx_artifact["firmware"] == {"usb_revision": "3.01", "dsp_version": 36}
     backend = fx_artifact["backend"]
     assert re.fullmatch(r"[0-9a-f]{40}", backend["upstream"])
@@ -581,7 +581,7 @@ def test_output_pan_artifact_records_integer_device_readbacks_and_restoration(pa
 
     assert pan_artifact["schema"] == 1
     assert pan_artifact["device"] == "Fireface UCX II"
-    assert pan_artifact["serial"] == "24216011"
+    assert pan_artifact["serial"] == "12345678"
     assert pan_artifact["firmware"] == {"usb_revision": "3.01", "dsp_version": 36}
     backend = pan_artifact["backend"]
     assert re.fullmatch(r"[0-9a-f]{40}", backend["upstream"])
@@ -668,7 +668,7 @@ def test_the_artifact_names_the_device_and_the_pin(sweep):
 
     artifact = json.loads(
         repo_file("tests", "data", "write-sweep-ucx2.json").read_text())
-    assert "24216011" in artifact["device"]
+    assert "12345678" in artifact["device"]
     assert len(artifact["oscmix_revision"]) == 40
     assert artifact["taken"].startswith("20")
     # The artifact states its own method and pacing. It used to carry an

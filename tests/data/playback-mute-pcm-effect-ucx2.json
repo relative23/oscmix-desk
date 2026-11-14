@@ -2,7 +2,7 @@
   "schema": 2,
   "kind": "playback-mute-pcm-effect-ucx2",
   "device": "Fireface UCX II",
-  "serial": "24216011",
+  "serial": "12345678",
   "accepted": true,
   "scope": {
     "mode": "warm",

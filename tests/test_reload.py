@@ -121,7 +121,7 @@ def test_a_re_read_desk_keeps_every_machine_setting_of_the_process(
     # serial it pins. The file says none of it.
     running = started_with(profiles.load_config(path),
                            device="Fireface UCX II (live)", osc_port=9000,
-                           serial="24216011")
+                           serial="12345678")
     args = (running, path) if reread == "_reloaded_desk" else (path, running)
     fresh = getattr(reload_mod, reread)(*args)
     assert fresh is not running
@@ -205,18 +205,18 @@ def test_the_box_a_start_pinned_is_not_another_box_when_the_file_names_it(
     is also this one; naming another is elsewhere."""
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
-    running = started_with(profiles.load_config(path), serial="24216011")
+    running = started_with(profiles.load_config(path), serial="12345678")
     route = "[route:main]\nplayback = 1/2\noutput = 1/2\n"
-    path.write_text("[device]\nserial = 24216011\n" + route)
+    path.write_text("[device]\nserial = 12345678\n" + route)
     assert _reread("_reloaded_desk", running, path) is not None
     started_named = profiles.load_config(path)      # a start that named it
-    assert started_named.serial == "24216011"
+    assert started_named.serial == "12345678"
     path.write_text(route)
     assert _reread("_reloaded_desk", started_named, path) is not None
     path.write_text("[device]\nserial = 99887766\n" + route)
     with caplog.at_level("ERROR"):
         assert _reread("_reloaded_desk", running, path) is None
-    assert "serial '99887766' (not '24216011')" in caplog.text, \
+    assert "serial '99887766' (not '12345678')" in caplog.text, \
         "against the box it is on, not against what the file once said"
 
 def test_a_file_that_appears_is_resolved_like_the_one_a_start_reads(
@@ -340,12 +340,12 @@ def test_what_the_start_replaced_does_not_read_as_a_desk_for_elsewhere(
     path = write_config(tmp_path / "routing.conf",
                         "[route:main]\nplayback = 1/2\noutput = 1/2\n")
     running = started_with(profiles.load_config(path), device="Some Box",
-                           osc_port=9000, serial="24216011")
+                           osc_port=9000, serial="12345678")
     with caplog.at_level("WARNING"):
         fresh = _reread(reread, running, path)
     assert fresh is not None
     assert (fresh.device_name, fresh.osc_port, fresh.serial) == (
-        "Some Box", 9000, "24216011")
+        "Some Box", 9000, "12345678")
     assert "another backend" not in caplog.text
     # 'Some Box' is nobody's model, so its routes go out unchecked, and a
     # reload says so about the desk it read. The start said so before it

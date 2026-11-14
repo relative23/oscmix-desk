@@ -201,9 +201,9 @@ def test_the_serial_is_inherited_like_the_usb_id(tmp_path):
     at start-up would be undone by the first profile change.
     """
     path = desk(tmp_path, tracking=TRACKING)
-    path.write_text(path.read_text() + "\n[device]\nserial = 24216011\n")
+    path.write_text(path.read_text() + "\n[device]\nserial = 12345678\n")
     profile = profiles.load_profile("tracking", path)
-    assert profile.serial == "24216011"
+    assert profile.serial == "12345678"
 
 def test_a_profile_that_names_another_machine_changes_nothing_anywhere(
         tmp_path, caplog, recording_backend):

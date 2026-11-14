@@ -69,7 +69,7 @@
   },
   "device": {
     "name": "Fireface UCX II",
-    "serial": "24216011",
+    "serial": "12345678",
     "usb_id": "2a39:3fd9",
     "mode": "class compliant",
     "control_port": "hw:2,0,1",

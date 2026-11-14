@@ -1,7 +1,7 @@
 {
  "recorded": "2026-08-17",
  "device": "Fireface UCX II",
- "serial": "24216011",
+ "serial": "12345678",
  "oscmix_revision": "2411b12d8a13b82829caf3b0b628078980c3d3a4",
  "condition": "cold USB replug -- device unplugged 14.4 s, udev restarted the unit",
  "observed_seconds": 275.5,

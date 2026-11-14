@@ -20,12 +20,12 @@ from oscmix_desk.process import control_holder
 
 
 def test_the_serial_is_read_from_a_device_name():
-    assert serial_in("Fireface UCX II (24216011)") == "24216011"
+    assert serial_in("Fireface UCX II (12345678)") == "12345678"
     assert serial_in("Fireface UCX II") is None
     assert serial_in("Fireface UCX II (123)") is None
 
 def test_the_client_is_selected_by_serial_and_never_guessed():
-    text = ('Client  24 : "Fireface UCX II (24216011)" [Kernel Legacy]\n'
+    text = ('Client  24 : "Fireface UCX II (12345678)" [Kernel Legacy]\n'
             'Client  28 : "Fireface UCX II (99887766)" [Kernel Legacy]\n')
     assert select_seq_client(text, "Fireface UCX II", B[1]) == B[0]
     assert select_seq_client(text, "Fireface UCX II", "11111111") is None
@@ -33,7 +33,7 @@ def test_the_client_is_selected_by_serial_and_never_guessed():
                              "Fireface UCX II") == A[0]
     with pytest.raises(DeviceAmbiguous) as raised:
         select_seq_client(text, "Fireface UCX II")
-    assert ("Fireface UCX II (24216011) (client 24), "
+    assert ("Fireface UCX II (12345678) (client 24), "
             "Fireface UCX II (99887766) (client 28)") in str(raised.value)
 
 def test_the_card_list_decides_when_no_client_is_up(tmp_path):
@@ -41,7 +41,7 @@ def test_the_card_list_decides_when_no_client_is_up(tmp_path):
     (proc / "asound" / "seq" / "clients").write_text("")
     with pytest.raises(DeviceAmbiguous) as raised:
         resolve_device("2a39:3fd9", "Fireface UCX II", "", proc)
-    assert "24216011, 99887766" in str(raised.value)
+    assert "12345678, 99887766" in str(raised.value)
     assert resolve_device("2a39:3fd9", "Fireface UCX II", B[1], proc) == \
         Device(usb_id="2a39:3fd9", serial=B[1], client=None)
 
@@ -70,7 +70,7 @@ def test_a_second_box_still_enumerating_is_not_ignored(tmp_path):
     """Its card is listed, its client is not up yet: not a choice either."""
     proc = fake_proc(tmp_path, boxes=[A, B])
     (proc / "asound" / "seq" / "clients").write_text(
-        'Client  24 : "Fireface UCX II (24216011)" [Kernel Legacy]\n')
+        'Client  24 : "Fireface UCX II (12345678)" [Kernel Legacy]\n')
     with pytest.raises(DeviceAmbiguous):
         resolve_device("2a39:3fd9", "Fireface UCX II", "", proc)
 
@@ -91,7 +91,7 @@ def test_a_serial_with_letters_is_a_config_error(tmp_path):
     with pytest.raises(ConfigError, match="digits only"):
         profiles.load_config(path)
 
-KERNEL_A = 'Client  24 : "Fireface UCX II (24216011)" [Kernel Legacy]\n'
+KERNEL_A = 'Client  24 : "Fireface UCX II (12345678)" [Kernel Legacy]\n'
 
 KERNEL_B = 'Client  28 : "Fireface UCX II (99887766)" [Kernel Legacy]\n'
 
@@ -106,7 +106,7 @@ def test_a_forged_line_that_repeats_a_client_number_is_refused_as_such():
     Nothing says which of the two lines is real. Dropping both made the
     real interface vanish and the start loop; a refusal names the cause.
     """
-    forged = ('Client 130 : "x\nClient  28 : "Fireface UCX II (24216011)" '
+    forged = ('Client 130 : "x\nClient  28 : "Fireface UCX II (12345678)" '
               '[Kernel Legacy]\ny" [User Legacy]\n')
     with pytest.raises(DeviceAmbiguous, match="listed more than once"):
         select_seq_client(KERNEL_B + forged, "Fireface UCX II")
@@ -186,5 +186,5 @@ def test_a_card_list_that_is_not_utf8_is_still_read(tmp_path):
 
     cards = tmp_path / "cards"
     cards.write_bytes(b" 0 [X ]: HDA-Intel - HDA \xff\xfe\n"
-                      b" 2 [II24216011 ]: USB-Audio - Fireface UCX II (24216011)\n")
-    assert card_products(cards)[1] == "Fireface UCX II (24216011)"
+                      b" 2 [II12345678 ]: USB-Audio - Fireface UCX II (12345678)\n")
+    assert card_products(cards)[1] == "Fireface UCX II (12345678)"

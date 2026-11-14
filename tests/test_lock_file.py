@@ -222,7 +222,7 @@ def test_a_lock_that_cannot_be_taken_for_another_reason_closes_its_file(
     monkeypatch.setattr(locking.os, "open", recorded_open)
     monkeypatch.setattr(locking.fcntl, "flock", unsupported)
     with caplog.at_level("ERROR"):
-        assert _take("2a39-3fd9-24216011") is None
+        assert _take("2a39-3fd9-12345678") is None
     assert "No locks available" in caplog.text
     assert opened
     for fd in opened:
@@ -233,7 +233,7 @@ def test_a_lock_that_cannot_be_taken_for_another_reason_closes_its_file(
 @pytest.mark.parametrize(("length", "accepted"), [(107, True), (108, False)])
 def test_the_control_endpoint_fits_the_unix_socket_path_limit(
         short_tmp, monkeypatch, length, accepted):
-    key = "2a39-3fd9-24216011"
+    key = "2a39-3fd9-12345678"
     base = short_tmp.resolve()
     pad = length - len(os.fsencode(base)) - len("/" + key + ".control") - 1
     assert pad > 0

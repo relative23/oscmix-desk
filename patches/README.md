@@ -130,7 +130,7 @@ mistaken once: a client that keeps the *first* reported value sees every
 Room EQ gain at 0.0 dB, one that keeps the *last* sees +30 and +40 dB at
 50 Hz. Both readings are half of a double report.
 
-Measured on a UCX II (serial 24216011) against the pinned revision, one
+Measured on a UCX II (serial 12345678) against the pinned revision, one
 `/refresh` before and after:
 
 | | unpatched | patched |

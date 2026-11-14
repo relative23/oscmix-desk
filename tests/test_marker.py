@@ -307,7 +307,7 @@ def test_a_switch_refuses_when_no_backend_holds_the_port(tmp_path, tmp_path_fact
     # the interface is there, the backend is not.
     from support import fake_proc
 
-    proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
+    proc = fake_proc(tmp_path / "proc", boxes=[(24, "12345678")])
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
     path = desk(tmp_path, tracking=TRACKING)
     outcome = profiles.switch_profile("tracking", config_path=path)

@@ -28,7 +28,7 @@ usb-id = 2a39:3fd9
 # identical ones it is required: without it the service exits with a
 # configuration error and every switch refuses, rather than configuring
 # whichever box the kernel enumerated first.
-#serial = 24216011
+#serial = 12345678
 
 # [osc] is legacy. Until 0.8.0 these were the backend's UDP command and
 # report ports. Since 0.8.0 the desk, the backend and oscmix-gtk share a

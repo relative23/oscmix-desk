@@ -54,10 +54,10 @@ def test_find_stale_backends_skips_unreadable_entries(session_mod, tmp_path):
 def test_wait_for_device_returns_the_resolved_interface(session_mod, tmp_path):
     from support import fake_proc
 
-    proc = fake_proc(tmp_path / "proc", boxes=[(24, "24216011")])
+    proc = fake_proc(tmp_path / "proc", boxes=[(24, "12345678")])
     found = discovery.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
                                         1.0, proc)
-    assert (found.client, found.serial) == (24, "24216011")
+    assert (found.client, found.serial) == (24, "12345678")
 
 
 def test_wait_for_device_gives_up_and_says_so(session_mod, tmp_path):

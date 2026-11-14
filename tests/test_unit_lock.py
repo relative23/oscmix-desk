@@ -223,7 +223,7 @@ def test_the_reconcile_locks_the_desk_it_reloads(tmp_path, monkeypatch,
     monkeypatch.setattr(desk_mod, "device_lock",
                         lambda where, key, should_stop: taken.append((where, key)) or "not taken")
     monkeypatch.setattr(reload_mod, "sd_notify", lambda *_a: None)
-    config = session_mod.Config(serial="24216011")
+    config = session_mod.Config(serial="12345678")
     reload_mod._reconcile(argparse.Namespace(config=path), config,
                               {"stop": False})
-    assert taken == [(path, "2a39-3fd9-24216011")]
+    assert taken == [(path, "2a39-3fd9-12345678")]

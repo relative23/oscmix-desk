@@ -744,7 +744,7 @@ def validate(fixture, *, require_complete=False):
         fixture["schema"] == 1
         and fixture["kind"] == "playback-mute-probes-ucx2"
         and fixture["device"] == "Fireface UCX II"
-        and fixture["serial"] == "24216011",
+        and fixture["serial"] == "12345678",
         "wrong fixture identity",
     )
     backend = fixture["backend"]

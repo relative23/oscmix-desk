@@ -255,28 +255,28 @@ def test_the_serial_is_pinned_once_the_device_is_found(lifecycle, tmp_path,
 
     It is recomputed on every write, and the card list empties the moment
     the interface is unplugged. Measured across a real unplug in 0.6.7:
-    the key went from `2a39-3fd9-24216011` to `2a39-3fd9-unknown` and a
+    the key went from `2a39-3fd9-12345678` to `2a39-3fd9-unknown` and a
     second lock file appeared beside the first. The pinned serial is the
     one in the name of the client the unit bound.
     """
-    proc = _machine(tmp_path, monkeypatch, boxes=[(42, "24216011")])
+    proc = _machine(tmp_path, monkeypatch, boxes=[(42, "12345678")])
     lifecycle()
-    assert lifecycle.config.serial == "24216011"
+    assert lifecycle.config.serial == "12345678"
 
     # And once the machine forgets the interface, the pinned key stands.
     (proc / "asound" / "cards").write_text("")
     (proc / "asound" / "seq" / "clients").write_text("")
     from oscmix_desk.discovery import lock_key
     assert lock_key(lifecycle.config.usb_id, lifecycle.config.serial) == \
-        "2a39-3fd9-24216011"
+        "2a39-3fd9-12345678"
 
 
 def test_a_configured_serial_is_never_overwritten(lifecycle, tmp_path,
                                                   monkeypatch):
     """`[device] serial` names the box outright, and always wins."""
     _machine(tmp_path, monkeypatch, boxes=[(42, "99887766")])
-    lifecycle(config_fields={"serial": "24216011"})
-    assert lifecycle.config.serial == "24216011"
+    lifecycle(config_fields={"serial": "12345678"})
+    assert lifecycle.config.serial == "12345678"
 
 
 def test_a_device_that_shows_no_serial_pins_an_empty_one(lifecycle, tmp_path,

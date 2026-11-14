@@ -28,7 +28,7 @@ def test_status_resolves_exact_listening_owner_without_connecting(endpoint, monk
     assert state.pid == 101
     assert (state.uid, state.gid) == (os.getuid(), os.getgid())
     assert state.endpoint == str(path)
-    assert state.device.serial == "24216011"
+    assert state.device.serial == "12345678"
 
 
 @pytest.mark.parametrize("args", [
@@ -130,7 +130,7 @@ def test_endpoint_path_with_spaces_keeps_its_full_name(endpoint):
 def test_status_of_absent_runtime_does_not_create_it(tmp_path_factory, monkeypatch):
     root = tmp_path_factory.mktemp("absent")
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(root))
-    config = Config(serial="24216011")
+    config = Config(serial="12345678")
     result = diagnostics.backend_status(config, root / "proc")
     assert result.state == "absent"
     assert not (root / "oscmix-desk").exists()
@@ -181,7 +181,7 @@ def test_an_unreadable_process_beside_the_backend_does_not_hide_its_bridge(endpo
     shutil.copytree(proc / "102", proc / "100", symlinks=True)
     (proc / "100/stat").write_text("100 (alsaseqio) S 101 0 0\n")
     (proc / "100" / missing).unlink()
-    assert process.control_holder(path, proc) == process.BackendOwner(101, True, 24, "24216011")
+    assert process.control_holder(path, proc) == process.BackendOwner(101, True, 24, "12345678")
     assert diagnostics.backend_status(config, proc).state == "ready"
 
 
@@ -211,5 +211,5 @@ def test_another_child_of_the_backend_does_not_hide_its_bridge(endpoint):
     command(proc / "100", ["sleep", "60"])
     (proc / "100/exe").unlink()
     (proc / "100/exe").symlink_to("/usr/bin/sleep")
-    assert process.control_holder(path, proc) == process.BackendOwner(101, True, 24, "24216011")
+    assert process.control_holder(path, proc) == process.BackendOwner(101, True, 24, "12345678")
     assert diagnostics.backend_status(config, proc).state == "ready"

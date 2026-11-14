@@ -352,8 +352,8 @@ def test_channel_only_playback_uses_measured_live_capacity(
 def test_channel_only_guard_checks_and_refuses_mid_apply_change(monkeypatch):
     states = iter(
         (
-            streams.PlaybackState(2, "24216011", None),
-            streams.PlaybackState(2, "24216011", streams.PlaybackMode(48000, 20, 1)),
+            streams.PlaybackState(2, "12345678", None),
+            streams.PlaybackState(2, "12345678", streams.PlaybackMode(48000, 20, 1)),
         )
     )
     monkeypatch.setattr(streams, "read_playback", lambda config, proc: next(states))

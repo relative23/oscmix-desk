@@ -28,7 +28,7 @@ _SERIAL_RE = re.compile(r"\((\d{4,})\)")
 
 
 def serial_in(name: str) -> str | None:
-    """The serial in a device name such as ``Fireface UCX II (24216011)``."""
+    """The serial in a device name such as ``Fireface UCX II (12345678)``."""
     match = _SERIAL_RE.search(name)
     return match.group(1) if match else None
 
@@ -362,8 +362,8 @@ def resolve_binary(name: str, env_var: str) -> str | None:
     return None
 
 
-#: The first line of a card: `` 2 [II24216011 ]: USB-Audio - Fireface UCX
-#: II (24216011)``. The driver id has no spaces; the product runs to the
+#: The first line of a card: `` 2 [II12345678 ]: USB-Audio - Fireface UCX
+#: II (12345678)``. The driver id has no spaces; the product runs to the
 #: serial. A card's second line repeats name and serial and is not read.
 _CARD_LINE_RE = re.compile(
     r"^\s*\d+\s+\[[^\]]*\]:\s*\S+\s+-\s+(.*?)\s*$", re.MULTILINE)

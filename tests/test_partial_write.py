@@ -186,7 +186,7 @@ def test_connection_exhaustion_before_a_switch_is_a_refusal(tmp_path, monkeypatc
     from support import fake_proc
 
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(tmp_path / "proc",
-                       boxes=[(24, "24216011")])))
+                       boxes=[(24, "12345678")])))
     monkeypatch.setattr(desk_mod, "connect_backend", exhausted)
     result = profiles.switch_profile("tracking", config_path=path)
     assert result.state == outcome_mod.REFUSED

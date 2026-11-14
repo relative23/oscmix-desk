@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Docs, examples, docstrings, tests and recorded fixtures use the placeholder
+  serial `12345678` instead of the serial of the UCX II that took the
+  measurements; the measured values are unchanged. A test refuses any other
+  serial than the made-up ones of the multi-device cases, so a new recording
+  cannot bring the real one back.
+
 ## 0.10.0 -- 2026-11-14
 
 ### Added

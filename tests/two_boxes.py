@@ -13,7 +13,7 @@ def lock_dir(tmp_path, monkeypatch):
     return shared
 
 
-A = (24, "24216011")
+A = (24, "12345678")
 B = (28, "99887766")
 
 

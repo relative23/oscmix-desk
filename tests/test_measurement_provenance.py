@@ -34,7 +34,7 @@ def prepared(tmp_path):
         'source_sha256': {'main.c': hashlib.sha256(b'source\n').hexdigest()},
     }
     (build / '.oscmix-desk-source.json').write_text(json.dumps(record))
-    peer = SimpleNamespace(pid=123, epoch=bytes(range(16)), device_name='UCX II (24216011)')
+    peer = SimpleNamespace(pid=123, epoch=bytes(range(16)), device_name='UCX II (12345678)')
     return build, proc, peer, record
 
 

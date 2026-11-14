@@ -250,7 +250,7 @@ systemd tries again after a few seconds. Four refusals name their cause in
 the journal and on the command line:
 
 ```
-cannot open the device lock at /run/oscmix-desk/2a39-3fd9-24216011.lock:
+cannot open the device lock at /run/oscmix-desk/2a39-3fd9-12345678.lock:
   Permission denied; /run/oscmix-desk belongs to group audio
 ```
 
@@ -265,7 +265,7 @@ remove, and a reboot clears `/run`.
 
 ```
 2 interfaces match 'Fireface UCX II' and [device] serial does not say
-  which one this desk is for: Fireface UCX II (24216011) (client 24), ...
+  which one this desk is for: Fireface UCX II (12345678) (client 24), ...
 ```
 
 Set `serial` under `[device]` to the number printed on the box -- the

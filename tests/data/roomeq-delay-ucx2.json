@@ -82,7 +82,7 @@
  "running_backend": {
   "pid": 1327518,
   "epoch": "7fe813a83834a87a5b49f7302e5491fc",
-  "device": "Fireface UCX II (24216011) Port",
+  "device": "Fireface UCX II (12345678) Port",
   "sha256": "0008b85f3eb82106c2b2d6ec40a0e3caa297e8783b7269ecfea67d0a01d77af9",
   "upstream": "89ed835ecf8118a21d1d451be7d71944fa5ec384",
   "series_sha256": "75f8a9673b57891291c9511c2999b8f6a761b41bfd50632fa61efc3998daba3b",
@@ -93,7 +93,7 @@
   "paths": 2231,
   "sha256": "f43743bfcece88f0755204efde8b45cfdae08fffc70bb23e52c9498d1e17001a"
  },
- "serial": "24216011",
+ "serial": "12345678",
  "firmware": {
   "usb_revision": "3.01",
   "dsp_version": 36

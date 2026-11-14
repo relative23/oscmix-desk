@@ -27,7 +27,7 @@ def values(state):
 def test_calibration_evidence_states_its_exact_warm_scope():
     assert EVIDENCE["schema"] == 1
     assert EVIDENCE["device"] == UCX2.name
-    assert EVIDENCE["serial"] == "24216011"
+    assert EVIDENCE["serial"] == "12345678"
     assert EVIDENCE["firmware"] == {"usb_revision": "3.01", "dsp_version": 36}
     assert EVIDENCE["backend"]["protocol"] == "ODK1"
     assert EVIDENCE["backend"]["upstream"] == "f2fdd5ec78338848754aad32cc07f3440de63395"

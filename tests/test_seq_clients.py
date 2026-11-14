@@ -15,9 +15,9 @@ Client   0 : "System" [Kernel Legacy]
     Connecting To: 144:0
 Client  14 : "Midi Through" [Kernel Legacy]
   Port   0 : "Midi Through Port-0" (RWe-) [In/Out]
-Client  24 : "Fireface UCX II (24216011)" [Kernel Legacy]
-  Port   0 : "Fireface UCX II (24216011) Port" (RWeX) [In/Out]
-  Port   1 : "Fireface UCX II (24216011) Port" (RWeX) [In/Out]
+Client  24 : "Fireface UCX II (12345678)" [Kernel Legacy]
+  Port   0 : "Fireface UCX II (12345678) Port" (RWeX) [In/Out]
+  Port   1 : "Fireface UCX II (12345678) Port" (RWeX) [In/Out]
     Connecting To: 128:0
 Client 128 : "alsaseq" [User Legacy]
   Port   0 : "alsaseq" (rwe-) [In/Out]
@@ -31,7 +31,7 @@ def test_parses_all_clients(session_mod):
     assert clients == [
         (0, "System"),
         (14, "Midi Through"),
-        (24, "Fireface UCX II (24216011)"),
+        (24, "Fireface UCX II (12345678)"),
         (128, "alsaseq"),
         (144, "PipeWire-System"),
     ]
@@ -70,8 +70,8 @@ def test_device_serials_read_the_product_string(tmp_path):
     cards = tmp_path / "cards"
     cards.write_text(
         " 0 [NVidia       ]: HDA-Intel - HDA NVidia\n"
-        " 2 [II24216011   ]: USB-Audio - Fireface UCX II (24216011)\n")
-    assert device_serials(cards) == ["24216011"]
+        " 2 [II12345678   ]: USB-Audio - Fireface UCX II (12345678)\n")
+    assert device_serials(cards) == ["12345678"]
 
     cards.write_text(" 0 [NVidia ]: HDA-Intel - HDA NVidia\n")
     assert device_serials(cards) == []
@@ -85,16 +85,16 @@ def test_device_serials_lists_every_box(tmp_path):
     cards = tmp_path / "cards"
     cards.write_text(
         " 0 [NVidia     ]: HDA-Intel - HDA NVidia\n"
-        " 2 [II24216011 ]: USB-Audio - Fireface UCX II (24216011)\n"
+        " 2 [II12345678 ]: USB-Audio - Fireface UCX II (12345678)\n"
         " 3 [II99887766 ]: USB-Audio - Fireface UCX II (99887766)\n")
-    assert device_serials(cards) == ["24216011", "99887766"]
+    assert device_serials(cards) == ["12345678", "99887766"]
     assert device_serials(tmp_path / "missing") == []
 
 
 def test_the_lock_key_names_the_box_and_nothing_a_path_can_abuse():
     from oscmix_desk.discovery import lock_key
 
-    assert lock_key("2a39:3fd9", "24216011") == "2a39-3fd9-24216011"
+    assert lock_key("2a39:3fd9", "12345678") == "2a39-3fd9-12345678"
     assert lock_key("2a39:3fd9", "") == "2a39-3fd9-unknown"
     assert lock_key("2a39:3fd9", "../x/y") == "2a39-3fd9-..-x-y"
 
@@ -114,7 +114,7 @@ def test_one_card_spanning_two_lines_is_one_interface(tmp_path):
     cards.write_text(
         " 0 [NVidia         ]: HDA-Intel - HDA NVidia\n"
         "                      HDA NVidia at 0xdc080000 irq 169\n"
-        " 2 [II24216011     ]: USB-Audio - Fireface UCX II (24216011)\n"
-        "                      RME Fireface UCX II (24216011) at "
+        " 2 [II12345678     ]: USB-Audio - Fireface UCX II (12345678)\n"
+        "                      RME Fireface UCX II (12345678) at "
         "usb-0000:77:00.0-2, high speed\n")
-    assert device_serials(cards) == ["24216011"]
+    assert device_serials(cards) == ["12345678"]

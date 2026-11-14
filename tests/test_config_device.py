@@ -81,9 +81,9 @@ def test_an_empty_device_name_is_a_config_error(session_mod, tmp_path, name):
     from oscmix_desk import discovery
     from oscmix_desk.errors import DeviceAmbiguous
 
-    clients = ('Client  24 : "Fireface UCX II (24216011)" [Kernel]\n'
+    clients = ('Client  24 : "Fireface UCX II (12345678)" [Kernel]\n'
                'Client  28 : "UMC404HD 192k" [Kernel]\n')
-    alone = ["HDA Intel PCH", "Fireface UCX II (24216011)"]
+    alone = ["HDA Intel PCH", "Fireface UCX II (12345678)"]
     assert discovery.select_seq_client(clients, "", "", alone) == 24
     with pytest.raises(DeviceAmbiguous, match="2 interfaces match ''"):
         discovery.select_seq_client(clients, "", "",
@@ -160,17 +160,17 @@ def test_a_desk_is_elsewhere_when_a_restart_would_take_it_somewhere_else():
 
     file = Machine("Fireface UCX II", "2a39:3fd9", "", 7222, 8222)
     said = CommandLine(device_name="Some Box", osc_port=9000)
-    live = Machine("Some Box", "2a39:3fd9", "24216011", 9000, 8222)
+    live = Machine("Some Box", "2a39:3fd9", "12345678", 9000, 8222)
     assert file.under(CommandLine()) == file
     assert file.under(said) == live._replace(serial="")
     assert file.under(CommandLine(osc_port=9000)).device_name == file.device_name
     for same in (file,
-                 file._replace(serial="24216011"),          # the pinned box
+                 file._replace(serial="12345678"),          # the pinned box
                  file._replace(osc_port=9500),              # under --osc-port
                  file._replace(device_name="Fireface 802")):    # under --device
         assert same.under(said).elsewhere(live) == "", same
     assert file._replace(serial="99887766").under(said).elsewhere(live) == \
-        "serial '99887766' (not '24216011')"
+        "serial '99887766' (not '12345678')"
     assert file._replace(usb_id="1234:5678", osc_recv_port=9).under(said) \
         .elsewhere(live) == "usb id '1234:5678' (not '2a39:3fd9')"
     # Ports remain irrelevant without command-line overrides too.

@@ -18,7 +18,7 @@ from oscmix_desk.errors import DeviceAmbiguous
 from oscmix_desk.model import Config
 from oscmix_desk.process import BackendOwner
 
-DEVICE = Device("2a39:3fd9", "24216011", 24)
+DEVICE = Device("2a39:3fd9", "12345678", 24)
 PID = 4321
 
 
@@ -30,7 +30,7 @@ def status(tmp_path, monkeypatch):
     (proc / str(PID)).mkdir(parents=True)
     listener = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
     listener.bind(str(path))
-    state = {"device": DEVICE, "holder": BackendOwner(PID, True, 24, "24216011")}
+    state = {"device": DEVICE, "holder": BackendOwner(PID, True, 24, "12345678")}
     seen = []
 
     def resolve(usb_id, name, serial, proc_root):
@@ -53,7 +53,7 @@ def status(tmp_path, monkeypatch):
 
     def call(config_path=None, **changes):
         state.update(changes)
-        return diagnostics.backend_status(Config(serial="24216011"), proc, config_path)
+        return diagnostics.backend_status(Config(serial="12345678"), proc, config_path)
 
     call.seen = seen
     yield call, path, proc
@@ -71,7 +71,7 @@ def test_the_ready_association_carries_the_owner_process_identity(status):
 def test_the_endpoint_is_resolved_for_the_desk_and_its_device(status, tmp_path):
     call, path, proc = status
     call(tmp_path / "routing.conf")
-    assert call.seen == [("resolve", "2a39:3fd9", "Fireface UCX II", "24216011", proc),
+    assert call.seen == [("resolve", "2a39:3fd9", "Fireface UCX II", "12345678", proc),
                          ("path", tmp_path / "routing.conf", DEVICE.key),
                          ("holder", path, proc)]
 
@@ -112,8 +112,8 @@ def test_another_program_on_the_endpoint_is_a_conflict(status):
 
 
 @pytest.mark.parametrize(("device", "holder"), [
-    (Device("2a39:3fd9", "24216011", None), BackendOwner(PID, True, 24, "24216011")),
-    (DEVICE, BackendOwner(PID, True, None, "24216011")),
+    (Device("2a39:3fd9", "12345678", None), BackendOwner(PID, True, 24, "12345678")),
+    (DEVICE, BackendOwner(PID, True, None, "12345678")),
 ])
 def test_either_missing_bridge_client_leaves_the_association_unknown(status, device, holder):
     call, path, _proc = status
@@ -122,7 +122,7 @@ def test_either_missing_bridge_client_leaves_the_association_unknown(status, dev
 
 
 @pytest.mark.parametrize(("device", "holder"), [
-    (Device("2a39:3fd9", "", 24), BackendOwner(PID, True, 24, "24216011")),
+    (Device("2a39:3fd9", "", 24), BackendOwner(PID, True, 24, "12345678")),
     (DEVICE, BackendOwner(PID, True, 24, None)),
 ])
 def test_either_missing_serial_leaves_the_association_unknown(status, device, holder):
@@ -132,7 +132,7 @@ def test_either_missing_serial_leaves_the_association_unknown(status, device, ho
 
 
 @pytest.mark.parametrize("holder", [
-    BackendOwner(PID, True, 25, "24216011"),   # another client reporting this serial
+    BackendOwner(PID, True, 25, "12345678"),   # another client reporting this serial
     BackendOwner(PID, True, 24, "99887766"),   # this client with another serial
 ])
 def test_one_differing_identity_component_is_already_another_interface(status, holder):

@@ -339,7 +339,7 @@ def launcher_world(launch_mod, clean_env, tmp_path):
     clean_env.setattr(launch_mod, 'inspect_desktop', lambda *_: DesktopStatus(
         '/usr/bin/oscmix-gtk', None))
     clean_env.setattr(launch_mod, 'backend_status', lambda *_: BackendStatus(
-        'ready', 'matched', Device('2a39:3fd9', '24216011', 24), 40000, '/isolated/control'))
+        'ready', 'matched', Device('2a39:3fd9', '12345678', 24), 40000, '/isolated/control'))
     clean_env.setattr(launch_mod, 'systemctl_user', lambda *args: calls.append(args) or 0)
     clean_env.setattr(launch_mod, 'notify', lambda title, body, urgency='normal':
                       notifications.append(body))
@@ -356,7 +356,7 @@ def test_matching_manual_backend_opens_gui_without_systemd(launcher_world):
     assert mod.main() == 0
     assert execs == [('/usr/bin/oscmix-gtk', ['/usr/bin/oscmix-gtk'],
                       {'OSCMIX_CONTROL_SOCKET': '/isolated/control', 'OSCMIX_BACKEND_PID': '40000',
-                       'OSCMIX_DEVICE_SERIAL': '24216011'})]
+                       'OSCMIX_DEVICE_SERIAL': '12345678'})]
     assert calls == []
     assert notices == []
 
@@ -417,7 +417,7 @@ def test_incomplete_identity_cannot_be_passed_to_gtk(launcher_world, missing):
     from oscmix_desk.discovery import Device
 
     mod, monkey, calls, notices, execs = launcher_world
-    status = BackendStatus('ready', 'matched', Device('2a39:3fd9', '24216011', 24),
+    status = BackendStatus('ready', 'matched', Device('2a39:3fd9', '12345678', 24),
                            40000, '/isolated/control')
     if missing == 'all':
         status = BackendStatus('ready', 'incomplete')
@@ -478,15 +478,15 @@ def test_only_an_enabled_matching_service_may_be_started(
     from oscmix_desk.discovery import Device
 
     mod, monkey, calls, notices, execs = launcher_world
-    device = Device('2a39:3fd9', '24216011', 24)
-    path = write_conf(tmp_path / 'selected.conf', '[device]\nserial=24216011\n')
+    device = Device('2a39:3fd9', '12345678', 24)
+    path = write_conf(tmp_path / 'selected.conf', '[device]\nserial=12345678\n')
     monkey.setenv('OSCMIX_CONFIG', str(path))
     proc = Path(os.environ['OSCMIX_PROC_ROOT'])
     states = iter([BackendStatus('absent', 'no listener', device),
                    BackendStatus('ready', 'matched', device, 40000, '/isolated/control')])
 
     def inspect(config, proc_root, config_path):
-        assert config.serial == '24216011'
+        assert config.serial == '12345678'
         assert proc_root == proc
         assert config_path == path
         return next(states)
@@ -528,7 +528,7 @@ def test_launcher_inspects_the_selected_gtk_and_preserves_the_desktop_environmen
     assert env['DBUS_SESSION_BUS_ADDRESS'] == 'unix:path=/qa-bus'
     assert env['OSCMIX_CONTROL_SOCKET'] == '/isolated/control'
     assert env['OSCMIX_BACKEND_PID'] == '40000'
-    assert env['OSCMIX_DEVICE_SERIAL'] == '24216011'
+    assert env['OSCMIX_DEVICE_SERIAL'] == '12345678'
     assert calls == notices == []
 
 
@@ -538,7 +538,7 @@ def test_backend_start_failure_never_falls_through_to_gtk(launcher_world, failur
     from oscmix_desk.discovery import Device
 
     mod, monkey, _, notices, execs = launcher_world
-    device = Device('2a39:3fd9', '24216011', 24)
+    device = Device('2a39:3fd9', '12345678', 24)
     replies = [BackendStatus('absent', 'no listener', device)]
     if failure == 'replaced':
         replies.append(BackendStatus('conflict', 'wrong backend', device))

@@ -326,7 +326,7 @@ def test_factory_refuses_identity_change_during_connect(peer, monkeypatch, chang
 
 def test_factory_refuses_a_handshake_for_another_serial(peer, monkeypatch):
     server = peer()
-    identity = replace(ready(server), device=Device('2a39:3fd9', '24216011', 24))
+    identity = replace(ready(server), device=Device('2a39:3fd9', '12345678', 24))
     monkeypatch.setattr(backend, 'backend_status', lambda *_a: identity)
     with pytest.raises(OSError, match='identity changed'):
         backend.connect_backend(Config())
@@ -336,7 +336,7 @@ def test_factory_refuses_a_handshake_for_another_serial(peer, monkeypatch):
 @pytest.mark.parametrize('state', ['absent', 'unknown', 'conflict', 'wrong-child'])
 def test_factory_refuses_incompatible_target_before_connect(monkeypatch, state):
     identity = BackendStatus(state if state != 'wrong-child' else 'ready', 'refused',
-                             Device('2a39:3fd9', '24216011', 24), 1, '/a.control')
+                             Device('2a39:3fd9', '12345678', 24), 1, '/a.control')
     monkeypatch.setattr(backend, 'backend_status', lambda *_a: identity)
     def forbidden(*_a, **_k):
         pytest.fail('an incompatible target was connected')

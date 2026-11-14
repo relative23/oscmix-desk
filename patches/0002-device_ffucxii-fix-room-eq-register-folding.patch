@@ -11,7 +11,7 @@ On a Fireface UCX II this makes 320 registers unreachable and reports
 260 of them under another name, so a single /refresh carries two
 conflicting values for the same OSC path.
 
-Measured before and after on hardware (serial 24216011): the dump goes
+Measured before and after on hardware (serial 12345678): the dump goes
 from 1932 registers with 260 conflicting paths to 2252 with none, and
 bands 6 to 9 become visible with plausible values.
 
