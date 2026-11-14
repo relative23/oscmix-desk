@@ -17,6 +17,16 @@
   tools still read the serial while they run, to pick the box and find its
   ALSA card and PipeWire nodes.
 
+### Fixed
+
+- A profile switch, start or reload no longer loses its backend lease while it
+  stores the write journal and the device record. Both are fsynced, and a disk
+  that stalled for some seconds outlasted the backend's five-second idle limit:
+  the backend ended the lease, and an applied profile was reported as not
+  verified ("Broken pipe"). The records are now written beside the operation
+  while it keeps sending KEEPALIVEs. Seen once in CI on 2026-11-14 and
+  reproduced with a write journal fsync stalled for six seconds.
+
 ## 0.10.0 -- 2026-11-14
 
 ### Added

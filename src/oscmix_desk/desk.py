@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import errno
 import os
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import replace
@@ -32,7 +33,7 @@ from .osc import Args, Message
 from .paths import discover_config_path
 from .reconcile import ApplyIntent, desired
 from .routing import apply_routing, never_stop, wait_unless_stopped
-from .seen import NOTED, record_seen
+from .seen import NOTED, Record, record_seen
 from .verify import (
     VerifyResult,
     expected_registers,
@@ -40,6 +41,9 @@ from .verify import (
     verify_and_repair,
     verify_routing,
 )
+
+#: Seconds between two looks at the record writer while the lease is kept alive.
+RECORD_POLL = 0.05
 
 
 class Desk:
@@ -187,11 +191,50 @@ class Desk:
 
     def _record(self) -> None:
         """Store the acknowledged writes so far; the held lock keeps other writers out."""
+        self._store(self._taken())
+
+    def _taken(self) -> tuple[Written, dict[str, tuple[str, Args, float]], Record | None]:
+        """What the next record stores, taken on the thread that drives the operation."""
         written, self._written = self._written, {}
-        record_written(self._journal, written)
         reported, self._reported = self._reported, {}
         connected, self._connected = self._connected, None
-        record_seen(self._seen, reported, None if connected is None else connected.record())
+        return written, reported, None if connected is None else connected.record()
+
+    def _store(self, taken: tuple[Written, dict[str, tuple[str, Args, float]],
+                                  Record | None]) -> None:
+        written, reported, connected = taken
+        record_written(self._journal, written)
+        record_seen(self._seen, reported, connected)
+
+    def _record_holding(self, backend: Control) -> None:
+        """Store the record while the lease stays alive.
+
+        Both files are fsynced. A disk that stalls for a few seconds would otherwise outlast
+        the backend's five-second idle limit: the backend ended the lease and the next request
+        met a closed connection, so an applied profile read as unverifiable (CI, 2026-11-14).
+        The files are written beside the operation while this thread keeps sending
+        KEEPALIVEs; a connection that fails meanwhile is reported by the next request.
+        """
+        taken = self._taken()
+        failure: list[Exception] = []
+
+        def store() -> None:
+            try:
+                self._store(taken)
+            except Exception as exc:  # raised on this operation's thread below
+                failure.append(exc)
+
+        writer = threading.Thread(target=store, name="desk-record", daemon=True)
+        writer.start()
+        try:
+            while writer.is_alive():
+                backend.wait(RECORD_POLL)
+        except OSError:
+            pass
+        finally:
+            writer.join()
+        if failure:
+            raise failure[0]
 
     def apply(self, intent: ApplyIntent = ApplyIntent.EXPLICIT, *,
               reason: str = "desk") -> bool:
@@ -215,7 +258,7 @@ class Desk:
             raise
         finally:
             # Now, not only at the end: a start's verifier can be cut off at exit.
-            self._record()
+            self._record_holding(backend)
         if self._should_stop():
             self._failed = self._aborted = True
             return False
