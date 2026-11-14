@@ -63,7 +63,9 @@ is held, since those belong to the operation holding it.
 
 The desk retries a busy BEGIN for up to 30 seconds and a busy REFRESH for up
 to 12, waits two seconds for each acknowledgement, and sends a KEEPALIVE
-every second while it holds a lease.
+every second while it holds a lease, also while it stores its write journal
+and device record: a helper thread writes those, since an fsync that stalls
+for some seconds would otherwise outlast the idle limit (from 0.10.1).
 
 The lease owner's WRITE renews the five-second idle limit once its command has
 run, so a WRITE the MIDI side holds up no longer ends the lease (patch 0016); a

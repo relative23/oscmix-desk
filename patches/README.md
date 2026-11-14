@@ -149,6 +149,36 @@ current register model does include supported Room EQ settings; see the
 
 [32]: https://github.com/michaelforney/oscmix/issues/32
 
+## 0003 -- coordinated backend and GTK
+
+The base of the series. The backend serves the ODK1 control socket (`control.c`): roles, the
+operation lease, observation subscriptions by origin and refresh windows, as
+[the backend control protocol](../docs/BACKEND-CONTROL.md) specifies. The ALSA bridge gains
+`-x`, which holds the interface's sequencer port exclusively, and the GTK mixer connects through
+the same socket as a GTK-role client instead of its own UDP ports, so desk operations and mixer
+edits do not interleave.
+
+**Status:** this project's coordination layer; not offered upstream.
+
+## 0004 -- require complete input mix observations
+
+A compound input-matrix report, level and pan of a pair, is computed from several registers.
+Commands change the backend's mix cache too, so the backend now publishes such a report only
+when the device itself reported every register it needs -- the stereo flags and the mix cells --
+since the last command or refresh, which reset those observations. Before, a value a command had
+just set could stand in for one the device never reported.
+
+**Status:** carried with the coordinated series; not offered upstream.
+
+## 0005 -- identify the exact backend and GTK build
+
+`oscmix`, `alsaseqio` and `oscmix-gtk` answer `--control-version` (`ODK1`) and `--desk-build-id`
+(the digest of this patch series) before they open MIDI, ALSA, a display or a session. The
+installer, the packages, the launcher and `--status` use it to refuse a mixed or unpatched build;
+it identifies a build, it is not a signature on the executable.
+
+**Status:** carried with the coordinated series; not offered upstream.
+
 ## 0006 -- terminate after known MIDI input loss
 
 The inherited ALSA bridge continued after `snd_seq_event_input()` reported

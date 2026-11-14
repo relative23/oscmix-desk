@@ -7,7 +7,8 @@ writable home directory.
 
 ## Prepare the user and package pair
 
-Use the Fedora RPMs built for the host's release and architecture. Authenticate
+Use the Fedora RPMs built for the host's release and architecture (`fedora44`,
+or `fedora45` from 0.10.0). Authenticate
 their release provenance and package signatures as described in the release
 instructions. Keep the core and GTK package versions identical; the companion
 has an exact core dependency. GTK is optional, and can be omitted from each

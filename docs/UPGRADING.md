@@ -1,5 +1,21 @@
 # Upgrade and recovery
 
+## Upgrading to 0.10.1
+
+Configs, profiles and the profile marker carry over; nothing in them needs to change.
+Upgrade the native core and GTK packages together with the mixer service stopped, as
+for 0.10.0.
+
+- The measurement scripts in `scripts/` (`verify-hardware.py`, `sweep-writes.py`,
+  `record-dump.py` and the probes) write the placeholder `12345678` where the device
+  serial stood and name the box by `device_pseudonym`. A tool that read `serial` from
+  such a record needs the pseudonym instead. `probe-fx.py` refuses an inventory recorded
+  before 0.10.1, which has no pseudonym: record it again.
+
+Rolling back to 0.10.0: install it with its own installer or package. Its write journal
+is stored without the KEEPALIVEs, so a disk that stalls there can end a switch as not
+verified again.
+
 ## Upgrading to 0.10.0
 
 Configs, profiles and the profile marker carry over. Check these before upgrading:

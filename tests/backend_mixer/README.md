@@ -11,7 +11,8 @@ prepared `OSCMIX_CONTROL_BINARY`, alongside the existing process-level
 | mix_invalid | Invalid coefficient/metadata mappings, non-finite values and capacity are rejected before MIDI/cache mutation. |
 | mix_partial | A transport failure may leave hardware partially written. The desired cache never proves device readback or rollback; no retry is implied. |
 | pan_restore | Both aliases and every feedback order for the five vectors used by the hardware pilot (acceptance remains separate); tiny-level silence restoration retains the raw -100/+100 pair and returns the complete matrix to zero. |
-| mix_geometry | Full prepared `oscmix.c`: independent double-precision matrix/gain/pan/width oracle, silence and exact endpoints, reversed width, DB/PAN floor and quantization, and preservation of global input width at mono outputs. Feedback uses the actual `newmix` callback in every register order. |
+| mix_geometry | Full prepared `oscmix.c`: independent double-precision matrix/gain/pan/width oracle, silence and exact endpoints, reversed width, DB/PAN floor and quantization, and preservation of global input width at mono outputs. Feedback uses the actual `newmix` callback in every register order. Reports that confirm the cache write nothing back and leave its exact values (patch 0019). |
+| mix_phase | Phase as the sign of the mix coefficients through the actual callbacks (patch 0018), and a cell of exactly 0.5 in the x8 form the device reads as +0.5 (patch 0017). |
 | midi_deadline | Actual complete `main.c` with deterministic clock/write/poll hooks. EINTR, partial progress, EAGAIN, stop and clock failures share an absolute two-second write deadline. |
 
 The hooks replace sinks and system calls, not the mixer callbacks or codecs.

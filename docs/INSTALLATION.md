@@ -275,7 +275,7 @@ per-user units that override the package.
 
 ```sh
 systemctl --user disable --now oscmix.service
-# For a 0.9.0 source installation, use ./install.sh --disable instead.
+# For a source installation from 0.9.0 on, use ./install.sh --disable instead.
 # Install the selected native package with your package manager.
 oscmix-setup --check
 oscmix-setup --disable

@@ -29,19 +29,19 @@ checksums. `gh attestation verify` needs a recent GitHub CLI.
 
 ```sh
 mkdir oscmix-desk-release && cd oscmix-desk-release
-gh release download v0.9.0 --repo relative23/oscmix-desk
+gh release download v0.10.0 --repo relative23/oscmix-desk
 gh attestation verify SHA256SUMS \
   --repo relative23/oscmix-desk \
   --signer-workflow relative23/oscmix-desk/.github/workflows/release.yml \
-  --source-ref refs/tags/v0.9.0 \
+  --source-ref refs/tags/v0.10.0 \
   --deny-self-hosted-runners --bundle attestation.jsonl
 sha256sum --check SHA256SUMS
-tar -xzf oscmix-desk-0.9.0.tar.gz
-cd oscmix-desk-0.9.0
+tar -xzf oscmix-desk-0.10.0.tar.gz
+cd oscmix-desk-0.10.0
 ./install.sh
 ```
 
-Replace `0.9.0` with the release you install. A changed file fails the
+Replace `0.10.0` with the release you install. A changed file fails the
 checksum check; a checksum without the attestation check proves nothing about
 who built the file. See the
 [GitHub CLI reference](https://cli.github.com/manual/gh_attestation_verify).
@@ -53,8 +53,8 @@ The release workflow refuses a tag whose records do not match its files.
 | File | Records | Tied to the release by |
 | --- | --- | --- |
 | `software-qualification.json` (schema 2) | every gate with exit code, duration and log digest (the suite on every supported Python version, coverage, flake, soak, fault repeats, mutation), coverage and mutation counts, the run with the interface switched off | `tested_files_sha256` and `supporting_files_sha256` over the tagged tree, `backend_series_sha256` |
-| `hardware-evidence.json` | tone routed through each declared sink and measured at its outputs (`routes`, `sink_channels`, `min_response_db`), device serial and firmware | `desk_source.runtime_sha256`, `running_backend` (running binary digest, upstream commit, patch series digest) |
-| `loopback-route-evidence.json` (since 0.9.0) | each declared playback route shown through output loopback: a left and a right tone on the route's capture channels, loopback state before and after | as the hardware evidence |
+| `hardware-evidence.json` | tone routed through each declared sink and measured at its outputs (`routes`, `sink_channels`, `min_response_db`), the device and its firmware; from 0.10.1 the device is named by `device_pseudonym`, a keyed hash, and a placeholder stands where the serial stood | `desk_source.runtime_sha256`, `running_backend` (running binary digest, upstream commit, patch series digest) |
+| `loopback-route-evidence.json` (0.9.0 only) | each declared playback route shown through output loopback: a left and a right tone on the route's capture channels, loopback state before and after | as the hardware evidence |
 | `write-sweep-ucx2.json` (schema 3) | each writable register written and read back, one backend operation per chunk (`transactions`), a verdict per register (`findings`), restoration | as the hardware evidence |
 | `lifecycle.json` (schema 2) | installation, physical disconnect and reconnect of the interface, status output and restoration of the host | `installed_runtime_sha256` |
 
@@ -64,8 +64,8 @@ for another setup.
 ## Reproduce the source archive
 
 ```sh
-python3 scripts/build-release.py --ref v0.9.0 --output build/first
-python3 scripts/build-release.py --ref v0.9.0 --output build/second
+python3 scripts/build-release.py --ref v0.10.0 --output build/first
+python3 scripts/build-release.py --ref v0.10.0 --output build/second
 diff -r build/first build/second
 ```
 

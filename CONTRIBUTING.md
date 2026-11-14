@@ -57,8 +57,11 @@ its result with the release.
 
 ## Releases
 
-1. Update `__version__` in `src/oscmix_desk/constants.py` and add a dated
-   section to `CHANGELOG.md`.
+1. Update `__version__` in `src/oscmix_desk/constants.py`, date its section in
+   `CHANGELOG.md`, and in the same commit the README's latest-release line, the
+   version in the commands of `docs/RELEASE-ARTIFACTS.md` and a section in
+   `docs/UPGRADING.md`. `tests/test_docs_current.py` refuses a tree where these
+   disagree, and checks the other facts the docs repeat from the code.
 2. Run the checks above on the release commit, on every supported Python
    version, plus `make check` once with the interface switched off.
 3. Record the hardware verification, the write sweep and the service

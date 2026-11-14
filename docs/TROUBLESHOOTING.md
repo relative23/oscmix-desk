@@ -389,6 +389,21 @@ can inspect reportable state, while playback-matrix state remains unknown.
   host used up to 138 of them and overflowed now and then. If `Pool size` shows
   200, the running bridge is an older build. Check the backend identity and
   the surrounding journal before retrying a failed operation.
+- `control: operation lease expired`, with the desk operation then failing
+  with `backend send failed: [Errno 32] Broken pipe` or `backend connection is
+  no longer valid` (`profile 'NAME' applied; it cannot be verified: ...`) --
+  the desk holding the operation lease sent nothing for five seconds, so the
+  backend ended the lease and closed its connection. What was written before
+  stands, unconfirmed: check with `oscmix-session --diff` or switch again. The
+  desk sends a KEEPALIVE every second; before 0.10.1 it sent none while it
+  stored its write journal, so a disk that stalled for some seconds there ended
+  the lease (seen once in CI, 2026-11-14).
+- `control: disconnecting slow consumer` -- a client did not read the
+  backend's replies and observations in time: its socket was full and 32
+  more packets were queued for it.
+  The backend closed that connection, and an operation on it failed like the
+  case above. A heavily loaded desktop can make the GTK mixer that client;
+  reopen it.
 - `ignoring unknown sysex packet (mfr=200d ...)` -- the device sends a
   vendor SysEx that oscmix does not decode. Ignored by design.
 - `unexpected enum value -1` -- a register reports a value outside its
