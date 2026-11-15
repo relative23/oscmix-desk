@@ -1,5 +1,19 @@
 # Upgrade and recovery
 
+## Upgrading to 0.10.2
+
+Configs, profiles and the profile marker carry over; nothing in them needs to change.
+Upgrade the native core and GTK packages together with the mixer service stopped, as
+for 0.10.1.
+
+- A start that waits for the interface gives up when its timeout ends; before, the last
+  look came up to a second later.
+- A write whose arguments do not match its type tags is no longer stored in the write
+  journal: it is refused with a warning, like a journal that cannot be written.
+
+Rolling back to 0.10.1: install it with its own installer or package; nothing it reads
+has changed.
+
 ## Upgrading to 0.10.1
 
 Configs, profiles and the profile marker carry over; nothing in them needs to change.
