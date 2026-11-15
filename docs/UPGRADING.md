@@ -10,9 +10,12 @@ for 0.10.1.
   look came up to a second later.
 - A write whose arguments do not match its type tags is no longer stored in the write
   journal: it is refused with a warning, like a journal that cannot be written.
+- The backend gains patch 0020: a DURec file list report of the UCX II no longer ends it.
+  The installer builds it, and native packages of core and GTK are upgraded together.
 
-Rolling back to 0.10.1: install it with its own installer or package; nothing it reads
-has changed.
+Rolling back to 0.10.1: install it with its own installer or package, which builds its
+backend again; nothing the desk reads has changed. Its backend ends on those DURec reports
+again, and the service restarts it.
 
 ## Upgrading to 0.10.1
 

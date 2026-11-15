@@ -9,6 +9,7 @@ off it did not. The fixture is tied to the backend series it was taken with, bec
 import hashlib
 import json
 
+from series_carry import manifest_for
 from support import repo_file
 
 FIXTURE = ("tests", "data", "output-loopback-probes-ucx2.json")
@@ -49,6 +50,8 @@ def validate(fixture, manifest_bytes):
 
 
 def loopback_paths():
-    """The loopback paths the committed fixture measured, after validating it."""
+    """The loopback paths the committed fixture measured, after validating it with the series
+    it was taken with: the shipped one, or one tests/series_carry.py carries to it."""
     fixture = json.loads(repo_file(*FIXTURE).read_text())
-    return validate(fixture, repo_file("patches", "backend-series.json").read_bytes())
+    taken = manifest_for(FIXTURE, fixture["running_backend"]["series_sha256"])
+    return validate(fixture, taken)

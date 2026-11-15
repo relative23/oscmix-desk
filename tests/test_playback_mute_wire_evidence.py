@@ -1,17 +1,20 @@
-"""The playback-mute record taken with the shipped series, and what it may not claim."""
+"""The playback-mute record, taken with the shipped series or carried to it, and its limits."""
 
 import copy
 import json
 
 import pytest
 from playback_mute_wire_evidence import FIXTURE, PAIRS, covered_paths, registers, validate
+from series_carry import manifest_for
 from support import repo_file
 
 RECORD = json.loads(repo_file(*FIXTURE).read_text())
-MANIFEST = repo_file("patches", "backend-series.json").read_bytes()
+#: The series the record was taken with: the shipped one, or the one tests/series_carry.py
+#: proves it carries to the shipped one.
+MANIFEST = manifest_for(FIXTURE, RECORD["running_backend"]["series_sha256"])
 
 
-def test_the_record_passes_with_the_series_this_tree_ships():
+def test_the_record_passes_with_the_series_it_was_taken_with():
     paths = validate(RECORD, MANIFEST)
     assert paths == {"/playback/%d/mute" % n for n in range(1, 21)}
 

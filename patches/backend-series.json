@@ -67,6 +67,10 @@
     {
       "file": "0019-do-not-write-back-confirming-mix-reports.patch",
       "sha256": "3d690980ecc54f4478c1f52b604d6072272214782554b40f4606dd2ffd12261c"
+    },
+    {
+      "file": "0020-tolerate-durec-file-list-reports.patch",
+      "sha256": "661c2a9f964ca748e1aafa90d09097dca8944f4681e1690d6edd68332cd04ff7"
     }
   ],
   "protocol": "ODK1",

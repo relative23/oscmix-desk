@@ -33,6 +33,7 @@ def mixer_source():
     ("mix_geometry", "actual_geometry_cases=15491"),
     ("readback_freshness", "actual_observation_lifecycle_cases=100"),
     ("mix_phase", "actual_phase_sign_cases=12"),
+    ("durec_files", "actual_durec_cases=16"),
 ])
 def test_actual_mixer_regressions(mixer_source, tmp_path, probe, contract):
     fixture = Path(__file__).parent / "backend_mixer" / (probe + ".c")

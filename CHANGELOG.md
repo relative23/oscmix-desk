@@ -19,6 +19,24 @@
 - A write whose arguments do not match its type tags is refused with a warning, like a
   journal that cannot be stored, instead of being journaled cut short.
 
+### Fixed
+
+- The backend no longer ends when the UCX II reports its DURec file list with a count of
+  zero after a file index, or with a negative count or index (patch 0020). It exited through
+  `fatal(NULL)`, which printed `Invalid argument` whatever had failed, and the service
+  restarted it: seen here on 2026-08-30 and four times from 2026-11-11 to 11-15. `fatal()`
+  now prints the error it was called for.
+
+### Evidence
+
+- The measurements taken with the backend series of 0.10.1 (phase, a cell at 0.5, the
+  refresh echo, playback mute and output loopback) carry to the series with patch 0020 by a
+  source proof instead of being recorded again, the user's choice: 0020 changes only the
+  DURec file list and `fatal()`, and wherever the backend of 0.10.1 did not exit it does
+  the same. `tests/series_carry.py` holds the chain, and `tests/backend_mixer/durec_files.c`
+  replays the reports that ended the backend and, built against both series, those it
+  survived.
+
 ### Tests
 
 - Mutants nothing can kill are gone. Python 3.12 brought an explicit `strict=False` to nine

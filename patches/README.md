@@ -32,7 +32,10 @@ again at the new pin. Patches 0017-0019 (0.10.0) change the path that writes pla
 so playback mute was recorded again with this series
 ([evidence](../tests/data/playback-mute-wire-ucx2.json)), as were phase, output loopback and
 the refresh echo, each before and after the patches
-([evidence](../tests/test_backend_measurements.py)).
+([evidence](../tests/test_backend_measurements.py)). Patch 0020 (0.10.2) changes only the
+DURec file list handlers and `fatal()`, and only where the backend exited before; those
+measurements carry to the series with it by a source proof instead of being taken again
+([proof](../tests/series_carry.py), [record](../tests/data/series-carry-forward-0020.json)).
 The earlier pin `55802a6ab865e551540ee9ad5081b8ae3276f8ca` is the base of
 the historical patches below. Patch 0001 is not in the applied series;
 the output-link barrier is retained. **Patch 0002 was merged upstream as
@@ -381,3 +384,19 @@ the 8 are silent cells the device reports with a pan, which a zero coefficient c
 confirming ones leaving the cache bit-exact.
 
 **Status:** an upstream change; not offered yet.
+
+## 0020 -- keep running on DURec file list reports
+
+The UCX II reports its DURec file list in signed 16-bit registers. `resizedurecfiles()` took
+`realloc(list, 0)`, which frees the list and may return NULL, for running out of memory, and
+a negative count or index became a huge size: the backend exited through `fatal(NULL)`. That
+printed "Invalid argument" whatever had failed, because `vfprintf` refuses a null format with
+EINVAL. The service restarted after it on 2026-11-11 (twice), 11-13 and 11-15. A count of
+zero now empties the list, a negative count is ignored, a negative index selects no file, and
+a list that cannot grow keeps the one the device last described. `fatal()` prints the error it
+was called for. For every report the backend survived before, it does the same as before:
+`tests/backend_mixer/durec_files.c` replays the reports that ended it and the ones that did
+not.
+
+**Status:** an upstream defect (`resizedurecfiles` in `oscmix.c` and `fatal` in `util.c`, both
+unchanged at `89ed835`); not reported yet.

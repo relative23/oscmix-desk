@@ -9,6 +9,7 @@ import hashlib
 import json
 
 import pytest
+from series_carry import manifest_for
 from support import repo_file
 
 #: The series before 0017-0019 (0.9.0's, pin 89ed835).
@@ -18,7 +19,12 @@ SHIPPED = hashlib.sha256(repo_file("patches", "backend-series.json").read_bytes(
 
 def record(name, series):
     data = json.loads(repo_file("tests", "data", name).read_text())
-    assert data["running_backend"]["series_sha256"] == series
+    taken = data["running_backend"]["series_sha256"]
+    if series == SHIPPED:
+        # Taken with the shipped series, or with one the source proof carries to it.
+        manifest_for(("tests", "data", name), taken)
+    else:
+        assert taken == series
     assert data["running_backend"]["matches_local_build"] is True
     assert data["hardware_used"] is True
     assert "error" not in data

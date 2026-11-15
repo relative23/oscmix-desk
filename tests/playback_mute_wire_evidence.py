@@ -11,6 +11,7 @@ silent muted. It succeeds the 2026-10-08 projection, whose series this tree no l
 import hashlib
 import json
 
+from series_carry import manifest_for
 from support import repo_file
 
 FIXTURE = ("tests", "data", "playback-mute-wire-ucx2.json")
@@ -104,5 +105,7 @@ def covered_paths(fixture):
 
 
 def recorded():
+    """The record, validated with the series it was taken with: shipped or carried to it."""
     fixture = json.loads(repo_file(*FIXTURE).read_text())
-    return fixture, validate(fixture, repo_file("patches", "backend-series.json").read_bytes())
+    taken = manifest_for(FIXTURE, fixture["running_backend"]["series_sha256"])
+    return fixture, validate(fixture, taken)

@@ -1,0 +1,93 @@
+diff --git a/oscmix.c b/oscmix.c
+--- a/oscmix.c
++++ b/oscmix.c
+@@ -1329,26 +1329,41 @@ newdurecfreespace(struct context *ctx, int val)
+ 	}
+ }
+ 
+-static void
++static bool
+ resizedurecfiles(size_t len)
+ {
+-	if (len < 0 || len == durec.fileslen)
+-		return;
+-	durec.files = realloc(durec.files, len * sizeof *durec.files);
+-	if (!durec.files)
+-		fatal(NULL);  /* XXX: probably shouldn't exit */
++	struct durecfile *files;
++
++	if (len == durec.fileslen)
++		return true;
++	if (len == 0) {
++		/* realloc to zero may free the list and return NULL: no failure */
++		free(durec.files);
++		files = NULL;
++	} else {
++		files = realloc(durec.files, len * sizeof *durec.files);
++		if (!files) {
++			/* keep the list the device last described */
++			perror("DURec file list");
++			return false;
++		}
++	}
++	durec.files = files;
+ 	if (len > durec.fileslen)
+ 		memset(durec.files + durec.fileslen, 0, (len - durec.fileslen) * sizeof *durec.files);
+ 	durec.fileslen = len;
+ 	if (durec.index >= durec.fileslen)
+ 		durec.index = -1;
+ 	oscsend("/durec/numfiles", ",i", len);
++	return true;
+ }
+ 
+ static void
+ newdurecfileslen(struct context *ctx, int val)
+ {
+-	resizedurecfiles(val);
++	/* the register is a signed 16-bit word; a negative count names no list */
++	if (val >= 0)
++		resizedurecfiles(val);
+ }
+ 
+ static void
+@@ -1406,8 +1421,11 @@ newdurecrecordtime(struct context *ctx, int val)
+ static void
+ newdurecindex(struct context *ctx, int val)
+ {
+-	if (val + 1 > durec.fileslen)
+-		resizedurecfiles(val + 1);
++	/* -1 selects no file, and so does any other negative index */
++	if (val < 0 || (val + 1 > durec.fileslen && !resizedurecfiles(val + 1))) {
++		durec.index = -1;
++		return;
++	}
+ 	durec.index = val;
+ }
+ 
+diff --git a/util.c b/util.c
+--- a/util.c
++++ b/util.c
+@@ -1,3 +1,4 @@
++#include <errno.h>
+ #include <stdarg.h>
+ #include <stdlib.h>
+ #include <stdio.h>
+@@ -8,10 +9,15 @@ void
+ fatal(const char *msg, ...)
+ {
+ 	va_list ap;
++	int err = errno;  /* what failed, before printing can change it */
+ 
+-	va_start(ap, msg);
+-	vfprintf(stderr, msg, ap);
+-	va_end(ap);
++	/* vfprintf with a null format fails with EINVAL and would print that instead */
++	if (msg) {
++		va_start(ap, msg);
++		vfprintf(stderr, msg, ap);
++		va_end(ap);
++	}
++	errno = err;
+ 	if (!msg) {
+ 		perror(NULL);
+ 	} else if (*msg && msg[strlen(msg) - 1] == ':') {

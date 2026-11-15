@@ -410,14 +410,18 @@ can inspect reportable state, while playback-matrix state remains unknown.
   declared enum; `/controlroom/mainout` reports -1 for "no main out".
   The pinned build prefixes this warning with the OSC address.
 - `Invalid argument` followed by `ERROR: backend exited with status 1`
-  and `Scheduled restart job` -- the backend died and the unit restarted
-  it 3 s later (`Restart=on-failure`, `RestartSec=3`); the restart
-  re-applies the routing and reads it back like any start, so the
-  journal shows `routing verified against device state` right after.
-  Seen once here (2026-08-30, after 2 h 24 min of running, with the
-  mixer GUI open); the message is the backend's and its cause is not
-  known. Worth a look only if it repeats -- then keep the lines around
-  it, and check `oscmix-session --diff` after the restart.
+  and `Scheduled restart job`, before 0.10.2 -- the backend ended on a
+  DURec file list report of the UCX II: a count of zero after a file
+  index, or a negative count or index. The unit restarted it 3 s later
+  (`Restart=on-failure`, `RestartSec=3`), and the restart re-applied the
+  routing and read it back like any start, so the journal shows `routing
+  verified against device state` right after. The message said nothing
+  about the cause: the backend's `fatal(NULL)` printed `Invalid argument`
+  whatever had failed. Seen here after hours of quiet running, on
+  2026-08-30 and four times from 2026-11-11 to 11-15; patch 0020 (0.10.2)
+  keeps the backend running. A backend that still exits names its error
+  since then; keep the lines around it, and check `oscmix-session --diff`
+  after the restart.
 
 **If the enum warning appears *without* an OSC address, an old backend
 binary is running.** Builds before upstream `05621e5` print the bare

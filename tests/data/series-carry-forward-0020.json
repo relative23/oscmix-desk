@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "kind": "backend-series-carry-forward",
+  "decided": "2026-11-15",
+  "decision": "The measurements taken with the backend series of 0.10.1 are carried to the series that adds patch 0020 by a source proof instead of being recorded again (the user, 2026-11-15).",
+  "from_series_sha256": "48a73594cd4980e537e8d7f5a1d8bceeb612ae497122ede4b97a8d18e2094381",
+  "from_manifest": "{\n  \"patches\": [\n    {\n      \"file\": \"0003-coordinated-backend-and-gtk.patch\",\n      \"sha256\": \"2375fae9b29a231754a84c2adbc8ea57c1e188e742b0938740494ca60e50f9c3\"\n    },\n    {\n      \"file\": \"0004-require-complete-input-mix-observations.patch\",\n      \"sha256\": \"98009d8e98bc1c1ee355fc86790909511cbf72c986c21d256eca4c60b8204dce\"\n    },\n    {\n      \"file\": \"0005-identify-the-exact-backend-and-gtk-build.patch\",\n      \"sha256\": \"3933324f9a89ae98b038dc727a114d70f49a4f1738366140481224009513a562\"\n    },\n    {\n      \"file\": \"0006-refuse-lost-midi-input.patch\",\n      \"sha256\": \"66a7ce13e78afea7f0a36481f453fd1ff2c8512d2c1e7bebc8ec866d3875f47d\"\n    },\n    {\n      \"file\": \"0007-notify-gtk-connection-changes-only.patch\",\n      \"sha256\": \"4c304a9e1c6bd6d18f40d7798495c0f829100ef10ecdd8c65db0ae20098b5819\"\n    },\n    {\n      \"file\": \"0008-drain-writable-client-queues-before-overflow.patch\",\n      \"sha256\": \"b4224643382f7f026e985542b99e97f896fc9c7fa29828fdfd9430d8c530965a\"\n    },\n    {\n      \"file\": \"0009-bound-observation-queues-by-actual-payload-size.patch\",\n      \"sha256\": \"945143f38eb8074446d8085851bc5da6268905edff15584f86a4a1fdfcb9b0ea\"\n    },\n    {\n      \"file\": \"0010-enlarge-the-sequencer-input-pool.patch\",\n      \"sha256\": \"55987385720fa6b8d198de420b259da886dcc3677c8489c9335d9936603d811c\"\n    },\n    {\n      \"file\": \"0011-reconstruct-stereo-pan-without-singularities.patch\",\n      \"sha256\": \"78750ad964aca6a93e16f31786771ca63b0bc30e321b251af6f0ffcc07ec43b6\"\n    },\n    {\n      \"file\": \"0012-reestablish-playback-mute-with-bounded-bulk.patch\",\n      \"sha256\": \"20cb5dcb044a6fdea2ea26f54f7833206fe667c9c3963ae654c25993e579310a\"\n    },\n    {\n      \"file\": \"0013-publish-mix-coefficients-and-metadata-in-one-bulk.patch\",\n      \"sha256\": \"c5decc7a1682e6b5521d4efdcb9d1e3deb88aedc03d51fea5f60ff7046629313\"\n    },\n    {\n      \"file\": \"0014-observe-canonical-stereo-silence-from-fresh-db-floors.patch\",\n      \"sha256\": \"4d844ec2a95ca22d1bf155b315f827a2e57eaab5715038ef99aa197490758c1e\"\n    },\n    {\n      \"file\": \"0015-bind-gtk-high-damp-to-the-backend-node.patch\",\n      \"sha256\": \"dbd0101cf9438a7aa17eb3bf9c9e184a96c7d63de29e1633b9e4f3acc353b19a\"\n    },\n    {\n      \"file\": \"0016-let-an-owner-write-renew-the-lease-idle-time.patch\",\n      \"sha256\": \"ecf5f40b045863530c05243a2c6b7e851bd8535f5504f1cc6106bb06ee56b5db\"\n    },\n    {\n      \"file\": \"0017-encode-half-scale-mix-coefficients-in-the-x8-form.patch\",\n      \"sha256\": \"533cff9e422bac41e7ff0fab6bde505c42e6668976939ad38e43adfaaca5d0ce\"\n    },\n    {\n      \"file\": \"0018-apply-phase-to-the-mix-coefficients.patch\",\n      \"sha256\": \"b2c4e6953b51d2af0486e17294bbc1a1b008e202c1c353bd931de5e1df57a568\"\n    },\n    {\n      \"file\": \"0019-do-not-write-back-confirming-mix-reports.patch\",\n      \"sha256\": \"3d690980ecc54f4478c1f52b604d6072272214782554b40f4606dd2ffd12261c\"\n    }\n  ],\n  \"protocol\": \"ODK1\",\n  \"schema\": 1,\n  \"upstream\": \"89ed835ecf8118a21d1d451be7d71944fa5ec384\"\n}\n",
+  "added_patches": [
+    "0020-tolerate-durec-file-list-reports.patch"
+  ],
+  "evidence": {
+    "tests/data/coefficient-half-ucx2.json": "dd9d03a3439825d202a2a977f9962c4311c83c7aba3cb9ec833e4fbc2cd22535",
+    "tests/data/output-loopback-probes-ucx2.json": "f58f8620befe95c67eedc816d780886b24c2dcb784e36258b59fe1a2d70c7bd3",
+    "tests/data/phase-probes-ucx2.json": "445d52d484fcdd41ffbf63ea281be07617904c7b40c47cf94b0ae946b545ed1c",
+    "tests/data/playback-mute-wire-ucx2.json": "1042c568e8fef431e9ee357887f479bd64ab6516566d2fd3c7ef63631938d91c",
+    "tests/data/refresh-echo-ucx2.json": "5dea0729fd7737143ede21f3a2ba560ecbe8d41d5da41e195882bdbd1497eab4"
+  },
+  "why_the_evidence_still_holds": [
+    "oscmix.c: only resizedurecfiles, newdurecfileslen and newdurecindex change, reached only from the DURec file count and file index registers (0x3586, 0x358A)",
+    "they differ only where the backend of 0.10.1 exited: a count of zero after an index, a negative count or index, a list that could not grow",
+    "util.c: fatal() keeps errno and skips a null format; it ends the process either way",
+    "a measurement that completed ran with a backend that did not exit, so it ran no changed line"
+  ],
+  "checked": [
+    "tests/backend_mixer/durec_files.c, built with -DSURVIVING_ONLY against the prepared sources of both series: the reports 0.10.1 survived give the same list, index and messages (2026-11-15)",
+    "tests/series_carry.py: every changed line of the added patch lies in those functions"
+  ],
+  "not_claimed": [
+    "a measurement with the series that adds 0020",
+    "which DURec reports the UCX II sends, or when"
+  ]
+}
