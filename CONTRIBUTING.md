@@ -61,9 +61,9 @@ python3 scripts/verify-loopback-routes.py --evidence loopback-route-evidence.jso
 ```
 
 It writes only the loopback flags of each route's outputs and gives them back;
-`ok` and `complete` must be true and `unmeasured` empty. When the register
-model changes, also run `scripts/sweep-writes.py` and keep its result with the
-release.
+`ok` and `complete` must be true and `unmeasured` empty. Every release also
+runs `scripts/sweep-writes.py`: the release workflow requires its record for
+the tagged runtime.
 
 ## Releases
 

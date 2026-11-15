@@ -41,8 +41,11 @@ are listed in [packaging/keys/README.md](../packaging/keys/README.md).
 
 ## Keys and recovery
 
-A helper update can carry a new signing subkey; revocations are kept. To trust
-a separately authenticated certificate:
+A helper update can carry a new signing subkey; revocations are kept. On
+Debian and Ubuntu it also clears this repository's APT lists, so that apt
+authenticates them again: run `sudo apt update` once more after the helper was
+upgraded. Until then apt shows the installed packages without their repository.
+To trust a separately authenticated certificate:
 
 ```sh
 sudo oscmix-repository refresh-key --certificate /path/to/public.asc \

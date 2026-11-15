@@ -15,7 +15,7 @@
 ### Changed
 
 - A wait for the interface ends at its timeout: the last poll sleeps only until the
-  deadline instead of a whole second past it.
+  deadline instead of up to a second past it.
 - A write whose arguments do not match its type tags is refused with a warning, like a
   journal that cannot be stored, instead of being journaled cut short.
 
@@ -31,6 +31,14 @@
   to rule out. It now verifies at once and checks the whole write order. The architecture
   test parsed every test file once per public name, and the read-command tests waited out
   the production read windows although their scripted peer answers in one bundle.
+
+### Documentation
+
+- The release artifacts page says how to check a single download, such as the subscription
+  helper, against the attested checksums. The repository page says that a helper update
+  clears this repository's APT lists, so one more `apt update` follows it.
+- CONTRIBUTING says that every release runs the write sweep, as the release workflow
+  requires its record; it said so only for a changed register model.
 
 ## 0.10.1 -- 2026-11-15
 

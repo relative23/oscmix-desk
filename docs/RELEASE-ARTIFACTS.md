@@ -46,6 +46,14 @@ checksum check; a checksum without the attestation check proves nothing about
 who built the file. See the
 [GitHub CLI reference](https://cli.github.com/manual/gh_attestation_verify).
 
+To check a single file, such as the subscription helper package, download it
+together with `SHA256SUMS` and `attestation.jsonl`, verify the attestation as
+above, then check only that file:
+
+```sh
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
 ## Verification records
 
 The release workflow refuses a tag whose records do not match its files.
