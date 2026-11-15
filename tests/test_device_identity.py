@@ -107,7 +107,7 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
     monkeypatch.setattr(desk_mod, "reconcile_now", reconcile)
     monkeypatch.setattr(session_module, "supervise", supervise)
     config = profiles.load_config(path)
-    args = argparse.Namespace(timeout=0.5, dry_run=False, config=path)
+    args = argparse.Namespace(timeout=0.1, dry_run=False, config=path)  # found at once if present
     code = session_module.run_session(args, config)
     return code, config, notified
 

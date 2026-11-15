@@ -14,6 +14,9 @@ from pathlib import Path
 from .errors import DeviceAmbiguous
 from .log import log
 
+#: How often a waiting start looks for the interface's sequencer client again.
+DEVICE_POLL_SECONDS = 1.0
+
 _CLIENT_RE = re.compile(r'^Client\s+(\d+)\s*:\s*"(.*)"', re.MULTILINE)
 
 
@@ -326,9 +329,11 @@ def wait_for_device(usb_id: str, device_name: str, serial: str,
                 return device
         else:
             _trigger_snd_seq_load()
-        if time.monotonic() >= deadline:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
             return None
-        time.sleep(1.0)
+        # The last sleep ends at the deadline: the wait lasts its timeout, not a poll longer.
+        time.sleep(min(DEVICE_POLL_SECONDS, remaining))
 
 def resolve_binary(name: str, env_var: str) -> str | None:
     """Locate a binary: env override, then ~/.local/bin, then PATH.

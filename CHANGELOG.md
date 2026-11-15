@@ -4,6 +4,8 @@
 
 ### Changed
 
+- A wait for the interface ends at its timeout: the last poll sleeps only until the
+  deadline instead of a whole second past it.
 - A write whose arguments do not match its type tags is refused with a warning, like a
   journal that cannot be stored, instead of being journaled cut short.
 

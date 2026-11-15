@@ -170,8 +170,11 @@ def test_the_serial_comes_from_the_client_when_the_card_list_is_unreadable(
     assert resolve_device("2a39:3fd9", "Fireface UCX II", "", proc) == \
         Device(usb_id="2a39:3fd9", serial=B[1], client=B[0])
 
-def test_waiting_returns_the_device_once_its_client_comes_up(tmp_path):
+def test_waiting_returns_the_device_once_its_client_comes_up(tmp_path, monkeypatch):
+    from oscmix_desk import discovery
     from oscmix_desk.discovery import wait_for_device
+
+    monkeypatch.setattr(discovery, "DEVICE_POLL_SECONDS", 0.05)
 
     proc = fake_proc(tmp_path, boxes=[B])
     clients = proc / "asound" / "seq" / "clients"

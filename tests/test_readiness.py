@@ -71,7 +71,9 @@ def test_wait_for_device_gives_up_and_says_so(session_mod, tmp_path):
     started = time.monotonic()
     assert discovery.wait_for_device("2a39:3fd9", "Fireface UCX II", "",
                                        0.5, proc) is None
-    assert time.monotonic() - started >= 0.4
+    elapsed = time.monotonic() - started
+    assert elapsed >= 0.4
+    assert elapsed < 0.9, "the wait ended a poll after its deadline (%.2f s)" % elapsed
 
 
 def test_wait_for_device_tolerates_a_missing_proc_file(session_mod, tmp_path):
