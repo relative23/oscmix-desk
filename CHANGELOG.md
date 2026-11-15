@@ -6,11 +6,13 @@
 
 - `scripts/verify-loopback-routes.py` shows each declared playback route by sound: a left
   and a right tone into the route's sink must land, with output loopback on its output pair,
-  on the odd and on the even capture channel with 30 dB between them, and the loopback state
-  is given back. The release requires its record, `loopback-route-evidence.json`, beside the
-  hardware evidence, and `release.yml` checks it against the tagged runtime, the backend
-  series and the routes of the hardware evidence. 0.9.0 attached such a record by hand;
-  0.10.0 and 0.10.1 went out without one, because nothing asked for it.
+  on the odd and on the even capture channel with 30 dB between them. The device does not
+  report the loopback flags either, so the tool measures each one before and after the
+  route, where a live microphone on the capture channel cannot pass for loopback, and gives
+  it back to its own state. The release requires its record, `loopback-route-evidence.json`,
+  beside the hardware evidence, and `release.yml` checks it against the tagged runtime, the
+  backend series and the routes of the hardware evidence. 0.9.0 attached such a record by
+  hand; 0.10.0 and 0.10.1 went out without one, because nothing asked for it.
 
 ### Changed
 

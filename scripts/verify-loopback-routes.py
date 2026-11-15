@@ -6,9 +6,12 @@ right-only 1 kHz tone go into the PipeWire sink that feeds the route's playback 
 `/output/N/loopback 1` on the route's output pair the capture channels of those outputs carry
 what the outputs carry. A stereo route passes when the left tone stands on the odd output's
 capture channel at least MARGIN_DB above the even one, and the right tone the other way round.
-Before a route the loopback state of its outputs is measured (the tone on the odd capture
-channel or not), given back afterwards and measured again. The only register writes are the
-loopback flags; a sink quieter than 1.0 is raised for the run and given back.
+The device does not report the loopback flags either, so before a route each output's flag is
+measured: on where the output's own tone stands MARGIN_DB above a silent window and above the
+other side's tone on its capture channel. A live input on that channel, such as a microphone,
+is loud in every window or in none, so it does not pass for loopback. Each flag is given back
+to its own state and measured again. The only register writes are the loopback flags; a sink
+quieter than 1.0 is raised for the run and given back.
 
 Run after the user's hardware go: UCX on, monitors off, headphones unplugged, 48 V off. The
 record names the box by device_pseudonym, with the placeholder where its serial would stand.
@@ -42,10 +45,9 @@ SCHEMA = 2
 TONE_HZ = 1000.0
 TONE_SECONDS = 3.0
 TONE_DBFS = -20.0
-#: The tone stands this far above the other capture channel of the pair.
+#: The tone stands this far above the other capture channel of the pair, and a looped
+#: output's own tone this far above the silent window and the other side's tone.
 MARGIN_DB = 30.0
-#: Below this a capture channel carries no tone, so loopback is off on its output.
-QUIET_DBFS = -90.0
 SAMPLES = 16384
 EXIT_SKIP = 77
 TOOLS = ("pw-play", "pw-record", "pw-dump", "wpctl")
@@ -100,18 +102,35 @@ def carried(levels, wanted, other):
     return level is not None and (rest is None or level - rest >= MARGIN_DB)
 
 
-def quiet(levels, output):
-    level = levels[str(output)]
-    return level is None or level < QUIET_DBFS
+def level(levels, output):
+    """The tone's level on an output's capture channel; minus infinity where there is none."""
+    value = levels[str(output)]
+    return -math.inf if value is None else value
+
+
+def looped(windows, output, side, other):
+    """Loopback on at ``output``: the tone of its own ``side`` comes back on its capture
+    channel MARGIN_DB above the silent window and above the ``other`` side's tone. With
+    loopback off that channel carries the input, and an input that carries the tone, a
+    microphone in a room with the monitors on, carries both sides of it."""
+    own = level(windows[side], output)
+    return (own - level(windows["silence"], output) >= MARGIN_DB
+            and own - level(windows[other], output) >= MARGIN_DB)
+
+
+def states(windows, outputs):
+    """The loopback flag of each output of the pair as measured: 1 on, 0 off."""
+    odd, even = outputs
+    return {str(odd): int(looped(windows, odd, "left", "right")),
+            str(even): int(looped(windows, even, "right", "left"))}
 
 
 def verdict(row):
-    """Left on the odd output, right on the even one, and the loopback state given back:
-    the odd capture channel silent before and after, unless loopback was on already."""
+    """Left on the odd output, right on the even one, and each output's loopback flag
+    measured the same after the route as before it."""
     odd, even = row["output"]
     return (carried(row["left"], odd, even) and carried(row["right"], even, odd)
-            and (row["loopback_before"] == 1
-                 or (quiet(row["before"], odd) and quiet(row["after"], odd))))
+            and row["loopback_after"] == row["loopback_before"])
 
 
 def sink_volume(name):
@@ -130,7 +149,11 @@ def set_volume(node, volume):
 
 
 def played(probe, connection, node, sink, wav):
-    """Every capture channel while ``wav`` plays into ``sink``, keeping the lease."""
+    """Every capture channel while ``wav`` plays into ``sink``, keeping the lease; with
+    ``wav`` None, while nothing plays."""
+    if wav is None:
+        probe.drain(connection, 0.6)
+        return probe.record(connection, node)
     player = subprocess.Popen(["pw-play", "--target", sink, str(wav)],
                               stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     try:
@@ -138,6 +161,13 @@ def played(probe, connection, node, sink, wav):
         return probe.record(connection, node)
     finally:
         player.wait(timeout=TONE_SECONDS + 10)
+
+
+def windows(probe, connection, node, sink, wavs, outputs):
+    """The tone's level on the pair's capture channels with nothing played, then with the
+    left and with the right tone."""
+    return {name: tone_levels(played(probe, connection, node, sink, wavs.get(name)), outputs)
+            for name in ("silence", "left", "right")}
 
 
 def measure(probe, config, path, route, sink, wavs, node):
@@ -148,22 +178,22 @@ def measure(probe, config, path, route, sink, wavs, node):
     if sink is None or len(outputs) != 2:
         row["reason"] = "no stereo sink or output pair"
         return row
-    flags = ["/output/%d/loopback" % n for n in outputs]
     with open_desk(config, path) as desk:
         connection = desk._begin()
-        row["before"] = tone_levels(played(probe, connection, node, sink, wavs["left"]), outputs)
-        given = 0 if quiet(row["before"], outputs[0]) else 1
-        row["loopback_before"] = given
-        connection.send([(flag, "i", (1,)) for flag in flags])
+        row["before"] = windows(probe, connection, node, sink, wavs, outputs)
+        given = row["loopback_before"] = states(row["before"], outputs)
+        connection.send([("/output/%d/loopback" % n, "i", (1,)) for n in outputs])
         try:
             probe.drain(connection, 0.4)
             for side in ("left", "right"):
                 row[side] = tone_levels(played(probe, connection, node, sink, wavs[side]),
                                         outputs)
         finally:
-            connection.send([(flag, "i", (given,)) for flag in flags])
+            connection.send([("/output/%d/loopback" % n, "i", (given[str(n)],))
+                             for n in outputs])
             probe.drain(connection, 0.4)
-        row["after"] = tone_levels(played(probe, connection, node, sink, wavs["left"]), outputs)
+        row["after"] = windows(probe, connection, node, sink, wavs, outputs)
+        row["loopback_after"] = states(row["after"], outputs)
     row["ok"] = verdict(row)
     return row
 
