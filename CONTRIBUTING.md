@@ -32,6 +32,12 @@ versions before they start. Remove `mutants/` before a mutation run that
 should count as a fresh measurement; the score floor is in
 `quality/mutation-baseline.json`.
 
+A test that replaces a function of this project uses `signed(real, value)` (or
+`body=` for a value made on each call) from `tests/support.py`, which takes
+exactly the real function's arguments; `tests/test_doubles_signed.py` refuses a
+`lambda *args` in its place. Source files stay within 500 lines
+(`tests/test_file_size.py`).
+
 Distribution builds run in Docker from a clean commit, as in CI:
 
 ```sh

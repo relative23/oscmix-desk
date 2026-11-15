@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from session_doubles import RunningChild
-from support import device_key, fake_proc, write_config
+from support import device_key, fake_proc, signed, write_config
 
 from oscmix_desk import cli, locking, profiles, session
 from oscmix_desk import desk as desk_mod
@@ -80,8 +80,10 @@ def test_strict_profile_api_refuses_before_lock_connection_and_marker_changes(
     marker.write_text("previous\n")
     if selection == "restore" and not bad_main:
         path.write_text(DEVICE + GOOD + TYPO)
-    monkeypatch.setattr(desk_mod, "device_lock", lambda *_a, **_k: pytest.fail("took a lock"))
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: pytest.fail("connected"))
+    monkeypatch.setattr(desk_mod, "device_lock",
+                        signed(desk_mod.device_lock, body=lambda: pytest.fail("took a lock")))
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, body=lambda: pytest.fail("connected")))
     monkeypatch.setattr(profiles, "reload_service", lambda: pytest.fail("reloaded"))
     outcome = (profiles.switch_profile("tracking", path, recording_backend,
                                        verify=False, strict=True) if selection == "switch"
@@ -125,9 +127,13 @@ def test_strict_cli_and_preview_refuse_the_same_ignored_target(
         path.write_text(DEVICE + GOOD + TYPO)
     marker = path.with_name("active-profile")
     marker.write_text("previous\n")
-    monkeypatch.setattr(cli, "run_session", lambda *_: pytest.fail("started device discovery"))
-    monkeypatch.setattr(desk_mod, "device_lock", lambda *_a, **_k: pytest.fail("took a lock"))
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: pytest.fail("connected"))
+    monkeypatch.setattr(cli, "run_session",
+                        signed(cli.run_session,
+                               body=lambda: pytest.fail("started device discovery")))
+    monkeypatch.setattr(desk_mod, "device_lock",
+                        signed(desk_mod.device_lock, body=lambda: pytest.fail("took a lock")))
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, body=lambda: pytest.fail("connected")))
     monkeypatch.setattr(profiles, "reload_service", lambda: pytest.fail("reloaded"))
     assert cli.main(["--config", str(path), "--strict", *selection,
                      *(["--dry-run"] if dry_run else [])]) == 2
@@ -147,7 +153,8 @@ def test_strict_explicit_selection_can_recover_an_unusable_active_profile(
     marker.write_text("missing\n")
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(fake_proc(
         tmp_path / "proc", boxes=[(24, "12345678")])))
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: confirming_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, confirming_backend))
     previews = []
     monkeypatch.setattr(cli, "run_session", lambda args, config: previews.append(config) or 0)
     assert cli.main(["--config", str(path), "--strict", *selection,
@@ -171,7 +178,8 @@ def test_strict_start_rereads_after_lock_wait_and_never_reports_ready_for_a_bad_
     stopped, notices = [], []
     monkeypatch.setattr(session, "_stop_child", stopped.append)
     monkeypatch.setattr(session, "sd_notify", notices.append)
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: pytest.fail("connected"))
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, body=lambda: pytest.fail("connected")))
     held = locking.take_device_lock(path, device_key(path))
     assert held is not None
 
@@ -217,7 +225,8 @@ def test_strict_sighup_keeps_the_running_desk_without_connecting_or_writing(
         path.with_name("active-profile").write_text("later\n")
     notices = []
     monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: pytest.fail("connected"))
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, body=lambda: pytest.fail("connected")))
     reload_mod._reconcile(argparse.Namespace(config=path, strict=True), running, {"stop": False})
     assert "reconcile skipped" in notices[-1]
     after = locking.take_device_lock(path, device_key(path), wait=0.1)
@@ -244,9 +253,12 @@ def test_check_strictly_validates_all_files_offline(
     elif bad == "broken-entry":
         (tmp_path / "profiles/broken.conf").symlink_to("absent")
     original_marker = marker.read_text()
-    monkeypatch.setattr(cli, "run_session", lambda *_: pytest.fail("device discovery"))
-    monkeypatch.setattr(desk_mod, "device_lock", lambda *_a, **_k: pytest.fail("took a lock"))
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: pytest.fail("connected"))
+    monkeypatch.setattr(cli, "run_session",
+                        signed(cli.run_session, body=lambda: pytest.fail("device discovery")))
+    monkeypatch.setattr(desk_mod, "device_lock",
+                        signed(desk_mod.device_lock, body=lambda: pytest.fail("took a lock")))
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, body=lambda: pytest.fail("connected")))
     monkeypatch.setattr(profiles, "reload_service", lambda: pytest.fail("reloaded"))
     assert cli.main(["--config", str(path), "--check"]) == (0 if bad is None else 2)
     output = capsys.readouterr().out
@@ -277,7 +289,8 @@ def test_check_does_not_report_success_when_the_profile_directory_cannot_be_read
 
 def test_check_without_a_main_config_refuses_before_device_discovery(monkeypatch):
     monkeypatch.setattr(cli, "discover_config_path", lambda: None)
-    monkeypatch.setattr(cli, "run_session", lambda *_: pytest.fail("device discovery"))
+    monkeypatch.setattr(cli, "run_session",
+                        signed(cli.run_session, body=lambda: pytest.fail("device discovery")))
     assert cli.main(["--check"]) == 2
 
 

@@ -5,7 +5,7 @@ on, or refused as a desk for somewhere else.
 import argparse
 
 import pytest
-from support import started_with, write_config
+from support import signed, started_with, write_config
 from two_boxes import DESK, lock_dir
 
 from oscmix_desk import CommandLine, profiles
@@ -55,7 +55,8 @@ def test_a_reconcile_that_ends_early_says_whether_it_wrote(
     def fails(*_a, **_k):
         raise failure
 
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     monkeypatch.setattr(desk_mod, "reconcile_now", fails)
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
@@ -98,8 +99,9 @@ def test_a_reconcile_whose_lease_cannot_be_finished_after_writing_is_incomplete(
         raise ReceivePortError(71, "backend operation did not finish")
 
     monkeypatch.setattr(recording_backend, "finish", finish)
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
-    monkeypatch.setattr(desk_mod, "reconcile_now", lambda *_a: True)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
+    monkeypatch.setattr(desk_mod, "reconcile_now", signed(desk_mod.reconcile_now, True))
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
     lock_dir(tmp_path, monkeypatch)
@@ -405,7 +407,8 @@ def test_a_start_gives_its_notices_about_the_desk_it_applies(
     path = write_config(tmp_path / "routing.conf",
                         "[device]\nname = Some Box\n")
     started = profiles.load_config(path)
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     applied = []
     monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda config, *a, **k: applied.append(config))

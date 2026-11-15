@@ -5,6 +5,7 @@ import struct
 
 import pytest
 from backend_doubles import RecordingBackend
+from support import signed
 
 from oscmix_desk import dump, numeric, reads, reconcile, routing, verify
 from oscmix_desk.config import load_config
@@ -141,8 +142,8 @@ def test_an_invalid_gain_report_is_not_an_active_config(value):
 def test_snapshot_keeps_sub_tenth_changes_visible(monkeypatch, capsys):
     path = "/output/1/roomeq/delay"
     value = struct.unpack("!f", struct.pack("!f", .001))[0]
-    monkeypatch.setattr(reads, "_read_device", lambda *_args: reads.DeviceRead(
-        {path: (value,)}, "00000000", "00" * 16))
+    monkeypatch.setattr(reads, "_read_device", signed(reads._read_device, body=lambda: (
+        reads.DeviceRead({path: (value,)}, "00000000", "00" * 16))))
     assert reads._snapshot(Config()) == 0
     row = capsys.readouterr().out.splitlines()[-1]
     assert row.startswith(path + " ")

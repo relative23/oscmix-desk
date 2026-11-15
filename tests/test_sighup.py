@@ -7,7 +7,7 @@ desk, and what is re-read keeps the machine the session runs on.
 
 import pytest
 from reconcile_desk import CONF, routes_file
-from support import repo_file, started_with
+from support import repo_file, signed, started_with
 
 from oscmix_desk import desk as desk_mod
 from oscmix_desk import reload as reload_mod
@@ -17,7 +17,8 @@ from oscmix_desk import reload as reload_mod
 def operation(monkeypatch, recording_backend):
     # These tests drive signal/configuration orchestration; the actual
     # connection and lease are covered with competing real processes.
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
 
 
 def test_the_signal_handler_only_sets_a_flag():

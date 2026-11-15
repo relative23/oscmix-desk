@@ -14,6 +14,7 @@ import time
 
 import pytest
 from control_peer import KEEPALIVE
+from support import signed
 from two_boxes import B
 
 from oscmix_desk import ApplyIntent, ChannelSetting, Config, open_desk
@@ -35,7 +36,8 @@ def declared():
 def connected(monkeypatch, recording_backend):
     monkeypatch.setattr(desk_mod, "_target",
                         lambda config, reach: Device(config.usb_id, B[1], B[0]))
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     return recording_backend
 
 

@@ -10,7 +10,7 @@ import logging
 
 import pytest
 from session_doubles import RunningChild
-from support import device_key, write_config
+from support import device_key, signed, write_config
 
 from oscmix_desk import desk as desk_mod
 from oscmix_desk import locking
@@ -63,8 +63,8 @@ def test_a_failing_backend_with_its_device_present_fails_the_service(
 @pytest.fixture
 def start(tmp_path, monkeypatch, recording_backend):
     path = write_config(tmp_path / "routing.conf", DESK)
-    monkeypatch.setattr(desk_mod, "apply_routing", lambda *_a, **_k: None)
-    monkeypatch.setattr(desk_mod, "verify_and_repair", lambda *_a, **_k: None)
+    monkeypatch.setattr(desk_mod, "apply_routing", signed(desk_mod.apply_routing))
+    monkeypatch.setattr(desk_mod, "verify_and_repair", signed(desk_mod.verify_and_repair))
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
     return path
 
@@ -125,7 +125,8 @@ def test_a_verifier_thread_that_cannot_start_releases_startup_ownership(
         def start(self):
             raise RuntimeError("thread cannot start")
 
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     monkeypatch.setattr(session_module.threading, "Thread", Unstartable)
     with pytest.raises(RuntimeError, match="thread cannot start"):
         session_module._apply_and_verify(RunningChild(), load_config(start),
@@ -154,7 +155,8 @@ def test_a_failed_operation_closes_its_connection_and_releases_the_lock(
         recording_backend.operations.append("begin")
         raise OSError(16, "another client holds the backend operation lease")
 
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     monkeypatch.setattr(recording_backend, "begin", busy)
     with pytest.raises(OSError, match="lease"):
         session_module._apply_and_verify(RunningChild(), load_config(start),
@@ -167,7 +169,8 @@ def test_a_start_without_a_runtime_directory_locks_beside_its_desk(
         start, monkeypatch, tmp_path, recording_backend):
     monkeypatch.setenv("OSCMIX_LOCK_DIR", str(tmp_path / "absent"))
     monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     during = []
     monkeypatch.setattr(desk_mod, "apply_routing",
                         lambda *_a, **_k: during.append(_free(start)))

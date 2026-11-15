@@ -9,7 +9,7 @@ the session runs would be refused or replaced by the start's copy.
 import argparse
 
 import pytest
-from support import started_with, write_config
+from support import signed, started_with, write_config
 from two_boxes import lock_dir
 
 from oscmix_desk import CommandLine, profiles
@@ -101,7 +101,7 @@ def sighup(tmp_path, monkeypatch, recording_backend):
 def test_a_reconcile_connects_for_its_desk_and_can_be_stopped_while_connecting(
         sighup, monkeypatch, recording_backend):
     run, path, connected, stop = sighup
-    monkeypatch.setattr(desk_mod, "reconcile_now", lambda *_a: True)
+    monkeypatch.setattr(desk_mod, "reconcile_now", signed(desk_mod.reconcile_now, True))
     assert run() == "reconciled"
     [(config_path, options)] = connected
     assert config_path == path

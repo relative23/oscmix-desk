@@ -14,6 +14,7 @@ import oracle
 import pytest
 from backend_doubles import RecordingBackend
 from oscmix_fakes import make_config, make_route
+from support import signed
 
 from oscmix_desk import reconcile, routing
 from oscmix_desk import routing as routing_api
@@ -262,7 +263,7 @@ def test_a_backend_that_updates_link_state_on_write_needs_no_barrier(
 ])
 def test_silence_and_confirmation_are_reported_distinctly(
         session_mod, silent_backend, routing_mod, monkeypatch, caplog, echo, said):
-    monkeypatch.setattr(routing_mod, "await_link_echo", lambda *a, **k: echo)
+    monkeypatch.setattr(routing_mod, "await_link_echo", signed(routing_mod.await_link_echo, echo))
     monkeypatch.setattr(routing_mod, "LINK_ECHO_TIMEOUT", 1.5)
     config = make_config(session_mod, [make_route(session_mod)], 7222, 8222)
     with caplog.at_level("INFO"):

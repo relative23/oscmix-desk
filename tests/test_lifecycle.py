@@ -11,6 +11,7 @@ one integration test. Here they are the assertion.
 
 import pytest
 from session_doubles import RunningChild, ready_count
+from support import signed
 
 from oscmix_desk import desk as desk_mod
 
@@ -157,7 +158,8 @@ def test_a_config_without_routes_is_still_applied(session_module, monkeypatch, r
     from oscmix_desk import ChannelSetting, Config
     from oscmix_desk.model import GlobalSetting
 
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     applied = []
     verified = []
     notices = []

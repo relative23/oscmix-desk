@@ -17,7 +17,7 @@ import itertools
 import struct
 
 import pytest
-from support import repo_file
+from support import repo_file, signed
 
 from oscmix_desk import registers as R
 from oscmix_desk.errors import DeviceAmbiguous
@@ -868,7 +868,7 @@ def test_a_real_pass_records_requested_wire_and_actual_report(sweep, monkeypatch
         def send(self, messages, **_options):
             sent.extend(messages)
 
-    monkeypatch.setattr(sweep, "read_all", lambda *_args: next(states))
+    monkeypatch.setattr(sweep, "read_all", signed(sweep.read_all, body=lambda: next(states)))
     monkeypatch.setattr(sweep.time, "sleep", lambda _s: None)
     attempts = {path: []}
     after, settled = sweep._pass(Device(), None, [(path, register)], before, 0, attempts)
@@ -906,7 +906,7 @@ def test_an_interrupted_probe_still_restores_and_reports_failure(sweep, monkeypa
         raise exception
 
     monkeypatch.setattr(sweep, "sweep", fails)
-    monkeypatch.setattr(sweep, "read_all", lambda *_args: dict(state))
+    monkeypatch.setattr(sweep, "read_all", signed(sweep.read_all, body=lambda: dict(state)))
     monkeypatch.setattr(sweep.time, "sleep", lambda _s: None)
     findings, after, unrestored, error = sweep.measure_and_restore(Device(), None, [], before)
     assert findings == []
@@ -917,7 +917,7 @@ def test_an_interrupted_probe_still_restores_and_reports_failure(sweep, monkeypa
 
 def test_failed_restoration_does_not_claim_an_unchanged_device(sweep, monkeypatch):
     before = {"/output/1/eq/band1gain": 0.}
-    monkeypatch.setattr(sweep, "sweep", lambda *_args: [])
+    monkeypatch.setattr(sweep, "sweep", signed(sweep.sweep, []))
 
     def disconnected(*_args):
         raise ValueError("lost identity")
@@ -933,7 +933,7 @@ def test_replaced_backend_cannot_receive_a_restore(sweep, monkeypatch, coordinat
     from oscmix_desk.discovery import Device
 
     interface = Device("2a39:3fd9", "99887766", 28)
-    monkeypatch.setattr(sweep, "build_evidence", lambda *_args: {})
+    monkeypatch.setattr(sweep, "build_evidence", signed(sweep.build_evidence, {}))
     with coordinated() as peer:
         backend = sweep.CheckedBackend(interface, None, None, peer.proc)
         try:

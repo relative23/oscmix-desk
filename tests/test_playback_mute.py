@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 from backend_doubles import RecordingBackend
+from support import signed
 
 from oscmix_desk import config as config_mod
 from oscmix_desk import desk, dump, profiles, reconcile, routing, session, streams, verify
@@ -323,7 +324,7 @@ def test_retained_output_pin_unknown_or_wrong_cannot_finish_verified(
         reports.append(("/output/1/stereo", "i", (reported,)))
     backend = RecordingBackend(lambda _sent: reports)
     monkeypatch.setattr(verify, "VERIFY_TIMEOUT", .002)
-    monkeypatch.setattr(verify, "wait_unless_stopped", lambda *args: False)
+    monkeypatch.setattr(verify, "wait_unless_stopped", signed(verify.wait_unless_stopped, False))
     completed = (verify.verify_and_repair(config, backend) if operation == "repair"
                  else verify.reconcile_now(config, "retained mute regression", backend))
     assert completed is False
@@ -406,10 +407,10 @@ def phase_dependencies():
 def phase_guards(monkeypatch):
     calls = []
     monkeypatch.setattr(routing.PlaybackGuard, "check", lambda self: calls.append("guard"))
-    monkeypatch.setattr(prechecks_mod, "read_dependencies", lambda *_a, **_k: phase_dependencies())
-    monkeypatch.setattr(
-        routing, "_cross_the_barrier", lambda *args, **kwargs: calls.append("barrier")
-    )
+    monkeypatch.setattr(prechecks_mod, "read_dependencies",
+                        signed(prechecks_mod.read_dependencies, body=phase_dependencies))
+    monkeypatch.setattr(routing, "_cross_the_barrier",
+                        signed(routing._cross_the_barrier, body=lambda: calls.append("barrier")))
     return calls
 
 

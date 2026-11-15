@@ -26,7 +26,7 @@ from backend_doubles import (
     echo_link_flags_only,
     echo_within_traits,
 )
-from support import PROJECT_ROOT, remove_short_directories, short_directory
+from support import PROJECT_ROOT, remove_short_directories, short_directory, signed
 
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
@@ -222,8 +222,8 @@ def _no_real_systemctl(monkeypatch):
 
     _REAL.setdefault("_systemctl", process._systemctl)
     _REAL.setdefault("_systemctl_output", process._systemctl_output)
-    monkeypatch.setattr(process, "_systemctl", lambda *verb: 1)
-    monkeypatch.setattr(process, "_systemctl_output", lambda *verb: None)
+    monkeypatch.setattr(process, "_systemctl", signed(process._systemctl, 1))
+    monkeypatch.setattr(process, "_systemctl_output", signed(process._systemctl_output))
 
 
 @pytest.fixture(autouse=True)

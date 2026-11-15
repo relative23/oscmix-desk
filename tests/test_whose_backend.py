@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from support import signed
 from two_boxes import DESK, unit
 
 from oscmix_desk import outcome as outcome_mod
@@ -98,7 +99,8 @@ def test_a_switch_of_another_desk_does_not_reload_the_unit(tmp_path, monkeypatch
     unit_desk.parent.mkdir()
     unit_desk.write_text(DESK)
     monkeypatch.setattr(profiles, "unit_process", unit())
-    monkeypatch.setattr(profiles, "discover_config_path", lambda *a: unit_desk)
+    monkeypatch.setattr(profiles, "discover_config_path",
+                        signed(profiles.discover_config_path, unit_desk))
     assert profiles._hand_over_to_the_unit(outcome, tmp_path / "other.conf") == outcome
     assert reloads == []
     assert profiles._hand_over_to_the_unit(outcome, unit_desk) == outcome
@@ -132,7 +134,7 @@ def test_the_reload_follows_the_unit_s_environment_not_the_shell_s(
     assert profiles._hand_over_to_the_unit(outcome, unit_desk) == outcome
     assert reloads == [1]
     # No unit process to read: reload as before.
-    monkeypatch.setattr(profiles, "unit_process", lambda *a: None)
+    monkeypatch.setattr(profiles, "unit_process", signed(profiles.unit_process))
     assert profiles._hand_over_to_the_unit(outcome, other) == outcome
     assert reloads == [1, 1]
     capsys.readouterr()
@@ -298,7 +300,7 @@ def test_the_unit_s_main_pid_is_asked_for_exactly(tmp_path, monkeypatch):
     (entry / "cmdline").write_bytes(b"x\0")
     (entry / "environ").write_bytes(b"OSCMIX_CONFIG=/a=b/routing.conf\0")
     (entry / "cwd").symlink_to(tmp_path)
-    monkeypatch.setattr(process, "_systemctl_output", lambda *verb: "4242\n")
+    monkeypatch.setattr(process, "_systemctl_output", signed(process._systemctl_output, "4242\n"))
     assert process.unit_process(tmp_path).environ == {
         "OSCMIX_CONFIG": "/a=b/routing.conf"}
 

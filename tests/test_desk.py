@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 from control_peer import BEGIN, END, HELLO, REFRESH
-from support import write_config
+from support import signed, write_config
 from two_boxes import B
 
 from oscmix_desk import (
@@ -45,7 +45,8 @@ def connected(monkeypatch, recording_backend):
     """Substitute transport for fault injection; keep real file ownership."""
     monkeypatch.setattr(desk_mod, "_target",
                         lambda config, reach: Device(config.usb_id, B[1], B[0]))
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     return recording_backend
 
 
@@ -248,7 +249,8 @@ def test_opening_error_survives_cleanup_of_a_supplied_connection(
 
 
 def test_lock_refusal_never_connects(monkeypatch, connected):
-    monkeypatch.setattr(desk_mod, "device_lock", lambda *_a, **_k: "lock is unavailable")
+    monkeypatch.setattr(desk_mod, "device_lock",
+                        signed(desk_mod.device_lock, "lock is unavailable"))
     with pytest.raises(DeviceLockUnavailable, match="lock is unavailable"), open_desk(declared()):
         pytest.fail("no operation without ownership")
     assert connected.operations == []
@@ -308,7 +310,8 @@ def test_cancelled_apply_returns_incomplete_and_disconnects(monkeypatch, connect
 
 
 def test_stop_during_the_settle_wait_disconnects_without_end(monkeypatch, connected):
-    monkeypatch.setattr(desk_mod, "wait_unless_stopped", lambda *_args: True)
+    monkeypatch.setattr(desk_mod, "wait_unless_stopped",
+                        signed(desk_mod.wait_unless_stopped, True))
     with open_desk(declared()) as operation:
         operation._begin()
         assert operation._wait(0) is True

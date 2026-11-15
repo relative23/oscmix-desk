@@ -10,7 +10,7 @@ landed at 53% on cli.py and was found by the gate, on a push.
 """
 
 import pytest
-from support import fake_proc, free_udp_port, write_config
+from support import fake_proc, free_udp_port, signed, write_config
 from two_boxes import DESK
 
 from oscmix_desk import cli, profiles
@@ -436,7 +436,7 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
     (0.6.3). But a second review is right that it is a guess."""
 
     monkeypatch.setattr(profiles, "reload_service", lambda: profiles.RELOAD_DONE)
-    monkeypatch.setattr(profiles, "unit_process", lambda *_a: None)
+    monkeypatch.setattr(profiles, "unit_process", signed(profiles.unit_process))
     applied = outcome_mod.Outcome(state=outcome_mod.APPLIED_UNVERIFIED, name="x",
                                reason=outcome_mod.NOT_CHECKED, persisted=True, durable=True)
     with caplog.at_level("WARNING"):
@@ -451,15 +451,14 @@ def test_a_reload_sent_without_knowing_the_unit_s_desk_says_it_guessed(
     for argv, guessed in ((("oscmix-session",), False),
                           (("oscmix-session", "--timeout", "abc"), True)):
         caplog.clear()
-        monkeypatch.setattr(profiles, "unit_process", lambda *_a, argv=argv:
-                            UnitProcess(argv=argv, cwd=tmp_path, environ={
-                                "HOME": str(tmp_path / "none")}))
+        monkeypatch.setattr(profiles, "unit_process", signed(profiles.unit_process, UnitProcess(
+            argv=argv, cwd=tmp_path, environ={"HOME": str(tmp_path / "none")})))
         with caplog.at_level("WARNING"):
             profiles._hand_over_to_the_unit(applied, tmp_path / "routing.conf")
         assert ("could not tell" in caplog.text) is guessed, argv
     # Nor was a unit that is not running guessed about.
     caplog.clear()
-    monkeypatch.setattr(profiles, "unit_process", lambda *_a: None)
+    monkeypatch.setattr(profiles, "unit_process", signed(profiles.unit_process))
     monkeypatch.setattr(profiles, "reload_service", lambda: profiles.RELOAD_NOT_RUNNING)
     with caplog.at_level("WARNING"):
         profiles._hand_over_to_the_unit(applied, tmp_path / "routing.conf")
@@ -471,7 +470,8 @@ def test_an_empty_profile_name_is_a_refused_switch_not_a_start(
     """`--profile ''` was falsy, fell through every action, and started
     the service; with --list-profiles it listed (0.6.9)."""
     started = []
-    monkeypatch.setattr(cli, "run_session", lambda *a: started.append(1) or 0)
+    monkeypatch.setattr(cli, "run_session",
+                        signed(cli.run_session, body=lambda: started.append(1) or 0))
     path = write_config(tmp_path / "routing.conf", DESK)
     assert cli.main(["--config", str(path), "--profile", ""]) == cli.EXIT_CONFIG
     assert started == []

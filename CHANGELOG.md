@@ -51,7 +51,8 @@
   lacked the link state every device reports, so it passed on the retry path it was meant
   to rule out. It now verifies at once and checks the whole write order. The architecture
   test parsed every test file once per public name, and the read-command tests waited out
-  the production read windows although their scripted peer answers in one bundle.
+  the production read windows although their scripted peer answers in one bundle. On the
+  same host the suite takes 191 s instead of 249 s, with 59 tests more.
 - The evidence rules of `release.yml` run in CI (`tests/test_release_evidence.py`): a
   consistent draft passes, and each record that breaks a rule is refused, the loopback rules
   among them. They ran only at a release before.
@@ -59,6 +60,9 @@
   the retention and gain prechecks, the AutoSet-off exemption, an input link kept under live
   AutoSet, the peak-safe path, the lease during the retry's settle wait, and the repair of an
   owned playback mute. The mutation run of 0.10.1 left each of them unguarded.
+- Test doubles take the arguments of what they replace (`signed` in `tests/support.py`): 78
+  doubles that took any arguments let a caller drop or misname one unnoticed, and
+  `tests/test_doubles_signed.py` refuses a new one.
 
 ### Documentation
 

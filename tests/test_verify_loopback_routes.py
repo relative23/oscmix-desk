@@ -15,7 +15,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-from support import repo_file
+from support import repo_file, signed
 from two_boxes import B
 
 sys.path.insert(0, str(repo_file("scripts")))
@@ -105,10 +105,12 @@ def run(tool, monkeypatch, tmp_path, box, volumes):
     machine.write_text("0123456789abcdef0123456789abcdef\n")
     monkeypatch.setattr(measurement, "MACHINE_ID_FILES", (machine,))
     desk = SimpleNamespace(_control=SimpleNamespace(pid=1), _begin=lambda: box)
-    monkeypatch.setattr(tool, "open_desk", lambda *a: contextlib.nullcontext(desk))
-    monkeypatch.setattr(tool, "build_evidence", lambda *a: {"upstream": "a" * 40,
-                                                            "series_sha256": "b" * 64})
-    monkeypatch.setattr(tool, "resolve_device", lambda *a: SimpleNamespace(serial=B[1]))
+    monkeypatch.setattr(tool, "open_desk",
+                        signed(tool.open_desk, body=lambda: contextlib.nullcontext(desk)))
+    monkeypatch.setattr(tool, "build_evidence", signed(tool.build_evidence, {
+        "upstream": "a" * 40, "series_sha256": "b" * 64}))
+    monkeypatch.setattr(tool, "resolve_device",
+                        signed(tool.resolve_device, body=lambda: SimpleNamespace(serial=B[1])))
     probe = SimpleNamespace(pro_source=lambda serial: "pro-input", drain=lambda *a: None)
     hardware = SimpleNamespace(playback_sinks=lambda: dict(SINKS))
     monkeypatch.setattr(tool, "sibling",

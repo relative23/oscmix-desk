@@ -9,7 +9,7 @@ import re
 
 import pytest
 from reconcile_desk import routes_file
-from support import device_key
+from support import device_key, signed
 
 from oscmix_desk import desk as desk_mod
 from oscmix_desk import locking
@@ -18,7 +18,8 @@ from oscmix_desk import reload as reload_mod
 
 @pytest.fixture(autouse=True)
 def backend_connection(monkeypatch, recording_backend):
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
 
 
 def test_a_reconcile_stands_down_while_another_writer_holds_the_lock(
@@ -116,7 +117,7 @@ def test_an_incomplete_reconcile_does_not_report_success(
 
     path = routes_file(tmp_path)
     notices = []
-    monkeypatch.setattr(desk_mod, "reconcile_now", lambda *a: False)
+    monkeypatch.setattr(desk_mod, "reconcile_now", signed(desk_mod.reconcile_now, False))
     monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
     reload_mod._reconcile(argparse.Namespace(config=path),
                               session_mod.Config(), {"stop": False})
@@ -171,7 +172,7 @@ def test_a_reconcile_cut_short_by_a_stop_reports_nothing(tmp_path, monkeypatch,
 
     notices = []
     monkeypatch.setattr(reload_mod, "sd_notify", notices.append)
-    monkeypatch.setattr(desk_mod, "reconcile_now", lambda *a: True)
+    monkeypatch.setattr(desk_mod, "reconcile_now", signed(desk_mod.reconcile_now, True))
     reload_mod._reconcile(argparse.Namespace(config=routes_file(tmp_path)),
                               session_mod.Config(), {"stop": True})
     assert not any(notice.startswith("STATUS=running") for notice in notices), \
@@ -222,7 +223,7 @@ def test_the_reconcile_locks_the_desk_it_reloads(tmp_path, monkeypatch,
     taken = []
     monkeypatch.setattr(desk_mod, "device_lock",
                         lambda where, key, should_stop: taken.append((where, key)) or "not taken")
-    monkeypatch.setattr(reload_mod, "sd_notify", lambda *_a: None)
+    monkeypatch.setattr(reload_mod, "sd_notify", signed(reload_mod.sd_notify))
     config = session_mod.Config(serial="12345678")
     reload_mod._reconcile(argparse.Namespace(config=path), config,
                               {"stop": False})

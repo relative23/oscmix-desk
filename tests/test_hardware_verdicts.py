@@ -18,7 +18,7 @@ import subprocess
 from types import SimpleNamespace
 
 import pytest
-from support import repo_file
+from support import repo_file, signed
 
 
 def load_harness():
@@ -53,13 +53,13 @@ def test_failed_or_stuck_tone_is_a_measurement_failure(harness, monkeypatch, tmp
 def test_meter_worker_failure_is_not_a_missing_meter_verdict(harness, monkeypatch, tmp_path):
     def failed_reader(_seconds):
         raise OSError("backend disconnected")
-    monkeypatch.setattr(harness, "play", lambda *_args: None)
+    monkeypatch.setattr(harness, "play", signed(harness.play))
     with pytest.raises(OSError, match="backend disconnected"):
         harness.measure(SimpleNamespace(peaks=failed_reader), tmp_path / "tone.wav", "sink")
 
 
 def test_meter_worker_returns_its_complete_result(harness, monkeypatch, tmp_path):
-    monkeypatch.setattr(harness, "play", lambda *_args: None)
+    monkeypatch.setattr(harness, "play", signed(harness.play))
     assert harness.measure(SimpleNamespace(peaks=lambda _seconds: {5: -44.0}),
                            tmp_path / "tone.wav", "sink") == {5: -44.0}
 

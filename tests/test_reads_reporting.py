@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
+from support import signed
 
 from oscmix_desk import reads as reads_mod
 from oscmix_desk.config import load_config
@@ -37,7 +38,7 @@ def lines(caplog, level=None):
 def reading(monkeypatch):
     def install(registers, serial=SERIAL):
         read = DeviceRead(dict(registers), serial, "00ff")
-        monkeypatch.setattr(reads_mod, "_read_device", lambda *_a, **_k: read)
+        monkeypatch.setattr(reads_mod, "_read_device", signed(reads_mod._read_device, read))
         return read
     return install
 

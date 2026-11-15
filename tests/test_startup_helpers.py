@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 from session_doubles import RunningChild
-from support import device_key
+from support import device_key, signed
 
 from oscmix_desk import desk as desk_mod
 
@@ -36,7 +36,8 @@ class PollingChild:
 
 def test_a_strangers_port_is_not_backend_readiness(
         session_module, monkeypatch, tmp_path):
-    monkeypatch.setattr(session_module, "control_socket_owner", lambda *_: 201)
+    monkeypatch.setattr(session_module, "control_socket_owner",
+                        signed(session_module.control_socket_owner, 201))
     monkeypatch.setattr(session_module, "PORT_READY_TIMEOUT", .01)
     assert session_module._await_backend_port(PollingChild(), tmp_path / "c", tmp_path) is False
 
@@ -52,7 +53,8 @@ def test_a_failed_apply_releases_the_device_lock(
     def fail(*args, **kwargs):
         raise OSError("send failed")
 
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
     monkeypatch.setattr(desk_mod, "apply_routing", fail)
     with pytest.raises(OSError, match="send failed"):
         session_module._apply_and_verify(
@@ -145,7 +147,7 @@ def test_stop_handlers_do_not_terminate_a_backend_that_is_already_gone(
     import signal
 
     installed = _capture_signal_handlers(session_module, monkeypatch)
-    monkeypatch.setattr(session_module, "sd_notify", lambda *_a: None)
+    monkeypatch.setattr(session_module, "sd_notify", signed(session_module.sd_notify))
     child = PollingChild(returncode=0)
     stop = {"stop": False}
     session_module._install_stop_handlers(child, stop)

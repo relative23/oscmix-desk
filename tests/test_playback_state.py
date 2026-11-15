@@ -11,6 +11,7 @@ import os
 import time
 
 import pytest
+from support import signed
 from two_boxes import A
 
 from oscmix_desk import Config, Route, desktop, hostservice, status
@@ -206,9 +207,9 @@ def test_the_connect_check_says_whether_it_belongs_to_the_running_backend():
 def world(tmp_path, monkeypatch, endpoint):
     _config, _control, proc = endpoint
     monkeypatch.setenv("OSCMIX_PROC_ROOT", str(proc))
-    monkeypatch.setattr(status, "resolve_binary", lambda *_: None)
+    monkeypatch.setattr(status, "resolve_binary", signed(status.resolve_binary))
     monkeypatch.setattr(hostservice, "STATE", tmp_path)
-    monkeypatch.setattr(desktop, "resolve_binary", lambda *_: None)
+    monkeypatch.setattr(desktop, "resolve_binary", signed(desktop.resolve_binary))
     path = tmp_path / "routing.conf"
     path.write_text("[device]\nserial=%s\n[route:daw]\nplayback=1/2\noutput=1/2\n"
                     "[route:mic]\ninput=5/6\noutput=1/2\nlevel=-6\n" % A[1])

@@ -6,6 +6,7 @@ import threading
 
 import pytest
 from backend_doubles import RecordingBackend
+from support import signed
 
 from oscmix_desk import config as config_mod
 from oscmix_desk import desk as desk_mod
@@ -303,7 +304,7 @@ def test_reload_waits_for_startup_verification_without_resetting_missing_remembe
     path.write_text("[output:5]\nvolume=-6\n")
     config = config_mod.load_config(path)
     backend = recorded(monkeypatch, lambda _: [])
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: backend)
+    monkeypatch.setattr(desk_mod, "connect_backend", signed(desk_mod.connect_backend, backend))
     statuses = []
     monkeypatch.setattr(reload, "sd_notify", statuses.append)
     routing.apply_routing(config, backend)

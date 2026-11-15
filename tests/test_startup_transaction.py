@@ -7,7 +7,7 @@ applied here.
 
 import pytest
 from session_doubles import FakeChild, RunningChild, ready_count
-from support import device_key
+from support import device_key, signed
 
 from oscmix_desk import desk as desk_mod
 from oscmix_desk import locking
@@ -16,7 +16,8 @@ from oscmix_desk import reload as reload_mod
 
 @pytest.fixture(autouse=True)
 def operation(monkeypatch, session_module, recording_backend):
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: recording_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, recording_backend))
 
 
 def _lock_probe(path):

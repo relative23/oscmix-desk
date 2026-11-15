@@ -12,6 +12,7 @@ import side-effect free.
 import collections
 import importlib.machinery
 import importlib.util
+import inspect
 import os
 import shutil
 import socket
@@ -262,3 +263,22 @@ def idle_clock(device, current, step=0.001):
         return now[0]
 
     return SimpleNamespace(monotonic=monotonic)
+
+
+def signed(real, value=None, *, body=None):
+    """A stand-in for ``real`` that takes exactly its arguments and returns ``value``.
+
+    ``lambda *a: value`` takes anything, so a caller that drops, adds or misnames an argument
+    still passes; the mutation run of 0.10.1 left such changes alive behind it. This one
+    refuses what the real signature refuses. ``body``, a function of no arguments, is called
+    on each call instead, where the value is made or raised then, as the lambda's was.
+    """
+    signature = inspect.signature(real)
+
+    def stand_in(*args, **kwargs):
+        signature.bind(*args, **kwargs)
+        return body() if body is not None else value
+
+    stand_in.__signature__ = signature
+    return stand_in
+

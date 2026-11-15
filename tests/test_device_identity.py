@@ -17,7 +17,7 @@ import socket
 import threading
 
 import pytest
-from support import fake_proc, free_udp_port, repo_file, write_config
+from support import fake_proc, free_udp_port, repo_file, signed, write_config
 from two_boxes import DESK, A, B, add_clients, lock_dir
 
 from oscmix_desk import desk as desk_mod
@@ -81,12 +81,11 @@ def _run_the_unit(tmp_path, monkeypatch, path, started, reconciled):
     notified = []
     monkeypatch.setattr(session_module, "sd_notify", notified.append)
     monkeypatch.setattr(reload_mod, "sd_notify", notified.append)
-    monkeypatch.setattr(session_module, "usb_device_present", lambda *a: True)
-    monkeypatch.setattr(session_module, "_cleanup_stale_backend", lambda *a: None)
-    monkeypatch.setattr(session_module, "_install_stop_handlers", lambda *a: None)
-    monkeypatch.setattr(session_module, "_install_reload_handler", lambda *a: None)
-    monkeypatch.setattr(session_module, "_await_backend_port", lambda *a: True)
-    monkeypatch.setattr(desk_mod, "verify_and_repair", lambda *a, **k: True)
+    for name, value in (("usb_device_present", True), ("_cleanup_stale_backend", None),
+                        ("_install_stop_handlers", None), ("_install_reload_handler", None),
+                        ("_await_backend_port", True)):
+        monkeypatch.setattr(session_module, name, signed(getattr(session_module, name), value))
+    monkeypatch.setattr(desk_mod, "verify_and_repair", signed(desk_mod.verify_and_repair, True))
     monkeypatch.setattr(session_module, "VERIFY_SETTLE", 0.0)
 
     def start(client, config, config_path=None):
@@ -367,7 +366,7 @@ def test_a_start_with_no_client_reads_the_real_usb_presence(tmp_path,
 
     from oscmix_desk import Config
 
-    monkeypatch.setattr(session_module, "wait_for_device", lambda *a: None)
+    monkeypatch.setattr(session_module, "wait_for_device", signed(session_module.wait_for_device))
     monkeypatch.setattr(session_module, "sd_notify", lambda message: None)
     proc = fake_proc(tmp_path / "proc")
     args = argparse.Namespace(timeout=0.1)
@@ -392,7 +391,7 @@ def test_a_start_names_an_interface_the_kernel_has_not_authorized(
 
     from oscmix_desk import Config
 
-    monkeypatch.setattr(session_module, "wait_for_device", lambda *a: None)
+    monkeypatch.setattr(session_module, "wait_for_device", signed(session_module.wait_for_device))
     proc = fake_proc(tmp_path / "proc")
     present = tmp_path / "usb"
     (present / "5-2").mkdir(parents=True)

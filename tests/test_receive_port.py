@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from backend_doubles import RecordingBackend
 from control_peer import ScriptedControl
-from support import write_config
+from support import signed, write_config
 
 from oscmix_desk import backend, locking, profiles, routing, verify
 from oscmix_desk import desk as desk_mod
@@ -142,7 +142,8 @@ def test_the_status_says_failed_and_the_journal_says_why(
 
 def test_a_reconcile_stands_down_and_names_receive_failure(
         tmp_path, monkeypatch, caplog, unbindable_backend):
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: unbindable_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, unbindable_backend))
     statuses = []
     monkeypatch.setattr(reload_mod, "sd_notify", statuses.append)
     path = write_config(tmp_path / "routing.conf", DESK)
@@ -179,7 +180,8 @@ def test_a_read_fails_with_the_reason_and_not_with_a_traceback(
         tmp_path, monkeypatch, caplog, flag, unbindable_backend):
     from oscmix_desk import cli
 
-    monkeypatch.setattr(desk_mod, "connect_backend", lambda *_a, **_k: unbindable_backend)
+    monkeypatch.setattr(desk_mod, "connect_backend",
+                        signed(desk_mod.connect_backend, unbindable_backend))
     path = write_config(tmp_path / "routing.conf", DESK)
     with caplog.at_level("ERROR"):
         assert cli.main(["--config", str(path), flag]) == EXIT_FAILURE
@@ -272,10 +274,12 @@ def test_record_dump_connection_failure_is_not_a_hardware_skip(monkeypatch, tmp_
     record = _script("record-dump")
     released = []
     monkeypatch.setattr(record.sys, "argv", ["record-dump.py", "--out", str(tmp_path / "out")])
-    monkeypatch.setattr(record, "load_config", lambda *_: profiles.Config())
-    monkeypatch.setattr(record, "resolve_device", lambda *_: SimpleNamespace(key="device"))
-    monkeypatch.setattr(record, "take_device_lock", lambda *_:
-                        SimpleNamespace(release=lambda: released.append(True)))
+    monkeypatch.setattr(record, "load_config",
+                        signed(record.load_config, body=lambda: profiles.Config()))
+    monkeypatch.setattr(record, "resolve_device",
+                        signed(record.resolve_device, body=lambda: SimpleNamespace(key="device")))
+    monkeypatch.setattr(record, "take_device_lock", signed(record.take_device_lock, body=lambda:
+                        SimpleNamespace(release=lambda: released.append(True))))
 
     def failed(*_args, **_kwargs):
         raise OSError(code, os.strerror(code))
@@ -292,9 +296,10 @@ def test_meter_connection_failure_frees_the_device_lock(monkeypatch):
 
     measure = _script("verify-hardware")
     released = []
-    monkeypatch.setattr(measure, "resolve_device", lambda *_: SimpleNamespace(key="device"))
-    monkeypatch.setattr(measure, "take_device_lock", lambda *_:
-                        SimpleNamespace(release=lambda: released.append(True)))
+    monkeypatch.setattr(measure, "resolve_device",
+                        signed(measure.resolve_device, body=lambda: SimpleNamespace(key="device")))
+    monkeypatch.setattr(measure, "take_device_lock", signed(measure.take_device_lock, body=lambda:
+                        SimpleNamespace(release=lambda: released.append(True))))
 
     def denied(*_args, **_kwargs):
         raise PermissionError(errno.EACCES, "Permission denied")
