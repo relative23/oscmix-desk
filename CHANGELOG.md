@@ -12,7 +12,8 @@
 - Mutants nothing can kill are gone. Python 3.12 brought an explicit `strict=False` to nine
   `zip()` calls; where the lengths are checked just above or equal by construction it
   changed nothing, and `strict=None` or no flag behave the same, so 25 mutants survived
-  every run.
+  every run. The record thread is joined on every path and needs no daemon flag, and a test
+  now pins that its own failure is the one the operation raises.
 
 ## 0.10.1 -- 2026-11-15
 

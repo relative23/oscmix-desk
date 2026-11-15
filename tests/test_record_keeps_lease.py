@@ -101,3 +101,24 @@ def test_a_record_failure_reaches_the_operation(monkeypatch, connected, tmp_path
 
     with pytest.raises(RuntimeError, match="journal encoder broke"):
         run()
+
+
+def test_the_record_thread_hands_its_own_failure_to_the_operation(
+        monkeypatch, connected, tmp_path):
+    # Only the record apply stores fails: the close's record afterwards succeeds, so the
+    # exception apply raises can only be the one the record thread caught.
+    failure = RuntimeError("journal encoder broke")
+    threads = []
+
+    def broken_once(path, written, now=None):
+        threads.append(threading.current_thread().name)
+        if len(threads) == 1:
+            raise failure
+        return True
+
+    monkeypatch.setattr(desk_mod, "record_written", broken_once)
+    with (open_desk(declared(), tmp_path / "routing.conf") as operation,
+          pytest.raises(RuntimeError) as raised):
+        operation.apply(ApplyIntent.EXPLICIT)
+    assert raised.value is failure
+    assert threads[0] == "desk-record"

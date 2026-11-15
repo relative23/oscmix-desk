@@ -224,7 +224,8 @@ class Desk:
             except Exception as exc:  # raised on this operation's thread below
                 failure.append(exc)
 
-        writer = threading.Thread(target=store, name="desk-record", daemon=True)
+        # Joined below on every path, so a daemon flag would change nothing.
+        writer = threading.Thread(target=store, name="desk-record")
         writer.start()
         try:
             while writer.is_alive():
