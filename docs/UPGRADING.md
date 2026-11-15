@@ -9,7 +9,7 @@ for 0.10.1.
 - A start that waits for the interface gives up when its timeout ends; before, the last
   look came up to a second later.
 - A write whose arguments do not match its type tags is no longer stored in the write
-  journal: it is refused with a warning, like a journal that cannot be written.
+  journal cut short: the journal warns and stays as it was, as when it cannot be written.
 - The backend gains patch 0020: a DURec file list report of the UCX II no longer ends it.
   The installer builds it, and native packages of core and GTK are upgraded together.
 

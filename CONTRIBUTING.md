@@ -68,9 +68,9 @@ python3 scripts/verify-loopback-routes.py --evidence loopback-route-evidence.jso
 
 It writes only the loopback flags of each route's outputs and gives each one
 back to the state it measured there, which a live microphone on the capture
-channel cannot fake; `ok` and `complete` must be true and `unmeasured` empty. Every release also
-runs `scripts/sweep-writes.py`: the release workflow requires its record for
-the tagged runtime.
+channel cannot fake; `ok` and `complete` must be true and `unmeasured` empty.
+Every release also runs `scripts/sweep-writes.py`: the release workflow
+requires its record for the tagged runtime.
 
 ## Releases
 

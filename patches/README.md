@@ -4,7 +4,8 @@
 commit, protocol and SHA-256 for each patch applied by
 `scripts/prepare-backend.py`. The installer and the package builds prepare and
 verify this exact series. Patch 0003 extends the existing backend, ALSA bridge
-and GTK mixer together; 0004-0019 refine it. The series is carried locally; no
+and GTK mixer together; 0004-0019 refine it, and 0020 keeps upstream's DURec
+file list handling from ending the backend. The series is carried locally; no
 upstream acceptance is claimed. Its software contract is
 [documented here](../docs/BACKEND-CONTROL.md).
 

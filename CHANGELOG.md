@@ -18,8 +18,8 @@
 
 - A wait for the interface ends at its timeout: the last poll sleeps only until the
   deadline instead of up to a second past it.
-- A write whose arguments do not match its type tags is refused with a warning, like a
-  journal that cannot be stored, instead of being journaled cut short.
+- The write journal no longer stores a write whose arguments do not match its type tags cut
+  short: it warns and stays as it was, as when it cannot be written.
 - A failed command of the repository builder names what it wrote to stderr. The release run
   of 0.10.1 lost a fixture key to `gpg --quick-gen-key` once, and its log said only the exit
   status.
@@ -53,8 +53,8 @@
   lacked the link state every device reports, so it passed on the retry path it was meant
   to rule out. It now verifies at once and checks the whole write order. The architecture
   test parsed every test file once per public name, and the read-command tests waited out
-  the production read windows although their scripted peer answers in one bundle. On the
-  same host the suite takes 191 s instead of 249 s, with 59 tests more.
+  the production read windows although their scripted peer answers in one bundle. In the
+  final gates on the same host the suite took 196 s instead of 255 s, with 72 tests more.
 - The evidence rules of `release.yml` run in CI (`tests/test_release_evidence.py`): a
   consistent draft passes, and each record that breaks a rule is refused, the loopback rules
   among them. They ran only at a release before.
