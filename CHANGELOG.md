@@ -16,6 +16,12 @@
   without naming it. The FX probe compares an inventory by that pseudonym. The
   tools still read the serial while they run, to pick the box and find its
   ALSA card and PipeWire nodes.
+- Troubleshooting explains the backend's `operation lease expired` and
+  `disconnecting slow consumer` messages, and the docs are brought up to date
+  with 0.10.0: the README and the verification recipe named 0.9.0, the
+  evidence table listed a record 0.10.0 did not attach, and patches 0003-0005
+  had no section. A test now checks every fact the docs repeat from the code
+  or the release history.
 
 ### Fixed
 
