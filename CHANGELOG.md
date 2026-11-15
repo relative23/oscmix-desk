@@ -55,6 +55,10 @@
 - The evidence rules of `release.yml` run in CI (`tests/test_release_evidence.py`): a
   consistent draft passes, and each record that breaks a rule is refused, the loopback rules
   among them. They ran only at a release before.
+- What `apply_routing`, the verifier and the mix repair decide before they send is tested:
+  the retention and gain prechecks, the AutoSet-off exemption, an input link kept under live
+  AutoSet, the peak-safe path, the lease during the retry's settle wait, and the repair of an
+  owned playback mute. The mutation run of 0.10.1 left each of them unguarded.
 
 ### Documentation
 
