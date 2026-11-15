@@ -35,9 +35,21 @@ PROJECT = 'relative23/oscmix-desk'
 PUBLICATION_WORKFLOW = PROJECT + '/.github/workflows/repository-publication.yml'
 
 
+class CommandFailed(subprocess.CalledProcessError):
+    """A failed command with what it wrote to stderr: gpg says why, its exit status does not."""
+
+    def __str__(self):
+        said = (self.stderr or '').strip()
+        return super().__str__() + ('\n' + said if said else '')
+
+
 def run(command, **kwargs):
-    return subprocess.run([str(part) for part in command], check=True,
-                          capture_output=True, text=True, timeout=120, **kwargs).stdout
+    try:
+        return subprocess.run([str(part) for part in command], check=True,
+                              capture_output=True, text=True, timeout=120, **kwargs).stdout
+    except subprocess.CalledProcessError as failed:
+        raise CommandFailed(failed.returncode, failed.cmd, failed.output,
+                            failed.stderr) from None
 
 
 def sha(path):

@@ -18,6 +18,9 @@
   deadline instead of up to a second past it.
 - A write whose arguments do not match its type tags is refused with a warning, like a
   journal that cannot be stored, instead of being journaled cut short.
+- A failed command of the repository builder names what it wrote to stderr. The release run
+  of 0.10.1 lost a fixture key to `gpg --quick-gen-key` once, and its log said only the exit
+  status.
 
 ### Fixed
 

@@ -337,3 +337,12 @@ def test_an_rpm_without_a_payload_digest_tag_or_value_is_refused(builder, monkey
     monkeypatch.setattr(builder, 'run', unset)
     with pytest.raises(ValueError, match='strong immutable-header or payload digest'):
         builder.rpm_payload_identity('package.rpm')
+
+
+def test_a_failed_command_says_what_it_wrote(builder):
+    # 2026-11-15 the release run lost a fixture key to `gpg --quick-gen-key` exit 2, and the
+    # traceback named only the status.
+    with pytest.raises(builder.subprocess.CalledProcessError) as failed:
+        builder.run(["sh", "-c", "echo 'gpg: agent_genkey failed: No such file' >&2; exit 2"])
+    assert failed.value.returncode == 2
+    assert "agent_genkey failed: No such file" in str(failed.value)
