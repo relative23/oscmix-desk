@@ -52,6 +52,9 @@
   to rule out. It now verifies at once and checks the whole write order. The architecture
   test parsed every test file once per public name, and the read-command tests waited out
   the production read windows although their scripted peer answers in one bundle.
+- The evidence rules of `release.yml` run in CI (`tests/test_release_evidence.py`): a
+  consistent draft passes, and each record that breaks a rule is refused, the loopback rules
+  among them. They ran only at a release before.
 
 ### Documentation
 
