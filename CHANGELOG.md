@@ -31,6 +31,12 @@
   `fatal(NULL)`, which printed `Invalid argument` whatever had failed, and the service
   restarted it: seen here on 2026-08-30 and four times from 2026-11-11 to 11-15. `fatal()`
   now prints the error it was called for.
+- The write sweep (`scripts/sweep-writes.py`) gives the device its values back when a
+  playback stream starts during a probe. The changed USB playback mode ended the measurement,
+  as it must, but refused the restoration as well: on 2026-11-15 a browser that began to play
+  during the release sweep left 32 registers and their linked partners at their probe values,
+  among them the auto level of twenty inputs, until they were written back. The restoration
+  still refuses another card and a stream mode that was never measured.
 
 ### Evidence
 

@@ -18,6 +18,7 @@ SIGKILL, process failure or power loss can prevent that restoration.
 """
 
 import argparse
+import contextlib
 import errno
 import json
 import os
@@ -575,7 +576,8 @@ class CheckedBackend:
     """One measurement operation with a fixed peer, device and playback mode.
 
     Restoration uses this same connection. A lost peer or device identity
-    cannot reconnect to a replacement and overwrite its state.
+    cannot reconnect to a replacement and overwrite its state; a changed
+    playback stream ends the measurement but not its restoration.
     """
 
     def __init__(self, interface: Device, config_path: Path | None, build_dir: Path,
@@ -585,6 +587,7 @@ class CheckedBackend:
         self.config = Config(serial=interface.serial)
         self.playback = read_playback(self.config, proc_root)
         self.started = 0.0
+        self.restoring = False  # set by restoring()
         self.check_identity()
         self.device = connect_backend(self.config, config_path)
         self.sent = []
@@ -600,7 +603,9 @@ class CheckedBackend:
         if not current.serial or current.client is None or current != self.interface:
             raise ValueError("sweep backend/interface identity cannot be confirmed")
         current_mode = read_playback(self.config, self.proc_root)
-        if current_mode != self.playback:
+        if current_mode != self.playback and not (
+                self.restoring and (current_mode.card, current_mode.serial)
+                == (self.playback.card, self.playback.serial)):
             raise ValueError("USB playback mode or identity changed during the measurement")
         if current_mode.mode is not None:
             problem = playback_problem(self.config, current_mode.mode)
@@ -643,6 +648,20 @@ class CheckedBackend:
         return self.evidence
 
 
+@contextlib.contextmanager
+def restoring(device):
+    """The same card goes on being written after its stream changed: left at probe values, its
+    registers would carry the very change restoration exists to undo."""
+    previous = getattr(device, "restoring", None)
+    if previous is not None:
+        device.restoring = True
+    try:
+        yield
+    finally:
+        if previous is not None:
+            device.restoring = previous
+
+
 def measure_and_restore(device, listener, targets, before, note=None, step=0):
     """Capture failure and restoration evidence even after an interrupted probe."""
     findings = []
@@ -666,8 +685,9 @@ def measure_and_restore(device, listener, targets, before, note=None, step=0):
         for sig in previous:
             signal.signal(sig, signal.SIG_IGN)
         try:
-            after, unrestored = repair(device, listener, before,
-                                      read_complete(device, listener, known(before)))
+            with restoring(device):
+                after, unrestored = repair(device, listener, before,
+                                          read_complete(device, listener, known(before)))
         except (Exception, KeyboardInterrupt) as exc:
             error = "%s; restoration failed: %s: %s" % (
                 error or "probe finished", type(exc).__name__, exc)

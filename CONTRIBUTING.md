@@ -70,7 +70,9 @@ It writes only the loopback flags of each route's outputs and gives each one
 back to the state it measured there, which a live microphone on the capture
 channel cannot fake; `ok` and `complete` must be true and `unmeasured` empty.
 Every release also runs `scripts/sweep-writes.py`: the release workflow
-requires its record for the tagged runtime.
+requires its record for the tagged runtime. Nothing else may play through the
+interface while it runs: a stream that starts ends the sweep, which then gives
+every register its value back.
 
 ## Releases
 
