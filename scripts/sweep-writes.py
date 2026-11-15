@@ -19,11 +19,9 @@ SIGKILL, process failure or power loss can prevent that restoration.
 
 import argparse
 import errno
-import hashlib
 import json
 import os
 import signal
-import subprocess
 import sys
 import time
 from collections.abc import Collection, Sequence
@@ -34,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import measurement
 from measurement import build_evidence, without_serial
 
 from oscmix_desk import devices
@@ -42,7 +41,6 @@ from oscmix_desk.backend import connect_backend
 from oscmix_desk.constants import (
     DEFAULT_DEVICE_NAME,
     DEFAULT_USB_ID,
-    __version__,
 )
 from oscmix_desk.discovery import (
     Device,
@@ -760,25 +758,7 @@ def positive_limit(text: str) -> int:
 
 def source_evidence():
     """Identify all runtime code used by the comparison, not only this script."""
-    root = Path(__file__).resolve().parents[1]
-    package = Path(R.__file__).resolve().parent
-    commit = None
-    dirty = None
-    try:
-        top = subprocess.run(['git', '-C', str(root), 'rev-parse', '--show-toplevel'],
-                             capture_output=True, text=True, check=True).stdout.strip()
-        if Path(top).resolve() == root:
-            commit = subprocess.run(['git', '-C', str(root), 'rev-parse', 'HEAD'],
-                                    capture_output=True, text=True, check=True).stdout.strip()
-            dirty = bool(subprocess.run(['git', '-C', str(root), 'status', '--porcelain'],
-                                        capture_output=True, text=True, check=True).stdout.strip())
-    except (OSError, subprocess.CalledProcessError):
-        pass
-    return {'version': __version__, 'commit': commit, 'dirty': dirty,
-            'python': sys.version,
-            'runtime_sha256': {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-                               for path in sorted(package.glob('*.py'))},
-            'tool_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    return measurement.source_evidence(Path(__file__))
 
 
 def main() -> int:

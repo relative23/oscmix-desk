@@ -8,8 +8,12 @@ import hashlib
 import hmac
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
+import oscmix_desk
+from oscmix_desk.constants import __version__
 from oscmix_desk.osc import decode_delivery
 
 #: What the records name instead of the serial of the box they measured (2026-11-14).
@@ -66,6 +70,31 @@ def without_serial(record, serial=None):
         else:
             clean.setdefault('device_pseudonym', None)
     return clean
+
+
+def source_evidence(tool):
+    """The desk code a measurement ran with: every runtime module and the tool, by digest.
+
+    The commit, and whether the tree was dirty, when the tool runs from a Git checkout of its
+    own; None for both otherwise.
+    """
+    root = Path(tool).resolve().parents[1]
+    package = Path(oscmix_desk.__file__).resolve().parent
+    commit = dirty = None
+    try:
+        top = subprocess.run(['git', '-C', str(root), 'rev-parse', '--show-toplevel'],
+                             capture_output=True, text=True, check=True).stdout.strip()
+        if Path(top).resolve() == root:
+            commit = subprocess.run(['git', '-C', str(root), 'rev-parse', 'HEAD'],
+                                    capture_output=True, text=True, check=True).stdout.strip()
+            dirty = bool(subprocess.run(['git', '-C', str(root), 'status', '--porcelain'],
+                                        capture_output=True, text=True, check=True).stdout.strip())
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    return {'version': __version__, 'commit': commit, 'dirty': dirty, 'python': sys.version,
+            'runtime_sha256': {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                               for path in sorted(package.glob('*.py'))},
+            'tool_sha256': hashlib.sha256(Path(tool).read_bytes()).hexdigest()}
 
 
 def build_evidence(connection, build_dir, proc_root=Path('/proc')):

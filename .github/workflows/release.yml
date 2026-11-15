@@ -99,7 +99,8 @@ jobs:
           test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
           mkdir build/evidence
           for name in release-notes.md software-qualification.json lifecycle.json \
-                      hardware-evidence.json write-sweep-ucx2.json; do
+                      hardware-evidence.json write-sweep-ucx2.json \
+                      loopback-route-evidence.json; do
             gh release download "$RELEASE_TAG" --pattern "$name" --dir build/evidence
           done
       - name: Require the release tag and include its measured evidence
@@ -153,15 +154,24 @@ jobs:
               assert row['before_messages'] == row['after_messages'], 'Sweep left changed readable state'
           assert sweep['findings'] and len(sweep['findings']) == sweep['probed']
           assert all(row['verdict'] in ('confirmed', 'skipped') for row in sweep['findings'])
+          # The device cannot report its playback matrix: each declared route is also shown
+          # by sound through output loopback (required from 0.10.2; 0.10.0 and 0.10.1 lacked it).
+          loopback = json.loads((evidence / 'loopback-route-evidence.json').read_text())
+          assert loopback['schema'] == 2 and loopback['kind'] == 'playback-routes-through-loopback'
+          assert loopback['ok'] is True and loopback['complete'] is True and not loopback['unmeasured']
+          assert loopback['routes'] and all(row['ok'] for row in loopback['routes'])
+          shown = sorted(row['name'] for row in loopback['routes'])
+          assert shown == sorted(row['route'] for row in hardware['routes']), 'Loopback evidence shows other routes'
           runtime = {path.name: hashlib.sha256(path.read_bytes()).hexdigest()
                      for path in Path('src/oscmix_desk').glob('*.py')}
           assert lifecycle['installed_runtime_sha256'] == runtime
-          for record in (hardware, sweep):
+          for record in (hardware, sweep, loopback):
               assert record['oscmix_revision'] == manifest['oscmix_revision']
               assert record['running_backend']['series_sha256'] == series, 'Hardware evidence measured another backend series'
               assert record['desk_source']['runtime_sha256'] == runtime, 'Hardware evidence predates this runtime'
           for name in ('software-qualification.json', 'lifecycle.json',
-                       'hardware-evidence.json', 'write-sweep-ucx2.json'):
+                       'hardware-evidence.json', 'write-sweep-ucx2.json',
+                       'loopback-route-evidence.json'):
               assert not (output / name).exists(), 'Duplicate asset name: ' + name
               shutil.copy2(evidence / name, output / name)
           shutil.copy2(evidence / 'release-notes.md', output / 'release-notes.md')

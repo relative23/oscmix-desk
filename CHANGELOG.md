@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- `scripts/verify-loopback-routes.py` shows each declared playback route by sound: a left
+  and a right tone into the route's sink must land, with output loopback on its output pair,
+  on the odd and on the even capture channel with 30 dB between them, and the loopback state
+  is given back. The release requires its record, `loopback-route-evidence.json`, beside the
+  hardware evidence, and `release.yml` checks it against the tagged runtime, the backend
+  series and the routes of the hardware evidence. 0.9.0 attached such a record by hand;
+  0.10.0 and 0.10.1 went out without one, because nothing asked for it.
+
 ### Changed
 
 - A wait for the interface ends at its timeout: the last poll sleeps only until the

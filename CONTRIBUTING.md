@@ -52,8 +52,18 @@ Name the sink explicitly. The artifact's `sink_channels` must map every used
 sink to `["FL", "FR"]`, and the artifact's `firmware` must name the USB
 revision and DSP version. `complete` must be true, `unmeasured` empty and
 every entry in `routes` must have `ok: true` with its playback pair and sink.
-When the register model changes, also run `scripts/sweep-writes.py` and keep
-its result with the release.
+The device reports no playback matrix, so the same routes are also shown by
+sound through output loopback, with the monitors off, the headphones unplugged
+and 48 V off:
+
+```sh
+python3 scripts/verify-loopback-routes.py --evidence loopback-route-evidence.json
+```
+
+It writes only the loopback flags of each route's outputs and gives them back;
+`ok` and `complete` must be true and `unmeasured` empty. When the register
+model changes, also run `scripts/sweep-writes.py` and keep its result with the
+release.
 
 ## Releases
 
@@ -64,15 +74,13 @@ its result with the release.
    disagree, and checks the other facts the docs repeat from the code.
 2. Run the checks above on the release commit, on every supported Python
    version, plus `make check` once with the interface switched off.
-3. Record the hardware verification, the write sweep and the service
-   lifecycle for the same runtime and backend build.
+3. Record the hardware verification, the loopback routes, the write sweep and
+   the service lifecycle for the same runtime and backend build.
 4. Create the draft release and attach the evidence files (`release-notes.md`,
    `software-qualification.json`, `lifecycle.json`, `hardware-evidence.json`,
-   `write-sweep-ucx2.json`) before pushing the tag. The release workflow
-   checks them against the tagged sources, builds and attests the artifacts
-   and attaches everything to the draft. Further hardware records, such as
-   `loopback-route-evidence.json`, are attached beside them and named in the
-   release notes.
+   `loopback-route-evidence.json`, `write-sweep-ucx2.json`) before pushing the
+   tag. The release workflow checks them against the tagged sources, builds and
+   attests the artifacts and attaches everything to the draft.
 5. Publish the signed package repositories with the publication workflow,
    verify the published downloads and repositories, then publish the draft.
 
