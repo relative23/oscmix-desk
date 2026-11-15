@@ -209,8 +209,8 @@ def test_every_public_name_is_exercised_by_some_test(session_mod):
     mentioned equals being covered. Coverage and the mutation score are
     the measures of *how well*; this one is about *at all*.
     """
-    untested = sorted(name for name in session_mod.__all__
-                      if name not in named_in_tests())
+    mentioned = named_in_tests()  # once: it parses every test file
+    untested = sorted(name for name in session_mod.__all__ if name not in mentioned)
     assert untested == [], (
         "declared in __all__ but named by no test: %s" % untested)
 

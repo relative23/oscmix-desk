@@ -80,11 +80,14 @@ def test_refresh_disconnect_cannot_trigger_blind_reapply(session_mod, wire_peer)
 
 def test_routes_without_pairs_still_verify(session_mod, wire_peer):
     # A mono-only routing has no links to wait for; the re-apply must not
-    # block on a report that can never come.
+    # block on a report that can never come. The device reports every
+    # output's link state, so the unlinked output 9 is in its dump as well:
+    # without it this test waited out two verify timeouts (20 s) and passed
+    # on the retry path it was meant to rule out.
     routes = [make_route(session_mod, playback=(1,), output=(9,))]
-    device = run_verify_and_repair(session_mod, routes,
-                                   full_dump(session_mod, routes), wire_peer=wire_peer)
-    assert device.order[0] == "/refresh"
+    dump = full_dump(session_mod, routes) + [osc.encode_osc("/output/9/stereo", "i", 0)]
+    device = run_verify_and_repair(session_mod, routes, dump, wire_peer=wire_peer)
+    assert device.order == ["/refresh", "/mix/9/playback/1"]
 
 def test_send_mix_writes_the_matrix_without_the_links(session_mod, wire_peer):
     config = session_mod.Config(routes=[make_route(session_mod, volume=0.0)])

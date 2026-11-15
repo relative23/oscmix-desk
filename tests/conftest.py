@@ -11,9 +11,11 @@ for a backend in ``backend_doubles``.
 import ast
 import os
 import socket
+import struct
 import sys
 import tempfile
 import types
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -340,8 +342,6 @@ def diagnostic_query():
 @pytest.fixture
 def wire_peer(tmp_path_factory):
     """A leased production client and independent scripted protocol peer."""
-    from contextlib import contextmanager
-
     from control_peer import ScriptedControl
 
     from oscmix_desk.backend import Control
@@ -367,15 +367,18 @@ def read_peer(tmp_path_factory, monkeypatch):
 
     Only the already-tested identity association is substituted. Subscription,
     refresh, framed observations, deadlines and disconnects use the real client.
+    The peer answers at once, in one bundle, so the read windows are short here;
+    a test about the windows sets its own.
     """
-    from contextlib import contextmanager
-
     from control_peer import ScriptedControl
     from support import osc_bundle
 
     from oscmix_desk import desk as desk_mod
     from oscmix_desk.backend import Control
     from oscmix_desk.osc import encode_osc
+
+    monkeypatch.setattr("oscmix_desk.reads.DUMP_QUIET_SECONDS", 0.25)  # 1 s on a device
+    monkeypatch.setattr("oscmix_desk.reads.DUMP_READ_SECONDS", 1.5)  # 8 s on a device
 
     @contextmanager
     def run(registers, **faults):
@@ -425,9 +428,6 @@ def endpoint(tmp_path_factory, monkeypatch):
 @pytest.fixture
 def coordinated(tmp_path_factory, monkeypatch):
     """Scripted endpoint with real peer credentials and a simulated ALSA identity."""
-    import struct
-    from contextlib import contextmanager
-
     from control_peer import ScriptedControl
     from support import control_owner, fake_proc
     from two_boxes import A, B

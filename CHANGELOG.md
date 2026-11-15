@@ -16,6 +16,11 @@
   changed nothing, and `strict=None` or no flag behave the same, so 25 mutants survived
   every run. The record thread is joined on every path and needs no daemon flag, and a test
   now pins that its own failure is the one the operation raises.
+- A verify test of a mono route waited out two 10 s verify timeouts: its scripted dump
+  lacked the link state every device reports, so it passed on the retry path it was meant
+  to rule out. It now verifies at once and checks the whole write order. The architecture
+  test parsed every test file once per public name, and the read-command tests waited out
+  the production read windows although their scripted peer answers in one bundle.
 
 ## 0.10.1 -- 2026-11-15
 
