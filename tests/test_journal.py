@@ -108,6 +108,16 @@ def test_a_journal_that_cannot_be_stored_is_a_warning(tmp_path, caplog):
     assert not record_written(tmp_path / "k.json", {})
 
 
+@pytest.mark.parametrize("args", [(1.0,), (1.0, 2.0, 3.0)], ids=["fewer", "more"])
+def test_a_write_whose_arguments_do_not_match_its_tags_is_refused(tmp_path, caplog, args):
+    """Never stored cut short: the write is refused with a warning, the journal kept."""
+    path = tmp_path / "k.written.json"
+    assert record_written(path, {"/a": ("i", (1,))})
+    assert not record_written(path, {"/b": ("ff", args)})
+    assert "could not record 1 writes" in caplog.text
+    assert set(read_journal(path)) == {"/a"}
+
+
 def test_a_failed_replace_leaves_no_temporary_file(tmp_path, monkeypatch):
     path = tmp_path / "k.written.json"
 

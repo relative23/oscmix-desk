@@ -31,7 +31,7 @@ def encode_osc(path: str, types: str = "", *args: Value) -> bytes:
             "type tag %r expects %d arguments, got %d" % (types, len(types), len(args))
         )
     data = _osc_string(path) + _osc_string("," + types)
-    for tag, value in zip(types, args, strict=False):
+    for tag, value in zip(types, args):  # noqa: B905 -- lengths checked above
         if tag == "f":
             data += struct.pack(">f", float(value))
         elif tag == "i":

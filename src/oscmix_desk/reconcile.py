@@ -663,7 +663,7 @@ def matches(tags: str, want: Args, got: Args,
     """
     if len(got) < len(want) or len(tags) != len(want) or not tags:
         return False
-    for tag, wanted, reported in zip(tags, want, got, strict=False):
+    for tag, wanted, reported in zip(tags, want, got):  # noqa: B905 -- a report may be longer
         try:
             if tag == "f":
                 if not equal_float(wanted, reported, register, tolerance):

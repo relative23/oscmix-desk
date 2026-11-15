@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- A write whose arguments do not match its type tags is refused with a warning, like a
+  journal that cannot be stored, instead of being journaled cut short.
+
+### Tests
+
+- Mutants nothing can kill are gone. Python 3.12 brought an explicit `strict=False` to nine
+  `zip()` calls; where the lengths are checked just above or equal by construction it
+  changed nothing, and `strict=None` or no flag behave the same, so 25 mutants survived
+  every run.
+
 ## 0.10.1 -- 2026-11-15
 
 ### Changed

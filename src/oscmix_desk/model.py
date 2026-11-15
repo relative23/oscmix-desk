@@ -193,7 +193,7 @@ class Machine(NamedTuple):
         """The identity settings that differ, for a person."""
         return ", ".join(
             "%s %r (not %r)" % (name.replace("_", " "), mine, theirs)
-            for name, mine, theirs in zip(self._fields, self, other, strict=False)
+            for name, mine, theirs in zip(self._fields, self, other)  # noqa: B905 -- both Machine
             if name not in ("osc_port", "osc_recv_port") and mine != theirs)
 
     def under(self, overrides: Overrides | None = None, *,

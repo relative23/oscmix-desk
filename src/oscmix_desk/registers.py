@@ -280,7 +280,7 @@ def _matches(template: str, path: str) -> bool:
     got = path.split("/")
     if len(want) != len(got):
         return False
-    for part_want, part_got in zip(want, got, strict=False):
+    for part_want, part_got in zip(want, got):  # noqa: B905 -- lengths checked above
         if part_want.startswith("{") and part_want.endswith("}"):
             if not part_got.isascii() or not part_got.isdigit():
                 return False
@@ -290,13 +290,13 @@ def _matches(template: str, path: str) -> bool:
 
 
 def _channel_in(template: str, path: str) -> int | None:
-    """The channel a concrete path names, or None for a global register.
+    """The channel a path matching the template names, or None for a global register.
 
     The *first* placeholder is the one the capability describes: a matrix
     row is indexed by its output, and its second index is a different
     capability entirely.
     """
-    for part_want, part_got in zip(template.split("/"), path.split("/"), strict=False):
+    for part_want, part_got in zip(template.split("/"), path.split("/")):  # noqa: B905
         if part_want.startswith("{") and part_want.endswith("}"):
             return int(part_got)
     return None

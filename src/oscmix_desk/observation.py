@@ -82,7 +82,8 @@ class Observation:
             return False
         register = register_at(self.device, path)
         try:
-            for index, (tag, value) in enumerate(zip(tags, args, strict=False)):
+            # A report may carry more arguments than its tags; only the tagged ones count.
+            for index, (tag, value) in enumerate(zip(tags, args)):  # noqa: B905
                 if register is not None and register.mix_level:
                     if index == 0 and value == float("-inf"):
                         continue

@@ -91,7 +91,7 @@ def _same(declared: tuple[str, Args], written: tuple[str, Args, str]) -> bool:
     tags, args = declared
     if written[0] != tags or len(written[1]) != len(args):
         return False
-    for tag, want, got in zip(tags, args, written[1], strict=False):
+    for tag, want, got in zip(tags, args, written[1]):  # noqa: B905 -- arity checked above
         try:
             if (float(want) != float(got)) if tag == "f" else want != got:
                 return False

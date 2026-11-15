@@ -100,7 +100,7 @@ def read_journals(config_path: Path | None, key: str) -> Journal:
 def _encode(tags: str, args: Args) -> list[object]:
     """JSON values for the arguments; non-finite floats as their names, which JSON lacks."""
     encoded: list[object] = []
-    for tag, value in zip(tags, args, strict=False):
+    for tag, value in zip(tags, args, strict=True):
         if tag == "f" and isinstance(value, float) and not math.isfinite(value):
             encoded.append(repr(value))
         else:
@@ -113,7 +113,7 @@ def _decode(tags: object, values: object) -> Args:
             or len(tags) != len(values) or not tags):
         raise ValueError("malformed arguments")
     decoded: list[Value] = []
-    for tag, value in zip(tags, values, strict=False):
+    for tag, value in zip(tags, values):  # noqa: B905 -- lengths checked above
         if tag == "f" and isinstance(value, (int, float, str)) and not isinstance(value, bool):
             decoded.append(float(value))
         elif (tag == "i" and type(value) is int) or (tag == "s" and isinstance(value, str)):
@@ -181,10 +181,11 @@ def record_written(path: Path | None, written: Mapping[str, tuple[str, Args]],
         log.warning("not recording %d writes: the journal %s would exceed %d entries",
                     len(written), path, MAX_ENTRIES)
         return False
-    document = {"schema": SCHEMA, "registers": {
-        name: {"tags": tags, "args": _encode(tags, args), "at": stamp}
-        for name, (tags, args, stamp) in sorted(journal.items())}}
     try:
+        # A write whose arguments do not match its tags is refused, not stored cut short.
+        document = {"schema": SCHEMA, "registers": {
+            name: {"tags": tags, "args": _encode(tags, args), "at": stamp}
+            for name, (tags, args, stamp) in sorted(journal.items())}}
         _replace(path, document)
     except (OSError, ValueError) as exc:
         log.warning("could not record %d writes in %s: %s", len(written), path, exc)
