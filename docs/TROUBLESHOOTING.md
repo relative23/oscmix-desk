@@ -418,7 +418,7 @@ can inspect reportable state, while playback-matrix state remains unknown.
   verified against device state` right after. The message said nothing
   about the cause: the backend's `fatal(NULL)` printed `Invalid argument`
   whatever had failed. Seen here after hours of quiet running, on
-  2026-08-30 and four times from 2026-11-11 to 11-15; patch 0020 (0.10.2)
+  2026-08-30 and five times from 2026-11-11 to 11-16; patch 0020 (0.10.2)
   keeps the backend running. A backend that still exits names its error
   since then; keep the lines around it, and check `oscmix-session --diff`
   after the restart.

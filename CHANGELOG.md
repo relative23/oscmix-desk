@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.2 -- unreleased
+## 0.10.2 -- 2026-11-16
 
 ### Added
 
@@ -29,7 +29,7 @@
 - The backend no longer ends when the UCX II reports its DURec file list with a count of
   zero after a file index, or with a negative count or index (patch 0020). It exited through
   `fatal(NULL)`, which printed `Invalid argument` whatever had failed, and the service
-  restarted it: seen here on 2026-08-30 and four times from 2026-11-11 to 11-15. `fatal()`
+  restarted it: seen here on 2026-08-30 and five times from 2026-11-11 to 11-16. `fatal()`
   now prints the error it was called for.
 - The write sweep (`scripts/sweep-writes.py`) gives the device its values back when a
   playback stream starts during a probe. The changed USB playback mode ended the measurement,
@@ -60,7 +60,7 @@
   to rule out. It now verifies at once and checks the whole write order. The architecture
   test parsed every test file once per public name, and the read-command tests waited out
   the production read windows although their scripted peer answers in one bundle. In the
-  final gates on the same host the suite took 196 s instead of 255 s, with 72 tests more.
+  final gates on the same host the suite took 205 s instead of 255 s, with 76 tests more.
 - The evidence rules of `release.yml` run in CI (`tests/test_release_evidence.py`): a
   consistent draft passes, and each record that breaks a rule is refused, the loopback rules
   among them. They ran only at a release before.
