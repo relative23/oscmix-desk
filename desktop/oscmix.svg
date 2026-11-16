@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- oscmix-autostart application icon: three mixer faders -->
+  <!-- oscmix-desk application icon: three mixer faders -->
   <rect x="16" y="16" width="224" height="224" rx="48" fill="#20242c"/>
   <rect x="16" y="16" width="224" height="224" rx="48" fill="none"
         stroke="#3a4150" stroke-width="4"/>
